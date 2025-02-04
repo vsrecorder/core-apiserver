@@ -1,0 +1,64 @@
+name: For Staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+      - "master"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Go 1.23.4
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.4"
+      - name: Run Test
+        run: go test -v -cover -race ./...
+
+  build-and-push-container-image:
+    needs:
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build Container Image
+        run: |
+          DOCKER_BUILDKIT=1 \
+          docker build . \
+            --cache-from vsrecorder/core-apiserver:latest \
+            --tag vsrecorder/core-apiserver:latest
+      - name: Push Container Image
+        run: |
+          docker push vsrecorder/core-apiserver:latest
+
+  notify-slack:
+    if: ${{ always() }}
+    needs:
+      - build-and-push-container-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Slack Notification
+        run: |
+          SLACK_WEBHOOK_URL="${{ secrets.SLACK_WEBHOOK_URL }}" \
+          SUCCESS="${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}" \
+          WORKFLOW="${{ github.workflow }}" \
+          SERVER_URL="${{ github.server_url }}" \
+          REPOSITORY="${{ github.repository }}" \
+          BRANCH="${{ github.ref_name }}" \
+          SHA="${{ github.sha }}" \
+          RUN_ID="${{ github.run_id }}" \
+          ACTOR="${{ github.actor }}" \
+          /bin/bash ./.github/scripts/notify_slack.sh

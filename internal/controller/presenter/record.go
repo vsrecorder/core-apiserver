@@ -17,6 +17,23 @@ func NewRecordGetResponse(
 	}
 }
 
+func NewRecordGetByIdResponse(
+	record *entity.Record,
+) *dto.RecordGetByIdResponse {
+	return &dto.RecordGetByIdResponse{
+		ID:              record.ID,
+		CreatedAt:       record.CreatedAt,
+		OfficialEventId: record.OfficialEventId,
+		TonamelEventId:  record.TonamelEventId,
+		FriendId:        record.FriendId,
+		UserId:          record.UserId,
+		DeckId:          record.DeckId,
+		PrivateFlg:      record.PrivateFlg,
+		TCGMeisterURL:   record.TCGMeisterURL,
+		Memo:            record.Memo,
+	}
+}
+
 func NewRecordCreateResponse(
 	record *entity.Record,
 ) *dto.RecordCreateResponse {

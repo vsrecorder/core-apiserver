@@ -31,6 +31,7 @@ func NewRecord(
 func (c *Record) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + RECORDS_PATH)
 	r.GET("", validation.RecordGetMiddleware(), c.Get)
+	r.GET("/:id", c.GetById)
 	r.POST("", validation.RecordCreateMiddleware(), c.Create)
 	r.PUT("/:id", validation.RecordUpdateMiddleware(), c.Update)
 	r.DELETE("/:id", c.Delete)
@@ -48,6 +49,27 @@ func (c *Record) Get(ctx *gin.Context) {
 	}
 
 	res := presenter.NewRecordGetResponse(limit, offset, records)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *Record) GetById(ctx *gin.Context) {
+	id := helper.GetId(ctx)
+
+	record, err := c.usecase.FindById(context.Background(), id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "record not found"})
+			ctx.Abort()
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewRecordGetByIdResponse(record)
 
 	ctx.JSON(http.StatusOK, res)
 }

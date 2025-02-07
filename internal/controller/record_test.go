@@ -46,10 +46,11 @@ func TestRecordController(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface,
 	){
-		"Get":    test_Get,
-		"Create": test_Create,
-		"Update": test_Update,
-		"Delete": test_Delete,
+		"Get":     test_Get,
+		"GetById": test_GetById,
+		"Create":  test_Create,
+		"Update":  test_Update,
+		"Delete":  test_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t, c, mockUsecase)
@@ -123,6 +124,38 @@ func test_Get(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInter
 		require.Equal(t, "{\"message\":\"bad request\"}", w.Body.String())
 	}
 
+}
+
+func test_GetById(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
+	id, err := generateId()
+	require.NoError(t, err)
+
+	{
+		record := &entity.Record{
+			ID:              id,
+			OfficialEventId: 10000,
+			PrivateFlg:      false,
+		}
+
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(record, nil)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/records/"+id, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, "{\"id\":\""+id+"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":10000,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}", w.Body.String())
+	}
+
+	{
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/records/"+id, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+	}
 }
 
 func test_Create(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {

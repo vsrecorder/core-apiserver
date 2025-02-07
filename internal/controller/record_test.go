@@ -181,7 +181,7 @@ func test_Delete(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordIn
 		req, _ := http.NewRequest("DELETE", "/records/"+id, nil)
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusInternalServerError, w.Code)
+		require.Equal(t, http.StatusBadRequest, w.Code)
 		require.Equal(t, "{\"message\":\"record not found\"}", w.Body.String())
 	}
 

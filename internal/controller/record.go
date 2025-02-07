@@ -34,7 +34,7 @@ func (c *Record) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + RECORDS_PATH)
 	r.GET("", validation.RecordGetMiddleware(), c.Get)
 	r.POST("", validation.RecordCreateMiddleware(), c.Create)
-	r.DELETE(":id", c.Delete)
+	r.DELETE("/:id", c.Delete)
 }
 
 func (c *Record) Get(ctx *gin.Context) {
@@ -95,7 +95,7 @@ func (c *Record) Delete(ctx *gin.Context) {
 
 	if err := c.usecase.Delete(context.Background(), id); err != nil {
 		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "record not found"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "record not found"})
 			ctx.Abort()
 			return
 		}

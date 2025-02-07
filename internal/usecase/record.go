@@ -2,11 +2,45 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"gorm.io/gorm"
 )
+
+type RecordParam struct {
+	officialEventId uint
+	tonamelEventId  string
+	friendId        string
+	userId          string
+	deckId          string
+	privateFlg      bool
+	tcgMeisterURL   string
+	memo            string
+}
+
+func NewRecordParam(
+	officialEventId uint,
+	tonamelEventId string,
+	friendId string,
+	userId string,
+	deckId string,
+	privateFlg bool,
+	tcgMeisterURL string,
+	memo string,
+) *RecordParam {
+	return &RecordParam{
+		officialEventId: officialEventId,
+		tonamelEventId:  tonamelEventId,
+		friendId:        friendId,
+		userId:          userId,
+		deckId:          deckId,
+		privateFlg:      privateFlg,
+		tcgMeisterURL:   tcgMeisterURL,
+		memo:            memo,
+	}
+}
 
 type RecordInterface interface {
 	Find(
@@ -50,14 +84,14 @@ type RecordInterface interface {
 
 	Create(
 		ctx context.Context,
-		record *entity.Record,
-	) error
+		param *RecordParam,
+	) (*entity.Record, error)
 
 	Update(
 		ctx context.Context,
 		id string,
-		record *entity.Record,
-	) error
+		param *RecordParam,
+	) (*entity.Record, error)
 
 	Delete(
 		ctx context.Context,
@@ -149,34 +183,64 @@ func (u *Record) FindByDeckId(
 
 func (u *Record) Create(
 	ctx context.Context,
-	record *entity.Record,
-) error {
-	err := u.repository.Save(ctx, record)
-
+	param *RecordParam,
+) (*entity.Record, error) {
+	id, err := generateId()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	createdAt := time.Now().Truncate(0)
+
+	record := entity.NewRecord(
+		id,
+		createdAt,
+		param.officialEventId,
+		param.tonamelEventId,
+		param.friendId,
+		param.userId,
+		param.friendId,
+		param.privateFlg,
+		param.tcgMeisterURL,
+		param.memo,
+	)
+
+	if err := u.repository.Save(ctx, record); err != nil {
+		return nil, err
+	}
+
+	return record, nil
 }
 
 func (u *Record) Update(
 	ctx context.Context,
 	id string,
-	record *entity.Record,
-) error {
+	param *RecordParam,
+) (*entity.Record, error) {
+	// 指定されたidのRecordが存在するか確認
 	ret, err := u.repository.FindById(ctx, id)
 	if err == gorm.ErrRecordNotFound {
-		return err
+		return nil, err
 	}
 
-	record.CreatedAt = ret.CreatedAt
+	record := entity.NewRecord(
+		id,
+		ret.CreatedAt,
+		param.officialEventId,
+		param.tonamelEventId,
+		param.friendId,
+		param.userId,
+		param.friendId,
+		param.privateFlg,
+		param.tcgMeisterURL,
+		param.memo,
+	)
 
 	if err := u.repository.Save(ctx, record); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return record, nil
 }
 
 func (u *Record) Delete(

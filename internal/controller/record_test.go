@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -127,7 +126,19 @@ func test_Get(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInter
 }
 
 func test_Create(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
-	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+	id, err := generateId()
+	require.NoError(t, err)
+
+	createdAt := time.Now().Truncate(0)
+
+	record := &entity.Record{
+		ID:              id,
+		CreatedAt:       createdAt,
+		OfficialEventId: 10000,
+		PrivateFlg:      false,
+	}
+
+	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(record, nil)
 
 	rcr := dto.RecordCreateRequest{
 		OfficialEventId: 10000,
@@ -153,15 +164,28 @@ func test_Create(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordIn
 		err := json.Unmarshal(w.Body.Bytes(), &res)
 		require.NoError(t, err)
 
-		require.Equal(t, reflect.TypeOf(""), reflect.TypeOf(res.ID))
-		require.Equal(t, reflect.TypeOf(time.Time{}), reflect.TypeOf(res.CreatedAt))
+		require.Equal(t, id, res.ID)
+		require.Equal(t, createdAt, res.CreatedAt)
 		require.Equal(t, rcr.OfficialEventId, res.OfficialEventId)
 		require.Equal(t, rcr.PrivateFlg, res.PrivateFlg)
+		require.Equal(t, "", res.UserId)
 	}
 }
 
 func test_Update(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
-	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+	id, err := generateId()
+	require.NoError(t, err)
+
+	createdAt := time.Now().Truncate(0)
+
+	record := &entity.Record{
+		ID:              id,
+		CreatedAt:       createdAt,
+		OfficialEventId: 10000,
+		PrivateFlg:      false,
+	}
+
+	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(record, nil)
 
 	rcr := dto.RecordCreateRequest{
 		OfficialEventId: 10000,
@@ -187,12 +211,22 @@ func test_Update(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordIn
 		err := json.Unmarshal(w.Body.Bytes(), &res)
 		require.NoError(t, err)
 
+		require.Equal(t, id, res.ID)
+		require.Equal(t, createdAt, res.CreatedAt)
 		require.Equal(t, rcr.OfficialEventId, res.OfficialEventId)
 		require.Equal(t, rcr.PrivateFlg, res.PrivateFlg)
+		require.Equal(t, "", res.UserId)
 
 		id := res.ID
 
-		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(nil)
+		record := &entity.Record{
+			ID:              id,
+			CreatedAt:       createdAt,
+			OfficialEventId: 10001,
+			PrivateFlg:      true,
+		}
+
+		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(record, nil)
 
 		rur := dto.RecordCreateRequest{
 			OfficialEventId: 10001,
@@ -219,6 +253,7 @@ func test_Update(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordIn
 			require.NoError(t, err)
 
 			require.Equal(t, id, res.ID)
+			require.Equal(t, createdAt, res.CreatedAt)
 			require.Equal(t, rur.OfficialEventId, res.OfficialEventId)
 			require.Equal(t, rur.PrivateFlg, res.PrivateFlg)
 			require.Equal(t, "", res.UserId)

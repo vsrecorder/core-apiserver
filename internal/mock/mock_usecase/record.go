@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	usecase "github.com/vsrecorder/core-apiserver/internal/usecase"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,17 +43,18 @@ func (m *MockRecordInterface) EXPECT() *MockRecordInterfaceMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockRecordInterface) Create(ctx context.Context, record *entity.Record) error {
+func (m *MockRecordInterface) Create(ctx context.Context, param *usecase.RecordParam) (*entity.Record, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, record)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Create", ctx, param)
+	ret0, _ := ret[0].(*entity.Record)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockRecordInterfaceMockRecorder) Create(ctx, record any) *gomock.Call {
+func (mr *MockRecordInterfaceMockRecorder) Create(ctx, param any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRecordInterface)(nil).Create), ctx, record)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRecordInterface)(nil).Create), ctx, param)
 }
 
 // Delete mocks base method.
@@ -160,15 +162,16 @@ func (mr *MockRecordInterfaceMockRecorder) FindByUserId(ctx, uid, limit, offset 
 }
 
 // Update mocks base method.
-func (m *MockRecordInterface) Update(ctx context.Context, id string, record *entity.Record) error {
+func (m *MockRecordInterface) Update(ctx context.Context, id string, param *usecase.RecordParam) (*entity.Record, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, id, record)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Update", ctx, id, param)
+	ret0, _ := ret[0].(*entity.Record)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockRecordInterfaceMockRecorder) Update(ctx, id, record any) *gomock.Call {
+func (mr *MockRecordInterfaceMockRecorder) Update(ctx, id, param any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRecordInterface)(nil).Update), ctx, id, record)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRecordInterface)(nil).Update), ctx, id, param)
 }

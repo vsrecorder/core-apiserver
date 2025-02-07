@@ -3,13 +3,11 @@ package controller
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
-	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 	"gorm.io/gorm"
 )
@@ -58,18 +56,7 @@ func (c *Record) Create(ctx *gin.Context) {
 	req := helper.GetRecordCreateRequest(ctx)
 	uid := helper.GetUID(ctx)
 
-	id, err := generateId()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
-		return
-	}
-
-	createdAt := time.Now().Truncate(0)
-
-	record := entity.NewRecord(
-		id,
-		createdAt,
+	param := usecase.NewRecordParam(
 		req.OfficialEventId,
 		req.TonamelEventId,
 		req.FriendId,
@@ -80,7 +67,8 @@ func (c *Record) Create(ctx *gin.Context) {
 		req.Memo,
 	)
 
-	if err := c.usecase.Create(context.Background(), record); err != nil {
+	record, err := c.usecase.Create(context.Background(), param)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 		ctx.Abort()
 		return
@@ -96,9 +84,7 @@ func (c *Record) Update(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 	uid := helper.GetUID(ctx)
 
-	record := entity.NewRecord(
-		id,
-		time.Time{},
+	param := usecase.NewRecordParam(
 		req.OfficialEventId,
 		req.TonamelEventId,
 		req.FriendId,
@@ -109,7 +95,8 @@ func (c *Record) Update(ctx *gin.Context) {
 		req.Memo,
 	)
 
-	if err := c.usecase.Update(context.Background(), id, record); err != nil {
+	record, err := c.usecase.Update(context.Background(), id, param)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 		ctx.Abort()
 		return

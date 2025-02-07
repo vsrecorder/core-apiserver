@@ -49,6 +49,7 @@ func TestRecordController(t *testing.T) {
 	){
 		"Get":    test_Get,
 		"Create": test_Create,
+		"Update": test_Update,
 		"Delete": test_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
@@ -156,6 +157,72 @@ func test_Create(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordIn
 		require.Equal(t, reflect.TypeOf(time.Time{}), reflect.TypeOf(res.CreatedAt))
 		require.Equal(t, rcr.OfficialEventId, res.OfficialEventId)
 		require.Equal(t, rcr.PrivateFlg, res.PrivateFlg)
+	}
+}
+
+func test_Update(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
+	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+
+	rcr := dto.RecordCreateRequest{
+		OfficialEventId: 10000,
+		TonamelEventId:  "",
+		FriendId:        "",
+		DeckId:          "",
+		PrivateFlg:      false,
+		TCGMeisterURL:   "",
+		Memo:            "",
+	}
+
+	rcrBytes, err := json.Marshal(rcr)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/records", strings.NewReader(string(rcrBytes)))
+	c.router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	{
+		var res dto.RecordCreateResponse
+		err := json.Unmarshal(w.Body.Bytes(), &res)
+		require.NoError(t, err)
+
+		require.Equal(t, rcr.OfficialEventId, res.OfficialEventId)
+		require.Equal(t, rcr.PrivateFlg, res.PrivateFlg)
+
+		id := res.ID
+
+		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(nil)
+
+		rur := dto.RecordCreateRequest{
+			OfficialEventId: 10001,
+			TonamelEventId:  "",
+			FriendId:        "",
+			DeckId:          "",
+			PrivateFlg:      true,
+			TCGMeisterURL:   "",
+			Memo:            "",
+		}
+
+		rurBytes, err := json.Marshal(rur)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(rurBytes)))
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+
+		{
+			var res dto.RecordCreateResponse
+			err := json.Unmarshal(w.Body.Bytes(), &res)
+			require.NoError(t, err)
+
+			require.Equal(t, id, res.ID)
+			require.Equal(t, rur.OfficialEventId, res.OfficialEventId)
+			require.Equal(t, rur.PrivateFlg, res.PrivateFlg)
+			require.Equal(t, "", res.UserId)
+		}
 	}
 }
 

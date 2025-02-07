@@ -5,6 +5,7 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
+	"gorm.io/gorm"
 )
 
 type RecordInterface interface {
@@ -161,11 +162,17 @@ func (u *Record) Create(
 
 func (u *Record) Update(
 	ctx context.Context,
+	id string,
 	record *entity.Record,
 ) error {
-	err := u.repository.Save(ctx, record)
+	ret, err := u.repository.FindById(ctx, id)
+	if err == gorm.ErrRecordNotFound {
+		return err
+	}
 
-	if err != nil {
+	record.CreatedAt = ret.CreatedAt
+
+	if err := u.repository.Save(ctx, record); err != nil {
 		return err
 	}
 

@@ -34,6 +34,7 @@ func (c *Record) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + RECORDS_PATH)
 	r.GET("", validation.RecordGetMiddleware(), c.Get)
 	r.POST("", validation.RecordCreateMiddleware(), c.Create)
+	r.PUT("/:id", validation.RecordUpdateMiddleware(), c.Update)
 	r.DELETE("/:id", c.Delete)
 }
 
@@ -88,6 +89,35 @@ func (c *Record) Create(ctx *gin.Context) {
 	res := presenter.NewRecordCreateResponse(record)
 
 	ctx.JSON(http.StatusCreated, res)
+}
+
+func (c *Record) Update(ctx *gin.Context) {
+	req := helper.GetRecordUpdateRequest(ctx)
+	id := helper.GetId(ctx)
+	uid := helper.GetUID(ctx)
+
+	record := entity.NewRecord(
+		id,
+		time.Time{},
+		req.OfficialEventId,
+		req.TonamelEventId,
+		req.FriendId,
+		uid,
+		req.DeckId,
+		req.PrivateFlg,
+		req.TCGMeisterURL,
+		req.Memo,
+	)
+
+	if err := c.usecase.Update(context.Background(), id, record); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewRecordCreateResponse(record)
+
+	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *Record) Delete(ctx *gin.Context) {

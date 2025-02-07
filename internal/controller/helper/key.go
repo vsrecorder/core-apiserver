@@ -49,3 +49,14 @@ func GetRecordCreateRequest(ctx *gin.Context) dto.RecordCreateRequest {
 
 	return recordRequest
 }
+
+func SetRecordUpdateRequest(ctx *gin.Context, value dto.RecordUpdateRequest) {
+	ctx.Set("record_update_request", value)
+}
+
+func GetRecordUpdateRequest(ctx *gin.Context) dto.RecordUpdateRequest {
+	value, _ := ctx.Get("record_update_request")
+	recordRequest, _ := value.(dto.RecordUpdateRequest)
+
+	return recordRequest
+}

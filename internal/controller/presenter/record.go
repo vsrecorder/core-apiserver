@@ -33,3 +33,20 @@ func NewRecordCreateResponse(
 		Memo:            record.Memo,
 	}
 }
+
+func NewRecordUpdateResponse(
+	record *entity.Record,
+) *dto.RecordUpdateResponse {
+	return &dto.RecordUpdateResponse{
+		ID:              record.ID,
+		CreatedAt:       record.CreatedAt,
+		OfficialEventId: record.OfficialEventId,
+		TonamelEventId:  record.TonamelEventId,
+		FriendId:        record.FriendId,
+		UserId:          record.UserId,
+		DeckId:          record.DeckId,
+		PrivateFlg:      record.PrivateFlg,
+		TCGMeisterURL:   record.TCGMeisterURL,
+		Memo:            record.Memo,
+	}
+}

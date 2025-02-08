@@ -10,10 +10,27 @@ func NewRecordGetResponse(
 	offset int,
 	records []*entity.Record,
 ) *dto.RecordGetResponse {
+	var ret []*dto.RecordResponse
+
+	for _, record := range records {
+		ret = append(ret, &dto.RecordResponse{
+			ID:              record.ID,
+			CreatedAt:       record.CreatedAt,
+			OfficialEventId: record.OfficialEventId,
+			TonamelEventId:  record.TonamelEventId,
+			FriendId:        record.FriendId,
+			UserId:          record.UserId,
+			DeckId:          record.DeckId,
+			PrivateFlg:      record.PrivateFlg,
+			TCGMeisterURL:   record.TCGMeisterURL,
+			Memo:            record.Memo,
+		})
+	}
+
 	return &dto.RecordGetResponse{
 		Limit:   limit,
 		Offset:  offset,
-		Records: records,
+		Records: ret,
 	}
 }
 
@@ -21,16 +38,18 @@ func NewRecordGetByIdResponse(
 	record *entity.Record,
 ) *dto.RecordGetByIdResponse {
 	return &dto.RecordGetByIdResponse{
-		ID:              record.ID,
-		CreatedAt:       record.CreatedAt,
-		OfficialEventId: record.OfficialEventId,
-		TonamelEventId:  record.TonamelEventId,
-		FriendId:        record.FriendId,
-		UserId:          record.UserId,
-		DeckId:          record.DeckId,
-		PrivateFlg:      record.PrivateFlg,
-		TCGMeisterURL:   record.TCGMeisterURL,
-		Memo:            record.Memo,
+		RecordResponse: dto.RecordResponse{
+			ID:              record.ID,
+			CreatedAt:       record.CreatedAt,
+			OfficialEventId: record.OfficialEventId,
+			TonamelEventId:  record.TonamelEventId,
+			FriendId:        record.FriendId,
+			UserId:          record.UserId,
+			DeckId:          record.DeckId,
+			PrivateFlg:      record.PrivateFlg,
+			TCGMeisterURL:   record.TCGMeisterURL,
+			Memo:            record.Memo,
+		},
 	}
 }
 
@@ -38,16 +57,18 @@ func NewRecordCreateResponse(
 	record *entity.Record,
 ) *dto.RecordCreateResponse {
 	return &dto.RecordCreateResponse{
-		ID:              record.ID,
-		CreatedAt:       record.CreatedAt,
-		OfficialEventId: record.OfficialEventId,
-		TonamelEventId:  record.TonamelEventId,
-		FriendId:        record.FriendId,
-		UserId:          record.UserId,
-		DeckId:          record.DeckId,
-		PrivateFlg:      record.PrivateFlg,
-		TCGMeisterURL:   record.TCGMeisterURL,
-		Memo:            record.Memo,
+		RecordResponse: dto.RecordResponse{
+			ID:              record.ID,
+			CreatedAt:       record.CreatedAt,
+			OfficialEventId: record.OfficialEventId,
+			TonamelEventId:  record.TonamelEventId,
+			FriendId:        record.FriendId,
+			UserId:          record.UserId,
+			DeckId:          record.DeckId,
+			PrivateFlg:      record.PrivateFlg,
+			TCGMeisterURL:   record.TCGMeisterURL,
+			Memo:            record.Memo,
+		},
 	}
 }
 
@@ -55,15 +76,17 @@ func NewRecordUpdateResponse(
 	record *entity.Record,
 ) *dto.RecordUpdateResponse {
 	return &dto.RecordUpdateResponse{
-		ID:              record.ID,
-		CreatedAt:       record.CreatedAt,
-		OfficialEventId: record.OfficialEventId,
-		TonamelEventId:  record.TonamelEventId,
-		FriendId:        record.FriendId,
-		UserId:          record.UserId,
-		DeckId:          record.DeckId,
-		PrivateFlg:      record.PrivateFlg,
-		TCGMeisterURL:   record.TCGMeisterURL,
-		Memo:            record.Memo,
+		RecordResponse: dto.RecordResponse{
+			ID:              record.ID,
+			CreatedAt:       record.CreatedAt,
+			OfficialEventId: record.OfficialEventId,
+			TonamelEventId:  record.TonamelEventId,
+			FriendId:        record.FriendId,
+			UserId:          record.UserId,
+			DeckId:          record.DeckId,
+			PrivateFlg:      record.PrivateFlg,
+			TCGMeisterURL:   record.TCGMeisterURL,
+			Memo:            record.Memo,
+		},
 	}
 }

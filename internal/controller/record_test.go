@@ -71,7 +71,7 @@ func test_Get(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInter
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"ID\":\"\",\"CreatedAt\":\"0001-01-01T00:00:00Z\",\"OfficialEventId\":0,\"TonamelEventId\":\"\",\"FriendId\":\"\",\"UserId\":\"\",\"DeckId\":\"\",\"PrivateFlg\":false,\"TCGMeisterURL\":\"\",\"Memo\":\"\"}]}", w.Body.String())
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"id\":\"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":0,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}]}", w.Body.String())
 	}
 
 	{
@@ -86,7 +86,7 @@ func test_Get(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInter
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"ID\":\"\",\"CreatedAt\":\"0001-01-01T00:00:00Z\",\"OfficialEventId\":0,\"TonamelEventId\":\"\",\"FriendId\":\"\",\"UserId\":\"\",\"DeckId\":\"\",\"PrivateFlg\":false,\"TCGMeisterURL\":\"\",\"Memo\":\"\"}]}", w.Body.String())
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"id\":\"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":0,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}]}", w.Body.String())
 	}
 
 	{
@@ -101,7 +101,7 @@ func test_Get(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInter
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"ID\":\"\",\"CreatedAt\":\"0001-01-01T00:00:00Z\",\"OfficialEventId\":0,\"TonamelEventId\":\"\",\"FriendId\":\"\",\"UserId\":\"\",\"DeckId\":\"\",\"PrivateFlg\":false,\"TCGMeisterURL\":\"\",\"Memo\":\"\"}]}", w.Body.String())
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"id\":\"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":0,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}]}", w.Body.String())
 	}
 
 	{
@@ -174,13 +174,15 @@ func test_Create(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordIn
 	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(record, nil)
 
 	rcr := dto.RecordCreateRequest{
-		OfficialEventId: 10000,
-		TonamelEventId:  "",
-		FriendId:        "",
-		DeckId:          "",
-		PrivateFlg:      false,
-		TCGMeisterURL:   "",
-		Memo:            "",
+		RecordRequest: dto.RecordRequest{
+			OfficialEventId: 10000,
+			TonamelEventId:  "",
+			FriendId:        "",
+			DeckId:          "",
+			PrivateFlg:      false,
+			TCGMeisterURL:   "",
+			Memo:            "",
+		},
 	}
 
 	rcrBytes, err := json.Marshal(rcr)
@@ -221,13 +223,15 @@ func test_Update(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordIn
 	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(record, nil)
 
 	rcr := dto.RecordCreateRequest{
-		OfficialEventId: 10000,
-		TonamelEventId:  "",
-		FriendId:        "",
-		DeckId:          "",
-		PrivateFlg:      false,
-		TCGMeisterURL:   "",
-		Memo:            "",
+		RecordRequest: dto.RecordRequest{
+			OfficialEventId: 10000,
+			TonamelEventId:  "",
+			FriendId:        "",
+			DeckId:          "",
+			PrivateFlg:      false,
+			TCGMeisterURL:   "",
+			Memo:            "",
+		},
 	}
 
 	rcrBytes, err := json.Marshal(rcr)
@@ -262,13 +266,15 @@ func test_Update(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordIn
 		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(record, nil)
 
 		rur := dto.RecordCreateRequest{
-			OfficialEventId: 10001,
-			TonamelEventId:  "",
-			FriendId:        "",
-			DeckId:          "",
-			PrivateFlg:      true,
-			TCGMeisterURL:   "",
-			Memo:            "",
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: 10001,
+				TonamelEventId:  "",
+				FriendId:        "",
+				DeckId:          "",
+				PrivateFlg:      true,
+				TCGMeisterURL:   "",
+				Memo:            "",
+			},
 		}
 
 		rurBytes, err := json.Marshal(rur)

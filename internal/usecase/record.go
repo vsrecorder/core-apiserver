@@ -136,6 +136,21 @@ func (u *Record) FindById(
 	return record, nil
 }
 
+func (u *Record) FindByUserId(
+	ctx context.Context,
+	uid string,
+	limit int,
+	offset int,
+) ([]*entity.Record, error) {
+	records, err := u.repository.FindByUserId(ctx, uid, limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
 func (u *Record) FindByOfficialEventId(
 	ctx context.Context,
 	officialEventId uint,

@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
+	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
@@ -51,11 +52,12 @@ func TestRecordController(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface,
 	){
-		"Get":     test_Get,
-		"GetById": test_GetById,
-		"Create":  test_Create,
-		"Update":  test_Update,
-		"Delete":  test_Delete,
+		"Get":         test_Get,
+		"GetById":     test_GetById,
+		"GetByUserId": test_GetByUserId,
+		"Create":      test_Create,
+		"Update":      test_Update,
+		"Delete":      test_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t, c, mockUsecase)
@@ -128,7 +130,6 @@ func test_Get(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInter
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		require.Equal(t, "{\"message\":\"bad request\"}", w.Body.String())
 	}
-
 }
 
 func test_GetById(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
@@ -160,6 +161,37 @@ func test_GetById(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordI
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusNotFound, w.Code)
+	}
+}
+
+func test_GetByUserId(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
+	{
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		record := entity.Record{
+			UserId: uid,
+		}
+
+		records := []*entity.Record{
+			&record,
+		}
+
+		r := gin.Default()
+
+		// 認証済みとするためにuidをセット
+		r.Use(func(ctx *gin.Context) {
+			helper.SetUID(ctx, uid)
+		})
+
+		c, mockUsecase := setup(t, r)
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, 10, 0).Return(records, nil)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/records?limit=10&offset=0", nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"id\":\"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":0,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\""+uid+"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}]}", w.Body.String())
 	}
 }
 

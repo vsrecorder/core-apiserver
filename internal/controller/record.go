@@ -39,6 +39,7 @@ func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
 			"",
 			validation.RecordGetMiddleware(),
 			c.Get,
+			c.GetByUserId,
 		)
 		r.GET(
 			"/:id",
@@ -65,6 +66,7 @@ func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
 			validation.RecordGetMiddleware(),
 			auth.OptionalAuthenticationMiddleware(),
 			c.Get,
+			c.GetByUserId,
 		)
 		r.GET(
 			"/:id",
@@ -98,16 +100,18 @@ func (c *Record) Get(ctx *gin.Context) {
 	limit := helper.GetLimit(ctx)
 	offset := helper.GetOffset(ctx)
 
-	records, err := c.usecase.Find(context.Background(), limit, offset)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
-		return
+	if uid := helper.GetUID(ctx); uid == "" {
+		records, err := c.usecase.Find(context.Background(), limit, offset)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			ctx.Abort()
+			return
+		}
+
+		res := presenter.NewRecordGetResponse(limit, offset, records)
+
+		ctx.JSON(http.StatusOK, res)
 	}
-
-	res := presenter.NewRecordGetResponse(limit, offset, records)
-
-	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *Record) GetById(ctx *gin.Context) {
@@ -129,6 +133,25 @@ func (c *Record) GetById(ctx *gin.Context) {
 	res := presenter.NewRecordGetByIdResponse(record)
 
 	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *Record) GetByUserId(ctx *gin.Context) {
+	uid := helper.GetUID(ctx)
+
+	if uid != "" {
+		limit := helper.GetLimit(ctx)
+		offset := helper.GetOffset(ctx)
+
+		records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			ctx.Abort()
+			return
+		}
+		res := presenter.NewRecordGetResponse(limit, offset, records)
+
+		ctx.JSON(http.StatusOK, res)
+	}
 }
 
 func (c *Record) Create(ctx *gin.Context) {

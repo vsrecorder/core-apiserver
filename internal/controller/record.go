@@ -5,9 +5,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 	"gorm.io/gorm"
 )
@@ -17,24 +19,79 @@ const (
 )
 
 type Record struct {
-	router  *gin.Engine
-	usecase usecase.RecordInterface
+	router     *gin.Engine
+	repository repository.RecordInterface
+	usecase    usecase.RecordInterface
 }
 
 func NewRecord(
 	router *gin.Engine,
+	repository repository.RecordInterface,
 	usecase usecase.RecordInterface,
 ) *Record {
-	return &Record{router, usecase}
+	return &Record{router, repository, usecase}
 }
 
-func (c *Record) RegisterRoute(relativePath string) {
-	r := c.router.Group(relativePath + RECORDS_PATH)
-	r.GET("", validation.RecordGetMiddleware(), c.Get)
-	r.GET("/:id", c.GetById)
-	r.POST("", validation.RecordCreateMiddleware(), c.Create)
-	r.PUT("/:id", validation.RecordUpdateMiddleware(), c.Update)
-	r.DELETE("/:id", c.Delete)
+func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
+	if authDisable {
+		r := c.router.Group(relativePath + RECORDS_PATH)
+		r.GET(
+			"",
+			validation.RecordGetMiddleware(),
+			c.Get,
+		)
+		r.GET(
+			"/:id",
+			c.GetById,
+		)
+		r.POST(
+			"",
+			validation.RecordCreateMiddleware(),
+			c.Create,
+		)
+		r.PUT(
+			"/:id",
+			validation.RecordUpdateMiddleware(),
+			c.Update,
+		)
+		r.DELETE(
+			"/:id",
+			c.Delete,
+		)
+	} else {
+		r := c.router.Group(relativePath + RECORDS_PATH)
+		r.GET(
+			"",
+			validation.RecordGetMiddleware(),
+			auth.OptionalAuthenticationMiddleware(),
+			c.Get,
+		)
+		r.GET(
+			"/:id",
+			auth.OptionalAuthenticationMiddleware(),
+			auth.RecordGetByIdAuthorizationMiddleware(c.repository),
+			c.GetById,
+		)
+		r.POST(
+			"",
+			validation.RecordCreateMiddleware(),
+			auth.RequiredAuthenticationMiddleware(),
+			c.Create,
+		)
+		r.PUT(
+			"/:id",
+			validation.RecordUpdateMiddleware(),
+			auth.RequiredAuthenticationMiddleware(),
+			auth.RecordUpdateAuthorizationMiddleware(c.repository),
+			c.Update,
+		)
+		r.DELETE(
+			"/:id",
+			auth.RequiredAuthenticationMiddleware(),
+			auth.RecordDeleteAuthorizationMiddleware(c.repository),
+			c.Delete,
+		)
+	}
 }
 
 func (c *Record) Get(ctx *gin.Context) {

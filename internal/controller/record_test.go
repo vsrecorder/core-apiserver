@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
 	"go.uber.org/mock/gomock"
 	"gorm.io/gorm"
@@ -30,9 +31,13 @@ func setup(t *testing.T, r *gin.Engine) (
 	*Record,
 	*mock_usecase.MockRecordInterface,
 ) {
+	authDisable := true
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 	mockUsecase := setupMock(t)
-	c := NewRecord(r, mockUsecase)
-	c.RegisterRoute("")
+
+	c := NewRecord(r, mockRepository, mockUsecase)
+	c.RegisterRoute("", authDisable)
 
 	return c, mockUsecase
 }

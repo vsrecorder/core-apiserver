@@ -53,6 +53,35 @@ func NewRecordGetByIdResponse(
 	}
 }
 
+func NewRecordGetByUserIdResponse(
+	limit int,
+	offset int,
+	records []*entity.Record,
+) *dto.RecordGetByUserIdResponse {
+	var ret []*dto.RecordResponse
+
+	for _, record := range records {
+		ret = append(ret, &dto.RecordResponse{
+			ID:              record.ID,
+			CreatedAt:       record.CreatedAt,
+			OfficialEventId: record.OfficialEventId,
+			TonamelEventId:  record.TonamelEventId,
+			FriendId:        record.FriendId,
+			UserId:          record.UserId,
+			DeckId:          record.DeckId,
+			PrivateFlg:      record.PrivateFlg,
+			TCGMeisterURL:   record.TCGMeisterURL,
+			Memo:            record.Memo,
+		})
+	}
+
+	return &dto.RecordGetByUserIdResponse{
+		Limit:   limit,
+		Offset:  offset,
+		Records: ret,
+	}
+}
+
 func NewRecordCreateResponse(
 	record *entity.Record,
 ) *dto.RecordCreateResponse {

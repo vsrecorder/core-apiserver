@@ -148,7 +148,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 			ctx.Abort()
 			return
 		}
-		res := presenter.NewRecordGetResponse(limit, offset, records)
+		res := presenter.NewRecordGetByUserIdResponse(limit, offset, records)
 
 		ctx.JSON(http.StatusOK, res)
 	}

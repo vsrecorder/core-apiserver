@@ -45,6 +45,12 @@ type RecordGetByIdResponse struct {
 	RecordResponse
 }
 
+type RecordGetByUserIdResponse struct {
+	Limit   int               `json:"limit"`
+	Offset  int               `json:"offset"`
+	Records []*RecordResponse `json:"records"`
+}
+
 type RecordCreateResponse struct {
 	RecordResponse
 }

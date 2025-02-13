@@ -38,6 +38,37 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		/*
+			以下のデータで2つ以上値がある場合は bad request
+			データが一つもない場合も bad request
+			req.OfficialEventId
+			req.TonamelEventId
+			req.FriendId
+		*/
+		if req.OfficialEventId != 0 {
+			if !(req.TonamelEventId == "" && req.FriendId == "") {
+				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+				ctx.Abort()
+				return
+			}
+		} else if req.TonamelEventId != "" {
+			if !(req.OfficialEventId == 0 && req.FriendId == "") {
+				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+				ctx.Abort()
+				return
+			}
+		} else if req.FriendId != "" {
+			if !(req.OfficialEventId == 0 && req.TonamelEventId == "") {
+				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+				ctx.Abort()
+				return
+			}
+		} else {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+			ctx.Abort()
+			return
+		}
+
 		helper.SetRecordCreateRequest(ctx, req)
 	}
 }
@@ -51,12 +82,36 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		/* 以下のデータで2つ以上値がある場合は bad request
-		req.OfficialEventId
-		req.TonamelEventId
-		req.FriendId
+		/*
+			以下のデータで2つ以上値がある場合は bad request
+			データが一つもない場合も bad request
+			req.OfficialEventId
+			req.TonamelEventId
+			req.FriendId
 		*/
-
+		if req.OfficialEventId != 0 {
+			if !(req.TonamelEventId == "" && req.FriendId == "") {
+				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+				ctx.Abort()
+				return
+			}
+		} else if req.TonamelEventId != "" {
+			if !(req.OfficialEventId == 0 && req.FriendId == "") {
+				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+				ctx.Abort()
+				return
+			}
+		} else if req.FriendId != "" {
+			if !(req.OfficialEventId == 0 && req.TonamelEventId == "") {
+				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+				ctx.Abort()
+				return
+			}
+		} else {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+			ctx.Abort()
+			return
+		}
 		helper.SetRecordUpdateRequest(ctx, req)
 	}
 }

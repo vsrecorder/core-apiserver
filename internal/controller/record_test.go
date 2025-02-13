@@ -482,11 +482,11 @@ func test_Update(t *testing.T) {
 
 			data := dto.RecordCreateRequest{
 				RecordRequest: dto.RecordRequest{
-					OfficialEventId: 10000,
+					OfficialEventId: officialEventId,
 					TonamelEventId:  "",
 					FriendId:        "",
 					DeckId:          "",
-					PrivateFlg:      false,
+					PrivateFlg:      privateFlg,
 					TCGMeisterURL:   "",
 					Memo:            "",
 				},
@@ -539,11 +539,11 @@ func test_Update(t *testing.T) {
 
 			data := dto.RecordCreateRequest{
 				RecordRequest: dto.RecordRequest{
-					OfficialEventId: 10001,
+					OfficialEventId: officialEventId,
 					TonamelEventId:  "",
 					FriendId:        "",
 					DeckId:          "",
-					PrivateFlg:      true,
+					PrivateFlg:      privateFlg,
 					TCGMeisterURL:   "",
 					Memo:            "",
 				},
@@ -614,11 +614,11 @@ func test_Update(t *testing.T) {
 
 			data := dto.RecordCreateRequest{
 				RecordRequest: dto.RecordRequest{
-					OfficialEventId: 10000,
+					OfficialEventId: officialEventId,
 					TonamelEventId:  "",
 					FriendId:        "",
 					DeckId:          "",
-					PrivateFlg:      false,
+					PrivateFlg:      privateFlg,
 					TCGMeisterURL:   "",
 					Memo:            "",
 				},
@@ -672,11 +672,11 @@ func test_Update(t *testing.T) {
 
 			data := dto.RecordCreateRequest{
 				RecordRequest: dto.RecordRequest{
-					OfficialEventId: 10001,
+					OfficialEventId: officialEventId,
 					TonamelEventId:  "",
 					FriendId:        "",
 					DeckId:          "",
-					PrivateFlg:      true,
+					PrivateFlg:      privateFlg,
 					TCGMeisterURL:   "",
 					Memo:            "",
 				},
@@ -739,11 +739,11 @@ func test_Update(t *testing.T) {
 
 			data := dto.RecordCreateRequest{
 				RecordRequest: dto.RecordRequest{
-					OfficialEventId: 10000,
+					OfficialEventId: officialEventId,
 					TonamelEventId:  "",
 					FriendId:        "",
 					DeckId:          "",
-					PrivateFlg:      false,
+					PrivateFlg:      privateFlg,
 					TCGMeisterURL:   "",
 					Memo:            "",
 				},
@@ -789,11 +789,11 @@ func test_Update(t *testing.T) {
 
 			data := dto.RecordCreateRequest{
 				RecordRequest: dto.RecordRequest{
-					OfficialEventId: 10001,
+					OfficialEventId: officialEventId,
 					TonamelEventId:  "",
 					FriendId:        "",
 					DeckId:          "",
-					PrivateFlg:      true,
+					PrivateFlg:      privateFlg,
 					TCGMeisterURL:   "",
 					Memo:            "",
 				},

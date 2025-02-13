@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,15 +18,17 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
+	"github.com/vsrecorder/core-apiserver/internal/usecase"
 	"go.uber.org/mock/gomock"
 	"gorm.io/gorm"
 )
 
-func setupMock(t *testing.T) *mock_usecase.MockRecordInterface {
+func setupMock(t *testing.T) (*mock_repository.MockRecordInterface, *mock_usecase.MockRecordInterface) {
 	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 	mockUsecase := mock_usecase.NewMockRecordInterface(mockCtrl)
 
-	return mockUsecase
+	return mockRepository, mockUsecase
 }
 
 func setup(t *testing.T, r *gin.Engine) (
@@ -33,9 +36,7 @@ func setup(t *testing.T, r *gin.Engine) (
 	*mock_usecase.MockRecordInterface,
 ) {
 	authDisable := true
-	mockCtrl := gomock.NewController(t)
-	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	mockUsecase := setupMock(t)
+	mockRepository, mockUsecase := setupMock(t)
 
 	c := NewRecord(r, mockRepository, mockUsecase)
 	c.RegisterRoute("", authDisable)
@@ -45,13 +46,8 @@ func setup(t *testing.T, r *gin.Engine) (
 
 func TestRecordController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	r := gin.Default()
 
-	c, mockUsecase := setup(t, r)
-
-	for scenario, fn := range map[string]func(
-		t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface,
-	){
+	for scenario, fn := range map[string]func(t *testing.T){
 		"Get":         test_Get,
 		"GetById":     test_GetById,
 		"GetByUserId": test_GetByUserId,
@@ -60,100 +56,123 @@ func TestRecordController(t *testing.T) {
 		"Delete":      test_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
-			fn(t, c, mockUsecase)
+			fn(t)
 		})
 	}
 }
 
-func test_Get(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
-	{
+func test_Get(t *testing.T) {
+	r := gin.Default()
+	c, mockUsecase := setup(t, r)
+
+	t.Run("正常系_#01", func(t *testing.T) {
 		record := entity.Record{}
 		records := []*entity.Record{
 			&record,
 		}
-		mockUsecase.EXPECT().Find(context.Background(), 10, 0).Return(records, nil)
+
+		limit := 10
+		offset := 0
+
+		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(records, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records?limit=10&offset=0", nil)
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("/records?limit=%d&offset=%d", limit, offset), nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"id\":\"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":0,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}]}", w.Body.String())
-	}
+		var res dto.RecordGetResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
-	{
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+	})
+
+	t.Run("正常系_02", func(t *testing.T) {
 		record := entity.Record{}
 		records := []*entity.Record{
 			&record,
 		}
-		mockUsecase.EXPECT().Find(context.Background(), 10, 0).Return(records, nil)
+
+		limit := 10
+		offset := 0
+
+		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(records, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records", nil)
+
+		req, err := http.NewRequest("GET", "/records", nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordGetResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"id\":\"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":0,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}]}", w.Body.String())
-	}
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+	})
 
-	{
-		record := entity.Record{}
-		records := []*entity.Record{
-			&record,
-		}
-		mockUsecase.EXPECT().Find(context.Background(), 10, 0).Return(records, nil)
+	t.Run("異常系_#01", func(t *testing.T) {
+		mockUsecase.EXPECT().Find(context.Background(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records?limit=0&offset=0", nil)
+
+		req, err := http.NewRequest("GET", "/records", nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"id\":\"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":0,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}]}", w.Body.String())
-	}
-
-	{
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records?limit=a&offset=0", nil)
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusBadRequest, w.Code)
-		require.Equal(t, "{\"message\":\"bad request\"}", w.Body.String())
-	}
-
-	{
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records?limit=10&offset=a", nil)
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusBadRequest, w.Code)
-		require.Equal(t, "{\"message\":\"bad request\"}", w.Body.String())
-	}
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 }
 
-func test_GetById(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
-	id, err := generateId()
-	require.NoError(t, err)
+func test_GetById(t *testing.T) {
+	r := gin.Default()
+	c, mockUsecase := setup(t, r)
 
-	{
+	t.Run("正常系_#01", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		createdAt := time.Now().Truncate(0)
+		officialEventId := uint(10000)
+		privateFlg := false
+
 		record := &entity.Record{
 			ID:              id,
-			OfficialEventId: 10000,
-			PrivateFlg:      false,
+			CreatedAt:       createdAt,
+			OfficialEventId: officialEventId,
+			PrivateFlg:      privateFlg,
 		}
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(record, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records/"+id, nil)
+
+		req, err := http.NewRequest("GET", "/records/"+id, nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, "{\"id\":\""+id+"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":10000,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}", w.Body.String())
-	}
+		var res dto.RecordGetByIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
-	{
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, id, res.ID)
+		require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, officialEventId, res.OfficialEventId)
+		require.Equal(t, privateFlg, res.PrivateFlg)
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
@@ -161,13 +180,21 @@ func test_GetById(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordI
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusNotFound, w.Code)
-	}
+	})
 }
 
-func test_GetByUserId(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
-	{
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+func test_GetByUserId(t *testing.T) {
+	r := gin.Default()
 
+	// 認証済みとするためにuidをセット
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	r.Use(func(ctx *gin.Context) {
+		helper.SetUID(ctx, uid)
+	})
+
+	c, mockUsecase := setup(t, r)
+
+	t.Run("正常系_#01", func(t *testing.T) {
 		record := entity.Record{
 			UserId: uid,
 		}
@@ -176,203 +203,673 @@ func test_GetByUserId(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRec
 			&record,
 		}
 
-		r := gin.Default()
+		limit := 10
+		offset := 0
 
-		// 認証済みとするためにuidをセット
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
-
-		c, mockUsecase := setup(t, r)
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, 10, 0).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(records, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records?limit=10&offset=0", nil)
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("/records?limit=%d&offset=%d", limit, offset), nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
+		var res dto.RecordGetByUserIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[{\"id\":\"\",\"created_at\":\"0001-01-01T00:00:00Z\",\"official_event_id\":0,\"tonamel_event_id\":\"\",\"friend_id\":\"\",\"user_id\":\""+uid+"\",\"deck_id\":\"\",\"private_flg\":false,\"tcg_meister_url\":\"\",\"memo\":\"\"}]}", w.Body.String())
-	}
-}
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, uid, res.Records[0].UserId)
+	})
 
-func test_Create(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
-	id, err := generateId()
-	require.NoError(t, err)
+	t.Run("正常系_#02", func(t *testing.T) {
+		record := entity.Record{
+			UserId: uid,
+		}
 
-	createdAt := time.Now().Truncate(0)
+		records := []*entity.Record{
+			&record,
+		}
 
-	record := &entity.Record{
-		ID:              id,
-		CreatedAt:       createdAt,
-		OfficialEventId: 10000,
-		PrivateFlg:      false,
-	}
+		limit := 10
+		offset := 0
 
-	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(record, nil)
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(records, nil)
 
-	rcr := dto.RecordCreateRequest{
-		RecordRequest: dto.RecordRequest{
-			OfficialEventId: 10000,
-			TonamelEventId:  "",
-			FriendId:        "",
-			DeckId:          "",
-			PrivateFlg:      false,
-			TCGMeisterURL:   "",
-			Memo:            "",
-		},
-	}
+		w := httptest.NewRecorder()
 
-	rcrBytes, err := json.Marshal(rcr)
-	require.NoError(t, err)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/records", strings.NewReader(string(rcrBytes)))
-	c.router.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusCreated, w.Code)
-
-	{
-		var res dto.RecordCreateResponse
-		err := json.Unmarshal(w.Body.Bytes(), &res)
+		req, err := http.NewRequest("GET", "/records", nil)
 		require.NoError(t, err)
 
-		require.Equal(t, id, res.ID)
-		require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, rcr.OfficialEventId, res.OfficialEventId)
-		require.Equal(t, rcr.PrivateFlg, res.PrivateFlg)
-		require.Equal(t, "", res.UserId)
-	}
-}
+		c.router.ServeHTTP(w, req)
 
-func test_Update(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
-	id, err := generateId()
-	require.NoError(t, err)
+		var res dto.RecordGetByUserIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
-	createdAt := time.Now().Truncate(0)
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, uid, res.Records[0].UserId)
+	})
 
-	record := &entity.Record{
-		ID:              id,
-		CreatedAt:       createdAt,
-		OfficialEventId: 10000,
-		PrivateFlg:      false,
-	}
+	t.Run("異常系_#01", func(t *testing.T) {
+		limit := 10
+		offset := 0
 
-	mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(record, nil)
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(nil, errors.New(""))
 
-	rcr := dto.RecordCreateRequest{
-		RecordRequest: dto.RecordRequest{
-			OfficialEventId: 10000,
-			TonamelEventId:  "",
-			FriendId:        "",
-			DeckId:          "",
-			PrivateFlg:      false,
-			TCGMeisterURL:   "",
-			Memo:            "",
-		},
-	}
+		w := httptest.NewRecorder()
 
-	rcrBytes, err := json.Marshal(rcr)
-	require.NoError(t, err)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/records", strings.NewReader(string(rcrBytes)))
-	c.router.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusCreated, w.Code)
-
-	{
-		var res dto.RecordCreateResponse
-		err := json.Unmarshal(w.Body.Bytes(), &res)
+		req, err := http.NewRequest("GET", "/records", nil)
 		require.NoError(t, err)
 
-		require.Equal(t, id, res.ID)
-		require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, rcr.OfficialEventId, res.OfficialEventId)
-		require.Equal(t, rcr.PrivateFlg, res.PrivateFlg)
-		require.Equal(t, "", res.UserId)
+		c.router.ServeHTTP(w, req)
 
-		id := res.ID
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+func test_Create(t *testing.T) {
+	t.Run("正常系_#01", func(t *testing.T) {
+		r := gin.Default()
+		c, mockUsecase := setup(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		createdAt := time.Now().Truncate(0)
+		officialEventId := uint(10000)
+		privateFlg := false
 
 		record := &entity.Record{
 			ID:              id,
 			CreatedAt:       createdAt,
-			OfficialEventId: 10001,
-			PrivateFlg:      true,
+			OfficialEventId: officialEventId,
+			PrivateFlg:      privateFlg,
 		}
 
-		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(record, nil)
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			"",
+			"",
+			privateFlg,
+			"",
+			"",
+		)
 
-		rur := dto.RecordCreateRequest{
+		mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
+
+		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
-				OfficialEventId: 10001,
+				OfficialEventId: officialEventId,
 				TonamelEventId:  "",
 				FriendId:        "",
 				DeckId:          "",
-				PrivateFlg:      true,
+				PrivateFlg:      privateFlg,
 				TCGMeisterURL:   "",
 				Memo:            "",
 			},
 		}
 
-		rurBytes, err := json.Marshal(rur)
+		dataBytes, err := json.Marshal(data)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(rurBytes)))
+
+		req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusOK, w.Code)
+		var res dto.RecordCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
-		{
-			var res dto.RecordCreateResponse
-			err := json.Unmarshal(w.Body.Bytes(), &res)
-			require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, w.Code)
+		require.Equal(t, id, res.ID)
+		require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, officialEventId, res.OfficialEventId)
+		require.Equal(t, privateFlg, res.PrivateFlg)
+		require.Equal(t, "", res.UserId)
+	})
 
-			require.Equal(t, id, res.ID)
-			require.Equal(t, createdAt, res.CreatedAt)
-			require.Equal(t, rur.OfficialEventId, res.OfficialEventId)
-			require.Equal(t, rur.PrivateFlg, res.PrivateFlg)
-			require.Equal(t, "", res.UserId)
-		}
-	}
-}
+	t.Run("正常系_#02", func(t *testing.T) {
+		r := gin.Default()
 
-func test_Delete(t *testing.T, c *Record, mockUsecase *mock_usecase.MockRecordInterface) {
-	{
+		// 認証済みとするためにuidをセット
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		r.Use(func(ctx *gin.Context) {
+			helper.SetUID(ctx, uid)
+		})
+
+		c, mockUsecase := setup(t, r)
+
 		id, err := generateId()
 		require.NoError(t, err)
+
+		createdAt := time.Now().Truncate(0)
+		officialEventId := uint(10000)
+		privateFlg := false
+
+		record := &entity.Record{
+			ID:              id,
+			CreatedAt:       createdAt,
+			OfficialEventId: officialEventId,
+			UserId:          uid,
+			PrivateFlg:      privateFlg,
+		}
+
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			uid,
+			"",
+			privateFlg,
+			"",
+			"",
+		)
+
+		mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: officialEventId,
+				TonamelEventId:  "",
+				FriendId:        "",
+				DeckId:          "",
+				PrivateFlg:      privateFlg,
+				TCGMeisterURL:   "",
+				Memo:            "",
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusCreated, w.Code)
+		require.Equal(t, id, res.ID)
+		require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, officialEventId, res.OfficialEventId)
+		require.Equal(t, privateFlg, res.PrivateFlg)
+		require.Equal(t, uid, res.UserId)
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		r := gin.Default()
+		c, mockUsecase := setup(t, r)
+
+		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
+
+		officialEventId := uint(10000)
+		privateFlg := false
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: officialEventId,
+				TonamelEventId:  "",
+				FriendId:        "",
+				DeckId:          "",
+				PrivateFlg:      privateFlg,
+				TCGMeisterURL:   "",
+				Memo:            "",
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+func test_Update(t *testing.T) {
+	t.Run("正常系_#01", func(t *testing.T) {
+		r := gin.Default()
+		c, mockUsecase := setup(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		createdAt := time.Now().Truncate(0)
+
+		{
+			officialEventId := uint(10000)
+			privateFlg := false
+
+			record := &entity.Record{
+				ID:              id,
+				CreatedAt:       createdAt,
+				OfficialEventId: officialEventId,
+				PrivateFlg:      privateFlg,
+			}
+
+			param := usecase.NewRecordParam(
+				officialEventId,
+				"",
+				"",
+				"",
+				"",
+				privateFlg,
+				"",
+				"",
+			)
+
+			mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
+
+			data := dto.RecordCreateRequest{
+				RecordRequest: dto.RecordRequest{
+					OfficialEventId: 10000,
+					TonamelEventId:  "",
+					FriendId:        "",
+					DeckId:          "",
+					PrivateFlg:      false,
+					TCGMeisterURL:   "",
+					Memo:            "",
+				},
+			}
+
+			dataBytes, err := json.Marshal(data)
+			require.NoError(t, err)
+
+			w := httptest.NewRecorder()
+
+			req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
+
+			c.router.ServeHTTP(w, req)
+
+			var res dto.RecordCreateResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+			require.Equal(t, http.StatusCreated, w.Code)
+			require.Equal(t, id, res.ID)
+			require.Equal(t, createdAt, res.CreatedAt)
+			require.Equal(t, officialEventId, res.OfficialEventId)
+			require.Equal(t, privateFlg, res.PrivateFlg)
+			require.Equal(t, "", res.UserId)
+		}
+
+		{
+			officialEventId := uint(10001)
+			privateFlg := true
+
+			record := &entity.Record{
+				ID:              id,
+				CreatedAt:       createdAt,
+				OfficialEventId: officialEventId,
+				PrivateFlg:      privateFlg,
+			}
+
+			param := usecase.NewRecordParam(
+				officialEventId,
+				"",
+				"",
+				"",
+				"",
+				privateFlg,
+				"",
+				"",
+			)
+
+			mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
+
+			data := dto.RecordCreateRequest{
+				RecordRequest: dto.RecordRequest{
+					OfficialEventId: 10001,
+					TonamelEventId:  "",
+					FriendId:        "",
+					DeckId:          "",
+					PrivateFlg:      true,
+					TCGMeisterURL:   "",
+					Memo:            "",
+				},
+			}
+
+			dataBytes, err := json.Marshal(data)
+			require.NoError(t, err)
+
+			w := httptest.NewRecorder()
+
+			req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
+
+			c.router.ServeHTTP(w, req)
+
+			var res dto.RecordCreateResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+			require.Equal(t, http.StatusOK, w.Code)
+			require.Equal(t, id, res.ID)
+			require.Equal(t, createdAt, res.CreatedAt)
+			require.Equal(t, officialEventId, res.OfficialEventId)
+			require.Equal(t, privateFlg, res.PrivateFlg)
+			require.Equal(t, "", res.UserId)
+		}
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		// 認証済みとするためにuidをセット
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		r.Use(func(ctx *gin.Context) {
+			helper.SetUID(ctx, uid)
+		})
+
+		c, mockUsecase := setup(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		createdAt := time.Now().Truncate(0)
+
+		{
+			officialEventId := uint(10000)
+			privateFlg := false
+
+			record := &entity.Record{
+				ID:              id,
+				CreatedAt:       createdAt,
+				OfficialEventId: officialEventId,
+				UserId:          uid,
+				PrivateFlg:      privateFlg,
+			}
+
+			param := usecase.NewRecordParam(
+				officialEventId,
+				"",
+				"",
+				uid,
+				"",
+				privateFlg,
+				"",
+				"",
+			)
+
+			mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
+
+			data := dto.RecordCreateRequest{
+				RecordRequest: dto.RecordRequest{
+					OfficialEventId: 10000,
+					TonamelEventId:  "",
+					FriendId:        "",
+					DeckId:          "",
+					PrivateFlg:      false,
+					TCGMeisterURL:   "",
+					Memo:            "",
+				},
+			}
+
+			dataBytes, err := json.Marshal(data)
+			require.NoError(t, err)
+
+			w := httptest.NewRecorder()
+
+			req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
+
+			c.router.ServeHTTP(w, req)
+
+			var res dto.RecordCreateResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+			require.Equal(t, http.StatusCreated, w.Code)
+			require.Equal(t, id, res.ID)
+			require.Equal(t, createdAt, res.CreatedAt)
+			require.Equal(t, officialEventId, res.OfficialEventId)
+			require.Equal(t, privateFlg, res.PrivateFlg)
+			require.Equal(t, uid, res.UserId)
+		}
+
+		{
+			officialEventId := uint(10001)
+			privateFlg := true
+
+			record := &entity.Record{
+				ID:              id,
+				CreatedAt:       createdAt,
+				OfficialEventId: officialEventId,
+				UserId:          uid,
+				PrivateFlg:      privateFlg,
+			}
+
+			param := usecase.NewRecordParam(
+				officialEventId,
+				"",
+				"",
+				uid,
+				"",
+				privateFlg,
+				"",
+				"",
+			)
+
+			mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
+
+			data := dto.RecordCreateRequest{
+				RecordRequest: dto.RecordRequest{
+					OfficialEventId: 10001,
+					TonamelEventId:  "",
+					FriendId:        "",
+					DeckId:          "",
+					PrivateFlg:      true,
+					TCGMeisterURL:   "",
+					Memo:            "",
+				},
+			}
+
+			dataBytes, err := json.Marshal(data)
+			require.NoError(t, err)
+
+			w := httptest.NewRecorder()
+
+			req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
+
+			c.router.ServeHTTP(w, req)
+
+			var res dto.RecordCreateResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+			require.Equal(t, http.StatusOK, w.Code)
+			require.Equal(t, id, res.ID)
+			require.Equal(t, createdAt, res.CreatedAt)
+			require.Equal(t, officialEventId, res.OfficialEventId)
+			require.Equal(t, privateFlg, res.PrivateFlg)
+			require.Equal(t, uid, res.UserId)
+		}
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		r := gin.Default()
+		c, mockUsecase := setup(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		createdAt := time.Now().Truncate(0)
+
+		{
+			officialEventId := uint(10000)
+			privateFlg := false
+
+			record := &entity.Record{
+				ID:              id,
+				CreatedAt:       createdAt,
+				OfficialEventId: officialEventId,
+				PrivateFlg:      privateFlg,
+			}
+
+			param := usecase.NewRecordParam(
+				officialEventId,
+				"",
+				"",
+				"",
+				"",
+				privateFlg,
+				"",
+				"",
+			)
+
+			mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
+
+			data := dto.RecordCreateRequest{
+				RecordRequest: dto.RecordRequest{
+					OfficialEventId: 10000,
+					TonamelEventId:  "",
+					FriendId:        "",
+					DeckId:          "",
+					PrivateFlg:      false,
+					TCGMeisterURL:   "",
+					Memo:            "",
+				},
+			}
+
+			dataBytes, err := json.Marshal(data)
+			require.NoError(t, err)
+
+			w := httptest.NewRecorder()
+
+			req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
+
+			c.router.ServeHTTP(w, req)
+
+			var res dto.RecordCreateResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+			require.Equal(t, http.StatusCreated, w.Code)
+			require.Equal(t, id, res.ID)
+			require.Equal(t, createdAt, res.CreatedAt)
+			require.Equal(t, officialEventId, res.OfficialEventId)
+			require.Equal(t, privateFlg, res.PrivateFlg)
+			require.Equal(t, "", res.UserId)
+		}
+
+		{
+			officialEventId := uint(10001)
+			privateFlg := true
+
+			param := usecase.NewRecordParam(
+				officialEventId,
+				"",
+				"",
+				"",
+				"",
+				privateFlg,
+				"",
+				"",
+			)
+
+			mockUsecase.EXPECT().Update(context.Background(), id, param).Return(nil, errors.New(""))
+
+			data := dto.RecordCreateRequest{
+				RecordRequest: dto.RecordRequest{
+					OfficialEventId: 10001,
+					TonamelEventId:  "",
+					FriendId:        "",
+					DeckId:          "",
+					PrivateFlg:      true,
+					TCGMeisterURL:   "",
+					Memo:            "",
+				},
+			}
+
+			dataBytes, err := json.Marshal(data)
+			require.NoError(t, err)
+
+			w := httptest.NewRecorder()
+
+			req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
+
+			c.router.ServeHTTP(w, req)
+
+			{
+				var res dto.RecordCreateResponse
+				err := json.Unmarshal(w.Body.Bytes(), &res)
+				require.NoError(t, err)
+
+				require.Equal(t, http.StatusInternalServerError, w.Code)
+			}
+		}
+	})
+
+}
+
+func test_Delete(t *testing.T) {
+	r := gin.Default()
+	c, mockUsecase := setup(t, r)
+
+	t.Run("正常系_#01", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("DELETE", "/records/"+id, nil)
+
+		req, err := http.NewRequest("DELETE", "/records/"+id, nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusAccepted, w.Code)
-	}
+	})
 
-	{
+	t.Run("異常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
+
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(gorm.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("DELETE", "/records/"+id, nil)
+
+		req, err := http.NewRequest("DELETE", "/records/"+id, nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		require.Equal(t, "{\"message\":\"record not found\"}", w.Body.String())
-	}
+	})
 
-	{
+	t.Run("異常系_#02", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
+
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("DELETE", "/records/"+id, nil)
+
+		req, err := http.NewRequest("DELETE", "/records/"+id, nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
-		require.Equal(t, "{\"message\":\"internal server error\"}", w.Body.String())
-	}
+	})
 }

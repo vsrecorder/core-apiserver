@@ -23,7 +23,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func setupMock(t *testing.T) (*mock_repository.MockRecordInterface, *mock_usecase.MockRecordInterface) {
+func setupMock4TestRecordController(t *testing.T) (*mock_repository.MockRecordInterface, *mock_usecase.MockRecordInterface) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 	mockUsecase := mock_usecase.NewMockRecordInterface(mockCtrl)
@@ -31,12 +31,12 @@ func setupMock(t *testing.T) (*mock_repository.MockRecordInterface, *mock_usecas
 	return mockRepository, mockUsecase
 }
 
-func setup(t *testing.T, r *gin.Engine) (
+func setup4TestRecordController(t *testing.T, r *gin.Engine) (
 	*Record,
 	*mock_usecase.MockRecordInterface,
 ) {
 	authDisable := true
-	mockRepository, mockUsecase := setupMock(t)
+	mockRepository, mockUsecase := setupMock4TestRecordController(t)
 
 	c := NewRecord(r, mockRepository, mockUsecase)
 	c.RegisterRoute("", authDisable)
@@ -63,7 +63,7 @@ func TestRecordController(t *testing.T) {
 
 func test_Get(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup(t, r)
+	c, mockUsecase := setup4TestRecordController(t, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		record := entity.Record{}
@@ -133,7 +133,7 @@ func test_Get(t *testing.T) {
 
 func test_GetById(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup(t, r)
+	c, mockUsecase := setup4TestRecordController(t, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
@@ -192,7 +192,7 @@ func test_GetByUserId(t *testing.T) {
 		helper.SetUID(ctx, uid)
 	})
 
-	c, mockUsecase := setup(t, r)
+	c, mockUsecase := setup4TestRecordController(t, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		record := entity.Record{
@@ -274,7 +274,7 @@ func test_GetByUserId(t *testing.T) {
 func test_Create(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup(t, r)
+		c, mockUsecase := setup4TestRecordController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -345,7 +345,7 @@ func test_Create(t *testing.T) {
 			helper.SetUID(ctx, uid)
 		})
 
-		c, mockUsecase := setup(t, r)
+		c, mockUsecase := setup4TestRecordController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -410,7 +410,7 @@ func test_Create(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup(t, r)
+		c, mockUsecase := setup4TestRecordController(t, r)
 
 		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
 
@@ -449,7 +449,7 @@ func test_Create(t *testing.T) {
 func test_Update(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup(t, r)
+		c, mockUsecase := setup4TestRecordController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -580,7 +580,7 @@ func test_Update(t *testing.T) {
 			helper.SetUID(ctx, uid)
 		})
 
-		c, mockUsecase := setup(t, r)
+		c, mockUsecase := setup4TestRecordController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -706,7 +706,7 @@ func test_Update(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup(t, r)
+		c, mockUsecase := setup4TestRecordController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -823,7 +823,7 @@ func test_Update(t *testing.T) {
 
 func test_Delete(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup(t, r)
+	c, mockUsecase := setup4TestRecordController(t, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()

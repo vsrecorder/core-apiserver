@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -119,7 +120,7 @@ func (c *Record) GetById(ctx *gin.Context) {
 
 	record, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "record not found"})
 			ctx.Abort()
 			return

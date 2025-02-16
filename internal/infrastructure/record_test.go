@@ -120,7 +120,7 @@ func test_Find(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, 1, len(records))
-		require.Equal(t, records[0].ID, "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+		require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", records[0].ID)
 	}
 
 	{
@@ -199,7 +199,7 @@ func test_FindById(t *testing.T) {
 	record, err := r.FindById(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TN2")
 
 	require.NoError(t, err)
-	require.Equal(t, record.ID, "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+	require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", record.ID)
 }
 
 func test_FindByUserId(t *testing.T) {
@@ -249,8 +249,8 @@ func test_FindByUserId(t *testing.T) {
 	records, err := r.FindByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, offset)
 
 	require.NoError(t, err)
-	require.Equal(t, len(records), 1)
-	require.Equal(t, records[0].UserId, "CeQ0Oa9g9uRThL11lj4l45VAg8p1")
+	require.Equal(t, 1, len(records))
+	require.Equal(t, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", records[0].UserId)
 }
 
 func test_FindByOfficialEventId(t *testing.T) {
@@ -300,8 +300,8 @@ func test_FindByOfficialEventId(t *testing.T) {
 	records, err := r.FindByOfficialEventId(context.Background(), 236790, limit, offset)
 
 	require.NoError(t, err)
-	require.Equal(t, len(records), 1)
-	require.Equal(t, records[0].OfficialEventId, (uint)(236790))
+	require.Equal(t, 1, len(records))
+	require.Equal(t, (uint)(236790), records[0].OfficialEventId)
 }
 
 func test_FindByTonamelEventId(t *testing.T) {
@@ -351,8 +351,8 @@ func test_FindByTonamelEventId(t *testing.T) {
 	records, err := r.FindByTonamelEventId(context.Background(), "YFUVY", limit, offset)
 
 	require.NoError(t, err)
-	require.Equal(t, len(records), 1)
-	require.Equal(t, records[0].TonamelEventId, "YFUVY")
+	require.Equal(t, 1, len(records))
+	require.Equal(t, "YFUVY", records[0].TonamelEventId)
 }
 
 func test_FindByDeckId(t *testing.T) {
@@ -402,8 +402,8 @@ func test_FindByDeckId(t *testing.T) {
 	records, err := r.FindByDeckId(context.Background(), "01JHAKSVXZ4XW91TDQ8EDP1N8P", limit, offset)
 
 	require.NoError(t, err)
-	require.Equal(t, len(records), 1)
-	require.Equal(t, records[0].DeckId, "01JHAKSVXZ4XW91TDQ8EDP1N8P")
+	require.Equal(t, 1, len(records))
+	require.Equal(t, "01JHAKSVXZ4XW91TDQ8EDP1N8P", records[0].DeckId)
 }
 
 func test_Save(t *testing.T) {

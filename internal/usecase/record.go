@@ -105,7 +105,7 @@ type Record struct {
 
 func NewRecord(
 	repository repository.RecordInterface,
-) *Record {
+) RecordInterface {
 	return &Record{repository}
 }
 

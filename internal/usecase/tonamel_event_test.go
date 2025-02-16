@@ -19,7 +19,7 @@ func TestTonamelEventUsecase(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 		mockRepository *mock_repository.MockTonamelEventInterface,
-		usecase *TonamelEvent,
+		usecase TonamelEventInterface,
 	){
 		"FindById": test_TonamelEventUsecase_FindById,
 	} {
@@ -32,7 +32,7 @@ func TestTonamelEventUsecase(t *testing.T) {
 func test_TonamelEventUsecase_FindById(
 	t *testing.T,
 	mockRepository *mock_repository.MockTonamelEventInterface,
-	usecase *TonamelEvent,
+	usecase TonamelEventInterface,
 ) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id := "61ozP"

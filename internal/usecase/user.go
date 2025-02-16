@@ -20,7 +20,7 @@ type User struct {
 
 func NewUser(
 	repository repository.UserInterface,
-) *User {
+) UserInterface {
 	return &User{repository}
 }
 

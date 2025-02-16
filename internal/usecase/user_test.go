@@ -19,7 +19,7 @@ func TestUserUsecase(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 		mockRepository *mock_repository.MockUserInterface,
-		usecase *User,
+		usecase UserInterface,
 	){
 		"FindById": test_UserUsecase_FindById,
 	} {
@@ -29,7 +29,7 @@ func TestUserUsecase(t *testing.T) {
 	}
 }
 
-func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockUserInterface, usecase *User) {
+func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockUserInterface, usecase UserInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)

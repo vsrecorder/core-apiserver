@@ -20,7 +20,7 @@ type TonamelEvent struct {
 
 func NewTonamelEvent(
 	repository repository.TonamelEventInterface,
-) *TonamelEvent {
+) TonamelEventInterface {
 	return &TonamelEvent{repository}
 }
 

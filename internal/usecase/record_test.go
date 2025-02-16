@@ -21,7 +21,7 @@ func TestRecordUsecase(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 		mockRepository *mock_repository.MockRecordInterface,
-		usecase *Record,
+		usecase RecordInterface,
 	){
 		"Find":                  test_RecordUsecase_Find,
 		"FindById":              test_RecordUsecase_FindById,
@@ -39,7 +39,7 @@ func TestRecordUsecase(t *testing.T) {
 	}
 }
 
-func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		limit := 10
 		offset := 0
@@ -90,7 +90,7 @@ func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockR
 	})
 }
 
-func test_RecordUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -120,7 +120,7 @@ func test_RecordUsecase_FindById(t *testing.T, mockRepository *mock_repository.M
 	})
 }
 
-func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -176,7 +176,7 @@ func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_reposito
 	})
 }
 
-func test_RecordUsecase_FindByOfficialEventId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_FindByOfficialEventId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -217,7 +217,7 @@ func test_RecordUsecase_FindByOfficialEventId(t *testing.T, mockRepository *mock
 	})
 }
 
-func test_RecordUsecase_FindByTonamelEventId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_FindByTonamelEventId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -258,7 +258,7 @@ func test_RecordUsecase_FindByTonamelEventId(t *testing.T, mockRepository *mock_
 	})
 }
 
-func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -303,7 +303,7 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 	})
 }
 
-func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Truncate(0)
@@ -364,7 +364,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 	})
 }
 
-func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Truncate(0)
@@ -462,7 +462,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 	})
 }
 
-func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase *Record) {
+func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 

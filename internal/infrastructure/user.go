@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"strings"
+	"time"
 
 	firebaseAuth "firebase.google.com/go/v4/auth"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -30,6 +31,7 @@ func (i *User) FindById(
 
 	entity := entity.NewUser(
 		userRecord.UID,
+		time.Unix(userRecord.UserMetadata.CreationTimestamp/1000, 0),
 		userRecord.DisplayName,
 		// Twitter/Googleのアイコン画像を大きくする
 		strings.Replace(strings.Replace(userRecord.PhotoURL, "_normal", "", -1), "=s96-c", "", -1),

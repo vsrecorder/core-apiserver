@@ -11,6 +11,7 @@ func NewUserGetByIdResponse(
 	return &dto.UserGetByIdResponse{
 		UserResponse: dto.UserResponse{
 			ID:          user.ID,
+			CreatedAt:   user.CreatedAt,
 			DisplayName: user.DisplayName,
 			PhotoURL:    user.PhotoURL,
 		},

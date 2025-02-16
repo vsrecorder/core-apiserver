@@ -80,6 +80,13 @@ func main() {
 		),
 	).RegisterRoute(RELATIVE_PATH)
 
+	controller.NewTonamelEvent(
+		r,
+		usecase.NewTonamelEvent(
+			infrastructure.NewTonamelEvent(),
+		),
+	).RegisterRoute(RELATIVE_PATH)
+
 	controller.NewRecord(
 		r,
 		infrastructure.NewRecord(db),

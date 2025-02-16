@@ -63,6 +63,20 @@ func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockR
 		require.Equal(t, id, ret[0].ID)
 	})
 
+	t.Run("正常系_#02", func(t *testing.T) {
+		limit := 10
+		offset := 0
+
+		records := []*entity.Record{}
+
+		mockRepository.EXPECT().Find(context.Background(), limit, offset).Return(records, nil)
+
+		ret, err := usecase.Find(context.Background(), limit, offset)
+
+		require.NoError(t, err)
+		require.Equal(t, len(records), len(ret))
+	})
+
 	t.Run("異常系_#01", func(t *testing.T) {
 		limit := 10
 		offset := 0
@@ -131,6 +145,21 @@ func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_reposito
 		require.NoError(t, err)
 		require.Equal(t, id, ret[0].ID)
 		require.Equal(t, uid, ret[0].UserId)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		limit := 10
+		offset := 0
+
+		records := []*entity.Record{}
+
+		mockRepository.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(records, nil)
+
+		ret, err := usecase.FindByUserId(context.Background(), uid, limit, offset)
+
+		require.NoError(t, err)
+		require.Equal(t, len(records), len(ret))
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {

@@ -10,7 +10,7 @@ func NewRecordGetResponse(
 	offset int,
 	records []*entity.Record,
 ) *dto.RecordGetResponse {
-	var ret []*dto.RecordResponse
+	ret := []*dto.RecordResponse{}
 
 	for _, record := range records {
 		ret = append(ret, &dto.RecordResponse{
@@ -58,7 +58,7 @@ func NewRecordGetByUserIdResponse(
 	offset int,
 	records []*entity.Record,
 ) *dto.RecordGetByUserIdResponse {
-	var ret []*dto.RecordResponse
+	ret := []*dto.RecordResponse{}
 
 	for _, record := range records {
 		ret = append(ret, &dto.RecordResponse{

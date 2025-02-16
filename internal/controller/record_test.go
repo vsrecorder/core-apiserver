@@ -89,6 +89,7 @@ func test_Get(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(records), len(res.Records))
 	})
 
 	t.Run("正常系_02", func(t *testing.T) {
@@ -115,6 +116,32 @@ func test_Get(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(records), len(res.Records))
+	})
+
+	t.Run("正常系_03", func(t *testing.T) {
+		records := []*entity.Record{}
+
+		limit := 10
+		offset := 0
+
+		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(records, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", "/records", nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordGetResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(records), len(res.Records))
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[]}", w.Body.String())
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
@@ -221,6 +248,7 @@ func test_GetByUserId(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(records), len(res.Records))
 		require.Equal(t, uid, res.Records[0].UserId)
 	})
 
@@ -251,7 +279,33 @@ func test_GetByUserId(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(records), len(res.Records))
 		require.Equal(t, uid, res.Records[0].UserId)
+	})
+
+	t.Run("正常系_#03", func(t *testing.T) {
+		records := []*entity.Record{}
+
+		limit := 10
+		offset := 0
+
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(records, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", "/records", nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordGetByUserIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(records), len(res.Records))
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[]}", w.Body.String())
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {

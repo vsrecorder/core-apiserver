@@ -79,47 +79,80 @@ func test_Find(t *testing.T) {
 	limit := 10
 	offset := 10
 
-	rows := sqlmock.NewRows([]string{
-		"id",
-		"created_at",
-		"update_at",
-		"deleted_at",
-		"official_event_id",
-		"tonamel_event_id",
-		"friend_id",
-		"user_id",
-		"deck_id",
-		"private_flg",
-		"tcg_meister_url",
-		"memo",
-	}).AddRow(
-		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-		datetime,
-		datetime,
-		gorm.DeletedAt{},
-		236790,
-		"",
-		"",
-		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
-		"",
-		false,
-		"",
-		"",
-	)
+	{
+		rows := sqlmock.NewRows([]string{
+			"id",
+			"created_at",
+			"update_at",
+			"deleted_at",
+			"official_event_id",
+			"tonamel_event_id",
+			"friend_id",
+			"user_id",
+			"deck_id",
+			"private_flg",
+			"tcg_meister_url",
+			"memo",
+		}).AddRow(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			datetime,
+			datetime,
+			gorm.DeletedAt{},
+			236790,
+			"",
+			"",
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			"",
+			false,
+			"",
+			"",
+		)
 
-	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE private_flg = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-	)).WithArgs(
-		false,
-		limit,
-		offset,
-	).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE private_flg = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		)).WithArgs(
+			false,
+			limit,
+			offset,
+		).WillReturnRows(rows)
 
-	records, err := r.Find(context.Background(), limit, offset)
+		records, err := r.Find(context.Background(), limit, offset)
 
-	require.NoError(t, err)
-	require.Equal(t, len(records), 1)
-	require.Equal(t, records[0].ID, "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+		require.NoError(t, err)
+		require.Equal(t, 1, len(records))
+		require.Equal(t, records[0].ID, "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+	}
+
+	{
+		rows := sqlmock.NewRows([]string{
+			"id",
+			"created_at",
+			"update_at",
+			"deleted_at",
+			"official_event_id",
+			"tonamel_event_id",
+			"friend_id",
+			"user_id",
+			"deck_id",
+			"private_flg",
+			"tcg_meister_url",
+			"memo",
+		})
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE private_flg = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		)).WithArgs(
+			false,
+			limit,
+			offset,
+		).WillReturnRows(rows)
+
+		records, err := r.Find(context.Background(), limit, offset)
+
+		require.NoError(t, err)
+		require.Equal(t, 0, len(records))
+	}
+
 }
 
 func test_FindById(t *testing.T) {

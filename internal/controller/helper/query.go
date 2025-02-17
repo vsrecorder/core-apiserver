@@ -16,10 +16,6 @@ func GetQueryCursor(ctx *gin.Context) string {
 	return ctx.Query("cursor")
 }
 
-func GetQueryPage(ctx *gin.Context) string {
-	return ctx.Query("page")
-}
-
 func GetQueryStartDate(ctx *gin.Context) string {
 	return ctx.Query("start_date")
 }

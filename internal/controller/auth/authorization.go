@@ -24,7 +24,7 @@ func AuthorizationMiddleware(repository repository.RecordInterface) gin.HandlerF
 		record, err := repository.FindById(context.Background(), id)
 
 		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "record not found"})
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 			ctx.Abort()
 			return
 		}
@@ -51,7 +51,7 @@ func RecordGetByIdAuthorizationMiddleware(repository repository.RecordInterface)
 		record, err := repository.FindById(context.Background(), id)
 
 		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "record not found"})
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 			ctx.Abort()
 			return
 		}

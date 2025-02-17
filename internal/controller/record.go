@@ -121,7 +121,7 @@ func (c *Record) GetById(ctx *gin.Context) {
 	record, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "record not found"})
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 			ctx.Abort()
 			return
 		}
@@ -215,7 +215,7 @@ func (c *Record) Delete(ctx *gin.Context) {
 
 	if err := c.usecase.Delete(context.Background(), id); err != nil {
 		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "record not found"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "not found"})
 			ctx.Abort()
 			return
 		}

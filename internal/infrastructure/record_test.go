@@ -56,14 +56,14 @@ func TestRecordInfrastructure(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 	){
-		"Find":                  test_Find,
-		"FindById":              test_FindById,
-		"FindByUserId":          test_FindByUserId,
-		"FindByOfficialEventId": test_FindByOfficialEventId,
-		"FindByTonamelEventId":  test_FindByTonamelEventId,
-		"FindByDeckId":          test_FindByDeckId,
-		"Save":                  test_Save,
-		"Delete":                test_Delete,
+		"Find":                  test_RecordInfrastructure_Find,
+		"FindById":              test_RecordInfrastructure_FindById,
+		"FindByUserId":          test_RecordInfrastructure_FindByUserId,
+		"FindByOfficialEventId": test_RecordInfrastructure_FindByOfficialEventId,
+		"FindByTonamelEventId":  test_RecordInfrastructure_FindByTonamelEventId,
+		"FindByDeckId":          test_RecordInfrastructure_FindByDeckId,
+		"Save":                  test_RecordInfrastructure_Save,
+		"Delete":                test_RecordInfrastructure_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -71,7 +71,7 @@ func TestRecordInfrastructure(t *testing.T) {
 	}
 }
 
-func test_Find(t *testing.T) {
+func test_RecordInfrastructure_Find(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func test_Find(t *testing.T) {
 
 }
 
-func test_FindById(t *testing.T) {
+func test_RecordInfrastructure_FindById(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
@@ -202,7 +202,7 @@ func test_FindById(t *testing.T) {
 	require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", record.ID)
 }
 
-func test_FindByUserId(t *testing.T) {
+func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
@@ -253,7 +253,7 @@ func test_FindByUserId(t *testing.T) {
 	require.Equal(t, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", records[0].UserId)
 }
 
-func test_FindByOfficialEventId(t *testing.T) {
+func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
@@ -305,7 +305,7 @@ func test_FindByOfficialEventId(t *testing.T) {
 	require.Equal(t, (uint)(236790), records[0].OfficialEventId)
 }
 
-func test_FindByTonamelEventId(t *testing.T) {
+func test_RecordInfrastructure_FindByTonamelEventId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
@@ -357,7 +357,7 @@ func test_FindByTonamelEventId(t *testing.T) {
 	require.Equal(t, "YFUVY", records[0].TonamelEventId)
 }
 
-func test_FindByDeckId(t *testing.T) {
+func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
@@ -408,7 +408,7 @@ func test_FindByDeckId(t *testing.T) {
 	require.Equal(t, "01JHAKSVXZ4XW91TDQ8EDP1N8P", records[0].DeckId)
 }
 
-func test_Save(t *testing.T) {
+func test_RecordInfrastructure_Save(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
@@ -459,7 +459,7 @@ func test_Save(t *testing.T) {
 	}
 }
 
-func test_Delete(t *testing.T) {
+func test_RecordInfrastructure_Delete(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 

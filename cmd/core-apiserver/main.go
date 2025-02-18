@@ -87,6 +87,13 @@ func main() {
 		),
 	).RegisterRoute(RELATIVE_PATH)
 
+	controller.NewOfficialEvent(
+		r,
+		usecase.NewOfficialEvent(
+			infrastructure.NewOfficialEvent(db),
+		),
+	).RegisterRoute(RELATIVE_PATH)
+
 	controller.NewRecord(
 		r,
 		infrastructure.NewRecord(db),

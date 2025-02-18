@@ -1,6 +1,8 @@
 package helper
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 )
@@ -26,6 +28,61 @@ func GetOffset(ctx *gin.Context) int {
 	offset, _ := value.(int)
 
 	return offset
+}
+
+func SetStartDate(ctx *gin.Context, value time.Time) {
+	ctx.Set("start_date", value)
+}
+
+func GetStartDate(ctx *gin.Context) time.Time {
+	value, _ := ctx.Get("start_date")
+	startDate, _ := value.(time.Time)
+
+	return startDate
+}
+
+func SetEndDate(ctx *gin.Context, value time.Time) {
+	ctx.Set("end_date", value)
+}
+
+func GetEndDate(ctx *gin.Context) time.Time {
+	value, _ := ctx.Get("end_date")
+	endDate, _ := value.(time.Time)
+
+	return endDate
+}
+
+func SetTypeId(ctx *gin.Context, value uint) {
+	ctx.Set("type_id", value)
+}
+
+func GetTypeId(ctx *gin.Context) uint {
+	value, _ := ctx.Get("type_id")
+	typeId, _ := value.(uint)
+
+	return typeId
+}
+
+func SetLeagueType(ctx *gin.Context, value uint) {
+	ctx.Set("league_type", value)
+}
+
+func GetLeagueType(ctx *gin.Context) uint {
+	value, _ := ctx.Get("league_type")
+	leagueType, _ := value.(uint)
+
+	return leagueType
+}
+
+func SetOfficialEventId(ctx *gin.Context, value uint) {
+	ctx.Set("official_event_id", value)
+}
+
+func GetOfficialEventId(ctx *gin.Context) uint {
+	value, _ := ctx.Get("official_event_id")
+	officialEventId, _ := value.(uint)
+
+	return officialEventId
 }
 
 func SetUID(ctx *gin.Context, value string) {

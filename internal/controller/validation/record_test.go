@@ -65,9 +65,6 @@ func test_RecordGetMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		helper.SetLimit(ginContext, expectedLimit)
-		helper.SetOffset(ginContext, expectedOffset)
-
 		middleware := RecordGetMiddleware()
 		middleware(ginContext)
 

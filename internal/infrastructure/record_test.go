@@ -2,7 +2,6 @@ package infrastructure
 
 import (
 	"context"
-	"database/sql/driver"
 	"regexp"
 	"testing"
 	"time"
@@ -14,14 +13,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-// GORM側で更新される カラム updated_at の値をテストでPASSするための構造体
-type AnyTime struct{}
-
-func (a AnyTime) Match(v driver.Value) bool {
-	_, ok := v.(time.Time)
-	return ok
-}
 
 func setupMock4RecordInfrastructure() (*gorm.DB, sqlmock.Sqlmock, error) {
 	mockDB, mock, err := sqlmock.New()

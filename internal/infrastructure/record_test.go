@@ -290,9 +290,10 @@ func test_FindByOfficialEventId(t *testing.T) {
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE official_event_id = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT * FROM "records" WHERE (official_event_id = $1 AND private_flg = $2) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
 	)).WithArgs(
 		236790,
+		false,
 		limit,
 		offset,
 	).WillReturnRows(rows)
@@ -341,9 +342,10 @@ func test_FindByTonamelEventId(t *testing.T) {
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE tonamel_event_id = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT * FROM "records" WHERE (tonamel_event_id = $1 AND private_flg = $2) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
 	)).WithArgs(
 		"YFUVY",
+		false,
 		limit,
 		offset,
 	).WillReturnRows(rows)

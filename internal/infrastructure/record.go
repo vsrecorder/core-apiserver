@@ -56,7 +56,7 @@ func (i *Record) FindById(
 ) (*entity.Record, error) {
 	var model model.Record
 
-	if tx := i.db.Where("id = ? ", id).First(&model); tx.Error != nil {
+	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -116,7 +116,7 @@ func (i *Record) FindByOfficialEventId(
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("official_event_id = ?", officialEventId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("official_event_id = ? AND private_flg = ?", officialEventId, false).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -148,7 +148,7 @@ func (i *Record) FindByTonamelEventId(
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("tonamel_event_id = ?", tonamelEventId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("tonamel_event_id = ? AND private_flg = ?", tonamelEventId, false).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 

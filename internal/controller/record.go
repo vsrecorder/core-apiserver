@@ -64,8 +64,8 @@ func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
 		r := c.router.Group(relativePath + RECORDS_PATH)
 		r.GET(
 			"",
-			validation.RecordGetMiddleware(),
 			auth.OptionalAuthenticationMiddleware(),
+			validation.RecordGetMiddleware(),
 			c.Get,
 			c.GetByUserId,
 		)
@@ -77,15 +77,15 @@ func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
 		)
 		r.POST(
 			"",
-			validation.RecordCreateMiddleware(),
 			auth.RequiredAuthenticationMiddleware(),
+			validation.RecordCreateMiddleware(),
 			c.Create,
 		)
 		r.PUT(
 			"/:id",
-			validation.RecordUpdateMiddleware(),
 			auth.RequiredAuthenticationMiddleware(),
 			auth.RecordUpdateAuthorizationMiddleware(c.repository),
+			validation.RecordUpdateMiddleware(),
 			c.Update,
 		)
 		r.DELETE(

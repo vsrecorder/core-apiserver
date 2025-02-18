@@ -23,7 +23,7 @@ func (a AnyTime) Match(v driver.Value) bool {
 	return ok
 }
 
-func setupMock() (*gorm.DB, sqlmock.Sqlmock, error) {
+func setupMock4RecordInfrastructure() (*gorm.DB, sqlmock.Sqlmock, error) {
 	mockDB, mock, err := sqlmock.New()
 
 	if err != nil {
@@ -40,8 +40,8 @@ func setupMock() (*gorm.DB, sqlmock.Sqlmock, error) {
 	return db, mock, err
 }
 
-func setup() (repository.RecordInterface, sqlmock.Sqlmock, error) {
-	db, mock, err := setupMock()
+func setup4RecordInfrastructure() (repository.RecordInterface, sqlmock.Sqlmock, error) {
+	db, mock, err := setupMock4RecordInfrastructure()
 
 	if err != nil {
 		return nil, nil, err
@@ -72,7 +72,7 @@ func TestRecordInfrastructure(t *testing.T) {
 }
 
 func test_Find(t *testing.T) {
-	r, mock, err := setup()
+	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
 	datetime := time.Now()
@@ -156,7 +156,7 @@ func test_Find(t *testing.T) {
 }
 
 func test_FindById(t *testing.T) {
-	r, mock, err := setup()
+	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
 	datetime := time.Now()
@@ -203,7 +203,7 @@ func test_FindById(t *testing.T) {
 }
 
 func test_FindByUserId(t *testing.T) {
-	r, mock, err := setup()
+	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
 	datetime := time.Now()
@@ -254,7 +254,7 @@ func test_FindByUserId(t *testing.T) {
 }
 
 func test_FindByOfficialEventId(t *testing.T) {
-	r, mock, err := setup()
+	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
 	datetime := time.Now()
@@ -306,7 +306,7 @@ func test_FindByOfficialEventId(t *testing.T) {
 }
 
 func test_FindByTonamelEventId(t *testing.T) {
-	r, mock, err := setup()
+	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
 	datetime := time.Now()
@@ -358,7 +358,7 @@ func test_FindByTonamelEventId(t *testing.T) {
 }
 
 func test_FindByDeckId(t *testing.T) {
-	r, mock, err := setup()
+	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
 	datetime := time.Now()
@@ -409,7 +409,7 @@ func test_FindByDeckId(t *testing.T) {
 }
 
 func test_Save(t *testing.T) {
-	r, mock, err := setup()
+	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
 	datetime := time.Now().Truncate(0)
@@ -460,7 +460,7 @@ func test_Save(t *testing.T) {
 }
 
 func test_Delete(t *testing.T) {
-	r, mock, err := setup()
+	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
 	mock.ExpectBegin()

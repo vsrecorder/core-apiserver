@@ -36,7 +36,7 @@ func TestAuthorizationMiddleware(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 	){
-		"AuthorizationMiddleware":              test_AuthorizationMiddleware,
+		"RecordAuthorizationMiddleware":        test_RecordAuthorizationMiddleware,
 		"RecordGetByIdAuthorizationMiddleware": test_RecordGetByIdAuthorizationMiddleware,
 	} {
 		t.Run(scenario, func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestAuthorizationMiddleware(t *testing.T) {
 	}
 }
 
-func test_AuthorizationMiddleware(t *testing.T) {
+func test_RecordAuthorizationMiddleware(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 
@@ -82,7 +82,7 @@ func test_AuthorizationMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := AuthorizationMiddleware(mockRepository)
+		middleware := RecordAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusOK, w.Code)
@@ -98,7 +98,7 @@ func test_AuthorizationMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := AuthorizationMiddleware(mockRepository)
+		middleware := RecordAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusForbidden, w.Code)
@@ -132,7 +132,7 @@ func test_AuthorizationMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := AuthorizationMiddleware(mockRepository)
+		middleware := RecordAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusNotFound, w.Code)
@@ -166,7 +166,7 @@ func test_AuthorizationMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := AuthorizationMiddleware(mockRepository)
+		middleware := RecordAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
@@ -205,7 +205,7 @@ func test_AuthorizationMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := AuthorizationMiddleware(mockRepository)
+		middleware := RecordAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusForbidden, w.Code)

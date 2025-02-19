@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func AuthorizationMiddleware(repository repository.RecordInterface) gin.HandlerFunc {
+func RecordAuthorizationMiddleware(repository repository.RecordInterface) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := helper.GetId(ctx)
 		uid := helper.GetUID(ctx)
@@ -71,9 +71,9 @@ func RecordGetByIdAuthorizationMiddleware(repository repository.RecordInterface)
 }
 
 func RecordUpdateAuthorizationMiddleware(repository repository.RecordInterface) gin.HandlerFunc {
-	return AuthorizationMiddleware(repository)
+	return RecordAuthorizationMiddleware(repository)
 }
 
 func RecordDeleteAuthorizationMiddleware(repository repository.RecordInterface) gin.HandlerFunc {
-	return AuthorizationMiddleware(repository)
+	return RecordAuthorizationMiddleware(repository)
 }

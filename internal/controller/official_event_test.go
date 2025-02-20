@@ -16,6 +16,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
 	"go.uber.org/mock/gomock"
+	"gorm.io/gorm"
 )
 
 const (
@@ -242,6 +243,21 @@ func test_OfficialEventController_GetById(t *testing.T) {
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
+		id := uint(606466)
+
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", fmt.Sprintf(OFFICIAL_EVENTS_PATH+"/%d", id), nil)
+		c.router.ServeHTTP(w, req)
+
+		var res dto.OfficialEventGetByIdResponse
+		json.Unmarshal(w.Body.Bytes(), &res)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
 		id := uint(606466)
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))

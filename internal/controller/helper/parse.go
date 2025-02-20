@@ -13,6 +13,7 @@ const (
 	DEFAULT_OFFSET      = 0
 	DEFAULT_TYPE_ID     = 0
 	DEFAULT_LEAGUE_TYPE = 0
+	DEFAULT_ARCHIVED    = false
 
 	DATE_LAYOUT = "2006-01-02"
 )
@@ -133,4 +134,20 @@ func ParseQueryLeagueType(ctx *gin.Context) (uint, error) {
 	}
 
 	return uint(leagueType), nil
+}
+
+func ParseQueryArchive(ctx *gin.Context) (bool, error) {
+	query := GetQueryArchived(ctx)
+
+	if query == "" {
+		return DEFAULT_ARCHIVED, nil
+	}
+
+	ret, err := strconv.ParseBool(query)
+
+	if err != nil {
+		return DEFAULT_ARCHIVED, err
+	}
+
+	return ret, nil
 }

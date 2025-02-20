@@ -102,6 +102,14 @@ func main() {
 		),
 	).RegisterRoute(RELATIVE_PATH, false)
 
+	controller.NewDeck(
+		r,
+		infrastructure.NewDeck(db),
+		usecase.NewDeck(
+			infrastructure.NewDeck(db),
+		),
+	).RegisterRoute(RELATIVE_PATH, false)
+
 	srv := &http.Server{
 		Addr:    ":8913",
 		Handler: r,

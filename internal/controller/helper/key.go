@@ -96,6 +96,17 @@ func GetUID(ctx *gin.Context) string {
 	return uid
 }
 
+func SetArchived(ctx *gin.Context, value bool) {
+	ctx.Set("archived", value)
+}
+
+func GetArchived(ctx *gin.Context) bool {
+	value, _ := ctx.Get("archived")
+	archived, _ := value.(bool)
+
+	return archived
+}
+
 func SetRecordCreateRequest(ctx *gin.Context, value dto.RecordCreateRequest) {
 	ctx.Set("record_create_request", value)
 }
@@ -116,4 +127,26 @@ func GetRecordUpdateRequest(ctx *gin.Context) dto.RecordUpdateRequest {
 	recordRequest, _ := value.(dto.RecordUpdateRequest)
 
 	return recordRequest
+}
+
+func SetDeckCreateRequest(ctx *gin.Context, value dto.DeckCreateRequest) {
+	ctx.Set("deck_create_request", value)
+}
+
+func GetDeckCreateRequest(ctx *gin.Context) dto.DeckCreateRequest {
+	value, _ := ctx.Get("deck_create_request")
+	deckRequest, _ := value.(dto.DeckCreateRequest)
+
+	return deckRequest
+}
+
+func SetDeckUpdateRequest(ctx *gin.Context, value dto.DeckUpdateRequest) {
+	ctx.Set("deck_update_request", value)
+}
+
+func GetDeckUpdateRequest(ctx *gin.Context) dto.DeckUpdateRequest {
+	value, _ := ctx.Get("deck_update_request")
+	deckRequest, _ := value.(dto.DeckUpdateRequest)
+
+	return deckRequest
 }

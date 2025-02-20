@@ -31,3 +31,7 @@ func GetQueryTypeId(ctx *gin.Context) string {
 func GetQueryLeagueType(ctx *gin.Context) string {
 	return ctx.Query("league_type")
 }
+
+func GetQueryArchived(ctx *gin.Context) string {
+	return ctx.Query("archived")
+}

@@ -48,12 +48,12 @@ func TestRecordController(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	for scenario, fn := range map[string]func(t *testing.T){
-		"Get":         test_Get,
-		"GetById":     test_GetById,
-		"GetByUserId": test_GetByUserId,
-		"Create":      test_Create,
-		"Update":      test_Update,
-		"Delete":      test_Delete,
+		"Get":         test_RecordController_Get,
+		"GetById":     test_RecordController_GetById,
+		"GetByUserId": test_RecordController_GetByUserId,
+		"Create":      test_RecordController_Create,
+		"Update":      test_RecordController_Update,
+		"Delete":      test_RecordController_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -61,7 +61,7 @@ func TestRecordController(t *testing.T) {
 	}
 }
 
-func test_Get(t *testing.T) {
+func test_RecordController_Get(t *testing.T) {
 	r := gin.Default()
 	c, mockUsecase := setup4TestRecordController(t, r)
 
@@ -158,7 +158,7 @@ func test_Get(t *testing.T) {
 	})
 }
 
-func test_GetById(t *testing.T) {
+func test_RecordController_GetById(t *testing.T) {
 	r := gin.Default()
 	c, mockUsecase := setup4TestRecordController(t, r)
 
@@ -223,7 +223,7 @@ func test_GetById(t *testing.T) {
 	})
 }
 
-func test_GetByUserId(t *testing.T) {
+func test_RecordController_GetByUserId(t *testing.T) {
 	r := gin.Default()
 
 	// 認証済みとするためにuidをセット
@@ -338,7 +338,7 @@ func test_GetByUserId(t *testing.T) {
 	})
 }
 
-func test_Create(t *testing.T) {
+func test_RecordController_Create(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
 		c, mockUsecase := setup4TestRecordController(t, r)
@@ -513,7 +513,7 @@ func test_Create(t *testing.T) {
 	})
 }
 
-func test_Update(t *testing.T) {
+func test_RecordController_Update(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
 		c, mockUsecase := setup4TestRecordController(t, r)
@@ -888,7 +888,7 @@ func test_Update(t *testing.T) {
 
 }
 
-func test_Delete(t *testing.T) {
+func test_RecordController_Delete(t *testing.T) {
 	r := gin.Default()
 	c, mockUsecase := setup4TestRecordController(t, r)
 

@@ -14,7 +14,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
 
-func TestValidation(t *testing.T) {
+func TestRecordValidation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	for scenario, fn := range map[string]func(

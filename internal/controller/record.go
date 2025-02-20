@@ -205,7 +205,7 @@ func (c *Record) Update(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewRecordCreateResponse(record)
+	res := presenter.NewRecordUpdateResponse(record)
 
 	ctx.JSON(http.StatusOK, res)
 }

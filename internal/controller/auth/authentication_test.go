@@ -169,7 +169,7 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
-		secretKey := "FBIN08bOcuvO2X+S6p1yD9lRxOdby+YjUQgmFQsoQ1c="
+		wrongSecretKey := "FBIN08bOcuvO2X+S6p1yD9lRxOdby+YjUQgmFQsoQ1c="
 
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
@@ -178,14 +178,14 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 		req, err := http.NewRequest("GET", "/", nil)
 		require.NoError(t, err)
 
-		token, err := generateToken("zor5SLfEfwfZ90yRVXzlxBEFARy2", secretKey)
+		token, err := generateToken("zor5SLfEfwfZ90yRVXzlxBEFARy2", wrongSecretKey)
 		require.NoError(t, err)
 
 		req.Header.Add("Authorization", "Bearer "+token)
 
 		ginContext.Request = req
 
-		middleware := RequiredAuthenticationMiddleware()
+		middleware := OptionalAuthenticationMiddleware()
 		middleware(ginContext)
 
 		uid := helper.GetUID(ginContext)

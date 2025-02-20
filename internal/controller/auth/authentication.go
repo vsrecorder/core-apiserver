@@ -65,6 +65,7 @@ func OptionalAuthenticationMiddleware() gin.HandlerFunc {
 		header.Add("Authorization", ctx.GetHeader("Authorization"))
 
 		if header.Get("Authorization") == "" {
+			helper.SetUID(ctx, "")
 			return
 		}
 

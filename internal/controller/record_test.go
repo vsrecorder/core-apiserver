@@ -522,120 +522,60 @@ func test_RecordController_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		createdAt := time.Now().Truncate(0)
+		officialEventId := uint(10000)
+		privateFlg := false
 
-		{
-			officialEventId := uint(10000)
-			privateFlg := false
-
-			record := &entity.Record{
-				ID:              id,
-				CreatedAt:       createdAt,
-				OfficialEventId: officialEventId,
-				PrivateFlg:      privateFlg,
-			}
-
-			param := usecase.NewRecordParam(
-				officialEventId,
-				"",
-				"",
-				"",
-				"",
-				privateFlg,
-				"",
-				"",
-			)
-
-			mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
-
-			data := dto.RecordCreateRequest{
-				RecordRequest: dto.RecordRequest{
-					OfficialEventId: officialEventId,
-					TonamelEventId:  "",
-					FriendId:        "",
-					DeckId:          "",
-					PrivateFlg:      privateFlg,
-					TCGMeisterURL:   "",
-					Memo:            "",
-				},
-			}
-
-			dataBytes, err := json.Marshal(data)
-			require.NoError(t, err)
-
-			w := httptest.NewRecorder()
-
-			req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
-			require.NoError(t, err)
-
-			c.router.ServeHTTP(w, req)
-
-			var res dto.RecordCreateResponse
-			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-			require.Equal(t, http.StatusCreated, w.Code)
-			require.Equal(t, id, res.ID)
-			require.Equal(t, createdAt, res.CreatedAt)
-			require.Equal(t, officialEventId, res.OfficialEventId)
-			require.Equal(t, privateFlg, res.PrivateFlg)
-			require.Equal(t, "", res.UserId)
+		record := &entity.Record{
+			ID:              id,
+			CreatedAt:       createdAt,
+			OfficialEventId: officialEventId,
+			PrivateFlg:      privateFlg,
 		}
 
-		{
-			officialEventId := uint(10001)
-			privateFlg := true
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			"",
+			"",
+			privateFlg,
+			"",
+			"",
+		)
 
-			record := &entity.Record{
-				ID:              id,
-				CreatedAt:       createdAt,
+		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
 				OfficialEventId: officialEventId,
+				TonamelEventId:  "",
+				FriendId:        "",
+				DeckId:          "",
 				PrivateFlg:      privateFlg,
-			}
-
-			param := usecase.NewRecordParam(
-				officialEventId,
-				"",
-				"",
-				"",
-				"",
-				privateFlg,
-				"",
-				"",
-			)
-
-			mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
-
-			data := dto.RecordCreateRequest{
-				RecordRequest: dto.RecordRequest{
-					OfficialEventId: officialEventId,
-					TonamelEventId:  "",
-					FriendId:        "",
-					DeckId:          "",
-					PrivateFlg:      privateFlg,
-					TCGMeisterURL:   "",
-					Memo:            "",
-				},
-			}
-
-			dataBytes, err := json.Marshal(data)
-			require.NoError(t, err)
-
-			w := httptest.NewRecorder()
-
-			req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
-			require.NoError(t, err)
-
-			c.router.ServeHTTP(w, req)
-
-			var res dto.RecordCreateResponse
-			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-			require.Equal(t, http.StatusOK, w.Code)
-			require.Equal(t, id, res.ID)
-			require.Equal(t, createdAt, res.CreatedAt)
-			require.Equal(t, officialEventId, res.OfficialEventId)
-			require.Equal(t, privateFlg, res.PrivateFlg)
-			require.Equal(t, "", res.UserId)
+				TCGMeisterURL:   "",
+				Memo:            "",
+			},
 		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, id, res.ID)
+		require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, officialEventId, res.OfficialEventId)
+		require.Equal(t, privateFlg, res.PrivateFlg)
+		require.Equal(t, "", res.UserId)
 	})
 
 	t.Run("正常系_#02", func(t *testing.T) {
@@ -653,122 +593,61 @@ func test_RecordController_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		createdAt := time.Now().Truncate(0)
+		officialEventId := uint(10000)
+		privateFlg := false
 
-		{
-			officialEventId := uint(10000)
-			privateFlg := false
-
-			record := &entity.Record{
-				ID:              id,
-				CreatedAt:       createdAt,
-				OfficialEventId: officialEventId,
-				UserId:          uid,
-				PrivateFlg:      privateFlg,
-			}
-
-			param := usecase.NewRecordParam(
-				officialEventId,
-				"",
-				"",
-				uid,
-				"",
-				privateFlg,
-				"",
-				"",
-			)
-
-			mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
-
-			data := dto.RecordCreateRequest{
-				RecordRequest: dto.RecordRequest{
-					OfficialEventId: officialEventId,
-					TonamelEventId:  "",
-					FriendId:        "",
-					DeckId:          "",
-					PrivateFlg:      privateFlg,
-					TCGMeisterURL:   "",
-					Memo:            "",
-				},
-			}
-
-			dataBytes, err := json.Marshal(data)
-			require.NoError(t, err)
-
-			w := httptest.NewRecorder()
-
-			req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
-			require.NoError(t, err)
-
-			c.router.ServeHTTP(w, req)
-
-			var res dto.RecordCreateResponse
-			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-			require.Equal(t, http.StatusCreated, w.Code)
-			require.Equal(t, id, res.ID)
-			require.Equal(t, createdAt, res.CreatedAt)
-			require.Equal(t, officialEventId, res.OfficialEventId)
-			require.Equal(t, privateFlg, res.PrivateFlg)
-			require.Equal(t, uid, res.UserId)
+		record := &entity.Record{
+			ID:              id,
+			CreatedAt:       createdAt,
+			OfficialEventId: officialEventId,
+			UserId:          uid,
+			PrivateFlg:      privateFlg,
 		}
 
-		{
-			officialEventId := uint(10001)
-			privateFlg := true
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			uid,
+			"",
+			privateFlg,
+			"",
+			"",
+		)
 
-			record := &entity.Record{
-				ID:              id,
-				CreatedAt:       createdAt,
+		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
 				OfficialEventId: officialEventId,
-				UserId:          uid,
+				TonamelEventId:  "",
+				FriendId:        "",
+				DeckId:          "",
 				PrivateFlg:      privateFlg,
-			}
-
-			param := usecase.NewRecordParam(
-				officialEventId,
-				"",
-				"",
-				uid,
-				"",
-				privateFlg,
-				"",
-				"",
-			)
-
-			mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
-
-			data := dto.RecordCreateRequest{
-				RecordRequest: dto.RecordRequest{
-					OfficialEventId: officialEventId,
-					TonamelEventId:  "",
-					FriendId:        "",
-					DeckId:          "",
-					PrivateFlg:      privateFlg,
-					TCGMeisterURL:   "",
-					Memo:            "",
-				},
-			}
-
-			dataBytes, err := json.Marshal(data)
-			require.NoError(t, err)
-
-			w := httptest.NewRecorder()
-
-			req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
-			require.NoError(t, err)
-
-			c.router.ServeHTTP(w, req)
-
-			var res dto.RecordCreateResponse
-			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-			require.Equal(t, http.StatusOK, w.Code)
-			require.Equal(t, id, res.ID)
-			require.Equal(t, createdAt, res.CreatedAt)
-			require.Equal(t, officialEventId, res.OfficialEventId)
-			require.Equal(t, privateFlg, res.PrivateFlg)
-			require.Equal(t, uid, res.UserId)
+				TCGMeisterURL:   "",
+				Memo:            "",
+			},
 		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, id, res.ID)
+		require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, officialEventId, res.OfficialEventId)
+		require.Equal(t, privateFlg, res.PrivateFlg)
+		require.Equal(t, uid, res.UserId)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
@@ -778,112 +657,48 @@ func test_RecordController_Update(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		officialEventId := uint(10000)
+		privateFlg := false
 
-		{
-			officialEventId := uint(10000)
-			privateFlg := false
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			"",
+			"",
+			privateFlg,
+			"",
+			"",
+		)
 
-			record := &entity.Record{
-				ID:              id,
-				CreatedAt:       createdAt,
+		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(nil, errors.New(""))
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
 				OfficialEventId: officialEventId,
+				TonamelEventId:  "",
+				FriendId:        "",
+				DeckId:          "",
 				PrivateFlg:      privateFlg,
-			}
-
-			param := usecase.NewRecordParam(
-				officialEventId,
-				"",
-				"",
-				"",
-				"",
-				privateFlg,
-				"",
-				"",
-			)
-
-			mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
-
-			data := dto.RecordCreateRequest{
-				RecordRequest: dto.RecordRequest{
-					OfficialEventId: officialEventId,
-					TonamelEventId:  "",
-					FriendId:        "",
-					DeckId:          "",
-					PrivateFlg:      privateFlg,
-					TCGMeisterURL:   "",
-					Memo:            "",
-				},
-			}
-
-			dataBytes, err := json.Marshal(data)
-			require.NoError(t, err)
-
-			w := httptest.NewRecorder()
-
-			req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
-			require.NoError(t, err)
-
-			c.router.ServeHTTP(w, req)
-
-			var res dto.RecordCreateResponse
-			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-			require.Equal(t, http.StatusCreated, w.Code)
-			require.Equal(t, id, res.ID)
-			require.Equal(t, createdAt, res.CreatedAt)
-			require.Equal(t, officialEventId, res.OfficialEventId)
-			require.Equal(t, privateFlg, res.PrivateFlg)
-			require.Equal(t, "", res.UserId)
+				TCGMeisterURL:   "",
+				Memo:            "",
+			},
 		}
 
-		{
-			officialEventId := uint(10001)
-			privateFlg := true
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
 
-			param := usecase.NewRecordParam(
-				officialEventId,
-				"",
-				"",
-				"",
-				"",
-				privateFlg,
-				"",
-				"",
-			)
+		w := httptest.NewRecorder()
 
-			mockUsecase.EXPECT().Update(context.Background(), id, param).Return(nil, errors.New(""))
+		req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
 
-			data := dto.RecordCreateRequest{
-				RecordRequest: dto.RecordRequest{
-					OfficialEventId: officialEventId,
-					TonamelEventId:  "",
-					FriendId:        "",
-					DeckId:          "",
-					PrivateFlg:      privateFlg,
-					TCGMeisterURL:   "",
-					Memo:            "",
-				},
-			}
+		c.router.ServeHTTP(w, req)
 
-			dataBytes, err := json.Marshal(data)
-			require.NoError(t, err)
+		var res dto.RecordCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
-			w := httptest.NewRecorder()
-
-			req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
-			require.NoError(t, err)
-
-			c.router.ServeHTTP(w, req)
-
-			{
-				var res dto.RecordCreateResponse
-				err := json.Unmarshal(w.Body.Bytes(), &res)
-				require.NoError(t, err)
-
-				require.Equal(t, http.StatusInternalServerError, w.Code)
-			}
-		}
+		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
 }

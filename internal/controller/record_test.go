@@ -208,6 +208,19 @@ func test_GetById(t *testing.T) {
 
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/records/"+id, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 }
 
 func test_GetByUserId(t *testing.T) {

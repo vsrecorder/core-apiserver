@@ -92,7 +92,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, len(records), len(res.Records))
 	})
 
-	t.Run("正常系_02", func(t *testing.T) {
+	t.Run("正常系_#02", func(t *testing.T) {
 		record := entity.Record{}
 		records := []*entity.Record{
 			&record,
@@ -119,7 +119,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, len(records), len(res.Records))
 	})
 
-	t.Run("正常系_03", func(t *testing.T) {
+	t.Run("正常系_#03", func(t *testing.T) {
 		records := []*entity.Record{}
 
 		limit := 10

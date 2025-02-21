@@ -181,6 +181,37 @@ func test_DeckCreateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
+	t.Run("正常系_#02", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		name := "test"
+
+		expected := dto.DeckCreateRequest{
+			DeckRequest: dto.DeckRequest{
+				Name:           name,
+				Code:           "48Yx8x-cJUK50-xxcxKJ",
+				PrivateCodeFlg: false,
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := DeckCreateMiddleware()
+		middleware(ginContext)
+
+		actual := helper.GetDeckCreateRequest(ginContext)
+
+		require.Equal(t, expected, actual)
+	})
+
 	t.Run("異常系_#01", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
@@ -207,6 +238,35 @@ func test_DeckCreateMiddleware(t *testing.T) {
 			DeckRequest: dto.DeckRequest{
 				Name:           name,
 				Code:           "",
+				PrivateCodeFlg: false,
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := DeckCreateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_#03", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		name := "test"
+
+		expected := dto.DeckCreateRequest{
+			DeckRequest: dto.DeckRequest{
+				Name:           name,
+				Code:           "XXXXXX-YYYYYY-ZZZZZZ",
 				PrivateCodeFlg: false,
 			},
 		}
@@ -259,6 +319,37 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
+	t.Run("正常系_#01", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		name := "test"
+
+		expected := dto.DeckUpdateRequest{
+			DeckRequest: dto.DeckRequest{
+				Name:           name,
+				Code:           "48Yx8x-cJUK50-xxcxKJ",
+				PrivateCodeFlg: false,
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := DeckUpdateMiddleware()
+		middleware(ginContext)
+
+		actual := helper.GetDeckUpdateRequest(ginContext)
+
+		require.Equal(t, expected, actual)
+	})
+
 	t.Run("異常系_#01", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
@@ -285,6 +376,35 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 			DeckRequest: dto.DeckRequest{
 				Name:           name,
 				Code:           "",
+				PrivateCodeFlg: false,
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := DeckUpdateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		name := "test"
+
+		expected := dto.DeckCreateRequest{
+			DeckRequest: dto.DeckRequest{
+				Name:           name,
+				Code:           "XXXXXX-YYYYYY-ZZZZZZ",
 				PrivateCodeFlg: false,
 			},
 		}

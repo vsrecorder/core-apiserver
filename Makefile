@@ -2,6 +2,10 @@
 test:
 	go test -v -cover -race ./...
 
+.PHONY: build
+build:
+	go build -o bin/core-apiserver cmd/core-apiserver/main.go
+
 .PHONY: run
 run:
 	go run cmd/core-apiserver/main.go

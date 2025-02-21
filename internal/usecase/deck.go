@@ -152,6 +152,12 @@ func (u *Deck) Create(
 		param.PrivateCodeFlg,
 	)
 
+	if deck.Code != "" {
+		if err := uploadDeckImage(deck.Code); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := u.repository.Save(ctx, deck); err != nil {
 		return nil, err
 	}
@@ -179,6 +185,12 @@ func (u *Deck) Update(
 		param.Code,
 		param.PrivateCodeFlg,
 	)
+
+	if deck.Code != "" {
+		if err := uploadDeckImage(deck.Code); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := u.repository.Save(ctx, deck); err != nil {
 		return nil, err

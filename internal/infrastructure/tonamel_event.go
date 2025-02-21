@@ -31,11 +31,11 @@ func (i *TonamelEvent) FindById(
 		return nil, err
 	}
 
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return nil, err
 	}
+
+	defer res.Body.Close()
 
 	body, _ := io.ReadAll(res.Body)
 

@@ -93,9 +93,8 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 		)
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "decks" WHERE (private_code_flg = $1 AND code IS NOT NULL AND archived_at IS NULL) AND "decks"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+			`SELECT * FROM "decks" WHERE (private_code_flg = false AND code != "" AND archived_at IS NULL) AND "decks"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		)).WithArgs(
-			false,
 			limit,
 			offset,
 		).WillReturnRows(rows)

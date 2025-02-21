@@ -10,6 +10,7 @@ import (
 	"time"
 
 	firebaseV4 "firebase.google.com/go/v4"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -28,6 +29,12 @@ const (
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load .env file: %v", err)
+		return
+	}
+
+	if _, err := config.LoadDefaultConfig(context.Background()); err != nil {
+		log.Printf("failed to load default config: %v", err)
+		return
 	}
 
 	dbHostname := os.Getenv("DB_HOSTNAME")

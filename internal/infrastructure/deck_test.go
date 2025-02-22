@@ -65,7 +65,7 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 	require.NoError(t, err)
 
 	{
-		datetime := time.Now()
+		datetime := time.Now().Truncate(0)
 		archivedAt := sql.NullTime{}
 		limit := 10
 		offset := 10
@@ -73,7 +73,7 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
 			"id",
 			"created_at",
-			"update_at",
+			"updated_at",
 			"deleted_at",
 			"archived_at",
 			"user_id",
@@ -119,7 +119,7 @@ func test_DeckInfrastructure_FindById(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id",
 		"created_at",
-		"update_at",
+		"updated_at",
 		"deleted_at",
 		"archived_at",
 		"user_id",
@@ -165,7 +165,7 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
 			"id",
 			"created_at",
-			"update_at",
+			"updated_at",
 			"deleted_at",
 			"archived_at",
 			"user_id",
@@ -212,7 +212,7 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
 			"id",
 			"created_at",
-			"update_at",
+			"updated_at",
 			"deleted_at",
 			"archived_at",
 			"user_id",

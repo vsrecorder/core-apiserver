@@ -74,7 +74,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
 			"id",
 			"created_at",
-			"update_at",
+			"updated_at",
 			"deleted_at",
 			"official_event_id",
 			"tonamel_event_id",
@@ -118,7 +118,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
 			"id",
 			"created_at",
-			"update_at",
+			"updated_at",
 			"deleted_at",
 			"official_event_id",
 			"tonamel_event_id",
@@ -155,7 +155,7 @@ func test_RecordInfrastructure_FindById(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id",
 		"created_at",
-		"update_at",
+		"updated_at",
 		"deleted_at",
 		"official_event_id",
 		"tonamel_event_id",
@@ -204,7 +204,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id",
 		"created_at",
-		"update_at",
+		"updated_at",
 		"deleted_at",
 		"official_event_id",
 		"tonamel_event_id",
@@ -255,7 +255,7 @@ func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id",
 		"created_at",
-		"update_at",
+		"updated_at",
 		"deleted_at",
 		"official_event_id",
 		"tonamel_event_id",
@@ -307,7 +307,7 @@ func test_RecordInfrastructure_FindByTonamelEventId(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id",
 		"created_at",
-		"update_at",
+		"updated_at",
 		"deleted_at",
 		"official_event_id",
 		"tonamel_event_id",
@@ -359,7 +359,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id",
 		"created_at",
-		"update_at",
+		"updated_at",
 		"deleted_at",
 		"official_event_id",
 		"tonamel_event_id",

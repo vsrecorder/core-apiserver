@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	RECORDS_PATH = "/records"
+	RecordsPath = "/records"
 )
 
 type Record struct {
@@ -35,7 +35,7 @@ func NewRecord(
 
 func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
 	if authDisable {
-		r := c.router.Group(relativePath + RECORDS_PATH)
+		r := c.router.Group(relativePath + RecordsPath)
 		r.GET(
 			"",
 			validation.RecordGetMiddleware(),
@@ -61,7 +61,7 @@ func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
 			c.Delete,
 		)
 	} else {
-		r := c.router.Group(relativePath + RECORDS_PATH)
+		r := c.router.Group(relativePath + RecordsPath)
 		r.GET(
 			"",
 			auth.OptionalAuthenticationMiddleware(),

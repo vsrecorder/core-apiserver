@@ -63,7 +63,7 @@ func test_UserController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(user, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", USERS_PATH+"/"+id, nil)
+		req, _ := http.NewRequest("GET", UsersPath+"/"+id, nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.UserGetByIdResponse
@@ -80,7 +80,7 @@ func test_UserController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", USERS_PATH+"/"+id, nil)
+		req, _ := http.NewRequest("GET", UsersPath+"/"+id, nil)
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)

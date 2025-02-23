@@ -16,7 +16,7 @@ import (
 func generateToken(uid string, secretKey string) (string, error) {
 	claims := jwt.MapClaims{
 		"uid": uid,
-		"exp": time.Now().Add(TOKEN_LIFETIME_SECOND).Unix(),
+		"exp": time.Now().Add(TokenLifetimeSecond).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

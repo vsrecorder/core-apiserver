@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	DECKS_PATH = "/decks"
+	DecksPath = "/decks"
 )
 
 type Deck struct {
@@ -35,7 +35,7 @@ func NewDeck(
 
 func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 	if authDisable {
-		r := c.router.Group(relativePath + DECKS_PATH)
+		r := c.router.Group(relativePath + DecksPath)
 		r.GET(
 			"",
 			validation.DeckGetMiddleware(),
@@ -69,7 +69,7 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 			c.Delete,
 		)
 	} else {
-		r := c.router.Group(relativePath + DECKS_PATH)
+		r := c.router.Group(relativePath + DecksPath)
 		r.GET(
 			"",
 			auth.OptionalAuthenticationMiddleware(),

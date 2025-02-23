@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	TOKEN_LIFETIME_SECOND = time.Duration(15) * time.Second
+	TokenLifetimeSecond = time.Duration(15) * time.Second
 )
 
 type VSRClaims struct {

@@ -78,7 +78,7 @@ func test_RecordController_Get(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("/records?limit=%d&offset=%d", limit, offset), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -105,7 +105,7 @@ func test_RecordController_Get(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/records", nil)
+		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -129,7 +129,7 @@ func test_RecordController_Get(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/records", nil)
+		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -149,7 +149,7 @@ func test_RecordController_Get(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/records", nil)
+		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -181,7 +181,7 @@ func test_RecordController_GetById(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/records/"+id, nil)
+		req, err := http.NewRequest("GET", RecordsPath+"/"+id, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -203,7 +203,7 @@ func test_RecordController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records/"+id, nil)
+		req, _ := http.NewRequest("GET", RecordsPath+"/"+id, nil)
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusNotFound, w.Code)
@@ -216,7 +216,7 @@ func test_RecordController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/records/"+id, nil)
+		req, _ := http.NewRequest("GET", RecordsPath+"/"+id, nil)
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
@@ -250,7 +250,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("/records?limit=%d&offset=%d", limit, offset), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -281,7 +281,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/records", nil)
+		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -306,7 +306,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/records", nil)
+		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -329,7 +329,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/records", nil)
+		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -387,7 +387,7 @@ func test_RecordController_Create(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -459,7 +459,7 @@ func test_RecordController_Create(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -501,7 +501,7 @@ func test_RecordController_Create(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("POST", "/records", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -562,7 +562,7 @@ func test_RecordController_Update(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -634,7 +634,7 @@ func test_RecordController_Update(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -690,7 +690,7 @@ func test_RecordController_Update(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PUT", "/records/"+id, strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -715,7 +715,7 @@ func test_RecordController_Delete(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("DELETE", "/records/"+id, nil)
+		req, err := http.NewRequest("DELETE", RecordsPath+"/"+id, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -731,7 +731,7 @@ func test_RecordController_Delete(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("DELETE", "/records/"+id, nil)
+		req, err := http.NewRequest("DELETE", RecordsPath+"/"+id, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -747,7 +747,7 @@ func test_RecordController_Delete(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("DELETE", "/records/"+id, nil)
+		req, err := http.NewRequest("DELETE", RecordsPath+"/"+id, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)

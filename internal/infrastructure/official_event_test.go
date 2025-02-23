@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	DATE_LAYOUT = "2006-01-02"
+	DateLayout = "2006-01-02"
 )
 
 func setupMock4OfficialEventInfrastructure() (*gorm.DB, sqlmock.Sqlmock, error) {
@@ -64,9 +64,9 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	r, mock, err := setup4OfficialEventInfrastructure()
 	require.NoError(t, err)
 
-	date, _ := time.Parse(DATE_LAYOUT, "2025-02-15T00:00:00Z")
-	startedAt, _ := time.Parse(DATE_LAYOUT, "2025-02-15T07:30:00Z")
-	endedAt, _ := time.Parse(DATE_LAYOUT, "2025-02-15T20:50:00Z")
+	date, _ := time.Parse(DateLayout, "2025-02-15T00:00:00Z")
+	startedAt, _ := time.Parse(DateLayout, "2025-02-15T07:30:00Z")
+	endedAt, _ := time.Parse(DateLayout, "2025-02-15T20:50:00Z")
 
 	values := [][]driver.Value{
 		{
@@ -250,9 +250,9 @@ func test_OfficialEventInfrastructure_FindById(t *testing.T) {
 
 	// https://players.pokemon-card.com/event_detail_search?event_holding_id=606466
 	id := uint(606466)
-	date, _ := time.Parse(DATE_LAYOUT, "2025-02-15T00:00:00Z")
-	startedAt, _ := time.Parse(DATE_LAYOUT, "2025-02-15T07:30:00Z")
-	endedAt, _ := time.Parse(DATE_LAYOUT, "2025-02-15T20:50:00Z")
+	date, _ := time.Parse(DateLayout, "2025-02-15T00:00:00Z")
+	startedAt, _ := time.Parse(DateLayout, "2025-02-15T07:30:00Z")
+	endedAt, _ := time.Parse(DateLayout, "2025-02-15T20:50:00Z")
 
 	rows := sqlmock.NewRows([]string{
 		"id",

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	DATE_LAYOUT = "2006-01-02"
+	DateLayout = "2006-01-02"
 )
 
 func setupMock4TestOfficialEventController(t *testing.T) *mock_usecase.MockOfficialEventInterface {
@@ -78,7 +78,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", OFFICIAL_EVENTS_PATH, nil)
+		req, _ := http.NewRequest("GET", OfficialEventsPath, nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.OfficialEventGetResponse
@@ -112,7 +112,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", fmt.Sprintf(OFFICIAL_EVENTS_PATH+"?type_id=%d", typeId), nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"?type_id=%d", typeId), nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.OfficialEventGetResponse
@@ -146,7 +146,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", fmt.Sprintf(OFFICIAL_EVENTS_PATH+"?type_id=%d&league_type=%d", typeId, leagueType), nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"?type_id=%d&league_type=%d", typeId, leagueType), nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.OfficialEventGetResponse
@@ -175,15 +175,15 @@ func test_OfficialEventController_Get(t *testing.T) {
 		leagueType := uint(4)
 		startDate := "2025-02-15"
 		endDate := "2025-02-15"
-		expectedStartDate, _ := time.Parse(DATE_LAYOUT, startDate)
+		expectedStartDate, _ := time.Parse(DateLayout, startDate)
 		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.Local)
-		expectedEndDate, _ := time.Parse(DATE_LAYOUT, endDate)
+		expectedEndDate, _ := time.Parse(DateLayout, endDate)
 		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.Local)
 
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, expectedStartDate, expectedEndDate).Return(officialEvents, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", fmt.Sprintf(OFFICIAL_EVENTS_PATH+"?type_id=%d&league_type=%d&start_date=%s&end_date=%s", typeId, leagueType, startDate, endDate), nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"?type_id=%d&league_type=%d&start_date=%s&end_date=%s", typeId, leagueType, startDate, endDate), nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.OfficialEventGetResponse
@@ -208,7 +208,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", OFFICIAL_EVENTS_PATH, nil)
+		req, _ := http.NewRequest("GET", OfficialEventsPath, nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.OfficialEventGetResponse
@@ -232,7 +232,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(officialEvent, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", fmt.Sprintf(OFFICIAL_EVENTS_PATH+"/%d", id), nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"/%d", id), nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.OfficialEventGetByIdResponse
@@ -248,7 +248,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", fmt.Sprintf(OFFICIAL_EVENTS_PATH+"/%d", id), nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"/%d", id), nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.OfficialEventGetByIdResponse
@@ -263,7 +263,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", fmt.Sprintf(OFFICIAL_EVENTS_PATH+"/%d", id), nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"/%d", id), nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.OfficialEventGetByIdResponse

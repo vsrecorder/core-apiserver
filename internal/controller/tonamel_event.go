@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	TONAMEL_EVENTS_PATH = "/tonamel_events"
+	TonamelEventsPath = "/tonamel_events"
 )
 
 type TonamelEvent struct {
@@ -27,7 +27,7 @@ func NewTonamelEvent(
 }
 
 func (c *TonamelEvent) RegisterRoute(relativePath string) {
-	r := c.router.Group(relativePath + TONAMEL_EVENTS_PATH)
+	r := c.router.Group(relativePath + TonamelEventsPath)
 	r.GET(
 		"/:id",
 		c.GetById,

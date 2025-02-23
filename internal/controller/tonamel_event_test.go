@@ -61,7 +61,7 @@ func test_TonamelEventController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(tonamelEvent, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", TONAMEL_EVENTS_PATH+"/"+id, nil)
+		req, _ := http.NewRequest("GET", TonamelEventsPath+"/"+id, nil)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.TonamelEventGetByIdResponse
@@ -77,7 +77,7 @@ func test_TonamelEventController_GetById(t *testing.T) {
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", TONAMEL_EVENTS_PATH+"/"+id, nil)
+		req, _ := http.NewRequest("GET", TonamelEventsPath+"/"+id, nil)
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)

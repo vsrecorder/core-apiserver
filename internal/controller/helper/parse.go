@@ -9,20 +9,20 @@ import (
 )
 
 const (
-	DEFAULT_LIMIT       = 10
-	DEFAULT_OFFSET      = 0
-	DEFAULT_TYPE_ID     = 0
-	DEFAULT_LEAGUE_TYPE = 0
-	DEFAULT_ARCHIVED    = false
+	DefaultLimit      = 10
+	DefaultOffset     = 0
+	DefaultTypeId     = 0
+	DefaultLeagueType = 0
+	DefaultArchived   = false
 
-	DATE_LAYOUT = "2006-01-02"
+	DateLayout = "2006-01-02"
 )
 
 func ParseQueryLimit(ctx *gin.Context) (int, error) {
 	query := GetQueryLimit(ctx)
 
 	if query == "" {
-		return DEFAULT_LIMIT, nil
+		return DefaultLimit, nil
 	}
 
 	limit, err := strconv.Atoi(query)
@@ -30,7 +30,7 @@ func ParseQueryLimit(ctx *gin.Context) (int, error) {
 	if err != nil { // 取得したクエリパラメータが数値か否か
 		return -1, err
 	} else if limit <= 0 {
-		return DEFAULT_LIMIT, nil
+		return DefaultLimit, nil
 	}
 
 	return limit, nil
@@ -40,7 +40,7 @@ func ParseQueryOffset(ctx *gin.Context) (int, error) {
 	query := GetQueryOffset(ctx)
 
 	if query == "" {
-		return DEFAULT_OFFSET, nil
+		return DefaultOffset, nil
 	}
 
 	offset, err := strconv.Atoi(query)
@@ -48,7 +48,7 @@ func ParseQueryOffset(ctx *gin.Context) (int, error) {
 	if err != nil { // 取得したクエリパラメータが数値か否か
 		return -1, err
 	} else if offset <= 0 {
-		return DEFAULT_OFFSET, nil
+		return DefaultOffset, nil
 	}
 
 	return offset, nil
@@ -65,7 +65,7 @@ func ParseQueryStartDate(ctx *gin.Context) (startDate time.Time, err error) {
 		now := time.Now()
 		startDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	} else {
-		startDate, err = time.Parse(DATE_LAYOUT, query)
+		startDate, err = time.Parse(DateLayout, query)
 
 		if err != nil {
 			return time.Time{}, err
@@ -84,7 +84,7 @@ func ParseQueryEndDate(ctx *gin.Context) (endDate time.Time, err error) {
 		now := time.Now()
 		endDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	} else {
-		endDate, err = time.Parse(DATE_LAYOUT, query)
+		endDate, err = time.Parse(DateLayout, query)
 
 		if err != nil {
 			return time.Time{}, err
@@ -100,7 +100,7 @@ func ParseQueryTypeId(ctx *gin.Context) (uint, error) {
 	query := GetQueryTypeId(ctx)
 
 	if query == "" {
-		return DEFAULT_TYPE_ID, nil
+		return DefaultTypeId, nil
 	}
 
 	typeId, err := strconv.Atoi(query)
@@ -108,9 +108,9 @@ func ParseQueryTypeId(ctx *gin.Context) (uint, error) {
 	if err != nil { // 取得したクエリパラメータが数値か否か
 		return 0, err
 	} else if typeId <= 0 {
-		return uint(DEFAULT_TYPE_ID), nil
+		return uint(DefaultTypeId), nil
 	} else if typeId == 5 || typeId >= 7 { // 大型大会(typeId: 1) / シティ(typeId: 2) / トレリ(typeId: 3) / ジムイベント(typeId: 4) / オーガナイザーイベント(typeId: 6) 以外の場合
-		return uint(DEFAULT_TYPE_ID), errors.New("bad query parameter")
+		return uint(DefaultTypeId), errors.New("bad query parameter")
 	}
 
 	return uint(typeId), nil
@@ -120,7 +120,7 @@ func ParseQueryLeagueType(ctx *gin.Context) (uint, error) {
 	query := GetQueryLeagueType(ctx)
 
 	if query == "" {
-		return DEFAULT_LEAGUE_TYPE, nil
+		return DefaultLeagueType, nil
 	}
 
 	leagueType, err := strconv.Atoi(query)
@@ -128,9 +128,9 @@ func ParseQueryLeagueType(ctx *gin.Context) (uint, error) {
 	if err != nil { // 取得したクエリパラメータが数値か否か
 		return 0, err
 	} else if leagueType <= 0 {
-		return uint(DEFAULT_LEAGUE_TYPE), nil
+		return uint(DefaultLeagueType), nil
 	} else if leagueType >= 5 { // オープン(leagueType: 1) / ジュニア(leagueType: 2) / シニア(leagueType: 3) / マスター(leagueType: 4) 以外の場合
-		return uint(DEFAULT_LEAGUE_TYPE), errors.New("bad query parameter")
+		return uint(DefaultLeagueType), errors.New("bad query parameter")
 	}
 
 	return uint(leagueType), nil
@@ -140,13 +140,13 @@ func ParseQueryArchive(ctx *gin.Context) (bool, error) {
 	query := GetQueryArchived(ctx)
 
 	if query == "" {
-		return DEFAULT_ARCHIVED, nil
+		return DefaultArchived, nil
 	}
 
 	ret, err := strconv.ParseBool(query)
 
 	if err != nil {
-		return DEFAULT_ARCHIVED, err
+		return DefaultArchived, err
 	}
 
 	return ret, nil

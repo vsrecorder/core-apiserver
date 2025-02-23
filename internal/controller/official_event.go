@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	OFFICIAL_EVENTS_PATH = "/official_events"
+	OfficialEventsPath = "/official_events"
 )
 
 type OfficialEvent struct {
@@ -30,7 +30,7 @@ func NewOfficialEvent(
 }
 
 func (c *OfficialEvent) RegisterRoute(relativePath string) {
-	r := c.router.Group(relativePath + OFFICIAL_EVENTS_PATH)
+	r := c.router.Group(relativePath + OfficialEventsPath)
 	r.GET(
 		"",
 		validation.OfficialEventGetMiddleware(),

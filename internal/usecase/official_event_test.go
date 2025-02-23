@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DATE_LAYOUT = "2006-01-02"
+	DateLayout = "2006-01-02"
 )
 
 func TestOfficialEventUsecase(t *testing.T) {
@@ -43,8 +43,8 @@ func test_OfficialEventUsecase_Find(
 	t.Run("正常系_#01", func(t *testing.T) {
 		typeId := uint(1)
 		leagueType := uint(0)
-		startDate, _ := time.Parse(DATE_LAYOUT, "2025-02-15T00:00:00Z")
-		endDate, _ := time.Parse(DATE_LAYOUT, "2025-02-15T00:00:00Z")
+		startDate, _ := time.Parse(DateLayout, "2025-02-15T00:00:00Z")
+		endDate, _ := time.Parse(DateLayout, "2025-02-15T00:00:00Z")
 
 		officialEvents := []*entity.OfficialEvent{
 			{

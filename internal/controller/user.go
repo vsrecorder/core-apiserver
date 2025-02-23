@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	USERS_PATH = "/users"
+	UsersPath = "/users"
 )
 
 type User struct {
@@ -27,7 +27,7 @@ func NewUser(
 }
 
 func (c *User) RegisterRoute(relativePath string) {
-	r := c.router.Group(relativePath + USERS_PATH)
+	r := c.router.Group(relativePath + UsersPath)
 	r.GET(
 		"/:id",
 		c.GetById,

@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	RELATIVE_PATH = "/api/v1beta"
+	relativePath = "/api/v1beta"
 )
 
 func main() {
@@ -85,21 +85,21 @@ func main() {
 		usecase.NewUser(
 			infrastructure.NewUser(authClient),
 		),
-	).RegisterRoute(RELATIVE_PATH)
+	).RegisterRoute(relativePath)
 
 	controller.NewTonamelEvent(
 		r,
 		usecase.NewTonamelEvent(
 			infrastructure.NewTonamelEvent(),
 		),
-	).RegisterRoute(RELATIVE_PATH)
+	).RegisterRoute(relativePath)
 
 	controller.NewOfficialEvent(
 		r,
 		usecase.NewOfficialEvent(
 			infrastructure.NewOfficialEvent(db),
 		),
-	).RegisterRoute(RELATIVE_PATH)
+	).RegisterRoute(relativePath)
 
 	controller.NewRecord(
 		r,
@@ -107,7 +107,7 @@ func main() {
 		usecase.NewRecord(
 			infrastructure.NewRecord(db),
 		),
-	).RegisterRoute(RELATIVE_PATH, false)
+	).RegisterRoute(relativePath, false)
 
 	controller.NewDeck(
 		r,
@@ -115,7 +115,7 @@ func main() {
 		usecase.NewDeck(
 			infrastructure.NewDeck(db),
 		),
-	).RegisterRoute(RELATIVE_PATH, false)
+	).RegisterRoute(relativePath, false)
 
 	srv := &http.Server{
 		Addr:    ":8913",

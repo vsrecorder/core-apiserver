@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"database/sql"
 	"slices"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -167,4 +168,83 @@ func (i *Match) FindByRecordId(
 	}
 
 	return matches, nil
+}
+
+func (i *Match) Save(
+	ctx context.Context,
+	entity *entity.Match,
+) error {
+	matchModel := model.NewMatch(
+		entity.ID,
+		entity.CreatedAt,
+		entity.RecordId,
+		entity.DeckId,
+		entity.UserId,
+		entity.OpponentsUserId,
+		entity.BO3Flg,
+		entity.QualifyingRoundFlg,
+		entity.FinalTournamentFlg,
+		entity.DefaultVictoryFlg,
+		entity.DefaultDefeatFlg,
+		entity.VictoryFlg,
+		entity.OpponentsDeckInfo,
+		entity.Memo,
+	)
+
+	var gameModels []*model.Game
+	for _, game := range entity.Games {
+		gameModels = append(
+			gameModels,
+			model.NewGame(
+				game.ID,
+				game.CreatedAt,
+				game.MatchId,
+				game.UserId,
+				game.GoFirst,
+				game.WinningFlg,
+				game.YourPrizeCards,
+				game.OpponentsPrizeCards,
+				game.Memo,
+			),
+		)
+	}
+
+	return i.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(matchModel).Error; err != nil {
+			return err
+		}
+
+		for _, gameModel := range gameModels {
+			if err := tx.Save(gameModel).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
+}
+
+func (i *Match) Delete(
+	ctx context.Context,
+	id string,
+) error {
+	match, err := i.FindById(ctx, id)
+	if err != nil {
+		return nil
+	}
+
+	return i.db.Transaction(func(tx *gorm.DB) error {
+		for _, game := range match.Games {
+			if tx := tx.Where("id = ?", game.ID).Delete(&model.Game{}); tx.Error != nil {
+				return tx.Error
+			}
+		}
+
+		if tx := tx.Where("id = ?", match.ID).Delete(&model.Match{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
+
 }

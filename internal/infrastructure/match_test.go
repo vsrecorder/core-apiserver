@@ -9,6 +9,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -49,6 +50,8 @@ func TestMatchInfrastructure(t *testing.T) {
 	){
 		"FindById":       test_MatchInfrastructure_FindById,
 		"FindByRecordId": test_MatchInfrastructure_FindByRecordId,
+		"Save":           test_MatchInfrastructure_Save,
+		"Delete":         test_MatchInfrastructure_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -679,4 +682,194 @@ func test_MatchInfrastructure_FindByRecordId(t *testing.T) {
 
 	require.Equal(t, "01JMPKHM2CAECZ9F6V67ZY57N2", matches[1].ID)
 	require.Equal(t, 2, len(matches[1].Games))
+}
+
+func test_MatchInfrastructure_Save(t *testing.T) {
+	r, mock, err := setup4MatchInfrastructure()
+	require.NoError(t, err)
+
+	datetime := time.Now().Truncate(0)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "matches" SET "created_at"=$1,"updated_at"=$2,"deleted_at"=$3,`+
+			`"record_id"=$4,"deck_id"=$5,"user_id"=$6,"opponents_user_id"=$7,`+
+			`"bo3_flg"=$8,"qualifying_round_flg"=$9,"final_tournament_flg"=$10,`+
+			`"default_victory_flg"=$11,"default_defeat_flg"=$12,"victory_flg"=$13,`+
+			`"opponents_deck_info"=$14,"memo"=$15 `+
+			`WHERE "matches"."deleted_at" IS NULL AND "id" = $16`,
+	)).WithArgs(
+		datetime,
+		AnyTime{},
+		gorm.DeletedAt{},
+		"01JMPK4VF04QX714CG4PHYJ88K",
+		"01JMKRNBW5TVN902YAE8GYZ367",
+		"zor5SLfEfwfZ90yRVXzlxBEFARy2",
+		"",
+		false,
+		false,
+		false,
+		false,
+		false,
+		true,
+		"",
+		"",
+		"01JMPKHM2CAECZ9F6V67ZY57N2",
+	).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "games" SET "created_at"=$1,"updated_at"=$2,"deleted_at"=$3,`+
+			`"match_id"=$4,"user_id"=$5,"go_first"=$6,"winning_flg"=$7,`+
+			`"your_prize_cards"=$8,"opponents_prize_cards"=$9,"memo"=$10 `+
+			`WHERE "games"."deleted_at" IS NULL AND "id" = $11`,
+	)).WithArgs(
+		datetime,
+		AnyTime{},
+		gorm.DeletedAt{},
+		"01JMPKHM2CAECZ9F6V67ZY57N2",
+		"zor5SLfEfwfZ90yRVXzlxBEFARy2",
+		true,
+		true,
+		6,
+		5,
+		"",
+		"01JMPKHM7QD0X26JMWV23JY4M9",
+	).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	var games []*entity.Game
+	games = append(
+		games,
+		entity.NewGame(
+			"01JMPKHM7QD0X26JMWV23JY4M9",
+			datetime,
+			"01JMPKHM2CAECZ9F6V67ZY57N2",
+			"zor5SLfEfwfZ90yRVXzlxBEFARy2",
+			true,
+			true,
+			6,
+			5,
+			"",
+		),
+	)
+
+	match := entity.NewMatch(
+		"01JMPKHM2CAECZ9F6V67ZY57N2",
+		datetime,
+		"01JMPK4VF04QX714CG4PHYJ88K",
+		"01JMKRNBW5TVN902YAE8GYZ367",
+		"zor5SLfEfwfZ90yRVXzlxBEFARy2",
+		"",
+		false,
+		false,
+		false,
+		false,
+		false,
+		true,
+		"",
+		"",
+		games,
+	)
+
+	require.NoError(t, r.Save(context.Background(), match))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func test_MatchInfrastructure_Delete(t *testing.T) {
+	r, mock, err := setup4MatchInfrastructure()
+	require.NoError(t, err)
+
+	matchId := "01JMPKHM2CAECZ9F6V67ZY57N2"
+	gameId := "01JMPKHM7QD0X26JMWV23JY4M9"
+
+	createdAt := time.Now().Truncate(0)
+	updatedAt := time.Now().Truncate(0)
+
+	values := [][]driver.Value{
+		{
+			matchId,
+			createdAt,
+			updatedAt,
+			gorm.DeletedAt{},
+			"01JMPK4VF04QX714CG4PHYJ88K",
+			"",
+			"zor5SLfEfwfZ90yRVXzlxBEFARy2",
+			"",
+			false,
+			true,
+			true,
+			true,
+			true,
+			true,
+			"Test3",
+			"",
+			gameId,
+			createdAt,
+			updatedAt,
+			gorm.DeletedAt{},
+			matchId,
+			"zor5SLfEfwfZ90yRVXzlxBEFARy2",
+			true,
+			true,
+			6,
+			5,
+			"",
+		},
+	}
+	rows := sqlmock.NewRows([]string{
+		"match_id",
+		"match_created_at",
+		"match_updated_at",
+		"match_deleted_at",
+		"match_record_id",
+		"match_deck_id",
+		"match_user_id",
+		"match_opponents_user_id",
+		"match_bo3_flg",
+		"match_qualifying_round_flg",
+		"match_final_tournament_flg",
+		"match_default_victory_flg",
+		"match_default_defeat_flg",
+		"match_victory_flg",
+		"match_opponents_deck_info",
+		"match_memo",
+		"game_id",
+		"game_created_at",
+		"game_updated_at",
+		"game_deleted_at",
+		"game_match_id",
+		"game_user_id",
+		"game_go_first",
+		"game_winning_flg",
+		"game_your_prize_cards",
+		"game_opponents_prize_cards",
+		"game_memo",
+	}).AddRows(values...)
+
+	mock.ExpectQuery(regexp.QuoteMeta(
+		`SELECT matches.id AS match_id,matches.created_at AS match_created_at,matches.updated_at AS match_updated_at,matches.deleted_at AS match_deleted_at,matches.record_id AS match_record_id,matches.deck_id AS match_deck_id,matches.user_id AS match_user_id,matches.opponents_user_id AS match_opponents_user_id,matches.bo3_flg AS match_bo3_flg,matches.qualifying_round_flg AS match_qualifying_round_flg,matches.final_tournament_flg AS match_final_tournament_flg,matches.default_victory_flg AS match_default_victory_flg,matches.default_defeat_flg AS match_default_defeat_flg,matches.victory_flg AS match_victory_flg,matches.opponents_deck_info AS match_opponents_deck_info,matches.memo AS match_memo,games.id AS game_id,games.created_at AS game_created_at,games.updated_at AS game_updated_at,games.deleted_at AS game_deleted_at,games.match_id AS game_match_id, games.user_id AS game_user_id, games.go_first AS game_go_first, games.winning_flg AS game_winning_flg,games.your_prize_cards AS game_your_prize_cards,games.opponents_prize_cards AS game_opponents_prize_cards,games.memo AS game_memo FROM "matches" INNER JOIN games on matches.id = games.match_id WHERE matches.id = $1 AND matches.deleted_at IS NULL ORDER BY games.created_at ASC`,
+	)).WithArgs(
+		matchId,
+	).WillReturnRows(rows)
+
+	mock.ExpectBegin()
+
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "games" SET "deleted_at"=$1 WHERE id = $2 AND "games"."deleted_at" IS NULL`,
+	)).WithArgs(
+		AnyTime{},
+		gameId,
+	).WillReturnResult(sqlmock.NewResult(0, 0))
+
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "matches" SET "deleted_at"=$1 WHERE id = $2 AND "matches"."deleted_at" IS NULL`,
+	)).WithArgs(
+		AnyTime{},
+		matchId,
+	).WillReturnResult(sqlmock.NewResult(0, 0))
+
+	mock.ExpectCommit()
+
+	require.NoError(t, r.Delete(context.Background(), matchId))
+	require.NoError(t, mock.ExpectationsWereMet())
 }

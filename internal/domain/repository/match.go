@@ -17,15 +17,13 @@ type MatchInterface interface {
 		recordId string,
 	) ([]*entity.Match, error)
 
-	/*
-		Save(
-			ctx context.Context,
-			entity *entity.Match,
-		) error
+	Save(
+		ctx context.Context,
+		entity *entity.Match,
+	) error
 
-		Delete(
-			ctx context.Context,
-			id string,
-		) error
-	*/
+	Delete(
+		ctx context.Context,
+		id string,
+	) error
 }

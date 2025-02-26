@@ -17,7 +17,12 @@ type MatchInterface interface {
 		recordId string,
 	) ([]*entity.Match, error)
 
-	Save(
+	Create(
+		ctx context.Context,
+		entity *entity.Match,
+	) error
+
+	Update(
 		ctx context.Context,
 		entity *entity.Match,
 	) error

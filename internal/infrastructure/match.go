@@ -170,7 +170,7 @@ func (i *Match) FindByRecordId(
 	return matches, nil
 }
 
-func (i *Match) Save(
+func (i *Match) Create(
 	ctx context.Context,
 	entity *entity.Match,
 ) error {
@@ -217,6 +217,105 @@ func (i *Match) Save(
 		for _, gameModel := range gameModels {
 			if err := tx.Save(gameModel).Error; err != nil {
 				return err
+			}
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
+}
+
+func (i *Match) Update(
+	ctx context.Context,
+	entity *entity.Match,
+) error {
+	var models []*model.Game
+
+	if tx := i.db.Where("match_id = ?", entity.ID).Order("created_at ASC").Find(&models); tx.Error != nil {
+		return tx.Error
+	}
+
+	matchModel := model.NewMatch(
+		entity.ID,
+		entity.CreatedAt,
+		entity.RecordId,
+		entity.DeckId,
+		entity.UserId,
+		entity.OpponentsUserId,
+		entity.BO3Flg,
+		entity.QualifyingRoundFlg,
+		entity.FinalTournamentFlg,
+		entity.DefaultVictoryFlg,
+		entity.DefaultDefeatFlg,
+		entity.VictoryFlg,
+		entity.OpponentsDeckInfo,
+		entity.Memo,
+	)
+
+	return i.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(matchModel).Error; err != nil {
+			return err
+		}
+
+		// len(models) <= len(entity.Games) の場合は新しくGameが追加されている可能性がある
+		if len(models) <= len(entity.Games) {
+			for i, game := range entity.Games {
+				if i < len(models) { // 既存のGameを上書き
+					gameModel := model.NewGame(
+						models[i].ID,
+						models[i].CreatedAt,
+						game.MatchId,
+						game.UserId,
+						game.GoFirst,
+						game.WinningFlg,
+						game.YourPrizeCards,
+						game.OpponentsPrizeCards,
+						game.Memo,
+					)
+
+					if err := tx.Save(gameModel).Error; err != nil {
+						return err
+					}
+				} else { // 新しくGameを追加
+					gameModel := model.NewGame(
+						game.ID,
+						game.CreatedAt,
+						game.MatchId,
+						game.UserId,
+						game.GoFirst,
+						game.WinningFlg,
+						game.YourPrizeCards,
+						game.OpponentsPrizeCards,
+						game.Memo,
+					)
+
+					if err := tx.Save(gameModel).Error; err != nil {
+						return err
+					}
+				}
+			}
+		} else { // それ以外(len(models) > len(entity.Games))はGameが削除されている
+			for i, game := range models {
+				if i < len(entity.Games) { // 既存のGameを上書き
+					gameModel := model.NewGame(
+						models[i].ID,
+						models[i].CreatedAt,
+						entity.Games[i].MatchId,
+						entity.Games[i].UserId,
+						entity.Games[i].GoFirst,
+						entity.Games[i].WinningFlg,
+						entity.Games[i].YourPrizeCards,
+						entity.Games[i].OpponentsPrizeCards,
+						entity.Games[i].Memo,
+					)
+
+					if err := tx.Save(gameModel).Error; err != nil {
+						return err
+					}
+				} else { // 既存のGameを削除
+					if tx := tx.Where("id = ?", game.ID).Delete(&model.Game{}); tx.Error != nil {
+						return tx.Error
+					}
+				}
 			}
 		}
 

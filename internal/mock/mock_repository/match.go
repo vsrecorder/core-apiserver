@@ -41,6 +41,34 @@ func (m *MockMatchInterface) EXPECT() *MockMatchInterfaceMockRecorder {
 	return m.recorder
 }
 
+// Create mocks base method.
+func (m *MockMatchInterface) Create(ctx context.Context, entity *entity.Match) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, entity)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockMatchInterfaceMockRecorder) Create(ctx, entity any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockMatchInterface)(nil).Create), ctx, entity)
+}
+
+// Delete mocks base method.
+func (m *MockMatchInterface) Delete(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockMatchInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockMatchInterface)(nil).Delete), ctx, id)
+}
+
 // FindById mocks base method.
 func (m *MockMatchInterface) FindById(ctx context.Context, id string) (*entity.Match, error) {
 	m.ctrl.T.Helper()
@@ -69,4 +97,18 @@ func (m *MockMatchInterface) FindByRecordId(ctx context.Context, recordId string
 func (mr *MockMatchInterfaceMockRecorder) FindByRecordId(ctx, recordId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByRecordId", reflect.TypeOf((*MockMatchInterface)(nil).FindByRecordId), ctx, recordId)
+}
+
+// Update mocks base method.
+func (m *MockMatchInterface) Update(ctx context.Context, entity *entity.Match) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, entity)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockMatchInterfaceMockRecorder) Update(ctx, entity any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockMatchInterface)(nil).Update), ctx, entity)
 }

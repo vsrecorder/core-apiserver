@@ -56,12 +56,12 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 			validation.DeckUpdateMiddleware(),
 			c.Update,
 		)
-		r.PUT(
+		r.PATCH(
 			"/:id/archive",
 			c.Archive,
 		)
-		r.DELETE(
-			"/:id/archive",
+		r.PATCH(
+			"/:id/unarchive",
 			c.Unarchive,
 		)
 		r.DELETE(
@@ -95,14 +95,14 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 			validation.DeckUpdateMiddleware(),
 			c.Update,
 		)
-		r.PUT(
+		r.PATCH(
 			"/:id/archive",
 			auth.RequiredAuthenticationMiddleware(),
 			auth.DeckArchiveAuthorizationMiddleware(c.repository),
 			c.Archive,
 		)
-		r.DELETE(
-			"/:id/archive",
+		r.PATCH(
+			"/:id/unarchive",
 			auth.RequiredAuthenticationMiddleware(),
 			auth.DeckUnarchiveAuthorizationMiddleware(c.repository),
 			c.Unarchive,

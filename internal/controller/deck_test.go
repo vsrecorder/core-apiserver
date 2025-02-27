@@ -761,7 +761,7 @@ func test_DeckController_Archive(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PUT", "/decks/"+id+"/archive", nil)
+		req, err := http.NewRequest("PATCH", "/decks/"+id+"/archive", nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -784,7 +784,7 @@ func test_DeckController_Archive(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PUT", "/decks/"+id+"/archive", nil)
+		req, err := http.NewRequest("PATCH", "/decks/"+id+"/archive", nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -823,7 +823,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("DELETE", "/decks/"+id+"/archive", nil)
+		req, err := http.NewRequest("PATCH", "/decks/"+id+"/unarchive", nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -846,7 +846,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("DELETE", "/decks/"+id+"/archive", nil)
+		req, err := http.NewRequest("PATCH", "/decks/"+id+"/unarchive", nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)

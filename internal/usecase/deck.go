@@ -174,6 +174,8 @@ func (u *Deck) Update(
 	ret, err := u.repository.FindById(ctx, id)
 	if err == gorm.ErrRecordNotFound {
 		return nil, err
+	} else if err != nil {
+		return nil, err
 	}
 
 	deck := entity.NewDeck(

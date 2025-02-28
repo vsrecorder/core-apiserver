@@ -112,6 +112,7 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
+
 		helper.SetRecordUpdateRequest(ctx, req)
 	}
 }

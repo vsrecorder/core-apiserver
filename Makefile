@@ -25,3 +25,5 @@ mockgen:
 	mockgen -source=./internal/usecase/official_event.go -destination=./internal/mock/mock_usecase/official_event.go
 	mockgen -source=./internal/usecase/tonamel_event.go -destination=./internal/mock/mock_usecase/tonamel_event.go
 	mockgen -source=./internal/usecase/deck.go -destination=./internal/mock/mock_usecase/deck.go
+	mockgen -source=./internal/usecase/match.go -destination=./internal/mock/mock_usecase/match.go
+	mockgen -source=./internal/usecase/game.go -destination=./internal/mock/mock_usecase/game.go

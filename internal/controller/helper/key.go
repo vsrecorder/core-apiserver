@@ -150,3 +150,25 @@ func GetDeckUpdateRequest(ctx *gin.Context) dto.DeckUpdateRequest {
 
 	return deckRequest
 }
+
+func SetMatchCreateRequest(ctx *gin.Context, value dto.MatchCreateRequest) {
+	ctx.Set("match_create_request", value)
+}
+
+func GetMatchCreateRequest(ctx *gin.Context) dto.MatchCreateRequest {
+	value, _ := ctx.Get("match_create_request")
+	matchRequest, _ := value.(dto.MatchCreateRequest)
+
+	return matchRequest
+}
+
+func SetMatchUpdateRequest(ctx *gin.Context, value dto.MatchUpdateRequest) {
+	ctx.Set("match_update_request", value)
+}
+
+func GetMatchUpdateRequest(ctx *gin.Context) dto.MatchUpdateRequest {
+	value, _ := ctx.Get("match_update_request")
+	matchRequest, _ := value.(dto.MatchUpdateRequest)
+
+	return matchRequest
+}

@@ -118,6 +118,14 @@ func main() {
 		),
 	).RegisterRoute(relativePath, false)
 
+	controller.NewMatch(
+		r,
+		infrastructure.NewMatch(db),
+		usecase.NewMatch(
+			infrastructure.NewMatch(db),
+		),
+	).RegisterRoute(relativePath, false)
+
 	srv := &http.Server{
 		Addr:    ":8913",
 		Handler: r,

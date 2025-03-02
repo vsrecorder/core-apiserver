@@ -126,3 +126,42 @@ func DeckUnarchiveAuthorizationMiddleware(repository repository.DeckInterface) g
 func DeckDeleteAuthorizationMiddleware(repository repository.DeckInterface) gin.HandlerFunc {
 	return DeckAuthorizationMiddleware(repository)
 }
+
+func MatchAuthorizationMiddleware(repository repository.MatchInterface) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id := helper.GetId(ctx)
+		uid := helper.GetUID(ctx)
+
+		if uid == "" {
+			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
+			ctx.Abort()
+			return
+		}
+
+		match, err := repository.FindById(context.Background(), id)
+
+		if err == gorm.ErrRecordNotFound {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
+			ctx.Abort()
+			return
+		} else if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			ctx.Abort()
+			return
+		}
+
+		if uid != match.UserId {
+			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
+			ctx.Abort()
+			return
+		}
+	}
+}
+
+func MatchUpdateAuthorizationMiddleware(repository repository.MatchInterface) gin.HandlerFunc {
+	return MatchAuthorizationMiddleware(repository)
+}
+
+func MatchDeleteAuthorizationMiddleware(repository repository.MatchInterface) gin.HandlerFunc {
+	return MatchAuthorizationMiddleware(repository)
+}

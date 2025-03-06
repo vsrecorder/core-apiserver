@@ -66,7 +66,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now()
+	datetime := time.Now().Truncate(0)
 	limit := 10
 	offset := 10
 
@@ -150,7 +150,7 @@ func test_RecordInfrastructure_FindById(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now()
+	datetime := time.Now().Truncate(0)
 
 	rows := sqlmock.NewRows([]string{
 		"id",
@@ -197,7 +197,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now()
+	datetime := time.Now().Truncate(0)
 	limit := 10
 	offset := 10
 
@@ -248,7 +248,7 @@ func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now()
+	datetime := time.Now().Truncate(0)
 	limit := 10
 	offset := 10
 
@@ -300,7 +300,7 @@ func test_RecordInfrastructure_FindByTonamelEventId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now()
+	datetime := time.Now().Truncate(0)
 	limit := 10
 	offset := 10
 
@@ -352,7 +352,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now()
+	datetime := time.Now().Truncate(0)
 	limit := 10
 	offset := 10
 

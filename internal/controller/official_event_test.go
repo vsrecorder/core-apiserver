@@ -71,7 +71,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 
 		typeId := uint(0)
 		leagueType := uint(0)
-		now := time.Now()
+		now := time.Now().Truncate(0)
 		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
@@ -105,7 +105,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 
 		typeId := uint(1)
 		leagueType := uint(0)
-		now := time.Now()
+		now := time.Now().Truncate(0)
 		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
@@ -139,7 +139,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 
 		typeId := uint(1)
 		leagueType := uint(4)
-		now := time.Now()
+		now := time.Now().Truncate(0)
 		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
@@ -201,7 +201,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 	t.Run("異常系_#01", func(t *testing.T) {
 		typeId := uint(0)
 		leagueType := uint(0)
-		now := time.Now()
+		now := time.Now().Truncate(0)
 		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 

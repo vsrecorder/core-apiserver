@@ -27,9 +27,7 @@ func RecordAuthorizationMiddleware(repository repository.RecordInterface) gin.Ha
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 			ctx.Abort()
 			return
-		}
-
-		if err != nil {
+		} else if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			ctx.Abort()
 			return
@@ -54,9 +52,7 @@ func RecordGetByIdAuthorizationMiddleware(repository repository.RecordInterface)
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 			ctx.Abort()
 			return
-		}
-
-		if err != nil {
+		} else if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			ctx.Abort()
 			return
@@ -95,9 +91,7 @@ func DeckAuthorizationMiddleware(repository repository.DeckInterface) gin.Handle
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 			ctx.Abort()
 			return
-		}
-
-		if err != nil {
+		} else if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			ctx.Abort()
 			return

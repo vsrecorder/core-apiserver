@@ -166,7 +166,7 @@ func test_RecordController_GetById(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		officialEventId := uint(10000)
 		privateFlg := false
 
@@ -346,7 +346,7 @@ func test_RecordController_Create(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		officialEventId := uint(10000)
 		privateFlg := false
 
@@ -417,7 +417,7 @@ func test_RecordController_Create(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		officialEventId := uint(10000)
 		privateFlg := false
 
@@ -521,7 +521,7 @@ func test_RecordController_Update(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		officialEventId := uint(10000)
 		privateFlg := false
 
@@ -592,7 +592,7 @@ func test_RecordController_Update(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		officialEventId := uint(10000)
 		privateFlg := false
 

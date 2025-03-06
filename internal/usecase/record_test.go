@@ -306,7 +306,7 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		record := entity.NewRecord(
 			id,
@@ -367,7 +367,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		record := entity.NewRecord(
 			id,
@@ -426,7 +426,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 
 	t.Run("異常系_#02", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		record := entity.NewRecord(
 			id,

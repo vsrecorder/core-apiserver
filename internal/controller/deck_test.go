@@ -169,7 +169,7 @@ func test_DeckController_GetById(t *testing.T) {
 		require.NoError(t, err)
 
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		code := "01JGPC7829AMTNVVNX63VQF5XW"
 
 		deck := &entity.Deck{
@@ -214,7 +214,7 @@ func test_DeckController_GetById(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		code := "01JGPC7829AMTNVVNX63VQF5XW"
 
 		deck := &entity.Deck{
@@ -252,7 +252,7 @@ func test_DeckController_GetById(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		deck := &entity.Deck{
 			ID:             id,
@@ -445,7 +445,7 @@ func test_DeckController_Create(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		deck := &entity.Deck{
 			ID:             id,
@@ -506,7 +506,7 @@ func test_DeckController_Create(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		deck := &entity.Deck{
 			ID:             id,
@@ -590,7 +590,7 @@ func test_DeckController_Update(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		deck := &entity.Deck{
 			ID:             id,
@@ -651,7 +651,7 @@ func test_DeckController_Update(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		deck := &entity.Deck{
 			ID:             id,
@@ -744,8 +744,8 @@ func test_DeckController_Archive(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
-		archivedAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
+		archivedAt := time.Now().UTC().Truncate(0)
 
 		deck := &entity.Deck{
 			ID:             id,
@@ -807,7 +807,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 
 		deck := &entity.Deck{
 			ID:             id,

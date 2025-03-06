@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -66,10 +65,6 @@ func MatchCreateMiddleware() gin.HandlerFunc {
 			if len(req.Games) == 2 {
 				// 試合数が2つの場合はそれぞれのGameのWinningFlgとMatchのVictoryFlgが同じであるべき
 				if !((req.Games[0].WinningFlg == req.VictoryFlg) && (req.Games[1].WinningFlg == req.VictoryFlg)) {
-					fmt.Println(req.Games[0].WinningFlg)
-					fmt.Println(req.Games[1].WinningFlg)
-					fmt.Println(req.VictoryFlg)
-					fmt.Println("OK")
 					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
 					ctx.Abort()
 					return
@@ -205,10 +200,6 @@ func MatchUpdateMiddleware() gin.HandlerFunc {
 			if len(req.Games) == 2 {
 				// 試合数が2つの場合はそれぞれのGameのWinningFlgとMatchのVictoryFlgが同じであるべき
 				if !((req.Games[0].WinningFlg == req.VictoryFlg) && (req.Games[1].WinningFlg == req.VictoryFlg)) {
-					fmt.Println(req.Games[0].WinningFlg)
-					fmt.Println(req.Games[1].WinningFlg)
-					fmt.Println(req.VictoryFlg)
-					fmt.Println("OK")
 					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
 					ctx.Abort()
 					return

@@ -139,7 +139,7 @@ func (u *Deck) Create(
 		return nil, err
 	}
 
-	createdAt := time.Now().Truncate(0)
+	createdAt := time.Now().UTC().Truncate(0)
 	archivedAt := time.Time{}
 
 	deck := entity.NewDeck(
@@ -211,7 +211,7 @@ func (u *Deck) Archive(
 		return nil, err
 	}
 
-	archivedAt := time.Now().Truncate(0)
+	archivedAt := time.Now().UTC().Truncate(0)
 
 	deck := entity.NewDeck(
 		id,

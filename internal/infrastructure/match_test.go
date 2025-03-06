@@ -67,8 +67,8 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 	{
 		matchId := "01JMPKHAXQHQYJZ6VVASF5CATW"
 
-		createdAt := time.Now().Truncate(0)
-		updatedAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
+		updatedAt := time.Now().UTC().Truncate(0)
 
 		values := [][]driver.Value{
 			{
@@ -232,8 +232,8 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 	{
 		matchId := "01JMPKHM2CAECZ9F6V67ZY57N2"
 
-		createdAt := time.Now().Truncate(0)
-		updatedAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
+		updatedAt := time.Now().UTC().Truncate(0)
 
 		values := [][]driver.Value{
 			{
@@ -348,8 +348,8 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 	{
 		matchId := "01JMPKHM2CAECZ9F6V67ZY57N2"
 
-		createdAt := time.Now().Truncate(0)
-		updatedAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
+		updatedAt := time.Now().UTC().Truncate(0)
 
 		values := [][]driver.Value{
 			{
@@ -446,8 +446,8 @@ func test_MatchInfrastructure_FindByRecordId(t *testing.T) {
 
 	recordId := "01JMPK4VF04QX714CG4PHYJ88K"
 
-	createdAt := time.Now().Truncate(0)
-	updatedAt := time.Now().Truncate(0)
+	createdAt := time.Now().UTC().Truncate(0)
+	updatedAt := time.Now().UTC().Truncate(0)
 
 	values := [][]driver.Value{
 		{
@@ -689,7 +689,7 @@ func test_MatchInfrastructure_Create(t *testing.T) {
 	r, mock, err := setup4MatchInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().Truncate(0)
+	datetime := time.Now().UTC().Truncate(0)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(
@@ -788,7 +788,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 		gameId1, _ := generateId()
 		gameId2, _ := generateId()
 		gameId3, _ := generateId()
-		datetime := time.Now().Truncate(0)
+		datetime := time.Now().UTC().Truncate(0)
 		values := [][]driver.Value{
 			{
 				gameId1,
@@ -993,7 +993,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 		gameId1, _ := generateId()
 		gameId2, _ := generateId()
 		gameId3, _ := generateId()
-		datetime := time.Now().Truncate(0)
+		datetime := time.Now().UTC().Truncate(0)
 		values := [][]driver.Value{
 			{
 				gameId1,
@@ -1187,7 +1187,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 		userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		gameId1, _ := generateId()
 		gameId2, _ := generateId()
-		datetime := time.Now().Truncate(0)
+		datetime := time.Now().UTC().Truncate(0)
 		values := [][]driver.Value{
 			{
 				gameId1,
@@ -1338,7 +1338,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 		userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		gameId1, _ := generateId()
 		gameId2, _ := generateId()
-		datetime := time.Now().Truncate(0)
+		datetime := time.Now().UTC().Truncate(0)
 		values := [][]driver.Value{
 			{
 				gameId1,
@@ -1500,8 +1500,8 @@ func test_MatchInfrastructure_Delete(t *testing.T) {
 	matchId := "01JMPKHM2CAECZ9F6V67ZY57N2"
 	gameId := "01JMPKHM7QD0X26JMWV23JY4M9"
 
-	createdAt := time.Now().Truncate(0)
-	updatedAt := time.Now().Truncate(0)
+	createdAt := time.Now().UTC().Truncate(0)
+	updatedAt := time.Now().UTC().Truncate(0)
 
 	values := [][]driver.Value{
 		{

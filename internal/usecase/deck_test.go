@@ -155,7 +155,7 @@ func test_DeckUsecase_FindByUserId(t *testing.T, mockRepository *mock_repository
 		require.NoError(t, err)
 
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		archivedAt := time.Now().Truncate(0)
+		archivedAt := time.Now().UTC().Truncate(0)
 		archivedFlg := true
 		limit := 10
 		offset := 0
@@ -215,7 +215,7 @@ func test_DeckUsecase_FindByUserId(t *testing.T, mockRepository *mock_repository
 func test_DeckUsecase_Create(t *testing.T, mockRepository *mock_repository.MockDeckInterface, usecase DeckInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		archivedAt := time.Time{}
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -269,7 +269,7 @@ func test_DeckUsecase_Create(t *testing.T, mockRepository *mock_repository.MockD
 func test_DeckUsecase_Update(t *testing.T, mockRepository *mock_repository.MockDeckInterface, usecase DeckInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		archivedAt := time.Time{}
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -322,7 +322,7 @@ func test_DeckUsecase_Update(t *testing.T, mockRepository *mock_repository.MockD
 
 	t.Run("異常系_#02", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		archivedAt := time.Time{}
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -356,7 +356,7 @@ func test_DeckUsecase_Update(t *testing.T, mockRepository *mock_repository.MockD
 func test_DeckUsecase_Archive(t *testing.T, mockRepository *mock_repository.MockDeckInterface, usecase DeckInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		archivedAt := time.Time{}
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -392,7 +392,7 @@ func test_DeckUsecase_Archive(t *testing.T, mockRepository *mock_repository.Mock
 
 	t.Run("異常系_#02", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
 		archivedAt := time.Time{}
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -419,8 +419,8 @@ func test_DeckUsecase_Archive(t *testing.T, mockRepository *mock_repository.Mock
 func test_DeckUsecase_Unarchive(t *testing.T, mockRepository *mock_repository.MockDeckInterface, usecase DeckInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
-		archivedAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
+		archivedAt := time.Now().UTC().Truncate(0)
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 		archivedDeck := entity.NewDeck(
@@ -466,8 +466,8 @@ func test_DeckUsecase_Unarchive(t *testing.T, mockRepository *mock_repository.Mo
 
 	t.Run("異常系_#02", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Truncate(0)
-		archivedAt := time.Now().Truncate(0)
+		createdAt := time.Now().UTC().Truncate(0)
+		archivedAt := time.Now().UTC().Truncate(0)
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 		deck := entity.NewDeck(

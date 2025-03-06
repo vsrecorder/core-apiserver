@@ -46,9 +46,9 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		expectedTypeId := uint(0)
 		expectedLeagueType := uint(0)
 		expectedStartDate, _ := time.Parse(DateLayout, startDate)
-		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.Local)
+		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.UTC)
 		expectedEndDate, _ := time.Parse(DateLayout, endDate)
-		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.Local)
+		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.UTC)
 
 		ginContext.Request = req
 		middleware := OfficialEventGetMiddleware()
@@ -75,9 +75,9 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		expectedTypeId := uint(0)
 		expectedLeagueType := uint(0)
 		expectedStartDate, _ := time.Parse(DateLayout, startDate)
-		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.Local)
+		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.UTC)
 		expectedEndDate, _ := time.Parse(DateLayout, endDate)
-		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.Local)
+		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.UTC)
 
 		ginContext.Request = req
 		middleware := OfficialEventGetMiddleware()

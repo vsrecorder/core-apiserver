@@ -1,0 +1,19 @@
+version: '2'
+services:
+  vsr-api:
+    image: vsrecorder/core-apiserver:latest
+    restart: always
+    ports:
+      - 8914:8914
+    environment:
+      - DB_HOSTNAME=${DB_HOSTNAME}
+      - DB_PORT=${DB_PORT}
+      - DB_USER_NAME=${DB_USER_NAME}
+      - DB_USER_PASSWORD=${DB_USER_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - VSRECORDER_JWT_SECRET=${VSRECORDER_JWT_SECRET}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CREDENTIALS_JSON=/${FIREBASE_CREDENTIALS_JSON}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}

@@ -29,7 +29,6 @@ const (
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load .env file: %v", err)
-		return
 	}
 
 	if _, err := config.LoadDefaultConfig(context.Background()); err != nil {

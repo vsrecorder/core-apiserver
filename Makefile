@@ -13,6 +13,10 @@ run:
 	go mod tidy
 	go run cmd/core-apiserver/main.go
 
+.PHONY: deploy
+deploy:
+	docker compose pull && docker compose down && docker compose up -d
+
 .PHONY: mockgen
 mockgen:
 	mockgen -source=./internal/domain/repository/record.go -destination=./internal/mock/mock_repository/record.go

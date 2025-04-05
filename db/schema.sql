@@ -106,7 +106,7 @@ CREATE TABLE official_events (
     FOREIGN KEY (shop_id)   REFERENCES shops (id)
 );
 
-CREATE TABLE decks_new (
+CREATE TABLE decks (
     id               VARCHAR(26) PRIMARY KEY,
     created_at       TIMESTAMP NOT NULL,
     updated_at       TIMESTAMP NOT NULL,

@@ -12,10 +12,6 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
 
-const (
-	DateLayout = "2006-01-02"
-)
-
 func TestOfficialEventValidation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

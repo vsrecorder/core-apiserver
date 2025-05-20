@@ -188,7 +188,7 @@ func (u *Deck) Update(
 		param.PrivateCodeFlg,
 	)
 
-	if deck.Code != "" {
+	if deck.Code != "" && deck.Code != ret.Code {
 		if err := uploadDeckImage(deck.Code); err != nil {
 			return nil, err
 		}

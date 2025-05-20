@@ -27,7 +27,7 @@ func (i *Deck) Find(
 ) ([]*entity.Deck, error) {
 	var models []*model.Deck
 
-	if tx := i.db.Where("private_code_flg = false AND code != \"\" AND archived_at IS NULL").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("private_code_flg = false AND code IS NOT NULL AND archived_at IS NULL").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 

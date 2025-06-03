@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	usecase "github.com/vsrecorder/core-apiserver/internal/usecase"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,6 +42,35 @@ func (m *MockUserInterface) EXPECT() *MockUserInterfaceMockRecorder {
 	return m.recorder
 }
 
+// Create mocks base method.
+func (m *MockUserInterface) Create(ctx context.Context, param *usecase.UserCreateParam) (*entity.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, param)
+	ret0, _ := ret[0].(*entity.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockUserInterfaceMockRecorder) Create(ctx, param any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUserInterface)(nil).Create), ctx, param)
+}
+
+// Delete mocks base method.
+func (m *MockUserInterface) Delete(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockUserInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUserInterface)(nil).Delete), ctx, id)
+}
+
 // FindById mocks base method.
 func (m *MockUserInterface) FindById(ctx context.Context, id string) (*entity.User, error) {
 	m.ctrl.T.Helper()
@@ -54,4 +84,19 @@ func (m *MockUserInterface) FindById(ctx context.Context, id string) (*entity.Us
 func (mr *MockUserInterfaceMockRecorder) FindById(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockUserInterface)(nil).FindById), ctx, id)
+}
+
+// Update mocks base method.
+func (m *MockUserInterface) Update(ctx context.Context, id string, param *usecase.UserUpdateParam) (*entity.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, id, param)
+	ret0, _ := ret[0].(*entity.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockUserInterfaceMockRecorder) Update(ctx, id, param any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUserInterface)(nil).Update), ctx, id, param)
 }

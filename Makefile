@@ -17,6 +17,10 @@ run:
 deploy:
 	docker compose pull && docker compose down && docker compose up -d
 
+.PHONY: docker-build-and-push
+docker-build-and-push:
+	sudo sudo docker build -t vsrecorder/core-apiserver:latest . && sudo sudo docker push vsrecorder/core-apiserver:latest
+
 .PHONY: mockgen
 mockgen:
 	mockgen -source=./internal/domain/repository/record.go -destination=./internal/mock/mock_repository/record.go

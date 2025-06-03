@@ -52,7 +52,7 @@ func (i *OfficialEvent) Find(
 				return nil, tx.Error
 			}
 		}
-	} else { // 大型大会(typeId: 1) / シティ(typeId: 2) / トレリ(typeId: 3) / ジムイベント(typeId: 4) / オーガナイザーイベント(typeId: 6) の場合
+	} else { // 大型大会(typeId: 1) / シティ(typeId: 2) / トレリ(typeId: 3) / ジムイベント(typeId: 4) / オーガナイザーイベント(typeId: 6) / その他(typeId: 7)の場合
 		if 1 <= leagueType && leagueType <= 4 { // リーグの種類に指定がある場合
 			leagueTitle := ""
 

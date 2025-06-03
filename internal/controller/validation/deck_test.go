@@ -306,7 +306,7 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		// Middlewareのテストのためpathは何でもよい
-		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", "/", strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		ginContext.Request = req
@@ -337,7 +337,7 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		// Middlewareのテストのためpathは何でもよい
-		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", "/", strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		ginContext.Request = req
@@ -355,7 +355,7 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 		ginContext, _ := gin.CreateTestContext(w)
 
 		// Middlewareのテストのためpathは何でもよい
-		req, err := http.NewRequest("POST", "/", strings.NewReader("bad data"))
+		req, err := http.NewRequest("PUT", "/", strings.NewReader("bad data"))
 		require.NoError(t, err)
 
 		ginContext.Request = req
@@ -384,7 +384,7 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		// Middlewareのテストのためpathは何でもよい
-		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", "/", strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		ginContext.Request = req
@@ -413,7 +413,7 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		// Middlewareのテストのためpathは何でもよい
-		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", "/", strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 
 		ginContext.Request = req

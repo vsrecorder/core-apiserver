@@ -10,10 +10,36 @@ func NewUserGetByIdResponse(
 ) *dto.UserGetByIdResponse {
 	return &dto.UserGetByIdResponse{
 		UserResponse: dto.UserResponse{
-			ID:          user.ID,
-			CreatedAt:   user.CreatedAt,
-			DisplayName: user.DisplayName,
-			PhotoURL:    user.PhotoURL,
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			Name:      user.Name,
+			ImageURL:  user.ImageURL,
+		},
+	}
+}
+
+func NewUserCreateResponse(
+	user *entity.User,
+) *dto.UserCreateResponse {
+	return &dto.UserCreateResponse{
+		UserResponse: dto.UserResponse{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			Name:      user.Name,
+			ImageURL:  user.ImageURL,
+		},
+	}
+}
+
+func NewUserUpdateResponse(
+	user *entity.User,
+) *dto.UserUpdateResponse {
+	return &dto.UserUpdateResponse{
+		UserResponse: dto.UserResponse{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			Name:      user.Name,
+			ImageURL:  user.ImageURL,
 		},
 	}
 }

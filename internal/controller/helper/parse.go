@@ -109,7 +109,7 @@ func ParseQueryTypeId(ctx *gin.Context) (uint, error) {
 		return 0, err
 	} else if typeId <= 0 {
 		return uint(DefaultTypeId), nil
-	} else if typeId == 5 || typeId >= 7 { // 大型大会(typeId: 1) / シティ(typeId: 2) / トレリ(typeId: 3) / ジムイベント(typeId: 4) / オーガナイザーイベント(typeId: 6) 以外の場合
+	} else if typeId == 5 || typeId >= 8 { // 大型大会(typeId: 1) / シティ(typeId: 2) / トレリ(typeId: 3) / ジムイベント(typeId: 4) / オーガナイザーイベント(typeId: 6) / その他(typeId: 7)以外の場合
 		return uint(DefaultTypeId), errors.New("bad query parameter")
 	}
 

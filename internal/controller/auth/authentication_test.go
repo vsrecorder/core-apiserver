@@ -117,6 +117,30 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, w.Code)
 		require.Equal(t, "", uid)
 	})
+
+	t.Run("異常系_#03", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("GET", "/", nil)
+		require.NoError(t, err)
+
+		token, err := generateToken("", secretKey)
+		require.NoError(t, err)
+
+		req.Header.Add("Authorization", "Bearer "+token)
+
+		ginContext.Request = req
+
+		middleware := RequiredAuthenticationMiddleware()
+		middleware(ginContext)
+
+		uid := helper.GetUID(ginContext)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+		require.Equal(t, "", uid)
+	})
 }
 
 func test_OptionalAuthenticationMiddleware(t *testing.T) {
@@ -179,6 +203,30 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		token, err := generateToken("zor5SLfEfwfZ90yRVXzlxBEFARy2", wrongSecretKey)
+		require.NoError(t, err)
+
+		req.Header.Add("Authorization", "Bearer "+token)
+
+		ginContext.Request = req
+
+		middleware := OptionalAuthenticationMiddleware()
+		middleware(ginContext)
+
+		uid := helper.GetUID(ginContext)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+		require.Equal(t, "", uid)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("GET", "/", nil)
+		require.NoError(t, err)
+
+		token, err := generateToken("", secretKey)
 		require.NoError(t, err)
 
 		req.Header.Add("Authorization", "Bearer "+token)

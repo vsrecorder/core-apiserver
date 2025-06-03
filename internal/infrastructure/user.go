@@ -3,39 +3,70 @@ package infrastructure
 import (
 	"context"
 	"strings"
-	"time"
 
-	firebaseAuth "firebase.google.com/go/v4/auth"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
+	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
+	"gorm.io/gorm"
 )
 
 type User struct {
-	firebaseAuthClient *firebaseAuth.Client
+	db *gorm.DB
 }
 
 func NewUser(
-	firebaseAuthClient *firebaseAuth.Client,
+	db *gorm.DB,
 ) repository.UserInterface {
-	return &User{firebaseAuthClient}
+	return &User{db}
 }
 
 func (i *User) FindById(
 	ctx context.Context,
 	id string,
 ) (*entity.User, error) {
-	userRecord, err := i.firebaseAuthClient.GetUser(context.Background(), id)
-	if err != nil {
-		return nil, err
+	var model *model.User
+	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+		return nil, tx.Error
 	}
 
-	entity := entity.NewUser(
-		userRecord.UID,
-		time.Unix(userRecord.UserMetadata.CreationTimestamp/1000, 0),
-		userRecord.DisplayName,
-		// Twitter/Googleのアイコン画像を大きくする
-		strings.Replace(strings.Replace(userRecord.PhotoURL, "_normal", "", -1), "=s96-c", "", -1),
+	// Twitter/Googleのアイコン画像を大きくする
+	model.ImageURL = strings.Replace(strings.Replace(model.ImageURL, "_normal", "", -1), "=s96-c", "", -1)
+
+	user := entity.NewUser(
+		model.ID,
+		model.CreatedAt,
+		model.Name,
+		model.ImageURL,
 	)
 
-	return entity, nil
+	return user, nil
+}
+
+func (i *User) Save(
+	ctx context.Context,
+	user *entity.User,
+) error {
+	model := model.NewUser(
+		user.ID,
+		user.CreatedAt,
+		user.Name,
+		user.ImageURL,
+	)
+
+	if tx := i.db.Save(model); tx.Error != nil {
+		return tx.Error
+	}
+
+	return nil
+}
+
+func (i *User) Delete(
+	ctx context.Context,
+	id string,
+) error {
+	if tx := i.db.Where("id = ?", id).Delete(&model.User{}); tx.Error != nil {
+		return tx.Error
+	}
+
+	return nil
 }

@@ -53,6 +53,13 @@ func RequiredAuthenticationMiddleware() gin.HandlerFunc {
 		}
 
 		claims := token.Claims.(*VSRClaims)
+
+		if claims.UID == "" {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+			ctx.Abort()
+			return
+		}
+
 		helper.SetUID(ctx, claims.UID)
 	}
 }
@@ -79,6 +86,13 @@ func OptionalAuthenticationMiddleware() gin.HandlerFunc {
 		}
 
 		claims := token.Claims.(*VSRClaims)
+
+		if claims.UID == "" {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+			ctx.Abort()
+			return
+		}
+
 		helper.SetUID(ctx, claims.UID)
 	}
 }

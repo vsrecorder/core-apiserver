@@ -41,6 +41,20 @@ func (m *MockUserInterface) EXPECT() *MockUserInterfaceMockRecorder {
 	return m.recorder
 }
 
+// Delete mocks base method.
+func (m *MockUserInterface) Delete(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockUserInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUserInterface)(nil).Delete), ctx, id)
+}
+
 // FindById mocks base method.
 func (m *MockUserInterface) FindById(ctx context.Context, id string) (*entity.User, error) {
 	m.ctrl.T.Helper()
@@ -54,4 +68,18 @@ func (m *MockUserInterface) FindById(ctx context.Context, id string) (*entity.Us
 func (mr *MockUserInterfaceMockRecorder) FindById(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockUserInterface)(nil).FindById), ctx, id)
+}
+
+// Save mocks base method.
+func (m *MockUserInterface) Save(ctx context.Context, entity *entity.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Save", ctx, entity)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Save indicates an expected call of Save.
+func (mr *MockUserInterfaceMockRecorder) Save(ctx, entity any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockUserInterface)(nil).Save), ctx, entity)
 }

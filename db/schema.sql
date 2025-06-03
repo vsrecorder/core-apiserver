@@ -167,3 +167,12 @@ CREATE TABLE games (
     memo                     TEXT,
     FOREIGN KEY (match_id)   REFERENCES matches (id)
 );
+
+CREATE TABLE users (
+    id          VARCHAR(32) PRIMARY KEY,
+    created_at  TIMESTAMP NOT NULL,
+    updated_at  TIMESTAMP NOT NULL,
+    deleted_at  TIMESTAMP DEFAULT NULL,
+    name        VARCHAR(63) DEFAULT NULL,
+    image_url   VARCHAR(255) DEFAULT NULL
+);

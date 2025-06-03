@@ -172,3 +172,25 @@ func GetMatchUpdateRequest(ctx *gin.Context) dto.MatchUpdateRequest {
 
 	return matchRequest
 }
+
+func SetUserCreateRequest(ctx *gin.Context, value dto.UserCreateRequest) {
+	ctx.Set("user_create_request", value)
+}
+
+func GetUserCreateRequest(ctx *gin.Context) dto.UserCreateRequest {
+	value, _ := ctx.Get("user_create_request")
+	userRequest, _ := value.(dto.UserCreateRequest)
+
+	return userRequest
+}
+
+func SetUserUpdateRequest(ctx *gin.Context, value dto.UserUpdateRequest) {
+	ctx.Set("user_update_request", value)
+}
+
+func GetUserUpdateRequest(ctx *gin.Context) dto.UserUpdateRequest {
+	value, _ := ctx.Get("user_update_request")
+	userRequest, _ := value.(dto.UserUpdateRequest)
+
+	return userRequest
+}

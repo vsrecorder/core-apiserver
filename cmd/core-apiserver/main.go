@@ -9,17 +9,14 @@ import (
 	"syscall"
 	"time"
 
-	firebaseV4 "firebase.google.com/go/v4"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/vsrecorder/core-apiserver/internal/controller"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
-	"github.com/vsrecorder/core-apiserver/internal/infrastructure/firebase"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"google.golang.org/api/option"
 )
 
 const (
@@ -46,10 +43,6 @@ func main() {
 		log.Fatalf("failed to connect database: %v\n", err)
 	}
 
-	firebaseProjectId := os.Getenv("FIREBASE_PROJECT_ID")
-	opt := option.WithCredentialsJSON([]byte(os.Getenv("FIREBASE_CREDENTIALS_JSON")))
-	config := &firebaseV4.Config{ProjectID: firebaseProjectId}
-	authClient, err := firebase.NewClient(config, opt)
 	if err != nil {
 		log.Fatalf("error initializing app: %v\n", err)
 	}
@@ -82,10 +75,11 @@ func main() {
 
 	controller.NewUser(
 		r,
+		infrastructure.NewUser(db),
 		usecase.NewUser(
-			infrastructure.NewUser(authClient),
+			infrastructure.NewUser(db),
 		),
-	).RegisterRoute(relativePath)
+	).RegisterRoute(relativePath, false)
 
 	controller.NewTonamelEvent(
 		r,
@@ -125,6 +119,9 @@ func main() {
 		),
 	).RegisterRoute(relativePath, false)
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	srv := &http.Server{
 		Addr:    ":8914",
 		Handler: r,
@@ -138,15 +135,12 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server with
-	// a timeout of 3 seconds.
-	quit := make(chan os.Signal, 1)
-	// kill (no param) default send syscall.SIGTERM
-	// kill -2 is syscall.SIGINT
-	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down server...")
+	// Listen for the interrupt signal.
+	<-ctx.Done()
+
+	// Restore default behavior on the interrupt signal and notify user of shutdown.
+	stop()
+	log.Println("shutting down gracefully, press Ctrl+C again to force")
 
 	// The context is used to inform the server it has 3 seconds to finish
 	// the request it is currently handling
@@ -155,10 +149,6 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal("Server forced to shutdown: ", err)
 	}
-
-	// catching ctx.Done(). timeout of 3 seconds.
-	<-ctx.Done()
-	log.Println("timeout of 3 seconds.")
 
 	log.Println("Server exiting")
 }

@@ -112,7 +112,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, errors.New("already exists"))
+		require.Equal(t, err, ErrAlreadyExists)
 		require.Empty(t, ret)
 	})
 

@@ -19,6 +19,10 @@ const (
 	UsersPath = "/users"
 )
 
+var (
+	ErrAlreadyExists = errors.New("already exists")
+)
+
 type User struct {
 	router     *gin.Engine
 	repository repository.UserInterface
@@ -115,7 +119,7 @@ func (c *User) Create(ctx *gin.Context) {
 
 	user, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
-		if err == errors.New("already exists") {
+		if err == ErrAlreadyExists {
 			ctx.JSON(http.StatusConflict, gin.H{"message": "already exists"})
 			ctx.Abort()
 			return

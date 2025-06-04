@@ -30,6 +30,39 @@ func GetOffset(ctx *gin.Context) int {
 	return offset
 }
 
+func SetDate(ctx *gin.Context, value time.Time) {
+	ctx.Set("date", value)
+}
+
+func GetDate(ctx *gin.Context) time.Time {
+	value, _ := ctx.Get("date")
+	date, _ := value.(time.Time)
+
+	return date
+}
+
+func SetFromDate(ctx *gin.Context, value time.Time) {
+	ctx.Set("from_date", value)
+}
+
+func GetFromDate(ctx *gin.Context) time.Time {
+	value, _ := ctx.Get("from_date")
+	fromDate, _ := value.(time.Time)
+
+	return fromDate
+}
+
+func SetToDate(ctx *gin.Context, value time.Time) {
+	ctx.Set("to_date", value)
+}
+
+func GetToDate(ctx *gin.Context) time.Time {
+	value, _ := ctx.Get("to_date")
+	toDate, _ := value.(time.Time)
+
+	return toDate
+}
+
 func SetStartDate(ctx *gin.Context, value time.Time) {
 	ctx.Set("start_date", value)
 }

@@ -58,6 +58,60 @@ func ParseQueryCursor(ctx *gin.Context) (time.Time, error) {
 	return time.Time{}, nil
 }
 
+func ParseQueryDate(ctx *gin.Context) (date time.Time, err error) {
+	query := GetQueryDate(ctx)
+
+	if query == "" {
+		date = time.Time{}
+	} else {
+		date, err = time.Parse(DateLayout, query)
+
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	}
+
+	return date, nil
+}
+
+func ParseQueryFromDate(ctx *gin.Context) (fromDate time.Time, err error) {
+	query := GetQueryFromDate(ctx)
+
+	if query == "" {
+		fromDate = time.Time{}
+	} else {
+		fromDate, err = time.Parse(DateLayout, query)
+
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		fromDate = time.Date(fromDate.Year(), fromDate.Month(), fromDate.Day(), 0, 0, 0, 0, time.UTC)
+	}
+
+	return fromDate, nil
+}
+
+func ParseQueryToDate(ctx *gin.Context) (toDate time.Time, err error) {
+	query := GetQueryToDate(ctx)
+
+	if query == "" {
+		toDate = time.Time{}
+	} else {
+		toDate, err = time.Parse(DateLayout, query)
+
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		toDate = time.Date(toDate.Year(), toDate.Month(), toDate.Day(), 0, 0, 0, 0, time.UTC)
+	}
+
+	return toDate, nil
+}
+
 func ParseQueryStartDate(ctx *gin.Context) (startDate time.Time, err error) {
 	query := GetQueryStartDate(ctx)
 

@@ -176,3 +176,31 @@ CREATE TABLE users (
     name        VARCHAR(63) DEFAULT NULL,
     image_url   VARCHAR(255) DEFAULT NULL
 );
+
+CREATE TABLE environments (
+    id         VARCHAR(8) PRIMARY KEY,
+    title      VARCHAR(255) NOT NULL,
+    from_date  TIMESTAMP NOT NULL,
+    to_date    TIMESTAMP NOT NULL
+);
+
+INSERT INTO environments VALUES ('sv11','ブラックボルト/ホワイトフレア','2025-06-06','2025-07-31');
+INSERT INTO environments VALUES ('sv10','ロケット団の栄光','2025-04-18','2025-06-05');
+INSERT INTO environments VALUES ('sv9a','熱風のアリーナ','2025-03-14','2025-04-17');
+INSERT INTO environments VALUES ('sv9','バトルパートナーズ','2025-01-24','2025-03-13');
+INSERT INTO environments VALUES ('sv8a','テラスタルフェスex','2024-12-06','2025-01-23');
+INSERT INTO environments VALUES ('sv8','超電ブレイカー','2024-10-18','2024-12-05');
+INSERT INTO environments VALUES ('sv7a','楽園ドラゴーナ','2024-09-13','2024-10-17');
+INSERT INTO environments VALUES ('sv7','ステラミラクル','2024-07-19','2024-09-12');
+INSERT INTO environments VALUES ('sv6a','ナイトワンダラー','2024-06-07','2024-07-18');
+INSERT INTO environments VALUES ('sv6','変幻の仮面','2024-04-26','2024-06-06');
+INSERT INTO environments VALUES ('sv5a','クリムゾンヘイズ','2024-03-22','2024-04-25');
+INSERT INTO environments VALUES ('sv5','ワイルドフォース/サイバージャッジ','2024-01-26','2024-03-21');
+INSERT INTO environments VALUES ('sv4a','シャイニートレジャーex','2023-12-01','2024-01-25');
+INSERT INTO environments VALUES ('sv4','古代の咆哮/未来の一閃','2023-10-27','2023-11-30');
+INSERT INTO environments VALUES ('sv3a','レイジングサーフ','2023-09-22','2023-10-26');
+INSERT INTO environments VALUES ('sv3','黒炎の支配者','2023-07-28','2023-09-21');
+INSERT INTO environments VALUES ('sv2a','ポケモンカード151','2023-06-16','2023-07-27');
+INSERT INTO environments VALUES ('sv2','スノーハザード/クレイバースト','2023-04-14','2023-06-15');
+INSERT INTO environments VALUES ('sv1a','トリプレットビート','2023-03-10','2023-04-13');
+INSERT INTO environments VALUES ('sv1','スカーレットex/バイオレットex','2023-01-20','2023-03-09');

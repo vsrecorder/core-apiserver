@@ -119,6 +119,11 @@ func main() {
 		),
 	).RegisterRoute(relativePath, false)
 
+	controller.NewEnvironment(
+		r,
+		infrastructure.NewEnvironment(db),
+	).RegisterRoute(relativePath)
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

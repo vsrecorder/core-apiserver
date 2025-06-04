@@ -88,6 +88,18 @@ func test_UserController_GetById(t *testing.T) {
 	t.Run("異常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+id, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		id, _ := generateId()
+
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()

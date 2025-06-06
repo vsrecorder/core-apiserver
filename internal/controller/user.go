@@ -171,7 +171,5 @@ func (c *User) Delete(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusAccepted, gin.H{
-		"message": "accepted",
-	})
+	ctx.JSON(http.StatusNoContent, gin.H{})
 }

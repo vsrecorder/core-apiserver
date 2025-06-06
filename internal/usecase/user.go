@@ -10,6 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	ErrAlreadyExists = errors.New("already exists")
+)
+
 type UserCreateParam struct {
 	ID       string
 	Name     string
@@ -104,7 +108,7 @@ func (u *User) Create(
 
 	_, err := u.repository.FindById(ctx, user.ID)
 	if err == nil {
-		return nil, errors.New("already exists")
+		return nil, ErrAlreadyExists
 	} else if err != gorm.ErrRecordNotFound {
 		return nil, err
 	}

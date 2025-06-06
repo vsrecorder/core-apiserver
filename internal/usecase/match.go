@@ -89,7 +89,7 @@ type MatchInterface interface {
 
 	FindByRecordId(
 		ctx context.Context,
-		matchId string,
+		recordId string,
 	) ([]*entity.Match, error)
 
 	Create(
@@ -134,9 +134,9 @@ func (u *Match) FindById(
 
 func (u *Match) FindByRecordId(
 	ctx context.Context,
-	matchId string,
+	recordId string,
 ) ([]*entity.Match, error) {
-	matches, err := u.repository.FindByRecordId(ctx, matchId)
+	matches, err := u.repository.FindByRecordId(ctx, recordId)
 
 	if err != nil {
 		return nil, err

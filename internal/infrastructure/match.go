@@ -327,19 +327,12 @@ func (i *Match) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	match, err := i.FindById(ctx, id)
-	if err != nil {
-		return nil
-	}
-
 	return i.db.Transaction(func(tx *gorm.DB) error {
-		for _, game := range match.Games {
-			if tx := tx.Where("id = ?", game.ID).Delete(&model.Game{}); tx.Error != nil {
-				return tx.Error
-			}
+		if tx := tx.Where("match_id = ?", id).Delete(&model.Game{}); tx.Error != nil {
+			return tx.Error
 		}
 
-		if tx := tx.Where("id = ?", match.ID).Delete(&model.Match{}); tx.Error != nil {
+		if tx := tx.Where("id = ?", id).Delete(&model.Match{}); tx.Error != nil {
 			return tx.Error
 		}
 

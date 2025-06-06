@@ -16,16 +16,4 @@ type GameInterface interface {
 		ctx context.Context,
 		matchId string,
 	) ([]*entity.Game, error)
-
-	/*
-		Save(
-			ctx context.Context,
-			entity *entity.Game,
-		) error
-
-		Delete(
-			ctx context.Context,
-			id string,
-		) error
-	*/
 }

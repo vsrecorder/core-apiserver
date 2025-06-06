@@ -720,7 +720,7 @@ func test_RecordController_Delete(t *testing.T) {
 
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusAccepted, w.Code)
+		require.Equal(t, http.StatusNoContent, w.Code)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {

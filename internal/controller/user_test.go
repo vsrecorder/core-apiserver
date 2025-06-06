@@ -88,6 +88,18 @@ func test_UserController_GetById(t *testing.T) {
 	t.Run("異常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+id, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		id, _ := generateId()
+
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
@@ -158,6 +170,42 @@ func test_UserController_Create(t *testing.T) {
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
+		r := gin.Default()
+		id, _ := generateId()
+
+		// 認証済みとするためにuidをセット
+		r.Use(func(ctx *gin.Context) {
+			helper.SetUID(ctx, id)
+		})
+
+		c, mockUsecase := setup4TestUserController(t, r)
+
+		name := "test"
+		imageURL := "https://example.com/image.png"
+
+		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, ErrAlreadyExists)
+
+		data := dto.UserCreateRequest{
+			UserRequest: dto.UserRequest{
+				Name:     name,
+				ImageURL: imageURL,
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", UsersPath, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusConflict, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
@@ -306,7 +354,7 @@ func test_UserController_Delete(t *testing.T) {
 
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusAccepted, w.Code)
+		require.Equal(t, http.StatusNoContent, w.Code)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {

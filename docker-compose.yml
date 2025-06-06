@@ -5,6 +5,7 @@ services:
     ports:
       - 8914:8914
     environment:
+      - TZ=Asia/Tokyo
       - DB_HOSTNAME=${DB_HOSTNAME}
       - DB_PORT=${DB_PORT}
       - DB_USER_NAME=${DB_USER_NAME}

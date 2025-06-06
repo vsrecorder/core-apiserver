@@ -87,18 +87,18 @@ func (mr *MockMatchInterfaceMockRecorder) FindById(ctx, id any) *gomock.Call {
 }
 
 // FindByRecordId mocks base method.
-func (m *MockMatchInterface) FindByRecordId(ctx context.Context, matchId string) ([]*entity.Match, error) {
+func (m *MockMatchInterface) FindByRecordId(ctx context.Context, recordId string) ([]*entity.Match, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByRecordId", ctx, matchId)
+	ret := m.ctrl.Call(m, "FindByRecordId", ctx, recordId)
 	ret0, _ := ret[0].([]*entity.Match)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindByRecordId indicates an expected call of FindByRecordId.
-func (mr *MockMatchInterfaceMockRecorder) FindByRecordId(ctx, matchId any) *gomock.Call {
+func (mr *MockMatchInterfaceMockRecorder) FindByRecordId(ctx, recordId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByRecordId", reflect.TypeOf((*MockMatchInterface)(nil).FindByRecordId), ctx, matchId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByRecordId", reflect.TypeOf((*MockMatchInterface)(nil).FindByRecordId), ctx, recordId)
 }
 
 // Update mocks base method.

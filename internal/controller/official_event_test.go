@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	DateLayout = "2006-01-02"
+	DateLayout = time.DateOnly
 )
 
 func setupMock4TestOfficialEventController(t *testing.T) *mock_usecase.MockOfficialEventInterface {

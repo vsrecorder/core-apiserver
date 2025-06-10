@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	DateLayout = "2006-01-02"
+	DateLayout = time.DateOnly
 )
 
 func setupMock4OfficialEventInfrastructure() (*gorm.DB, sqlmock.Sqlmock, error) {

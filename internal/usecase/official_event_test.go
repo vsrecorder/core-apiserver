@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DateLayout = "2006-01-02"
+	DateLayout = time.DateOnly
 )
 
 func TestOfficialEventUsecase(t *testing.T) {

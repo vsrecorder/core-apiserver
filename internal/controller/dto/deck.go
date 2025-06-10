@@ -37,10 +37,9 @@ type DeckGetByIdResponse struct {
 }
 
 type DeckGetByUserIdResponse struct {
-	Archived bool            `json:"archived"`
-	Limit    int             `json:"limit"`
-	Offset   int             `json:"offset"`
-	Decks    []*DeckResponse `json:"decks"`
+	Limit  int             `json:"limit"`
+	Offset int             `json:"offset"`
+	Decks  []*DeckResponse `json:"decks"`
 }
 
 type DeckCreateResponse struct {

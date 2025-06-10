@@ -354,7 +354,6 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
-		require.Equal(t, archived, res.Archived)
 		require.Equal(t, len(decks), len(res.Decks))
 		require.Equal(t, uid, res.Decks[0].UserId)
 	})
@@ -387,7 +386,6 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
-		require.Equal(t, archived, res.Archived)
 		require.Equal(t, len(decks), len(res.Decks))
 		require.Equal(t, uid, res.Decks[0].UserId)
 	})
@@ -414,9 +412,8 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
-		require.Equal(t, archived, res.Archived)
 		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, "{\"archived\":false,\"limit\":10,\"offset\":0,\"decks\":[]}", w.Body.String())
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"decks\":[]}", w.Body.String())
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {

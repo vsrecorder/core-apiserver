@@ -1,5 +1,7 @@
 package validation
 
+import "time"
+
 const (
-	DateLayout = "2006-01-02"
+	DateLayout = time.DateOnly
 )

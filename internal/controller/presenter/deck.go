@@ -68,10 +68,9 @@ func NewDeckGetByUserIdResponse(
 	}
 
 	return &dto.DeckGetByUserIdResponse{
-		Archived: archived,
-		Limit:    limit,
-		Offset:   offset,
-		Decks:    ret,
+		Limit:  limit,
+		Offset: offset,
+		Decks:  ret,
 	}
 }
 

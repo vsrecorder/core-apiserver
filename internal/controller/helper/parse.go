@@ -15,7 +15,7 @@ const (
 	DefaultLeagueType = 0
 	DefaultArchived   = false
 
-	DateLayout = "2006-01-02"
+	DateLayout = time.DateOnly
 )
 
 func ParseQueryLimit(ctx *gin.Context) (int, error) {

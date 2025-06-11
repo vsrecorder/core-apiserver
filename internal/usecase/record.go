@@ -49,6 +49,12 @@ type RecordInterface interface {
 		offset int,
 	) ([]*entity.Record, error)
 
+	FindOnCursor(
+		ctx context.Context,
+		limit int,
+		cursor time.Time,
+	) ([]*entity.Record, error)
+
 	FindById(
 		ctx context.Context,
 		id string,
@@ -59,6 +65,13 @@ type RecordInterface interface {
 		uid string,
 		limit int,
 		offset int,
+	) ([]*entity.Record, error)
+
+	FindByUserIdOnCursor(
+		ctx context.Context,
+		uid string,
+		limit int,
+		cursor time.Time,
 	) ([]*entity.Record, error)
 
 	FindByOfficialEventId(
@@ -123,6 +136,20 @@ func (u *Record) Find(
 	return records, nil
 }
 
+func (u *Record) FindOnCursor(
+	ctx context.Context,
+	limit int,
+	cursor time.Time,
+) ([]*entity.Record, error) {
+	records, err := u.repository.FindOnCursor(ctx, limit, cursor)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
 func (u *Record) FindById(
 	ctx context.Context,
 	id string,
@@ -143,6 +170,21 @@ func (u *Record) FindByUserId(
 	offset int,
 ) ([]*entity.Record, error) {
 	records, err := u.repository.FindByUserId(ctx, uid, limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (u *Record) FindByUserIdOnCursor(
+	ctx context.Context,
+	uid string,
+	limit int,
+	cursor time.Time,
+) ([]*entity.Record, error) {
+	records, err := u.repository.FindByUserIdOnCursor(ctx, uid, limit, cursor)
 
 	if err != nil {
 		return nil, err

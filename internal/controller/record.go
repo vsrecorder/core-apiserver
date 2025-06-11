@@ -98,20 +98,33 @@ func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
 }
 
 func (c *Record) Get(ctx *gin.Context) {
-	limit := helper.GetLimit(ctx)
-	offset := helper.GetOffset(ctx)
-
 	if uid := helper.GetUID(ctx); uid == "" {
-		records, err := c.usecase.Find(context.Background(), limit, offset)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
-			return
+		limit := helper.GetLimit(ctx)
+		offset := helper.GetOffset(ctx)
+		cursor := helper.GetCursor(ctx)
+		if !cursor.IsZero() {
+			records, err := c.usecase.FindOnCursor(context.Background(), limit, cursor)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+				ctx.Abort()
+				return
+			}
+
+			res := presenter.NewRecordGetResponse(limit, offset, cursor, records)
+
+			ctx.JSON(http.StatusOK, res)
+		} else {
+			records, err := c.usecase.Find(context.Background(), limit, offset)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+				ctx.Abort()
+				return
+			}
+
+			res := presenter.NewRecordGetResponse(limit, offset, cursor, records)
+
+			ctx.JSON(http.StatusOK, res)
 		}
-
-		res := presenter.NewRecordGetResponse(limit, offset, records)
-
-		ctx.JSON(http.StatusOK, res)
 	}
 }
 
@@ -142,16 +155,34 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 	if uid != "" {
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
+		cursor := helper.GetCursor(ctx)
 
-		records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
-			return
+		if !cursor.IsZero() {
+			records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor)
+
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+				ctx.Abort()
+				return
+			}
+
+			res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+
+			ctx.JSON(http.StatusOK, res)
+		} else {
+			records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset)
+
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+				ctx.Abort()
+				return
+			}
+
+			res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+
+			ctx.JSON(http.StatusOK, res)
 		}
-		res := presenter.NewRecordGetByUserIdResponse(limit, offset, records)
 
-		ctx.JSON(http.StatusOK, res)
 	}
 }
 

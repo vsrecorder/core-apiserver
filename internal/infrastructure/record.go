@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
@@ -27,6 +28,37 @@ func (i *Record) Find(
 	var models []*model.Record
 
 	if tx := i.db.Where("private_flg = ?", false).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	var entities []*entity.Record
+	for _, model := range models {
+		entity := entity.NewRecord(
+			model.ID,
+			model.CreatedAt,
+			model.OfficialEventId,
+			model.TonamelEventId,
+			model.FriendId,
+			model.UserId,
+			model.DeckId,
+			model.PrivateFlg,
+			model.TCGMeisterURL,
+			model.Memo,
+		)
+		entities = append(entities, entity)
+	}
+
+	return entities, nil
+}
+
+func (i *Record) FindOnCursor(
+	ctx context.Context,
+	limit int,
+	cursor time.Time,
+) ([]*entity.Record, error) {
+	var models []*model.Record
+
+	if tx := i.db.Where("created_at < ? AND private_flg = false", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -85,6 +117,38 @@ func (i *Record) FindByUserId(
 	var models []*model.Record
 
 	if tx := i.db.Where("user_id = ?", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	var entities []*entity.Record
+	for _, model := range models {
+		entity := entity.NewRecord(
+			model.ID,
+			model.CreatedAt,
+			model.OfficialEventId,
+			model.TonamelEventId,
+			model.FriendId,
+			model.UserId,
+			model.DeckId,
+			model.PrivateFlg,
+			model.TCGMeisterURL,
+			model.Memo,
+		)
+		entities = append(entities, entity)
+	}
+
+	return entities, nil
+}
+
+func (i *Record) FindByUserIdOnCursor(
+	ctx context.Context,
+	uid string,
+	limit int,
+	cursor time.Time,
+) ([]*entity.Record, error) {
+	var models []*model.Record
+
+	if tx := i.db.Where("created_at < ? AND user_id = ?", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 

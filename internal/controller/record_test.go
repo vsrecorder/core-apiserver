@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -124,6 +125,7 @@ func test_RecordController_Get(t *testing.T) {
 
 		limit := 10
 		offset := 0
+		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
 
 		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(records, nil)
 
@@ -141,7 +143,37 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(records), len(res.Records))
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[]}", w.Body.String())
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"records\":[]}", w.Body.String())
+	})
+
+	t.Run("正常系_#04", func(t *testing.T) {
+		record := entity.Record{}
+		records := []*entity.Record{
+			&record,
+		}
+
+		limit := 10
+		offset := 0
+		cursor, err := time.Parse(time.RFC3339, time.Now().UTC().Format(time.RFC3339))
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(records, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordGetResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(records), len(res.Records))
+		require.Equal(t, base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))), res.Cursor)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
@@ -150,6 +182,22 @@ func test_RecordController_Get(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("GET", RecordsPath, nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		cursor, err := time.Parse(time.RFC3339, time.Now().UTC().Format(time.RFC3339))
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -262,7 +310,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(records), len(res.Records))
-		require.Equal(t, uid, res.Records[0].UserId)
+		require.Equal(t, uid, res.Records[0].Data.UserId)
 	})
 
 	t.Run("正常系_#02", func(t *testing.T) {
@@ -293,7 +341,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(records), len(res.Records))
-		require.Equal(t, uid, res.Records[0].UserId)
+		require.Equal(t, uid, res.Records[0].Data.UserId)
 	})
 
 	t.Run("正常系_#03", func(t *testing.T) {
@@ -301,6 +349,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		limit := 10
 		offset := 0
+		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(records, nil)
 
@@ -318,7 +367,41 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(records), len(res.Records))
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"records\":[]}", w.Body.String())
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"records\":[]}", w.Body.String())
+	})
+
+	t.Run("正常系_#04", func(t *testing.T) {
+		record := entity.Record{
+			UserId: uid,
+		}
+
+		records := []*entity.Record{
+			&record,
+		}
+
+		limit := 10
+		offset := 0
+		cursor, err := time.Parse(time.RFC3339, time.Now().UTC().Format(time.RFC3339))
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursor).Return(records, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordGetByUserIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(records), len(res.Records))
+		require.Equal(t, uid, res.Records[0].Data.UserId)
+		require.Equal(t, base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))), res.Cursor)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
@@ -330,6 +413,22 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("GET", RecordsPath, nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		cursor, err := time.Parse(time.RFC3339, time.Now().UTC().Format(time.RFC3339))
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)

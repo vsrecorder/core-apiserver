@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
@@ -11,6 +12,12 @@ type RecordInterface interface {
 		ctx context.Context,
 		limit int,
 		offset int,
+	) ([]*entity.Record, error)
+
+	FindOnCursor(
+		ctx context.Context,
+		limit int,
+		cursor time.Time,
 	) ([]*entity.Record, error)
 
 	FindById(
@@ -23,6 +30,13 @@ type RecordInterface interface {
 		uid string,
 		limit int,
 		offset int,
+	) ([]*entity.Record, error)
+
+	FindByUserIdOnCursor(
+		ctx context.Context,
+		uid string,
+		limit int,
+		cursor time.Time,
 	) ([]*entity.Record, error)
 
 	FindByOfficialEventId(

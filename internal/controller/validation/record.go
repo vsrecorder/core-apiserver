@@ -24,8 +24,16 @@ func RecordGetMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		cursor, err := helper.ParseQueryCursor(ctx)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+			ctx.Abort()
+			return
+		}
+
 		helper.SetLimit(ctx, limit)
 		helper.SetOffset(ctx, offset)
+		helper.SetCursor(ctx, cursor)
 	}
 }
 

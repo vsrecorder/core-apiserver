@@ -12,6 +12,7 @@ package mock_usecase
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	usecase "github.com/vsrecorder/core-apiserver/internal/usecase"
@@ -159,6 +160,36 @@ func (m *MockRecordInterface) FindByUserId(ctx context.Context, uid string, limi
 func (mr *MockRecordInterfaceMockRecorder) FindByUserId(ctx, uid, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserId", reflect.TypeOf((*MockRecordInterface)(nil).FindByUserId), ctx, uid, limit, offset)
+}
+
+// FindByUserIdOnCursor mocks base method.
+func (m *MockRecordInterface) FindByUserIdOnCursor(ctx context.Context, uid string, limit int, cursor time.Time) ([]*entity.Record, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByUserIdOnCursor", ctx, uid, limit, cursor)
+	ret0, _ := ret[0].([]*entity.Record)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByUserIdOnCursor indicates an expected call of FindByUserIdOnCursor.
+func (mr *MockRecordInterfaceMockRecorder) FindByUserIdOnCursor(ctx, uid, limit, cursor any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByUserIdOnCursor), ctx, uid, limit, cursor)
+}
+
+// FindOnCursor mocks base method.
+func (m *MockRecordInterface) FindOnCursor(ctx context.Context, limit int, cursor time.Time) ([]*entity.Record, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindOnCursor", ctx, limit, cursor)
+	ret0, _ := ret[0].([]*entity.Record)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindOnCursor indicates an expected call of FindOnCursor.
+func (mr *MockRecordInterfaceMockRecorder) FindOnCursor(ctx, limit, cursor any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindOnCursor), ctx, limit, cursor)
 }
 
 // Update mocks base method.

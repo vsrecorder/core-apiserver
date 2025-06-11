@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"encoding/base64"
 	"errors"
 	"strconv"
 	"time"
@@ -55,7 +56,18 @@ func ParseQueryOffset(ctx *gin.Context) (int, error) {
 }
 
 func ParseQueryCursor(ctx *gin.Context) (time.Time, error) {
-	return time.Time{}, nil
+	query := GetQueryCursor(ctx)
+
+	if query == "" {
+		return time.Time{}, nil
+	}
+
+	decodedQuery, err := base64.StdEncoding.DecodeString(query)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Parse(time.RFC3339, string(decodedQuery))
 }
 
 func ParseQueryDate(ctx *gin.Context) (date time.Time, err error) {

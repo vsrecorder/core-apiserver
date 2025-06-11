@@ -37,6 +37,12 @@ type DeckInterface interface {
 		offset int,
 	) ([]*entity.Deck, error)
 
+	FindOnCursor(
+		ctx context.Context,
+		limit int,
+		cursor time.Time,
+	) ([]*entity.Deck, error)
+
 	FindById(
 		ctx context.Context,
 		id string,
@@ -48,6 +54,14 @@ type DeckInterface interface {
 		archivedFlg bool,
 		limit int,
 		offset int,
+	) ([]*entity.Deck, error)
+
+	FindByUserIdOnCursor(
+		ctx context.Context,
+		uid string,
+		archivedFlg bool,
+		limit int,
+		cursor time.Time,
 	) ([]*entity.Deck, error)
 
 	Create(
@@ -101,6 +115,20 @@ func (u *Deck) Find(
 	return decks, nil
 }
 
+func (u *Deck) FindOnCursor(
+	ctx context.Context,
+	limit int,
+	cursor time.Time,
+) ([]*entity.Deck, error) {
+	decks, err := u.repository.FindOnCursor(ctx, limit, cursor)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return decks, nil
+}
+
 func (u *Deck) FindById(
 	ctx context.Context,
 	id string,
@@ -122,6 +150,22 @@ func (u *Deck) FindByUserId(
 	offset int,
 ) ([]*entity.Deck, error) {
 	decks, err := u.repository.FindByUserId(ctx, uid, archivedFlg, limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return decks, nil
+}
+
+func (u *Deck) FindByUserIdOnCursor(
+	ctx context.Context,
+	uid string,
+	archivedFlg bool,
+	limit int,
+	cursor time.Time,
+) ([]*entity.Deck, error) {
+	decks, err := u.repository.FindByUserIdOnCursor(ctx, uid, archivedFlg, limit, cursor)
 
 	if err != nil {
 		return nil, err

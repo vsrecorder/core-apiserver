@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -126,6 +127,7 @@ func test_DeckController_Get(t *testing.T) {
 
 		limit := 10
 		offset := 0
+		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
 
 		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(decks, nil)
 
@@ -143,7 +145,37 @@ func test_DeckController_Get(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"decks\":[]}", w.Body.String())
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"decks\":[]}", w.Body.String())
+	})
+
+	t.Run("正常系_#04", func(t *testing.T) {
+		deck := entity.Deck{}
+		decks := []*entity.Deck{
+			&deck,
+		}
+
+		limit := 10
+		offset := 0
+		cursor, err := time.Parse(time.RFC3339, time.Now().UTC().Format(time.RFC3339))
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(decks, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.DeckGetResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(decks), len(res.Decks))
+		require.Equal(t, base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))), res.Cursor)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
@@ -152,6 +184,22 @@ func test_DeckController_Get(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("GET", "/decks", nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		cursor, err := time.Parse(time.RFC3339, time.Now().UTC().Format(time.RFC3339))
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -335,9 +383,9 @@ func test_DeckController_GetByUserId(t *testing.T) {
 			&deck,
 		}
 
+		archived := false
 		limit := 10
 		offset := 0
-		archived := false
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
 
@@ -355,7 +403,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, uid, res.Decks[0].UserId)
+		require.Equal(t, uid, res.Decks[0].Data.UserId)
 	})
 
 	t.Run("正常系_#02", func(t *testing.T) {
@@ -367,9 +415,9 @@ func test_DeckController_GetByUserId(t *testing.T) {
 			&deck,
 		}
 
+		archived := false
 		limit := 10
 		offset := 0
-		archived := false
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
 
@@ -387,15 +435,16 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, uid, res.Decks[0].UserId)
+		require.Equal(t, uid, res.Decks[0].Data.UserId)
 	})
 
 	t.Run("正常系_#03", func(t *testing.T) {
 		decks := []*entity.Deck{}
 
+		archived := false
 		limit := 10
 		offset := 0
-		archived := false
+		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
 
@@ -413,19 +462,66 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"decks\":[]}", w.Body.String())
+		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"decks\":[]}", w.Body.String())
+	})
+
+	t.Run("正常系_#04", func(t *testing.T) {
+		deck := entity.Deck{
+			UserId: uid,
+		}
+
+		decks := []*entity.Deck{
+			&deck,
+		}
+
+		archived := false
+		limit := 10
+		offset := 0
+		cursor, err := time.Parse(time.RFC3339, time.Now().UTC().Format(time.RFC3339))
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, archived, limit, cursor).Return(decks, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.DeckGetByUserIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(decks), len(res.Decks))
+		require.Equal(t, uid, res.Decks[0].Data.UserId)
+		require.Equal(t, base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))), res.Cursor)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
-		limit := 10
-		offset := 0
-		archived := false
-
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByUserId(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("GET", "/decks", nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		cursor, err := time.Parse(time.RFC3339, time.Now().UTC().Format(time.RFC3339))
+		require.NoError(t, err)
+
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)

@@ -16,6 +16,11 @@ type DeckUpdateRequest struct {
 	DeckRequest
 }
 
+type DeckData struct {
+	Cursor string        `json:"cursor"`
+	Data   *DeckResponse `json:"data"`
+}
+
 type DeckResponse struct {
 	ID             string    `json:"id"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -27,9 +32,10 @@ type DeckResponse struct {
 }
 
 type DeckGetResponse struct {
-	Limit  int             `json:"limit"`
-	Offset int             `json:"offset"`
-	Decks  []*DeckResponse `json:"decks"`
+	Limit  int         `json:"limit"`
+	Offset int         `json:"offset"`
+	Cursor string      `json:"cursor"`
+	Decks  []*DeckData `json:"decks"`
 }
 
 type DeckGetByIdResponse struct {
@@ -37,9 +43,10 @@ type DeckGetByIdResponse struct {
 }
 
 type DeckGetByUserIdResponse struct {
-	Limit  int             `json:"limit"`
-	Offset int             `json:"offset"`
-	Decks  []*DeckResponse `json:"decks"`
+	Limit  int         `json:"limit"`
+	Offset int         `json:"offset"`
+	Cursor string      `json:"cursor"`
+	Decks  []*DeckData `json:"decks"`
 }
 
 type DeckCreateResponse struct {

@@ -1,6 +1,9 @@
 package presenter
 
 import (
+	"encoding/base64"
+	"time"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
@@ -8,25 +11,30 @@ import (
 func NewDeckGetResponse(
 	limit int,
 	offset int,
+	cursor time.Time,
 	decks []*entity.Deck,
 ) *dto.DeckGetResponse {
-	ret := []*dto.DeckResponse{}
+	ret := []*dto.DeckData{}
 
 	for _, deck := range decks {
-		ret = append(ret, &dto.DeckResponse{
-			ID:             deck.ID,
-			CreatedAt:      deck.CreatedAt,
-			ArchivedAt:     deck.ArchivedAt,
-			UserId:         deck.UserId,
-			Code:           deck.Code,
-			Name:           deck.Name,
-			PrivateCodeFlg: deck.PrivateCodeFlg,
+		ret = append(ret, &dto.DeckData{
+			Cursor: base64.StdEncoding.EncodeToString([]byte(deck.CreatedAt.Format(time.RFC3339))),
+			Data: &dto.DeckResponse{
+				ID:             deck.ID,
+				CreatedAt:      deck.CreatedAt,
+				ArchivedAt:     deck.ArchivedAt,
+				UserId:         deck.UserId,
+				Code:           deck.Code,
+				Name:           deck.Name,
+				PrivateCodeFlg: deck.PrivateCodeFlg,
+			},
 		})
 	}
 
 	return &dto.DeckGetResponse{
 		Limit:  limit,
 		Offset: offset,
+		Cursor: base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
 		Decks:  ret,
 	}
 }
@@ -51,25 +59,30 @@ func NewDeckGetByUserIdResponse(
 	archived bool,
 	limit int,
 	offset int,
+	cursor time.Time,
 	decks []*entity.Deck,
 ) *dto.DeckGetByUserIdResponse {
-	ret := []*dto.DeckResponse{}
+	ret := []*dto.DeckData{}
 
 	for _, deck := range decks {
-		ret = append(ret, &dto.DeckResponse{
-			ID:             deck.ID,
-			CreatedAt:      deck.CreatedAt,
-			ArchivedAt:     deck.ArchivedAt,
-			UserId:         deck.UserId,
-			Code:           deck.Code,
-			Name:           deck.Name,
-			PrivateCodeFlg: deck.PrivateCodeFlg,
+		ret = append(ret, &dto.DeckData{
+			Cursor: base64.StdEncoding.EncodeToString([]byte(deck.CreatedAt.Format(time.RFC3339))),
+			Data: &dto.DeckResponse{
+				ID:             deck.ID,
+				CreatedAt:      deck.CreatedAt,
+				ArchivedAt:     deck.ArchivedAt,
+				UserId:         deck.UserId,
+				Code:           deck.Code,
+				Name:           deck.Name,
+				PrivateCodeFlg: deck.PrivateCodeFlg,
+			},
 		})
 	}
 
 	return &dto.DeckGetByUserIdResponse{
 		Limit:  limit,
 		Offset: offset,
+		Cursor: base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
 		Decks:  ret,
 	}
 }

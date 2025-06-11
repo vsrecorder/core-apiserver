@@ -23,14 +23,16 @@ func TestDeckUsecase(t *testing.T) {
 		mockRepository *mock_repository.MockDeckInterface,
 		usecase DeckInterface,
 	){
-		"Find":         test_DeckUsecase_Find,
-		"FindById":     test_DeckUsecase_FindById,
-		"FindByUserId": test_DeckUsecase_FindByUserId,
-		"Create":       test_DeckUsecase_Create,
-		"Update":       test_DeckUsecase_Update,
-		"Archive":      test_DeckUsecase_Archive,
-		"Unarchive":    test_DeckUsecase_Unarchive,
-		"Delete":       test_DeckUsecase_Delete,
+		"Find":                 test_DeckUsecase_Find,
+		"FindOnCursor":         test_DeckUsecase_FindOnCursor,
+		"FindById":             test_DeckUsecase_FindById,
+		"FindByUserId":         test_DeckUsecase_FindByUserId,
+		"FindByUserIdOnCursor": test_DeckUsecase_FindByUserIdOnCursor,
+		"Create":               test_DeckUsecase_Create,
+		"Update":               test_DeckUsecase_Update,
+		"Archive":              test_DeckUsecase_Archive,
+		"Unarchive":            test_DeckUsecase_Unarchive,
+		"Delete":               test_DeckUsecase_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t, mockRepository, usecase)
@@ -83,6 +85,57 @@ func test_DeckUsecase_Find(t *testing.T, mockRepository *mock_repository.MockDec
 		mockRepository.EXPECT().Find(context.Background(), limit, offset).Return(nil, errors.New(""))
 
 		ret, err := usecase.Find(context.Background(), limit, offset)
+
+		require.Equal(t, err, errors.New(""))
+		require.Empty(t, ret)
+	})
+}
+
+func test_DeckUsecase_FindOnCursor(t *testing.T, mockRepository *mock_repository.MockDeckInterface, usecase DeckInterface) {
+	t.Run("正常系_#01", func(t *testing.T) {
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		deck := &entity.Deck{
+			ID: id,
+		}
+
+		decks := []*entity.Deck{
+			deck,
+		}
+
+		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(decks, nil)
+
+		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, id, ret[0].ID)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		decks := []*entity.Deck{}
+
+		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(decks, nil)
+
+		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, len(decks), len(ret))
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(nil, errors.New(""))
+
+		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
 
 		require.Equal(t, err, errors.New(""))
 		require.Empty(t, ret)
@@ -206,6 +259,99 @@ func test_DeckUsecase_FindByUserId(t *testing.T, mockRepository *mock_repository
 		mockRepository.EXPECT().FindByUserId(context.Background(), uid, archivedFlg, limit, offset).Return(nil, errors.New(""))
 
 		ret, err := usecase.FindByUserId(context.Background(), uid, archivedFlg, limit, offset)
+
+		require.Equal(t, err, errors.New(""))
+		require.Empty(t, ret)
+	})
+}
+
+func test_DeckUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_repository.MockDeckInterface, usecase DeckInterface) {
+	t.Run("正常系_#01", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		archivedFlg := false
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		deck := &entity.Deck{
+			ID:         id,
+			ArchivedAt: time.Time{},
+			UserId:     uid,
+		}
+
+		decks := []*entity.Deck{
+			deck,
+		}
+
+		mockRepository.EXPECT().FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor).Return(decks, nil)
+
+		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, id, ret[0].ID)
+		require.Equal(t, uid, ret[0].UserId)
+		require.Equal(t, time.Time{}, ret[0].ArchivedAt)
+		require.Empty(t, ret[0].ArchivedAt)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		archivedAt := time.Now().UTC().Truncate(0)
+		archivedFlg := true
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		deck := &entity.Deck{
+			ID:         id,
+			ArchivedAt: archivedAt,
+			UserId:     uid,
+		}
+
+		decks := []*entity.Deck{
+			deck,
+		}
+
+		mockRepository.EXPECT().FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor).Return(decks, nil)
+
+		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, id, ret[0].ID)
+		require.Equal(t, uid, ret[0].UserId)
+		require.Equal(t, archivedAt, ret[0].ArchivedAt)
+		require.NotEmpty(t, ret[0].ArchivedAt)
+	})
+
+	t.Run("正常系_#03", func(t *testing.T) {
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		archivedFlg := false
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		decks := []*entity.Deck{}
+
+		mockRepository.EXPECT().FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor).Return(decks, nil)
+
+		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, len(decks), len(ret))
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		archivedFlg := false
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		mockRepository.EXPECT().FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor).Return(nil, errors.New(""))
+
+		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor)
 
 		require.Equal(t, err, errors.New(""))
 		require.Empty(t, ret)

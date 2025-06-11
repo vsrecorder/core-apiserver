@@ -16,7 +16,6 @@ func GetLimit(ctx *gin.Context) int {
 	limit, _ := value.(int)
 
 	return limit
-
 }
 
 func SetOffset(ctx *gin.Context, value int) {
@@ -28,6 +27,17 @@ func GetOffset(ctx *gin.Context) int {
 	offset, _ := value.(int)
 
 	return offset
+}
+
+func SetCursor(ctx *gin.Context, value time.Time) {
+	ctx.Set("cursor", value)
+}
+
+func GetCursor(ctx *gin.Context) time.Time {
+	value, _ := ctx.Get("cursor")
+	cursor, _ := value.(time.Time)
+
+	return cursor
 }
 
 func SetDate(ctx *gin.Context, value time.Time) {

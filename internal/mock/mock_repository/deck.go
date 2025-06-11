@@ -12,6 +12,7 @@ package mock_repository
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	gomock "go.uber.org/mock/gomock"
@@ -98,6 +99,36 @@ func (m *MockDeckInterface) FindByUserId(ctx context.Context, uid string, archiv
 func (mr *MockDeckInterfaceMockRecorder) FindByUserId(ctx, uid, archivedFlg, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserId", reflect.TypeOf((*MockDeckInterface)(nil).FindByUserId), ctx, uid, archivedFlg, limit, offset)
+}
+
+// FindByUserIdOnCursor mocks base method.
+func (m *MockDeckInterface) FindByUserIdOnCursor(ctx context.Context, uid string, archivedFlg bool, limit int, cursor time.Time) ([]*entity.Deck, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByUserIdOnCursor", ctx, uid, archivedFlg, limit, cursor)
+	ret0, _ := ret[0].([]*entity.Deck)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByUserIdOnCursor indicates an expected call of FindByUserIdOnCursor.
+func (mr *MockDeckInterfaceMockRecorder) FindByUserIdOnCursor(ctx, uid, archivedFlg, limit, cursor any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserIdOnCursor", reflect.TypeOf((*MockDeckInterface)(nil).FindByUserIdOnCursor), ctx, uid, archivedFlg, limit, cursor)
+}
+
+// FindOnCursor mocks base method.
+func (m *MockDeckInterface) FindOnCursor(ctx context.Context, limit int, cursor time.Time) ([]*entity.Deck, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindOnCursor", ctx, limit, cursor)
+	ret0, _ := ret[0].([]*entity.Deck)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindOnCursor indicates an expected call of FindOnCursor.
+func (mr *MockDeckInterfaceMockRecorder) FindOnCursor(ctx, limit, cursor any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOnCursor", reflect.TypeOf((*MockDeckInterface)(nil).FindOnCursor), ctx, limit, cursor)
 }
 
 // Save mocks base method.

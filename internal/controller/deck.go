@@ -120,17 +120,31 @@ func (c *Deck) Get(ctx *gin.Context) {
 	if uid := helper.GetUID(ctx); uid == "" {
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
+		cursor := helper.GetCursor(ctx)
 
-		decks, err := c.usecase.Find(context.Background(), limit, offset)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
-			return
+		if !cursor.IsZero() {
+			decks, err := c.usecase.FindOnCursor(context.Background(), limit, cursor)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+				ctx.Abort()
+				return
+			}
+
+			res := presenter.NewDeckGetResponse(limit, offset, cursor, decks)
+
+			ctx.JSON(http.StatusOK, res)
+		} else {
+			decks, err := c.usecase.Find(context.Background(), limit, offset)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+				ctx.Abort()
+				return
+			}
+
+			res := presenter.NewDeckGetResponse(limit, offset, cursor, decks)
+
+			ctx.JSON(http.StatusOK, res)
 		}
-
-		res := presenter.NewDeckGetResponse(limit, offset, decks)
-
-		ctx.JSON(http.StatusOK, res)
 	}
 }
 
@@ -165,19 +179,34 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 
 	if uid != "" {
+		archived := helper.GetArchived(ctx)
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
-		archived := helper.GetArchived(ctx)
+		cursor := helper.GetCursor(ctx)
 
-		decks, err := c.usecase.FindByUserId(context.Background(), uid, archived, limit, offset)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
-			return
+		if !cursor.IsZero() {
+			decks, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, archived, limit, cursor)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+				ctx.Abort()
+				return
+			}
+
+			res := presenter.NewDeckGetByUserIdResponse(archived, limit, offset, cursor, decks)
+
+			ctx.JSON(http.StatusOK, res)
+		} else {
+			decks, err := c.usecase.FindByUserId(context.Background(), uid, archived, limit, offset)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+				ctx.Abort()
+				return
+			}
+
+			res := presenter.NewDeckGetByUserIdResponse(archived, limit, offset, cursor, decks)
+
+			ctx.JSON(http.StatusOK, res)
 		}
-		res := presenter.NewDeckGetByUserIdResponse(archived, limit, offset, decks)
-
-		ctx.JSON(http.StatusOK, res)
 	}
 }
 

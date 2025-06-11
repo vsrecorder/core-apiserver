@@ -76,6 +76,13 @@ func DeckGetMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		cursor, err := helper.ParseQueryCursor(ctx)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+			ctx.Abort()
+			return
+		}
+
 		archived, err := helper.ParseQueryArchive(ctx)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
@@ -85,6 +92,7 @@ func DeckGetMiddleware() gin.HandlerFunc {
 
 		helper.SetLimit(ctx, limit)
 		helper.SetOffset(ctx, offset)
+		helper.SetCursor(ctx, cursor)
 		helper.SetArchived(ctx, archived)
 	}
 }

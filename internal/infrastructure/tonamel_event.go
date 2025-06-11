@@ -25,7 +25,7 @@ func (i *TonamelEvent) FindById(
 	m := &model.TonamelEvent{}
 
 	// OGPチェッカーから指定されたIDに紐ずくTonamelのOGP情報を取得
-	res, err := http.Get("https://web-toolbox.dev/api/ogp_checker?url=https://tonamel.com/competition/" + id)
+	res, err := http.Get("https://web-toolbox.dev/api/ogtag?url=https://tonamel.com/competition/" + id)
 
 	if err != nil {
 		return nil, err
@@ -45,9 +45,9 @@ func (i *TonamelEvent) FindById(
 
 	e := entity.NewTonamelEvent(
 		id,
-		m.Title,
-		m.Description,
-		m.Image,
+		m.Result.Metadata.Title,
+		m.Result.Metadata.Description,
+		m.Result.Metadata.Image,
 	)
 
 	return e, nil

@@ -24,8 +24,10 @@ func TestRecordUsecase(t *testing.T) {
 		usecase RecordInterface,
 	){
 		"Find":                  test_RecordUsecase_Find,
+		"FindOnCursor":          test_RecordUsecase_FindOnCursor,
 		"FindById":              test_RecordUsecase_FindById,
 		"FindByUserId":          test_RecordUsecase_FindByUserId,
+		"FindByUserIdOnCursor":  test_RecordUsecase_FindByUserIdOnCursor,
 		"FindByOfficialEventId": test_RecordUsecase_FindByOfficialEventId,
 		"FindByTonamelEventId":  test_RecordUsecase_FindByTonamelEventId,
 		"FindByDeckId":          test_RecordUsecase_FindByDeckId,
@@ -84,6 +86,57 @@ func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockR
 		mockRepository.EXPECT().Find(context.Background(), limit, offset).Return(nil, errors.New(""))
 
 		ret, err := usecase.Find(context.Background(), limit, offset)
+
+		require.Equal(t, err, errors.New(""))
+		require.Empty(t, ret)
+	})
+}
+
+func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
+	t.Run("正常系_#01", func(t *testing.T) {
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		record := &entity.Record{
+			ID: id,
+		}
+
+		records := []*entity.Record{
+			record,
+		}
+
+		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(records, nil)
+
+		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, id, ret[0].ID)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		records := []*entity.Record{}
+
+		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(records, nil)
+
+		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, len(records), len(ret))
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(nil, errors.New(""))
+
+		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
 
 		require.Equal(t, err, errors.New(""))
 		require.Empty(t, ret)
@@ -170,6 +223,62 @@ func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_reposito
 		mockRepository.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(nil, errors.New(""))
 
 		ret, err := usecase.FindByUserId(context.Background(), uid, limit, offset)
+
+		require.Equal(t, err, errors.New(""))
+		require.Empty(t, ret)
+	})
+}
+
+func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
+	t.Run("正常系_#01", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		record := &entity.Record{
+			ID:     id,
+			UserId: uid,
+		}
+
+		records := []*entity.Record{
+			record,
+		}
+
+		mockRepository.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursor).Return(records, nil)
+
+		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, id, ret[0].ID)
+		require.Equal(t, uid, ret[0].UserId)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		records := []*entity.Record{}
+
+		mockRepository.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursor).Return(records, nil)
+
+		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, len(records), len(ret))
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		limit := 10
+		cursor := time.Now().UTC().Truncate(0)
+
+		mockRepository.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursor).Return(nil, errors.New(""))
+
+		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor)
 
 		require.Equal(t, err, errors.New(""))
 		require.Empty(t, ret)

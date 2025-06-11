@@ -48,8 +48,10 @@ func TestRecordInfrastructure(t *testing.T) {
 		t *testing.T,
 	){
 		"Find":                  test_RecordInfrastructure_Find,
+		"FindOnCursor":          test_RecordInfrastructure_FindOnCursor,
 		"FindById":              test_RecordInfrastructure_FindById,
 		"FindByUserId":          test_RecordInfrastructure_FindByUserId,
+		"FindByUserIdOnCursor":  test_RecordInfrastructure_FindByUserIdOnCursor,
 		"FindByOfficialEventId": test_RecordInfrastructure_FindByOfficialEventId,
 		"FindByTonamelEventId":  test_RecordInfrastructure_FindByTonamelEventId,
 		"FindByDeckId":          test_RecordInfrastructure_FindByDeckId,
@@ -139,6 +141,88 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 		).WillReturnRows(rows)
 
 		records, err := r.Find(context.Background(), limit, offset)
+
+		require.NoError(t, err)
+		require.Equal(t, 0, len(records))
+	}
+
+}
+
+func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
+	r, mock, err := setup4RecordInfrastructure()
+	require.NoError(t, err)
+
+	cursor := time.Now().UTC().Truncate(0)
+	datetime := time.Now().UTC().Truncate(0)
+	limit := 10
+
+	{
+		rows := sqlmock.NewRows([]string{
+			"id",
+			"created_at",
+			"updated_at",
+			"deleted_at",
+			"official_event_id",
+			"tonamel_event_id",
+			"friend_id",
+			"user_id",
+			"deck_id",
+			"private_flg",
+			"tcg_meister_url",
+			"memo",
+		}).AddRow(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			datetime,
+			datetime,
+			gorm.DeletedAt{},
+			236790,
+			"",
+			"",
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			"",
+			false,
+			"",
+			"",
+		)
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE (created_at < $1 AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT`,
+		)).WithArgs(
+			cursor,
+			limit,
+		).WillReturnRows(rows)
+
+		records, err := r.FindOnCursor(context.Background(), limit, cursor)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, len(records))
+		require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", records[0].ID)
+	}
+
+	{
+		rows := sqlmock.NewRows([]string{
+			"id",
+			"created_at",
+			"updated_at",
+			"deleted_at",
+			"official_event_id",
+			"tonamel_event_id",
+			"friend_id",
+			"user_id",
+			"deck_id",
+			"private_flg",
+			"tcg_meister_url",
+			"memo",
+		})
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE (created_at < $1 AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT`,
+		)).WithArgs(
+			cursor,
+			limit,
+		).WillReturnRows(rows)
+
+		records, err := r.FindOnCursor(context.Background(), limit, cursor)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, len(records))
@@ -238,6 +322,57 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 	).WillReturnRows(rows)
 
 	records, err := r.FindByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, offset)
+
+	require.NoError(t, err)
+	require.Equal(t, 1, len(records))
+	require.Equal(t, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", records[0].UserId)
+}
+
+func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
+	r, mock, err := setup4RecordInfrastructure()
+	require.NoError(t, err)
+
+	cursor := time.Now().UTC().Truncate(0)
+	datetime := time.Now().UTC().Truncate(0)
+	limit := 10
+
+	rows := sqlmock.NewRows([]string{
+		"id",
+		"created_at",
+		"updated_at",
+		"deleted_at",
+		"official_event_id",
+		"tonamel_event_id",
+		"friend_id",
+		"user_id",
+		"deck_id",
+		"private_flg",
+		"tcg_meister_url",
+		"memo",
+	}).AddRow(
+		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		datetime,
+		datetime,
+		gorm.DeletedAt{},
+		236790,
+		"",
+		"",
+		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+		"",
+		false,
+		"",
+		"",
+	)
+
+	mock.ExpectQuery(regexp.QuoteMeta(
+		`SELECT * FROM "records" WHERE (created_at < $1 AND user_id = $2) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $3`,
+	)).WithArgs(
+		cursor,
+		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+		limit,
+	).WillReturnRows(rows)
+
+	records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, cursor)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(records))

@@ -1,6 +1,9 @@
 package presenter
 
 import (
+	"encoding/base64"
+	"time"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
@@ -8,28 +11,33 @@ import (
 func NewRecordGetResponse(
 	limit int,
 	offset int,
+	cursor time.Time,
 	records []*entity.Record,
 ) *dto.RecordGetResponse {
-	ret := []*dto.RecordResponse{}
+	ret := []*dto.RecordData{}
 
 	for _, record := range records {
-		ret = append(ret, &dto.RecordResponse{
-			ID:              record.ID,
-			CreatedAt:       record.CreatedAt,
-			OfficialEventId: record.OfficialEventId,
-			TonamelEventId:  record.TonamelEventId,
-			FriendId:        record.FriendId,
-			UserId:          record.UserId,
-			DeckId:          record.DeckId,
-			PrivateFlg:      record.PrivateFlg,
-			TCGMeisterURL:   record.TCGMeisterURL,
-			Memo:            record.Memo,
+		ret = append(ret, &dto.RecordData{
+			Cursor: base64.StdEncoding.EncodeToString([]byte(record.CreatedAt.Format(time.RFC3339))),
+			Data: &dto.RecordResponse{
+				ID:              record.ID,
+				CreatedAt:       record.CreatedAt,
+				OfficialEventId: record.OfficialEventId,
+				TonamelEventId:  record.TonamelEventId,
+				FriendId:        record.FriendId,
+				UserId:          record.UserId,
+				DeckId:          record.DeckId,
+				PrivateFlg:      record.PrivateFlg,
+				TCGMeisterURL:   record.TCGMeisterURL,
+				Memo:            record.Memo,
+			},
 		})
 	}
 
 	return &dto.RecordGetResponse{
 		Limit:   limit,
 		Offset:  offset,
+		Cursor:  base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
 		Records: ret,
 	}
 }
@@ -56,28 +64,33 @@ func NewRecordGetByIdResponse(
 func NewRecordGetByUserIdResponse(
 	limit int,
 	offset int,
+	cursor time.Time,
 	records []*entity.Record,
 ) *dto.RecordGetByUserIdResponse {
-	ret := []*dto.RecordResponse{}
+	ret := []*dto.RecordData{}
 
 	for _, record := range records {
-		ret = append(ret, &dto.RecordResponse{
-			ID:              record.ID,
-			CreatedAt:       record.CreatedAt,
-			OfficialEventId: record.OfficialEventId,
-			TonamelEventId:  record.TonamelEventId,
-			FriendId:        record.FriendId,
-			UserId:          record.UserId,
-			DeckId:          record.DeckId,
-			PrivateFlg:      record.PrivateFlg,
-			TCGMeisterURL:   record.TCGMeisterURL,
-			Memo:            record.Memo,
+		ret = append(ret, &dto.RecordData{
+			Cursor: base64.StdEncoding.EncodeToString([]byte(record.CreatedAt.Format(time.RFC3339))),
+			Data: &dto.RecordResponse{
+				ID:              record.ID,
+				CreatedAt:       record.CreatedAt,
+				OfficialEventId: record.OfficialEventId,
+				TonamelEventId:  record.TonamelEventId,
+				FriendId:        record.FriendId,
+				UserId:          record.UserId,
+				DeckId:          record.DeckId,
+				PrivateFlg:      record.PrivateFlg,
+				TCGMeisterURL:   record.TCGMeisterURL,
+				Memo:            record.Memo,
+			},
 		})
 	}
 
 	return &dto.RecordGetByUserIdResponse{
 		Limit:   limit,
 		Offset:  offset,
+		Cursor:  base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
 		Records: ret,
 	}
 }

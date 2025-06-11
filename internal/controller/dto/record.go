@@ -22,6 +22,11 @@ type RecordUpdateRequest struct {
 	RecordRequest
 }
 
+type RecordData struct {
+	Cursor string          `json:"cursor"`
+	Data   *RecordResponse `json:"data"`
+}
+
 type RecordResponse struct {
 	ID              string    `json:"id"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -36,9 +41,10 @@ type RecordResponse struct {
 }
 
 type RecordGetResponse struct {
-	Limit   int               `json:"limit"`
-	Offset  int               `json:"offset"`
-	Records []*RecordResponse `json:"records"`
+	Limit   int           `json:"limit"`
+	Offset  int           `json:"offset"`
+	Cursor  string        `json:"cursor"`
+	Records []*RecordData `json:"records"`
 }
 
 type RecordGetByIdResponse struct {
@@ -46,9 +52,10 @@ type RecordGetByIdResponse struct {
 }
 
 type RecordGetByUserIdResponse struct {
-	Limit   int               `json:"limit"`
-	Offset  int               `json:"offset"`
-	Records []*RecordResponse `json:"records"`
+	Limit   int           `json:"limit"`
+	Offset  int           `json:"offset"`
+	Cursor  string        `json:"cursor"`
+	Records []*RecordData `json:"records"`
 }
 
 type RecordCreateResponse struct {

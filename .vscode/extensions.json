@@ -1,10 +1,9 @@
 {
-    "recommendations": [
-        "ms-azuretools.vscode-docker",
-        "golang.go",
-        "esbenp.prettier-vscode",
-        "oderwat.indent-rainbow",
-        "mosapride.zenkaku",
-        "aaron-bond.better-comments"
-    ]
+  "recommendations": [
+    "golang.go",
+    "esbenp.prettier-vscode",
+    "oderwat.indent-rainbow",
+    "mosapride.zenkaku",
+    "aaron-bond.better-comments"
+  ]
 }

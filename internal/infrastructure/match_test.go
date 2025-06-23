@@ -1127,7 +1127,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 		)).WithArgs(
 			AnyTime{},
 			gameId3,
-		).WillReturnResult(sqlmock.NewResult(0, 0))
+		).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		mock.ExpectCommit()
 
@@ -1289,7 +1289,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 		)).WithArgs(
 			AnyTime{},
 			gameId2,
-		).WillReturnResult(sqlmock.NewResult(0, 0))
+		).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		mock.ExpectCommit()
 
@@ -1506,14 +1506,14 @@ func test_MatchInfrastructure_Delete(t *testing.T) {
 	)).WithArgs(
 		AnyTime{},
 		matchId,
-	).WillReturnResult(sqlmock.NewResult(0, 0))
+	).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectExec(regexp.QuoteMeta(
 		`UPDATE "matches" SET "deleted_at"=$1 WHERE id = $2 AND "matches"."deleted_at" IS NULL`,
 	)).WithArgs(
 		AnyTime{},
 		matchId,
-	).WillReturnResult(sqlmock.NewResult(0, 0))
+	).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectCommit()
 

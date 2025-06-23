@@ -595,7 +595,7 @@ func test_RecordInfrastructure_Delete(t *testing.T) {
 	)).WithArgs(
 		AnyTime{},
 		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-	).WillReturnResult(sqlmock.NewResult(0, 0))
+	).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
 	{

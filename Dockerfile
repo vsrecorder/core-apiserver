@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.25.1 AS builder
+FROM golang:1.25.1-alpine AS builder
 
 WORKDIR /workspace
 
@@ -7,13 +7,13 @@ WORKDIR /workspace
 COPY go.mod go.mod
 COPY go.sum go.sum
 
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
-RUN go mod download && go mod tidy
-
 # Copy the go source
 COPY internal/ internal/
 COPY cmd/ cmd/
+
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download && go mod tidy
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command

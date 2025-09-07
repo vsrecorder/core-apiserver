@@ -1,16 +1,16 @@
 .PHONY: test
 test:
-	go mod tidy
+	go mod download && go mod tidy
 	go test -v -cover -race ./...
 
 .PHONY: build
 build:
-	go mod tidy
+	go mod download && go mod tidy
 	go build -o bin/core-apiserver cmd/core-apiserver/main.go
 
 .PHONY: run
 run:
-	go mod tidy
+	go mod download && go mod tidy
 	go run cmd/core-apiserver/main.go
 
 .PHONY: deploy
@@ -19,7 +19,7 @@ deploy:
 
 .PHONY: docker-build-and-push
 docker-build-and-push:
-	sudo sudo docker build -t vsrecorder/core-apiserver:latest . && sudo sudo docker push vsrecorder/core-apiserver:latest
+	sudo docker build -t vsrecorder/core-apiserver:latest . && sudo docker push vsrecorder/core-apiserver:latest
 
 .PHONY: mockgen
 mockgen:

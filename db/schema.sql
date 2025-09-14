@@ -184,6 +184,8 @@ CREATE TABLE environments (
     to_date    TIMESTAMP NOT NULL
 );
 
+INSERT INTO environments VALUES ('m2','インフェルノX','2025-09-26','2025-11-27');
+INSERT INTO environments VALUES ('m1','メガブレイブ/メガシンフォニア','2025-08-01','2025-09-25');
 INSERT INTO environments VALUES ('sv11','ブラックボルト/ホワイトフレア','2025-06-06','2025-07-31');
 INSERT INTO environments VALUES ('sv10','ロケット団の栄光','2025-04-18','2025-06-05');
 INSERT INTO environments VALUES ('sv9a','熱風のアリーナ','2025-03-14','2025-04-17');
@@ -204,3 +206,22 @@ INSERT INTO environments VALUES ('sv2a','ポケモンカード151','2023-06-16',
 INSERT INTO environments VALUES ('sv2','スノーハザード/クレイバースト','2023-04-14','2023-06-15');
 INSERT INTO environments VALUES ('sv1a','トリプレットビート','2023-03-10','2023-04-13');
 INSERT INTO environments VALUES ('sv1','スカーレットex/バイオレットex','2023-01-20','2023-03-09');
+
+CREATE TABLE cityleague_schedules (
+    id         VARCHAR(6) PRIMARY KEY,
+    title      VARCHAR(255) NOT NULL,
+    from_date  TIMESTAMP NOT NULL,
+    to_date    TIMESTAMP NOT NULL
+);
+
+INSERT INTO cityleague_schedules VALUES ('2025s1','シティリーグ2025 シーズン1','2024-09-07','2024-11-04');
+INSERT INTO cityleague_schedules VALUES ('2025s2','シティリーグ2025 シーズン2','2024-11-09','2025-01-05');
+INSERT INTO cityleague_schedules VALUES ('2025s3','シティリーグ2025 シーズン3','2025-01-11','2025-03-09');
+INSERT INTO cityleague_schedules VALUES ('2025s4','シティリーグ2025 シーズン4','2025-03-15','2025-05-11');
+INSERT INTO cityleague_schedules VALUES ('2026s1','シティリーグ2026 シーズン1','2025-09-06','2025-11-03');
+
+
+
+
+
+GRANT SELECT ON <table_name> TO grafana;

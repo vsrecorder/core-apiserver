@@ -3,6 +3,7 @@ package usecase
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -14,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	ulid "github.com/oklog/ulid/v2"
 )
 
@@ -61,40 +63,47 @@ func uploadDeckImage(deckCode string) error {
 		options.BaseEndpoint = &baseEndpoint
 	})
 
-	url := fmt.Sprintf("https://www.pokemon-card.com/deck/deckView.php/deckID/%s.png", deckCode)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	srcImg, _, err := image.Decode(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	var w bytes.Buffer
-	err = png.Encode(&w, srcImg)
-	if err != nil {
-		return err
-	}
-
-	imageBytes, err := convertPNG2JPG(w.Bytes())
-	if err != nil {
-		return err
-	}
-
-	params := &s3.PutObjectInput{
-		ACL:    "public-read",
+	if _, err = s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String("vsrecorder"),
 		Key:    aws.String(fmt.Sprintf("images/decks/%s.jpg", deckCode)),
-		Body:   bytes.NewReader(imageBytes),
-	}
+	}); err != nil {
+		var noKey *types.NoSuchKey
+		if errors.As(err, &noKey) {
+			url := fmt.Sprintf("https://www.pokemon-card.com/deck/deckView.php/deckID/%s.png", deckCode)
 
-	_, err = s3client.PutObject(ctx, params)
-	if err != nil {
-		return err
+			resp, err := http.Get(url)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			srcImg, _, err := image.Decode(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			var w bytes.Buffer
+			err = png.Encode(&w, srcImg)
+			if err != nil {
+				return err
+			}
+
+			imageBytes, err := convertPNG2JPG(w.Bytes())
+			if err != nil {
+				return err
+			}
+
+			if _, err = s3client.PutObject(ctx, &s3.PutObjectInput{
+				ACL:    "public-read",
+				Bucket: aws.String("vsrecorder"),
+				Key:    aws.String(fmt.Sprintf("images/decks/%s.jpg", deckCode)),
+				Body:   bytes.NewReader(imageBytes),
+			}); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	return nil

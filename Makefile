@@ -1,16 +1,16 @@
 .PHONY: test
 test:
-	go mod download && go mod tidy
+	go mod tidy
 	go test -v -cover -race ./...
 
 .PHONY: build
 build:
-	go mod download && go mod tidy
+	go mod tidy
 	go build -o bin/core-apiserver cmd/core-apiserver/main.go
 
 .PHONY: run
 run:
-	go mod download && go mod tidy
+	go mod tidy
 	go run cmd/core-apiserver/main.go
 
 .PHONY: deploy

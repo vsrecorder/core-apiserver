@@ -26,15 +26,9 @@ func (i *TonamelEvent) FindById(
 
 	// OGPチェッカーから指定されたIDに紐ずくTonamelのOGP情報を取得
 	res, err := http.Get("https://web-toolbox.dev/api/ogtag?url=https://tonamel.com/competition/" + id)
-
 	if err != nil {
 		return nil, err
 	}
-
-	if res.StatusCode != http.StatusOK {
-		return nil, err
-	}
-
 	defer res.Body.Close()
 
 	body, _ := io.ReadAll(res.Body)

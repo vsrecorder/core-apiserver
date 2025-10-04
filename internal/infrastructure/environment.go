@@ -106,5 +106,4 @@ func (i *Environment) FindByTerm(
 	}
 
 	return entities, nil
-
 }

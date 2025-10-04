@@ -12,6 +12,7 @@ func NewOfficialEventGetResponse(
 	leagueType uint,
 	startDate time.Time,
 	endDate time.Time,
+	count int,
 	officialEvents []*entity.OfficialEvent,
 ) *dto.OfficialEventGetResponse {
 	ret := []*dto.OfficialEventResponse{}
@@ -40,6 +41,7 @@ func NewOfficialEventGetResponse(
 		LeagueType:     leagueType,
 		StartDate:      startDate,
 		EndDate:        endDate,
+		Count:          count,
 		OfficialEvents: ret,
 	}
 }

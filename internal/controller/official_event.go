@@ -56,7 +56,9 @@ func (c *OfficialEvent) Get(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewOfficialEventGetResponse(typeId, leagueType, startDate, endDate, officialEvents)
+	count := len(officialEvents)
+
+	res := presenter.NewOfficialEventGetResponse(typeId, leagueType, startDate, endDate, count, officialEvents)
 
 	ctx.JSON(http.StatusOK, res)
 }

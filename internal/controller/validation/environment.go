@@ -37,7 +37,7 @@ func EnvironmentGetByTermMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if (fromDate == time.Time{}) != (toDate == time.Time{}) {
+		if (fromDate.Equal(time.Time{})) != (toDate.Equal(time.Time{})) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
 			ctx.Abort()
 			return

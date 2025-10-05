@@ -14,8 +14,8 @@ func NewEnvironmentGetResponse(
 		ret = append(ret, &dto.EnvironmentResponse{
 			ID:       environment.ID,
 			Title:    environment.Title,
-			FromDate: environment.FromDate.Format("2006-01-02"),
-			ToDate:   environment.ToDate.Format("2006-01-02"),
+			FromDate: environment.FromDate,
+			ToDate:   environment.ToDate,
 		})
 	}
 
@@ -28,8 +28,8 @@ func NewEnvironmentGetByIdResponse(
 	return &dto.EnvironmentResponse{
 		ID:       environment.ID,
 		Title:    environment.Title,
-		FromDate: environment.FromDate.Format("2006-01-02"),
-		ToDate:   environment.ToDate.Format("2006-01-02"),
+		FromDate: environment.FromDate,
+		ToDate:   environment.ToDate,
 	}
 }
 
@@ -39,8 +39,8 @@ func NewEnvironmentGetByDateResponse(
 	return &dto.EnvironmentResponse{
 		ID:       environment.ID,
 		Title:    environment.Title,
-		FromDate: environment.FromDate.Format("2006-01-02"),
-		ToDate:   environment.ToDate.Format("2006-01-02"),
+		FromDate: environment.FromDate,
+		ToDate:   environment.ToDate,
 	}
 }
 
@@ -53,8 +53,8 @@ func NewEnvironmentGetByTermResponse(
 		ret = append(ret, &dto.EnvironmentResponse{
 			ID:       environment.ID,
 			Title:    environment.Title,
-			FromDate: environment.FromDate.Format("2006-01-02"),
-			ToDate:   environment.ToDate.Format("2006-01-02"),
+			FromDate: environment.FromDate,
+			ToDate:   environment.ToDate,
 		})
 	}
 

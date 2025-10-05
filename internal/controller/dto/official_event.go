@@ -7,7 +7,7 @@ type OfficialEventResponse struct {
 	Title           string    `json:"title"`
 	Address         string    `json:"address"`
 	Venue           string    `json:"venue"`
-	Date            string    `json:"date"`
+	Date            time.Time `json:"date"`
 	StartedAt       time.Time `json:"started_at"`
 	EndedAt         time.Time `json:"ended_at"`
 	TypeName        string    `json:"type_name"`
@@ -22,8 +22,8 @@ type OfficialEventResponse struct {
 type OfficialEventGetResponse struct {
 	TypeId         uint                     `json:"type_id"`
 	LeagueType     uint                     `json:"league_type"`
-	StartDate      string                   `json:"start_date"`
-	EndDate        string                   `json:"end_date"`
+	StartDate      time.Time                `json:"start_date"`
+	EndDate        time.Time                `json:"end_date"`
 	Count          int                      `json:"count"`
 	OfficialEvents []*OfficialEventResponse `json:"official_events"`
 }

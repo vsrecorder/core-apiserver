@@ -23,7 +23,7 @@ func NewOfficialEventGetResponse(
 			Title:           officialEvent.Title,
 			Address:         officialEvent.Address,
 			Venue:           officialEvent.Venue,
-			Date:            officialEvent.Date,
+			Date:            officialEvent.Date.Format("2006-01-02"),
 			StartedAt:       officialEvent.StartedAt,
 			EndedAt:         officialEvent.EndedAt,
 			TypeName:        officialEvent.TypeName,
@@ -39,8 +39,8 @@ func NewOfficialEventGetResponse(
 	return &dto.OfficialEventGetResponse{
 		TypeId:         typeId,
 		LeagueType:     leagueType,
-		StartDate:      startDate,
-		EndDate:        endDate,
+		StartDate:      startDate.Format("2006-01-02"),
+		EndDate:        endDate.Format("2006-01-02"),
 		Count:          count,
 		OfficialEvents: ret,
 	}
@@ -55,7 +55,7 @@ func NewOfficialEventGetByIdResponse(
 			Title:           officialEvent.Title,
 			Address:         officialEvent.Address,
 			Venue:           officialEvent.Venue,
-			Date:            officialEvent.Date,
+			Date:            officialEvent.Date.Format("2006-01-02"),
 			StartedAt:       officialEvent.StartedAt,
 			EndedAt:         officialEvent.EndedAt,
 			TypeName:        officialEvent.TypeName,

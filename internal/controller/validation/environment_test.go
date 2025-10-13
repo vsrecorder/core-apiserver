@@ -63,7 +63,7 @@ func test_EnvironmentGetByDateMiddleware(t *testing.T) {
 		middleware(ginContext)
 
 		expectedDate, _ := time.Parse(DateLayout, date)
-		expectedDate = time.Date(expectedDate.Year(), expectedDate.Month(), expectedDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedDate = time.Date(expectedDate.Year(), expectedDate.Month(), expectedDate.Day(), 0, 0, 0, 0, time.Local)
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, expectedDate, helper.GetDate(ginContext))
@@ -144,10 +144,10 @@ func test_EnvironmentGetByTermMiddleware(t *testing.T) {
 		middleware(ginContext)
 
 		expectedFromDate, _ := time.Parse(DateLayout, fromDate)
-		expectedFromDate = time.Date(expectedFromDate.Year(), expectedFromDate.Month(), expectedFromDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedFromDate = time.Date(expectedFromDate.Year(), expectedFromDate.Month(), expectedFromDate.Day(), 0, 0, 0, 0, time.Local)
 
 		expectedToDate, _ := time.Parse(DateLayout, toDate)
-		expectedToDate = time.Date(expectedToDate.Year(), expectedToDate.Month(), expectedToDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedToDate = time.Date(expectedToDate.Year(), expectedToDate.Month(), expectedToDate.Day(), 0, 0, 0, 0, time.Local)
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, expectedFromDate, helper.GetFromDate(ginContext))

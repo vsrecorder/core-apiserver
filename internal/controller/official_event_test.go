@@ -72,8 +72,8 @@ func test_OfficialEventController_Get(t *testing.T) {
 		typeId := uint(0)
 		leagueType := uint(0)
 		now := time.Now()
-		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
@@ -107,8 +107,8 @@ func test_OfficialEventController_Get(t *testing.T) {
 		typeId := uint(1)
 		leagueType := uint(0)
 		now := time.Now()
-		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
@@ -142,8 +142,8 @@ func test_OfficialEventController_Get(t *testing.T) {
 		typeId := uint(1)
 		leagueType := uint(4)
 		now := time.Now()
-		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
@@ -179,9 +179,9 @@ func test_OfficialEventController_Get(t *testing.T) {
 		startDate := "2025-02-15"
 		endDate := "2025-02-15"
 		expectedStartDate, _ := time.Parse(DateLayout, startDate)
-		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.Local)
 		expectedEndDate, _ := time.Parse(DateLayout, endDate)
-		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.Local)
 
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, expectedStartDate, expectedEndDate).Return(officialEvents, nil)
 
@@ -206,8 +206,8 @@ func test_OfficialEventController_Get(t *testing.T) {
 		typeId := uint(0)
 		leagueType := uint(0)
 		now := time.Now()
-		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
 		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(nil, errors.New(""))
 

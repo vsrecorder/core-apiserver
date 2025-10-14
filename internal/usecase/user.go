@@ -97,7 +97,7 @@ func (u *User) Create(
 	ctx context.Context,
 	param *UserCreateParam,
 ) (*entity.User, error) {
-	createdAt := time.Now().UTC().Truncate(0)
+	createdAt := time.Now().Local()
 
 	user := entity.NewUser(
 		param.ID,

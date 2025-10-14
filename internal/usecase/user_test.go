@@ -67,7 +67,7 @@ func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockUserInterface, usecase UserInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 		name := "test"
 		imageURL := "http://example.com/image.png"
 
@@ -91,7 +91,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 		name := "test"
 		imageURL := "http://example.com/image.png"
 
@@ -139,7 +139,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockUserInterface, usecase UserInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 		name := "test"
 		imageURL := "http://example.com/image.png"
 

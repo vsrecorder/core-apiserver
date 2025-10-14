@@ -154,7 +154,7 @@ func (u *Match) Create(
 		return nil, err
 	}
 
-	createdAt := time.Now().UTC().Truncate(0)
+	createdAt := time.Now().Local()
 
 	var games []*entity.Game
 	for _, game := range param.Games {
@@ -163,7 +163,7 @@ func (u *Match) Create(
 			return nil, err
 		}
 
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		games = append(
 			games,
@@ -245,7 +245,7 @@ func (u *Match) Update(
 					return nil, err
 				}
 
-				createdAt := time.Now().UTC().Truncate(0)
+				createdAt := time.Now().Local()
 
 				games = append(
 					games,

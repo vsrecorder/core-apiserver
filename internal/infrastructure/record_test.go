@@ -68,7 +68,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
 
@@ -152,8 +152,8 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	cursor := time.Now().UTC().Truncate(0)
-	datetime := time.Now().UTC().Truncate(0)
+	cursor := time.Now().Local()
+	datetime := time.Now().Local()
 	limit := 10
 
 	{
@@ -234,7 +234,7 @@ func test_RecordInfrastructure_FindById(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 
 	rows := sqlmock.NewRows([]string{
 		"id",
@@ -281,7 +281,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
 
@@ -332,8 +332,8 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	cursor := time.Now().UTC().Truncate(0)
-	datetime := time.Now().UTC().Truncate(0)
+	cursor := time.Now().Local()
+	datetime := time.Now().Local()
 	limit := 10
 
 	rows := sqlmock.NewRows([]string{
@@ -383,7 +383,7 @@ func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
 
@@ -435,7 +435,7 @@ func test_RecordInfrastructure_FindByTonamelEventId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
 
@@ -487,7 +487,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
 
@@ -538,7 +538,7 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(

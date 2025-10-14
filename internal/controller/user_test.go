@@ -125,7 +125,7 @@ func test_UserController_Create(t *testing.T) {
 		name := "test"
 		imageURL := "https://example.com/image.png"
 
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		user := &entity.User{
 			ID:        id,
@@ -257,7 +257,7 @@ func test_UserController_Update(t *testing.T) {
 		name := "test"
 		imageURL := "https://example.com/image.png"
 
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		user := &entity.User{
 			ID:        id,

@@ -65,7 +65,7 @@ func test_MatchController_GetById(t *testing.T) {
 		c, mockUsecase := setup4TestMatchController(t, r)
 
 		id, _ := generateId()
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 		recordId, _ := generateId()
 		deckId := ""
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -147,7 +147,7 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 		c, mockUsecase := setup4TestMatchController(t, r)
 
 		id, _ := generateId()
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 		recordId, _ := generateId()
 		deckId := ""
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -238,7 +238,7 @@ func test_MatchController_Create(t *testing.T) {
 		recordId, _ := generateId()
 		deckId := ""
 
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		match := &entity.Match{
 			ID:                 id,
@@ -340,7 +340,7 @@ func test_MatchController_Create(t *testing.T) {
 		recordId, _ := generateId()
 		deckId := ""
 
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		match := &entity.Match{
 			ID:                 id,
@@ -478,7 +478,7 @@ func test_MatchController_Update(t *testing.T) {
 		recordId, _ := generateId()
 		deckId := ""
 
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		match := &entity.Match{
 			ID:                 id,
@@ -580,7 +580,7 @@ func test_MatchController_Update(t *testing.T) {
 		recordId, _ := generateId()
 		deckId := ""
 
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		match := &entity.Match{
 			ID:                 id,

@@ -24,6 +24,13 @@ func OfficialEventGetMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		date, err := helper.ParseQueryDate(ctx)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+			ctx.Abort()
+			return
+		}
+
 		startDate, err := helper.ParseQueryStartDate(ctx)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
@@ -47,6 +54,7 @@ func OfficialEventGetMiddleware() gin.HandlerFunc {
 
 		helper.SetTypeId(ctx, typeId)
 		helper.SetLeagueType(ctx, leagueType)
+		helper.SetDate(ctx, date)
 		helper.SetStartDate(ctx, startDate)
 		helper.SetEndDate(ctx, endDate)
 	}

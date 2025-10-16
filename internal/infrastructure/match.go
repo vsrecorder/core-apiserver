@@ -43,6 +43,10 @@ func (i *Match) FindById(
 		return nil, tx.Error
 	}
 
+	if len(results) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
 	var games []*entity.Game
 	for _, result := range results {
 		game := entity.NewGame(
@@ -100,6 +104,10 @@ func (i *Match) FindByRecordId(
 
 	if tx.Error != nil {
 		return nil, tx.Error
+	}
+
+	if len(results) == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	v := make(map[string]*entity.Match)

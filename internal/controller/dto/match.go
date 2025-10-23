@@ -48,10 +48,7 @@ type MatchGetByIdResponse struct {
 }
 
 type MatchGetByRecordIdResponse struct {
-	RecordId string           `json:"record_id"`
-	DeckId   string           `json:"deck_id"`
-	UserId   string           `json:"user_id"`
-	Matches  []*MatchResponse `json:"matches"`
+	MatchResponse
 }
 
 type MatchCreateResponse struct {

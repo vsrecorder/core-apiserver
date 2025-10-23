@@ -80,10 +80,11 @@ func NewDeckGetByUserIdResponse(
 	}
 
 	return &dto.DeckGetByUserIdResponse{
-		Limit:  limit,
-		Offset: offset,
-		Cursor: base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
-		Decks:  ret,
+		Archived: archived,
+		Limit:    limit,
+		Offset:   offset,
+		Cursor:   base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
+		Decks:    ret,
 	}
 }
 

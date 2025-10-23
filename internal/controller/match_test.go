@@ -172,17 +172,14 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 
 		c.router.ServeHTTP(w, req)
 
-		var res dto.MatchGetByRecordIdResponse
+		var res []*dto.MatchResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, recordId, res.RecordId)
-		require.Equal(t, uid, res.UserId)
-		require.Equal(t, len(matches), len(res.Matches))
-		require.Equal(t, id, res.Matches[0].ID)
-		require.Equal(t, createdAt, res.Matches[0].CreatedAt)
-		require.Equal(t, recordId, res.Matches[0].RecordId)
-		require.Equal(t, uid, res.Matches[0].UserId)
+		require.Equal(t, id, res[0].ID)
+		require.Equal(t, createdAt, res[0].CreatedAt)
+		require.Equal(t, recordId, res[0].RecordId)
+		require.Equal(t, uid, res[0].UserId)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {

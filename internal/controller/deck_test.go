@@ -374,7 +374,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 
 	c, mockUsecase := setup4TestDeckController(t, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_#01-01", func(t *testing.T) {
 		deck := entity.Deck{
 			UserId: uid,
 		}
@@ -400,6 +400,40 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, archived, res.Archived)
+		require.Equal(t, limit, res.Limit)
+		require.Equal(t, offset, res.Offset)
+		require.Equal(t, len(decks), len(res.Decks))
+		require.Equal(t, uid, res.Decks[0].Data.UserId)
+	})
+
+	t.Run("正常系_#01-02", func(t *testing.T) {
+		deck := entity.Deck{
+			UserId: uid,
+		}
+
+		decks := []*entity.Deck{
+			&deck,
+		}
+
+		archived := true
+		limit := 10
+		offset := 0
+
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?limit=%d&offset=%d&archived=%t", limit, offset, archived), nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.DeckGetByUserIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, archived, res.Archived)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
@@ -432,6 +466,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, archived, res.Archived)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
@@ -459,10 +494,11 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, archived, res.Archived)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"decks\":[]}", w.Body.String())
+		require.Equal(t, "{\"archived\":false,\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"decks\":[]}", w.Body.String())
 	})
 
 	t.Run("正常系_#04", func(t *testing.T) {
@@ -493,6 +529,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, archived, res.Archived)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))

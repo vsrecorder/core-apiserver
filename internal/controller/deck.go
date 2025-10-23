@@ -148,33 +148,6 @@ func (c *Deck) Get(ctx *gin.Context) {
 	}
 }
 
-func (c *Deck) GetById(ctx *gin.Context) {
-	id := helper.GetId(ctx)
-
-	deck, err := c.usecase.FindById(context.Background(), id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
-		return
-	}
-
-	if helper.GetUID(ctx) != deck.UserId {
-		if deck.PrivateCodeFlg {
-			deck.Code = ""
-		}
-	}
-
-	res := presenter.NewDeckGetByIdResponse(deck)
-
-	ctx.JSON(http.StatusOK, res)
-}
-
 func (c *Deck) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 
@@ -208,6 +181,33 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, res)
 		}
 	}
+}
+
+func (c *Deck) GetById(ctx *gin.Context) {
+	id := helper.GetId(ctx)
+
+	deck, err := c.usecase.FindById(context.Background(), id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
+			ctx.Abort()
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	if helper.GetUID(ctx) != deck.UserId {
+		if deck.PrivateCodeFlg {
+			deck.Code = ""
+		}
+	}
+
+	res := presenter.NewDeckGetByIdResponse(deck)
+
+	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *Deck) Create(ctx *gin.Context) {

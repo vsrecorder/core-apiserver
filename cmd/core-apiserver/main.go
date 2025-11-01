@@ -174,6 +174,16 @@ func main() {
 		infrastructure.NewEnvironment(db),
 	).RegisterRoute(relativePath)
 
+	controller.NewCityleagueSchedule(
+		r,
+		infrastructure.NewCityleagueSchedule(db),
+	).RegisterRoute(relativePath)
+
+	controller.NewCityleagueResult(
+		r,
+		infrastructure.NewCityleagueResult(db),
+	).RegisterRoute(relativePath)
+
 	{
 		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer stop()

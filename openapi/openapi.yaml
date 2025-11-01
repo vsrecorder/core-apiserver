@@ -1,0 +1,716 @@
+openapi: 3.0.0
+info:
+  title: vsrecorder core-api
+  version: 0.1.0
+  description: |-
+    コアAPI
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https//local.vsrecorder.mobi/api/v1beta
+    description: "ローカル環境用"
+tags:
+  - name: Record
+    description: "レコード"
+  - name: Match
+    description: "マッチ"
+  - name: Deck
+    description: "デッキ"
+paths:
+  /decks:
+    get:
+      summary: "デッキ一覧の取得"
+      tags: 
+        - Deck
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/archivedParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/offsetParam'
+        - $ref: '#/components/parameters/cursorParam'
+      responses:
+        "200":
+          description: "デッキ一覧取得に成功"
+          content:
+            application/json:
+              schema:
+                properties:
+                  archived:
+                    type: boolean
+                    example: false
+                  limit:
+                    type: integer
+                    example: 10
+                  offset:
+                    type: integer
+                    example: 0
+                  cursor:
+                    type: string
+                    format: base64
+                    example: "MDAwMS0wMS0wMVQwMDowMDowMFo="
+                  records:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cursor:
+                          type: string
+                          format: base64
+                          example: "MjAyNS0wOC0yOVQxNzo1MjoyNSswOTowMA=="
+                        data:
+                          $ref: "#/components/schemas/Deck"
+    post:
+      summary: "デッキを作成"
+      tags: 
+        - Deck
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/Deck"
+      responses:
+        "201":
+          description: "デッキ作成に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deck"
+  /decks/{deckId}:
+    get:
+      summary: "特定のデッキを取得"
+      tags: 
+        - Deck
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/deckIdParam'
+      responses:
+        "200":
+          description: "特定のデッキ取得に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deck"
+    put:
+      summary: "特定のデッキを更新"
+      tags: 
+        - Deck
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/deckIdParam'
+      requestBody:
+        $ref: "#/components/requestBodies/Deck"
+      responses:
+        "200":
+          description: "特定のデッキ更新に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deck"
+    delete:
+      summary: "特定のデッキを削除"
+      tags: 
+        - Deck
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/deckIdParam'
+      responses:
+        "204":
+          description: "デッキの削除に成功"
+  /decks/{deckId}/archive:
+    patch:
+      summary: "特定のデッキをアーカイブ"
+      tags: 
+        - Deck
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: deckId
+          in: path
+          required: true
+          description: "デッキの一意識別子"
+          schema:
+            type: string
+            example: "01K6DTYS5Z4A02CDQXHW90NQR6"
+      responses:
+        "200":
+          description: "特定のデッキのアーカイブ化に成功"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: 01K6DTYS5Z4A02CDQXHW90NQR6
+                  created_at:
+                    type: string
+                    format: date-time
+                    example: "2025-10-01T02:33:07.642797+09:00"
+                  archived_at:
+                    type: string
+                    format: date-time
+                    example: "2025-10-26T23:28:37.961305+09:00"
+                  user_id:
+                    type: string
+                    example: "d4385mX98abtmLny3qxlmBlBLIu1"
+                  name:
+                    type: string
+                    example: "シロナのガブリアスex"
+                  code:
+                    type: string
+                    example: "4cJxc8-TlLYCM-Yx88cD"
+                  private_code_flg:
+                    type: boolean
+                    example: false
+  /decks/{deckId}/unarchive:
+    patch:
+      summary: "特定のデッキをアンアーカイブ"
+      tags: 
+        - Deck
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/deckIdParam'
+      responses:
+        "200":
+          description: "特定のデッキのアンアーカイブ化に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deck"
+  /matches:
+    post:
+      summary: "マッチを作成"
+      tags: 
+        - Match
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/Match"
+      responses:
+        "201":
+          description: "マッチ作成に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+  /matches/{matchId}:
+    get:
+      summary: "特定のマッチを取得"
+      tags: 
+        - Match
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/matchIdParam'
+      responses:
+        "200":
+          description: "特定のマッチ取得に成功"
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Match"
+    put:
+      summary: "特定のマッチを更新"
+      tags: 
+        - Match
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/matchIdParam'
+      requestBody:
+        $ref: "#/components/requestBodies/Match"
+      responses:
+        "200":
+          description: "特定のマッチ更新に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+    delete:
+      summary: "特定のマッチを削除"
+      tags: 
+        - Match
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/matchIdParam'
+      responses:
+        "204":
+          description: "マッチの削除に成功"
+  /records/{recordId}/matches:
+    get:
+      summary: "特定のレコードに紐づくマッチ一覧を取得"
+      tags: 
+        - Match
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/recordIdParam'
+      responses:
+        "200":
+          description: "特定のレコードに紐づくマッチ一覧の取得に成功"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Match"
+  /records:
+    get:
+      summary: "レコード一覧の取得"
+      tags: 
+        - Record
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/offsetParam'
+        - $ref: '#/components/parameters/cursorParam'
+      responses:
+        "200":
+          description: "レコード一覧取得に成功"
+          content:
+            application/json:
+              schema:
+                properties:
+                  limit:
+                    type: integer
+                    example: 10
+                  offset:
+                    type: integer
+                    example: 0
+                  cursor:
+                    type: string
+                    format: base64
+                    example: "MDAwMS0wMS0wMVQwMDowMDowMFo="
+                  records:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cursor:
+                          type: string
+                          format: base64
+                          example: "MjAyNS0wOC0zMFQxMDowNzoxNiswOTowMA=="
+                        data:
+                          $ref: "#/components/schemas/Record"
+        "404":
+          description: no found
+    post:
+      summary: "レコードを作成"
+      tags: 
+        - Record
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/Record"
+      responses:
+        "201":
+          description: "レコード作成に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Record"
+  /records/{recordId}:
+    get:
+      summary: "特定のレコードを取得"
+      tags: 
+        - Record
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/recordIdParam'
+      responses:
+        "200":
+          description: "特定のレコード取得に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Record"
+    put:
+      summary: "特定のレコードを更新"
+      tags: 
+        - Record
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/recordIdParam'
+      requestBody:
+        $ref: "#/components/requestBodies/Record"
+      responses:
+        "200":
+          description: "特定のレコード更新に成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Record"
+    delete:
+      summary: "特定のレコードを削除"
+      tags: 
+        - Record
+      deprecated: false
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/recordIdParam'
+      responses:
+        "204":
+          description: "レコードの削除に成功"
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+  parameters:
+    archivedParam:
+      name: archived
+      in: query
+      required: false
+      description: "test"
+      schema:
+        type: boolean
+        default: false
+    limitParam:
+      name: limit
+      in: query
+      required: false
+      description: "test"
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    offsetParam:
+      name: offset
+      in: query
+      required: false
+      description: "test"
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    cursorParam:
+      name: cursor
+      in: query
+      required: false
+      description: "test"
+      schema:
+        type: string
+        format: base64
+        default: MDAwMS0wMS0wMVQwMDowMDowMFo=
+    recordIdParam:  
+      name: recordId
+      in: path
+      required: true
+      description: "レコードの一意識別子"
+      schema:
+        type: string
+        example: "01K3W87C6961BPRNH3S2VXX374"
+    matchIdParam:  
+      name: matchId
+      in: path
+      required: true
+      description: "マッチの一意識別子"
+      schema:
+        type: string
+        example: "01K3WP9PJZ2N3Z2WVY0X36DP25"
+    deckIdParam:  
+      name: deckId
+      in: path
+      required: true
+      description: "デッキの一意識別子"
+      schema:
+        type: string
+        example: "01K3TGEB1BFND6NXBF413X5XVK"
+  requestBodies:
+    Deck:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: 
+            - name
+            - code
+            - private_code_flg
+            properties:
+              name:
+                type: string
+                example: "マリィのオーロンゲex"
+              code:
+                type: string
+                example: "xa88GJ-02BdOY-YKx4cY"
+              private_code_flg:
+                type: boolean
+                example: false
+    Match:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: 
+            - record_id
+            properties:
+              record_id:
+                type: string
+                example: 767194
+              deck_id:
+                type: string
+                example: ""
+              opponentes_user_id:
+                type: string
+                example: ""
+              bo3_flg:
+                type: boolean
+                example: false
+              qualifying_round_flg:
+                type: boolean
+                example: false
+              final_tournament_flg:
+                type: boolean
+                example: false
+              default_victory_flg:
+                type: boolean
+                example: false
+              default_defeat_flg:
+                type: boolean
+                example: false
+              victory_flg:
+                type: boolean
+                example: true
+              opponents_deck_info:
+                type: string
+                example: ""
+              memo:
+                type: string
+                example: ""
+              games:
+                type: array
+                items:
+                  type: object
+                  required: 
+                  - go_first
+                  properties:
+                    go_first:
+                      type: boolean
+                      example: true
+                    winnging_flg:
+                      type: boolean
+                      example: true
+                    your_prize_cards:
+                      type: integer
+                      minimum: 0
+                      maximum: 6
+                      example: 6
+                    opponents_prize_cards:
+                      type: integer
+                      minimum: 0
+                      maximum: 6
+                      example: 4
+                    memo:
+                      type: string
+                      example: ""
+    Record:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: 
+            - official_event_id
+            - tonamel_event_id
+            - friend_id
+            properties:
+              official_event_id:
+                type: integer
+                example: 767194
+              tonamel_event_id:
+                type: string
+                example: ""
+              friend_id:
+                type: string
+                example: ""
+              deck_id:
+                type: string
+                example: "01K3TGEB1BFND6NXBF413X5XVK"
+              private_flg:
+                type: boolean
+                example: false
+              tcg_meister_url:
+                type: string
+                format: url
+                example: ""
+              memo:
+                type: string
+                example: ""
+  schemas:
+    Deck:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 01K3TGEB1BFND6NXBF413X5XVK
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-08-29T17:52:25.163198+09:00"
+        archived_at:
+          type: string
+          format: date-time
+          example: "0001-01-01T00:00:00Z"
+        user_id:
+          type: string
+          example: "d4385mX98abtmLny3qxlmBlBLIu1"
+        name:
+          type: string
+          example: "マリィのオーロンゲex"
+        code:
+          type: string
+          example: "xa88GJ-02BdOY-YKx4cY"
+        private_code_flg:
+          type: boolean
+          example: false
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "01K3WP9PPHGAFKBSWB7R97XA4D"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-08-30T14:13:13.170698+09:00"
+        match_id:
+          type: string
+          example: "01K3WP9PJZ2N3Z2WVY0X36DP25"
+        user_id:
+          type: string
+          example: "d4385mX98abtmLny3qxlmBlBLIu1"
+        go_first:
+          type: boolean
+          example: true
+        winnging_flg:
+          type: boolean
+          example: true
+        your_prize_cards:
+          type: integer
+          minimum: 0
+          maximum: 6
+          example: 6
+        opponents_prize_cards:
+          type: integer
+          minimum: 0
+          maximum: 6
+          example: 4
+        memo:
+          type: string
+          example: ""
+    Match:
+      type: object
+      properties:
+          id:
+            type: string
+            example: "01K3WP9PJZ2N3Z2WVY0X36DP25"
+          created_at:
+            type: string
+            format: date-time
+            example: "2025-08-30T14:13:13.057675+09:00"
+          record_id:
+            type: string
+            example: "01K3W87C6961BPRNH3S2VXX374"
+          deck_id:
+            type: string
+            example: ""
+          user_id:
+            type: string
+            example: "d4385mX98abtmLny3qxlmBlBLIu1"
+          opponents_user_id:
+            type: string
+            example: ""
+          bo3_flg:
+            type: boolean
+            example: false
+          qualifying_round_flg:
+            type: boolean
+            example: false
+          final_tournament_flg:
+            type: boolean
+            example: false
+          default_victory_flg:
+            type: boolean
+            example: false
+          default_defeat_flg:
+            type: boolean
+            example: false
+          victory_flg:
+            type: boolean
+            example: true
+          opponents_deck_info:
+            type: string
+            example: "バシャーモex/Nのゾロアークex"
+          memo:
+            type: string
+            example: ""
+          games:
+            type: array
+            items:
+              $ref: "#/components/schemas/Game"
+    Record:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "01K3W87C6961BPRNH3S2VXX374"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-08-30T10:07:16.812961+09:00"
+        official_event_id:
+          type: integer
+          example: 767194
+        tonamel_event_id:
+          type: string
+          example: ""
+        friend_id:
+          type: string
+          example: ""
+        user_id:
+          type: string
+          example: "d4385mX98abtmLny3qxlmBlBLIu1"
+        deck_id:
+          type: string
+          example: "01K3TGEB1BFND6NXBF413X5XVK"
+        private_flg:
+          type: boolean
+          example: false
+        tcg_meister_url:
+          type: string
+          format: url
+          example: ""
+        memo:
+          type: string
+          example: ""

@@ -24,6 +24,7 @@ type OfficialEventGetResponse struct {
 	LeagueType     uint                     `json:"league_type"`
 	StartDate      time.Time                `json:"start_date"`
 	EndDate        time.Time                `json:"end_date"`
+	Count          int                      `json:"count"`
 	OfficialEvents []*OfficialEventResponse `json:"official_events"`
 }
 

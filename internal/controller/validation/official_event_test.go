@@ -42,9 +42,9 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		expectedTypeId := uint(0)
 		expectedLeagueType := uint(0)
 		expectedStartDate, _ := time.Parse(DateLayout, startDate)
-		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.Local)
 		expectedEndDate, _ := time.Parse(DateLayout, endDate)
-		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.Local)
 
 		ginContext.Request = req
 		middleware := OfficialEventGetMiddleware()
@@ -53,6 +53,7 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, expectedTypeId, helper.GetTypeId(ginContext))
 		require.Equal(t, expectedLeagueType, helper.GetLeagueType(ginContext))
+		require.Equal(t, time.Time{}, helper.GetDate(ginContext))
 		require.Equal(t, expectedStartDate, helper.GetStartDate(ginContext))
 		require.Equal(t, expectedEndDate, helper.GetEndDate(ginContext))
 	})
@@ -71,9 +72,9 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		expectedTypeId := uint(0)
 		expectedLeagueType := uint(0)
 		expectedStartDate, _ := time.Parse(DateLayout, startDate)
-		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedStartDate = time.Date(expectedStartDate.Year(), expectedStartDate.Month(), expectedStartDate.Day(), 0, 0, 0, 0, time.Local)
 		expectedEndDate, _ := time.Parse(DateLayout, endDate)
-		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.UTC)
+		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.Local)
 
 		ginContext.Request = req
 		middleware := OfficialEventGetMiddleware()
@@ -82,8 +83,34 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, expectedTypeId, helper.GetTypeId(ginContext))
 		require.Equal(t, expectedLeagueType, helper.GetLeagueType(ginContext))
+		require.Equal(t, time.Time{}, helper.GetDate(ginContext))
 		require.Equal(t, expectedStartDate, helper.GetStartDate(ginContext))
 		require.Equal(t, expectedEndDate, helper.GetEndDate(ginContext))
+	})
+
+	t.Run("正常系_#03", func(t *testing.T) {
+		date := "2025-02-15"
+
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("GET", fmt.Sprintf("/?date=%s", date), nil)
+		require.NoError(t, err)
+
+		expectedTypeId := uint(0)
+		expectedLeagueType := uint(0)
+		expectedDate, _ := time.Parse(DateLayout, date)
+		expectedDate = time.Date(expectedDate.Year(), expectedDate.Month(), expectedDate.Day(), 0, 0, 0, 0, time.Local)
+
+		ginContext.Request = req
+		middleware := OfficialEventGetMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, expectedTypeId, helper.GetTypeId(ginContext))
+		require.Equal(t, expectedLeagueType, helper.GetLeagueType(ginContext))
+		require.Equal(t, expectedDate, helper.GetDate(ginContext))
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {

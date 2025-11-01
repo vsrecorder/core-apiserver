@@ -95,7 +95,7 @@ func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockR
 func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		limit := 10
-		cursor := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -118,7 +118,7 @@ func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_reposito
 
 	t.Run("正常系_#02", func(t *testing.T) {
 		limit := 10
-		cursor := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
 
 		records := []*entity.Record{}
 
@@ -132,7 +132,7 @@ func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_reposito
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		limit := 10
-		cursor := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
 
 		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(nil, errors.New(""))
 
@@ -236,7 +236,7 @@ func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_
 
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		limit := 10
-		cursor := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
 
 		record := &entity.Record{
 			ID:     id,
@@ -259,7 +259,7 @@ func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_
 	t.Run("正常系_#02", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		limit := 10
-		cursor := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
 
 		records := []*entity.Record{}
 
@@ -274,7 +274,7 @@ func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_
 	t.Run("異常系_#01", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		limit := 10
-		cursor := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
 
 		mockRepository.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursor).Return(nil, errors.New(""))
 
@@ -415,7 +415,7 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		record := entity.NewRecord(
 			id,
@@ -476,7 +476,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		record := entity.NewRecord(
 			id,
@@ -535,7 +535,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 
 	t.Run("異常系_#02", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().UTC().Truncate(0)
+		createdAt := time.Now().Local()
 
 		record := entity.NewRecord(
 			id,

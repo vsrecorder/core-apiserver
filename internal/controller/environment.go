@@ -83,7 +83,7 @@ func (c *Environment) GetById(ctx *gin.Context) {
 func (c *Environment) GetByDate(ctx *gin.Context) {
 	date := helper.GetDate(ctx)
 
-	if date == (time.Time{}) {
+	if date.Equal((time.Time{})) {
 		return
 	}
 
@@ -110,7 +110,7 @@ func (c *Environment) GetByTerm(ctx *gin.Context) {
 	fromDate := helper.GetFromDate(ctx)
 	toDate := helper.GetToDate(ctx)
 
-	if (fromDate == time.Time{}) && (toDate == time.Time{}) {
+	if (fromDate.Equal(time.Time{})) && (toDate.Equal(time.Time{})) {
 		return
 	}
 

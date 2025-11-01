@@ -63,7 +63,7 @@ func test_GameInfrastructure_FindById(t *testing.T) {
 	id := "01JJGBG4EGM1EZVWK02TEVQ5F0"
 	matchId := "01JJGBG44X1CZ6FZY39N1RQN9Z"
 	userId := "d4385mX98abtmLny3qxlmBlBLIu1"
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 
 	rows := sqlmock.NewRows([]string{
 		"id",
@@ -114,7 +114,7 @@ func test_GameInfrastructure_FindByMatchId(t *testing.T) {
 	id := "01JJGBG4EGM1EZVWK02TEVQ5F0"
 	matchId := "01JJGBG44X1CZ6FZY39N1RQN9Z"
 	userId := "d4385mX98abtmLny3qxlmBlBLIu1"
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 
 	rows := sqlmock.NewRows([]string{
 		"id",

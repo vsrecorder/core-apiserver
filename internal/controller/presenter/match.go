@@ -50,7 +50,7 @@ func NewMatchGetByIdResponse(
 
 func NewMatchGetByRecordIdResponse(
 	matches []*entity.Match,
-) *dto.MatchGetByRecordIdResponse {
+) []*dto.MatchResponse {
 	matchesResponse := []*dto.MatchResponse{}
 
 	for _, match := range matches {
@@ -94,12 +94,7 @@ func NewMatchGetByRecordIdResponse(
 		)
 	}
 
-	return &dto.MatchGetByRecordIdResponse{
-		RecordId: matches[0].RecordId,
-		DeckId:   matches[0].DeckId,
-		UserId:   matches[0].UserId,
-		Matches:  matchesResponse,
-	}
+	return matchesResponse
 }
 
 func NewMatchCreateResponse(

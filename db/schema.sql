@@ -180,9 +180,10 @@ CREATE TABLE users (
 CREATE TABLE environments (
     id         VARCHAR(8) PRIMARY KEY,
     title      VARCHAR(255) NOT NULL,
-    from_date  TIMESTAMP NOT NULL,
-    to_date    TIMESTAMP NOT NULL
+    from_date  DATE NOT NULL,
+    to_date    DATE NOT NULL
 );
+
 
 INSERT INTO environments VALUES ('m2','インフェルノX','2025-09-26','2025-11-27');
 INSERT INTO environments VALUES ('m1','メガブレイブ/メガシンフォニア','2025-08-01','2025-09-25');
@@ -207,11 +208,13 @@ INSERT INTO environments VALUES ('sv2','スノーハザード/クレイバース
 INSERT INTO environments VALUES ('sv1a','トリプレットビート','2023-03-10','2023-04-13');
 INSERT INTO environments VALUES ('sv1','スカーレットex/バイオレットex','2023-01-20','2023-03-09');
 
+GRANT SELECT ON environments TO grafana;
+
 CREATE TABLE cityleague_schedules (
     id         VARCHAR(6) PRIMARY KEY,
     title      VARCHAR(255) NOT NULL,
-    from_date  TIMESTAMP NOT NULL,
-    to_date    TIMESTAMP NOT NULL
+    from_date  DATE NOT NULL,
+    to_date    DATE NOT NULL
 );
 
 INSERT INTO cityleague_schedules VALUES ('2025s1','シティリーグ2025 シーズン1','2024-09-07','2024-11-04');
@@ -219,9 +222,36 @@ INSERT INTO cityleague_schedules VALUES ('2025s2','シティリーグ2025 シー
 INSERT INTO cityleague_schedules VALUES ('2025s3','シティリーグ2025 シーズン3','2025-01-11','2025-03-09');
 INSERT INTO cityleague_schedules VALUES ('2025s4','シティリーグ2025 シーズン4','2025-03-15','2025-05-11');
 INSERT INTO cityleague_schedules VALUES ('2026s1','シティリーグ2026 シーズン1','2025-09-06','2025-11-03');
+INSERT INTO cityleague_schedules VALUES ('2026s2','シティリーグ2026 シーズン2','2025-11-08','2026-01-04');
+
+GRANT SELECT ON cityleague_schedules TO grafana;
+
+CREATE TABLE cityleague_results (
+    cityleague_schedule_id VARCHAR(6) NOT NULL,
+    official_event_id      INT NOT NULL,
+    league_type            INT NOT NULL,
+    event_date             DATE DEFAULT NULL,
+    player_id              VARCHAR(10) NOT NULL,
+    player_name            VARCHAR(255) NOT NULL,
+    rank                   SMALLINT NOT NULL,
+    point                  SMALLINT NOT NULL,
+    deck_code              VARCHAR(21) NOT NULL,
+    FOREIGN KEY (cityleague_schedule_id) REFERENCES cityleague_schedules (id),
+    FOREIGN KEY (official_event_id)      REFERENCES official_events (id)
+);
+
+CREATE UNIQUE INDEX cityleague_results_unique ON cityleague_results (cityleague_schedule_id, official_event_id, player_id);
+
+GRANT SELECT ON cityleague_results TO grafana;
 
 
 
 
 
 GRANT SELECT ON <table_name> TO grafana;
+
+DROP INDEX <index_name>;
+DROP TABLE <table_name>;
+
+ALTER TABLE products RENAME COLUMN product_no TO product_number;
+

@@ -61,7 +61,7 @@ func test_UserInfrastructure_FindById(t *testing.T) {
 	r, mock, err := setup4UserInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 	name := "test"
 	imageURL := "http://example.com/image.png"
 
@@ -101,7 +101,7 @@ func test_UserInfrastructure_Save(t *testing.T) {
 	require.NoError(t, err)
 
 	{
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		name := "test"
 		imageURL := "http://example.com/image.png"
 

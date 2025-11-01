@@ -17,11 +17,66 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
+	"gorm.io/gorm"
 )
 
 const (
 	relativePath = "/api/v1beta"
 )
+
+type APIServer struct {
+	httpServer *http.Server
+	db         *gorm.DB
+}
+
+func NewAPIServer(addr string, handler http.Handler, db *gorm.DB) *APIServer {
+	return &APIServer{
+		httpServer: &http.Server{
+			Addr:    addr,
+			Handler: handler,
+		},
+		db: db,
+	}
+}
+
+func (s *APIServer) Start(ctx context.Context) error {
+	go func() {
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("server listen error: %v", err)
+		}
+	}()
+	log.Printf("server started on %s", s.httpServer.Addr)
+
+	<-ctx.Done()
+	return s.Shutdown()
+}
+
+func (s *APIServer) Shutdown() error {
+	log.Println("shutting down gracefully...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		log.Printf("server forced to shutdown: %v", err)
+		return err
+	}
+
+	log.Println("cleanup: closing DB connection...")
+
+	if sqlDB, err := s.db.DB(); err != nil {
+		log.Printf("db close error: %v", err)
+	} else {
+		if err := sqlDB.Close(); err != nil {
+			log.Printf("db close error: %v", err)
+		}
+	}
+
+	log.Printf("db closed")
+	log.Println("server exited cleanly")
+
+	return nil
+}
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -38,21 +93,16 @@ func main() {
 	userName := os.Getenv("DB_USER_NAME")
 	userPassword := os.Getenv("DB_USER_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
+
 	db, err := postgres.NewDB(dbHostname, dbPort, userName, userPassword, dbName)
 	if err != nil {
 		log.Fatalf("failed to connect database: %v\n", err)
-	}
-
-	if err != nil {
-		log.Fatalf("error initializing app: %v\n", err)
 	}
 
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
 	r.Use(cors.New(cors.Config{
 		AllowHeaders: []string{
-			"Access-Control-Allow-Headers",
-			"Access-Control-Request-Method",
 			"Authorization",
 			"Content-Type",
 		},
@@ -70,7 +120,7 @@ func main() {
 			"https://local.vsrecorder.mobi",
 		},
 		AllowCredentials: false,
-		MaxAge:           24 * time.Hour,
+		MaxAge:           1 * time.Hour,
 	}))
 
 	controller.NewUser(
@@ -124,36 +174,23 @@ func main() {
 		infrastructure.NewEnvironment(db),
 	).RegisterRoute(relativePath)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	controller.NewCityleagueSchedule(
+		r,
+		infrastructure.NewCityleagueSchedule(db),
+	).RegisterRoute(relativePath)
 
-	srv := &http.Server{
-		Addr:    ":8914",
-		Handler: r,
-	}
+	controller.NewCityleagueResult(
+		r,
+		infrastructure.NewCityleagueResult(db),
+	).RegisterRoute(relativePath)
 
-	// Initializing the server in a goroutine so that
-	// it won't block the graceful shutdown handling below
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+	{
+		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer stop()
+
+		server := NewAPIServer(":8914", r, db)
+		if err := server.Start(ctx); err != nil {
+			log.Fatalf("failed to run server: %v", err)
 		}
-	}()
-
-	// Listen for the interrupt signal.
-	<-ctx.Done()
-
-	// Restore default behavior on the interrupt signal and notify user of shutdown.
-	stop()
-	log.Println("shutting down gracefully, press Ctrl+C again to force")
-
-	// The context is used to inform the server it has 3 seconds to finish
-	// the request it is currently handling
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown: ", err)
 	}
-
-	log.Println("Server exiting")
 }

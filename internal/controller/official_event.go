@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
@@ -46,19 +47,35 @@ func (c *OfficialEvent) RegisterRoute(relativePath string) {
 func (c *OfficialEvent) Get(ctx *gin.Context) {
 	typeId := helper.GetTypeId(ctx)
 	leagueType := helper.GetLeagueType(ctx)
+	date := helper.GetDate(ctx)
 	startDate := helper.GetStartDate(ctx)
 	endDate := helper.GetEndDate(ctx)
 
-	officialEvents, err := c.usecase.Find(context.Background(), typeId, leagueType, startDate, endDate)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
-		return
+	if !date.Equal((time.Time{})) {
+		officialEvents, err := c.usecase.Find(context.Background(), typeId, leagueType, date, date)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			ctx.Abort()
+			return
+		}
+
+		count := len(officialEvents)
+		res := presenter.NewOfficialEventGetResponse(typeId, leagueType, date, date, count, officialEvents)
+
+		ctx.JSON(http.StatusOK, res)
+	} else {
+		officialEvents, err := c.usecase.Find(context.Background(), typeId, leagueType, startDate, endDate)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			ctx.Abort()
+			return
+		}
+
+		count := len(officialEvents)
+		res := presenter.NewOfficialEventGetResponse(typeId, leagueType, startDate, endDate, count, officialEvents)
+
+		ctx.JSON(http.StatusOK, res)
 	}
-
-	res := presenter.NewOfficialEventGetResponse(typeId, leagueType, startDate, endDate, officialEvents)
-
-	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *OfficialEvent) GetById(ctx *gin.Context) {

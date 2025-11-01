@@ -67,7 +67,7 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 	require.NoError(t, err)
 
 	{
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		archivedAt := sql.NullTime{}
 		limit := 10
 		offset := 10
@@ -116,8 +116,8 @@ func test_DeckInfrastructure_FindOnCursor(t *testing.T) {
 	require.NoError(t, err)
 
 	{
-		cursor := time.Now().UTC().Truncate(0)
-		datetime := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
+		datetime := time.Now().Local()
 		archivedAt := sql.NullTime{}
 		limit := 10
 
@@ -164,7 +164,7 @@ func test_DeckInfrastructure_FindById(t *testing.T) {
 	r, mock, err := setup4DeckInfrastructure()
 	require.NoError(t, err)
 
-	datetime := time.Now().UTC().Truncate(0)
+	datetime := time.Now().Local()
 	archivedAt := sql.NullTime{}
 
 	rows := sqlmock.NewRows([]string{
@@ -207,7 +207,7 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 	require.NoError(t, err)
 
 	{
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		archivedAt := sql.NullTime{}
 		archivedFlg := false
 		limit := 10
@@ -252,9 +252,9 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 	}
 
 	{
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		archivedAt := sql.NullTime{}
-		archivedAt.Time = time.Now().UTC().Truncate(0)
+		archivedAt.Time = time.Now().Local()
 		archivedAt.Valid = true
 		archivedFlg := true
 		limit := 10
@@ -304,8 +304,8 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	require.NoError(t, err)
 
 	{
-		cursor := time.Now().UTC().Truncate(0)
-		datetime := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
+		datetime := time.Now().Local()
 		archivedAt := sql.NullTime{}
 		archivedFlg := false
 		limit := 10
@@ -349,10 +349,10 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	}
 
 	{
-		cursor := time.Now().UTC().Truncate(0)
-		datetime := time.Now().UTC().Truncate(0)
+		cursor := time.Now().Local()
+		datetime := time.Now().Local()
 		archivedAt := sql.NullTime{}
-		archivedAt.Time = time.Now().UTC().Truncate(0)
+		archivedAt.Time = time.Now().Local()
 		archivedAt.Valid = true
 		archivedFlg := true
 		limit := 10
@@ -401,7 +401,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 	require.NoError(t, err)
 
 	{
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		archivedAt := sql.NullTime{}
 
 		mock.ExpectBegin()
@@ -437,8 +437,8 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 	}
 
 	{
-		datetime := time.Now().UTC().Truncate(0)
-		now := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
+		now := time.Now().Local()
 		archivedAt := sql.NullTime{}
 		archivedAt.Time = now
 		archivedAt.Valid = true

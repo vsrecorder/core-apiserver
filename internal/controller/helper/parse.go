@@ -82,7 +82,7 @@ func ParseQueryDate(ctx *gin.Context) (date time.Time, err error) {
 			return time.Time{}, err
 		}
 
-		date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+		date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
 	}
 
 	return date, nil
@@ -100,7 +100,7 @@ func ParseQueryFromDate(ctx *gin.Context) (fromDate time.Time, err error) {
 			return time.Time{}, err
 		}
 
-		fromDate = time.Date(fromDate.Year(), fromDate.Month(), fromDate.Day(), 0, 0, 0, 0, time.UTC)
+		fromDate = time.Date(fromDate.Year(), fromDate.Month(), fromDate.Day(), 0, 0, 0, 0, time.Local)
 	}
 
 	return fromDate, nil
@@ -118,7 +118,7 @@ func ParseQueryToDate(ctx *gin.Context) (toDate time.Time, err error) {
 			return time.Time{}, err
 		}
 
-		toDate = time.Date(toDate.Year(), toDate.Month(), toDate.Day(), 0, 0, 0, 0, time.UTC)
+		toDate = time.Date(toDate.Year(), toDate.Month(), toDate.Day(), 0, 0, 0, 0, time.Local)
 	}
 
 	return toDate, nil
@@ -129,7 +129,7 @@ func ParseQueryStartDate(ctx *gin.Context) (startDate time.Time, err error) {
 
 	if query == "" {
 		now := time.Now()
-		startDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		startDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	} else {
 		startDate, err = time.Parse(DateLayout, query)
 
@@ -137,7 +137,7 @@ func ParseQueryStartDate(ctx *gin.Context) (startDate time.Time, err error) {
 			return time.Time{}, err
 		}
 
-		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
+		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.Local)
 	}
 
 	return startDate, nil
@@ -148,7 +148,7 @@ func ParseQueryEndDate(ctx *gin.Context) (endDate time.Time, err error) {
 
 	if query == "" {
 		now := time.Now()
-		endDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		endDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	} else {
 		endDate, err = time.Parse(DateLayout, query)
 
@@ -156,7 +156,7 @@ func ParseQueryEndDate(ctx *gin.Context) (endDate time.Time, err error) {
 			return time.Time{}, err
 		}
 
-		endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, time.UTC)
+		endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, time.Local)
 	}
 
 	return endDate, nil

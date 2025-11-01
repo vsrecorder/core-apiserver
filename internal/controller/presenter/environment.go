@@ -1,6 +1,8 @@
 package presenter
 
 import (
+	"time"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
@@ -14,8 +16,8 @@ func NewEnvironmentGetResponse(
 		ret = append(ret, &dto.EnvironmentResponse{
 			ID:       environment.ID,
 			Title:    environment.Title,
-			FromDate: environment.FromDate,
-			ToDate:   environment.ToDate,
+			FromDate: environment.FromDate.In(time.Local),
+			ToDate:   environment.ToDate.In(time.Local),
 		})
 	}
 
@@ -28,8 +30,8 @@ func NewEnvironmentGetByIdResponse(
 	return &dto.EnvironmentResponse{
 		ID:       environment.ID,
 		Title:    environment.Title,
-		FromDate: environment.FromDate,
-		ToDate:   environment.ToDate,
+		FromDate: environment.FromDate.In(time.Local),
+		ToDate:   environment.ToDate.In(time.Local),
 	}
 }
 
@@ -39,8 +41,8 @@ func NewEnvironmentGetByDateResponse(
 	return &dto.EnvironmentResponse{
 		ID:       environment.ID,
 		Title:    environment.Title,
-		FromDate: environment.FromDate,
-		ToDate:   environment.ToDate,
+		FromDate: environment.FromDate.In(time.Local),
+		ToDate:   environment.ToDate.In(time.Local),
 	}
 }
 
@@ -53,8 +55,8 @@ func NewEnvironmentGetByTermResponse(
 		ret = append(ret, &dto.EnvironmentResponse{
 			ID:       environment.ID,
 			Title:    environment.Title,
-			FromDate: environment.FromDate,
-			ToDate:   environment.ToDate,
+			FromDate: environment.FromDate.In(time.Local),
+			ToDate:   environment.ToDate.In(time.Local),
 		})
 	}
 

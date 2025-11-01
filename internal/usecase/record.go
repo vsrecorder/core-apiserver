@@ -247,7 +247,7 @@ func (u *Record) Create(
 		return nil, err
 	}
 
-	createdAt := time.Now().UTC().Truncate(0)
+	createdAt := time.Now().Local()
 
 	record := entity.NewRecord(
 		id,

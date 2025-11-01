@@ -311,7 +311,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.MockMatchInterface, usecase MatchInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		matchId, _ := generateId()
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		recordId := "01JMPK4VF04QX714CG4PHYJ88K"
 		deckId := "01JMKRNBW5TVN902YAE8GYZ367"
 		userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -400,7 +400,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 
 	t.Run("正常系_#02", func(t *testing.T) {
 		matchId, _ := generateId()
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		recordId := "01JMPK4VF04QX714CG4PHYJ88K"
 		deckId := "01JMKRNBW5TVN902YAE8GYZ367"
 		userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -513,7 +513,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 
 	t.Run("正常系_#03", func(t *testing.T) {
 		matchId, _ := generateId()
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		recordId := "01JMPK4VF04QX714CG4PHYJ88K"
 		deckId := "01JMKRNBW5TVN902YAE8GYZ367"
 		userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -658,7 +658,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 
 	t.Run("異常系_#02", func(t *testing.T) {
 		matchId, _ := generateId()
-		datetime := time.Now().UTC().Truncate(0)
+		datetime := time.Now().Local()
 		recordId := "01JMPK4VF04QX714CG4PHYJ88K"
 		deckId := "01JMKRNBW5TVN902YAE8GYZ367"
 		userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"

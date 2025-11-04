@@ -44,11 +44,11 @@ func (i *OfficialEvent) Find(
 				leagueTitle = "マスター"
 			}
 
-			if tx := i.db.Where("league_title = ? AND date BETWEEN ? AND ?", leagueTitle, startDate, endDate).Find(&models); tx.Error != nil {
+			if tx := i.db.Where("league_title = ? AND date BETWEEN ? AND ?", leagueTitle, startDate, endDate).Order("started_at ASC").Find(&models); tx.Error != nil {
 				return nil, tx.Error
 			}
 		} else {
-			if tx := i.db.Where("date BETWEEN ? AND ?", startDate, endDate).Find(&models); tx.Error != nil {
+			if tx := i.db.Where("date BETWEEN ? AND ?", startDate, endDate).Order("started_at ASC").Find(&models); tx.Error != nil {
 				return nil, tx.Error
 			}
 		}
@@ -67,11 +67,11 @@ func (i *OfficialEvent) Find(
 				leagueTitle = "マスター"
 			}
 
-			if tx := i.db.Where("type_id = ? AND league_title = ? AND date BETWEEN ? AND ?", typeId, leagueTitle, startDate, endDate).Find(&models); tx.Error != nil {
+			if tx := i.db.Where("type_id = ? AND league_title = ? AND date BETWEEN ? AND ?", typeId, leagueTitle, startDate, endDate).Order("started_at ASC").Find(&models); tx.Error != nil {
 				return nil, tx.Error
 			}
 		} else {
-			if tx := i.db.Where("type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate).Find(&models); tx.Error != nil {
+			if tx := i.db.Where("type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate).Order("started_at ASC").Find(&models); tx.Error != nil {
 				return nil, tx.Error
 			}
 		}

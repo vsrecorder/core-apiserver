@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -232,7 +233,13 @@ func (u *Deck) Update(
 		param.PrivateCodeFlg,
 	)
 
-	if deck.Code != "" && deck.Code != ret.Code {
+	// デッキコードの変更は禁止
+	// 元のデッキコードが空の場合は変更を許可
+	if ret.Code != "" && ret.Code != deck.Code {
+		return nil, errors.New("deck code change is not allowed")
+	}
+
+	if deck.Code != "" {
 		if err := uploadDeckImage(deck.Code); err != nil {
 			return nil, err
 		}

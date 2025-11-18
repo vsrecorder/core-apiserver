@@ -182,7 +182,7 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 		require.Equal(t, uid, res[0].UserId)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("正常系_#02", func(t *testing.T) {
 		r := gin.Default()
 		c, mockUsecase := setup4TestMatchController(t, r)
 
@@ -197,13 +197,13 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 
 		c.router.ServeHTTP(w, req)
 
-		var res dto.MatchGetByIdResponse
+		var res []*dto.MatchGetByRecordIdResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
-		require.Equal(t, http.StatusNotFound, w.Code)
+		require.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
 		c, mockUsecase := setup4TestMatchController(t, r)
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth"
+	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
@@ -124,13 +125,12 @@ func (c *Match) GetById(ctx *gin.Context) {
 }
 
 func (c *Match) GetByRecordId(ctx *gin.Context) {
-	id := helper.GetId(ctx)
+	recordId := helper.GetId(ctx)
 
-	matches, err := c.usecase.FindByRecordId(context.Background(), id)
+	matches, err := c.usecase.FindByRecordId(context.Background(), recordId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+			ctx.JSON(http.StatusOK, []*dto.MatchGetByRecordIdResponse{})
 			return
 		}
 

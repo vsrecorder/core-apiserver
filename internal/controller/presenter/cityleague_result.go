@@ -32,7 +32,7 @@ func NewCityleagueResultGetByDateResponse(
 			CityleagueScheduleId: cityleagueResult.CityleagueScheduleId,
 			OfficialEventId:      cityleagueResult.OfficialEventId,
 			LeagueType:           cityleagueResult.LeagueType,
-			Date:                 cityleagueResult.EventDate.In(time.Local),
+			Date:                 time.Date(cityleagueResult.EventDate.Year(), cityleagueResult.EventDate.Month(), cityleagueResult.EventDate.Day(), 0, 0, 0, 0, time.Local),
 			Results:              results,
 		})
 	}
@@ -74,7 +74,7 @@ func NewCityleagueResultGetByTermResponse(
 			CityleagueScheduleId: cityleagueResult.CityleagueScheduleId,
 			OfficialEventId:      cityleagueResult.OfficialEventId,
 			LeagueType:           cityleagueResult.LeagueType,
-			Date:                 cityleagueResult.EventDate.In(time.Local),
+			Date:                 time.Date(cityleagueResult.EventDate.Year(), cityleagueResult.EventDate.Month(), cityleagueResult.EventDate.Day(), 0, 0, 0, 0, time.Local),
 			Results:              results,
 		})
 	}

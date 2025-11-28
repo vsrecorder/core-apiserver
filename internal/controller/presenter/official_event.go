@@ -18,12 +18,14 @@ func NewOfficialEventGetResponse(
 	ret := []*dto.OfficialEventResponse{}
 
 	for _, officialEvent := range officialEvents {
+		date := time.Date(officialEvent.Date.Year(), officialEvent.Date.Month(), officialEvent.Date.Day(), 0, 0, 0, 0, time.Local)
+
 		ret = append(ret, &dto.OfficialEventResponse{
 			ID:              officialEvent.ID,
 			Title:           officialEvent.Title,
 			Address:         officialEvent.Address,
 			Venue:           officialEvent.Venue,
-			Date:            officialEvent.Date.In(time.Local),
+			Date:            date,
 			StartedAt:       officialEvent.StartedAt,
 			EndedAt:         officialEvent.EndedAt,
 			TypeName:        officialEvent.TypeName,
@@ -39,8 +41,8 @@ func NewOfficialEventGetResponse(
 	return &dto.OfficialEventGetResponse{
 		TypeId:         typeId,
 		LeagueType:     leagueType,
-		StartDate:      startDate.In(time.Local),
-		EndDate:        endDate.In(time.Local),
+		StartDate:      startDate,
+		EndDate:        endDate,
 		Count:          count,
 		OfficialEvents: ret,
 	}
@@ -49,13 +51,15 @@ func NewOfficialEventGetResponse(
 func NewOfficialEventGetByIdResponse(
 	officialEvent *entity.OfficialEvent,
 ) *dto.OfficialEventGetByIdResponse {
+	date := time.Date(officialEvent.Date.Year(), officialEvent.Date.Month(), officialEvent.Date.Day(), 0, 0, 0, 0, time.Local)
+
 	return &dto.OfficialEventGetByIdResponse{
 		OfficialEventResponse: dto.OfficialEventResponse{
 			ID:              officialEvent.ID,
 			Title:           officialEvent.Title,
 			Address:         officialEvent.Address,
 			Venue:           officialEvent.Venue,
-			Date:            officialEvent.Date.In(time.Local),
+			Date:            date,
 			StartedAt:       officialEvent.StartedAt,
 			EndedAt:         officialEvent.EndedAt,
 			TypeName:        officialEvent.TypeName,

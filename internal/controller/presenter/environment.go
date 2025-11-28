@@ -13,11 +13,14 @@ func NewEnvironmentGetResponse(
 	ret := []*dto.EnvironmentResponse{}
 
 	for _, environment := range environments {
+		fromDate := time.Date(environment.FromDate.Year(), environment.FromDate.Month(), environment.FromDate.Day(), 0, 0, 0, 0, time.Local)
+		toDate := time.Date(environment.ToDate.Year(), environment.ToDate.Month(), environment.ToDate.Day(), 0, 0, 0, 0, time.Local)
+
 		ret = append(ret, &dto.EnvironmentResponse{
 			ID:       environment.ID,
 			Title:    environment.Title,
-			FromDate: environment.FromDate.In(time.Local),
-			ToDate:   environment.ToDate.In(time.Local),
+			FromDate: fromDate,
+			ToDate:   toDate,
 		})
 	}
 
@@ -27,22 +30,28 @@ func NewEnvironmentGetResponse(
 func NewEnvironmentGetByIdResponse(
 	environment *entity.Environment,
 ) *dto.EnvironmentResponse {
+	fromDate := time.Date(environment.FromDate.Year(), environment.FromDate.Month(), environment.FromDate.Day(), 0, 0, 0, 0, time.Local)
+	toDate := time.Date(environment.ToDate.Year(), environment.ToDate.Month(), environment.ToDate.Day(), 0, 0, 0, 0, time.Local)
+
 	return &dto.EnvironmentResponse{
 		ID:       environment.ID,
 		Title:    environment.Title,
-		FromDate: environment.FromDate.In(time.Local),
-		ToDate:   environment.ToDate.In(time.Local),
+		FromDate: fromDate,
+		ToDate:   toDate,
 	}
 }
 
 func NewEnvironmentGetByDateResponse(
 	environment *entity.Environment,
 ) *dto.EnvironmentResponse {
+	fromDate := time.Date(environment.FromDate.Year(), environment.FromDate.Month(), environment.FromDate.Day(), 0, 0, 0, 0, time.Local)
+	toDate := time.Date(environment.ToDate.Year(), environment.ToDate.Month(), environment.ToDate.Day(), 0, 0, 0, 0, time.Local)
+
 	return &dto.EnvironmentResponse{
 		ID:       environment.ID,
 		Title:    environment.Title,
-		FromDate: environment.FromDate.In(time.Local),
-		ToDate:   environment.ToDate.In(time.Local),
+		FromDate: fromDate,
+		ToDate:   toDate,
 	}
 }
 
@@ -52,11 +61,14 @@ func NewEnvironmentGetByTermResponse(
 	ret := []*dto.EnvironmentResponse{}
 
 	for _, environment := range environments {
+		fromDate := time.Date(environment.FromDate.Year(), environment.FromDate.Month(), environment.FromDate.Day(), 0, 0, 0, 0, time.Local)
+		toDate := time.Date(environment.ToDate.Year(), environment.ToDate.Month(), environment.ToDate.Day(), 0, 0, 0, 0, time.Local)
+
 		ret = append(ret, &dto.EnvironmentResponse{
 			ID:       environment.ID,
 			Title:    environment.Title,
-			FromDate: environment.FromDate.In(time.Local),
-			ToDate:   environment.ToDate.In(time.Local),
+			FromDate: fromDate,
+			ToDate:   toDate,
 		})
 	}
 

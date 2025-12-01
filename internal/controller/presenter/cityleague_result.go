@@ -1,6 +1,7 @@
 package presenter
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
@@ -33,6 +34,7 @@ func NewCityleagueResultGetByDateResponse(
 			OfficialEventId:      cityleagueResult.OfficialEventId,
 			LeagueType:           cityleagueResult.LeagueType,
 			Date:                 time.Date(cityleagueResult.EventDate.Year(), cityleagueResult.EventDate.Month(), cityleagueResult.EventDate.Day(), 0, 0, 0, 0, time.Local),
+			EventDetailResultURL: fmt.Sprintf("https://players.pokemon-card.com/event/detail/%d/result", cityleagueResult.OfficialEventId),
 			Results:              results,
 		})
 	}
@@ -75,6 +77,7 @@ func NewCityleagueResultGetByTermResponse(
 			OfficialEventId:      cityleagueResult.OfficialEventId,
 			LeagueType:           cityleagueResult.LeagueType,
 			Date:                 time.Date(cityleagueResult.EventDate.Year(), cityleagueResult.EventDate.Month(), cityleagueResult.EventDate.Day(), 0, 0, 0, 0, time.Local),
+			EventDetailResultURL: fmt.Sprintf("https://players.pokemon-card.com/event/detail/%d/result", cityleagueResult.OfficialEventId),
 			Results:              results,
 		})
 	}

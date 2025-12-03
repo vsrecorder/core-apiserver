@@ -27,7 +27,7 @@ func (i *Record) Find(
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("private_flg = ?", false).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("private_flg = false").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 

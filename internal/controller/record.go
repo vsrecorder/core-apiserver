@@ -102,6 +102,7 @@ func (c *Record) Get(ctx *gin.Context) {
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
 		cursor := helper.GetCursor(ctx)
+
 		if !cursor.IsZero() {
 			records, err := c.usecase.FindOnCursor(context.Background(), limit, cursor)
 			if err != nil {
@@ -128,31 +129,8 @@ func (c *Record) Get(ctx *gin.Context) {
 	}
 }
 
-func (c *Record) GetById(ctx *gin.Context) {
-	id := helper.GetId(ctx)
-
-	record, err := c.usecase.FindById(context.Background(), id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
-		return
-	}
-
-	res := presenter.NewRecordGetByIdResponse(record)
-
-	ctx.JSON(http.StatusOK, res)
-}
-
 func (c *Record) GetByUserId(ctx *gin.Context) {
-	uid := helper.GetUID(ctx)
-
-	if uid != "" {
+	if uid := helper.GetUID(ctx); uid != "" {
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
 		cursor := helper.GetCursor(ctx)
@@ -184,6 +162,27 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 		}
 
 	}
+}
+
+func (c *Record) GetById(ctx *gin.Context) {
+	id := helper.GetId(ctx)
+
+	record, err := c.usecase.FindById(context.Background(), id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
+			ctx.Abort()
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewRecordGetByIdResponse(record)
+
+	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *Record) Create(ctx *gin.Context) {

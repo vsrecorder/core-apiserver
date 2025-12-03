@@ -102,9 +102,8 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 		)
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE private_flg = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+			`SELECT * FROM "records" WHERE private_flg = false AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		)).WithArgs(
-			false,
 			limit,
 			offset,
 		).WillReturnRows(rows)
@@ -133,9 +132,8 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 		})
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE private_flg = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+			`SELECT * FROM "records" WHERE private_flg = false AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		)).WithArgs(
-			false,
 			limit,
 			offset,
 		).WillReturnRows(rows)

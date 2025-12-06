@@ -164,6 +164,7 @@ func main() {
 	controller.NewMatch(
 		r,
 		infrastructure.NewMatch(db),
+		infrastructure.NewRecord(db),
 		usecase.NewMatch(
 			infrastructure.NewMatch(db),
 		),
@@ -182,6 +183,11 @@ func main() {
 	controller.NewCityleagueResult(
 		r,
 		infrastructure.NewCityleagueResult(db),
+	).RegisterRoute(relativePath)
+
+	controller.NewStandardRegulation(
+		r,
+		infrastructure.NewStandardRegulation(db),
 	).RegisterRoute(relativePath)
 
 	{

@@ -152,6 +152,68 @@ func MatchAuthorizationMiddleware(repository repository.MatchInterface) gin.Hand
 	}
 }
 
+func MatchGetByIdAuthorizationMiddleware(matchRepository repository.MatchInterface, recordRepository repository.RecordInterface) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id := helper.GetId(ctx)
+		uid := helper.GetUID(ctx)
+
+		match, err := matchRepository.FindById(context.Background(), id)
+
+		if err == gorm.ErrRecordNotFound {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
+			ctx.Abort()
+			return
+		} else if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			ctx.Abort()
+			return
+		}
+
+		record, err := recordRepository.FindById(context.Background(), match.RecordId)
+
+		if err == gorm.ErrRecordNotFound {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
+			ctx.Abort()
+			return
+		} else if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			ctx.Abort()
+			return
+		}
+
+		if record.PrivateFlg && uid != record.UserId {
+			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
+			ctx.Abort()
+			return
+		}
+	}
+}
+
+func MatchGetByRecordIdAuthorizationMiddleware(recordRepository repository.RecordInterface) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		recordId := helper.GetId(ctx)
+		uid := helper.GetUID(ctx)
+
+		record, err := recordRepository.FindById(context.Background(), recordId)
+
+		if err == gorm.ErrRecordNotFound {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
+			ctx.Abort()
+			return
+		} else if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			ctx.Abort()
+			return
+		}
+
+		if record.PrivateFlg && uid != record.UserId {
+			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
+			ctx.Abort()
+			return
+		}
+	}
+}
+
 func MatchUpdateAuthorizationMiddleware(repository repository.MatchInterface) gin.HandlerFunc {
 	return MatchAuthorizationMiddleware(repository)
 }

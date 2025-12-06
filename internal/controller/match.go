@@ -21,17 +21,19 @@ const (
 )
 
 type Match struct {
-	router     *gin.Engine
-	repository repository.MatchInterface
-	usecase    usecase.MatchInterface
+	router           *gin.Engine
+	matchRepository  repository.MatchInterface
+	recordRepository repository.RecordInterface
+	usecase          usecase.MatchInterface
 }
 
 func NewMatch(
 	router *gin.Engine,
-	repository repository.MatchInterface,
+	matchRepository repository.MatchInterface,
+	recordRepository repository.RecordInterface,
 	usecase usecase.MatchInterface,
 ) *Match {
-	return &Match{router, repository, usecase}
+	return &Match{router, matchRepository, recordRepository, usecase}
 }
 
 func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
@@ -70,6 +72,8 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 			r := c.router.Group(relativePath + MatchesPath)
 			r.GET(
 				"/:id",
+				auth.OptionalAuthenticationMiddleware(),
+				auth.MatchGetByIdAuthorizationMiddleware(c.matchRepository, c.recordRepository),
 				c.GetById,
 			)
 			r.POST(
@@ -81,14 +85,14 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 			r.PUT(
 				"/:id",
 				auth.RequiredAuthenticationMiddleware(),
-				auth.MatchUpdateAuthorizationMiddleware(c.repository),
+				auth.MatchUpdateAuthorizationMiddleware(c.matchRepository),
 				validation.MatchUpdateMiddleware(),
 				c.Update,
 			)
 			r.DELETE(
 				"/:id",
 				auth.RequiredAuthenticationMiddleware(),
-				auth.MatchDeleteAuthorizationMiddleware(c.repository),
+				auth.MatchDeleteAuthorizationMiddleware(c.matchRepository),
 				c.Delete,
 			)
 		}
@@ -97,6 +101,8 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 			r := c.router.Group(relativePath + RecordsPath)
 			r.GET(
 				"/:id"+MatchesPath,
+				auth.OptionalAuthenticationMiddleware(),
+				auth.MatchGetByRecordIdAuthorizationMiddleware(c.recordRepository),
 				c.GetByRecordId,
 			)
 		}

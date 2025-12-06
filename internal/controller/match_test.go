@@ -22,12 +22,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func setupMock4TestMatchController(t *testing.T) (*mock_repository.MockMatchInterface, *mock_usecase.MockMatchInterface) {
+func setupMock4TestMatchController(t *testing.T) (*mock_repository.MockMatchInterface, *mock_repository.MockRecordInterface, *mock_usecase.MockMatchInterface) {
 	mockCtrl := gomock.NewController(t)
-	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
+	mockMatchRepository := mock_repository.NewMockMatchInterface(mockCtrl)
+	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 	mockUsecase := mock_usecase.NewMockMatchInterface(mockCtrl)
 
-	return mockRepository, mockUsecase
+	return mockMatchRepository, mockRecordRepository, mockUsecase
 }
 
 func setup4TestMatchController(t *testing.T, r *gin.Engine) (
@@ -35,9 +36,9 @@ func setup4TestMatchController(t *testing.T, r *gin.Engine) (
 	*mock_usecase.MockMatchInterface,
 ) {
 	authDisable := true
-	mockRepository, mockUsecase := setupMock4TestMatchController(t)
+	mockMatchRepository, mockRecordRepository, mockUsecase := setupMock4TestMatchController(t)
 
-	c := NewMatch(r, mockRepository, mockUsecase)
+	c := NewMatch(r, mockMatchRepository, mockRecordRepository, mockUsecase)
 	c.RegisterRoute("", authDisable)
 
 	return c, mockUsecase

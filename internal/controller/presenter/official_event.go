@@ -35,6 +35,8 @@ func NewOfficialEventGetResponse(
 			Capacity:        officialEvent.Capacity,
 			ShopId:          officialEvent.ShopId,
 			ShopName:        officialEvent.ShopName,
+			PrefectureId:    officialEvent.PrefectureId,
+			PrefectureName:  officialEvent.PrefectureName,
 		})
 	}
 
@@ -69,6 +71,8 @@ func NewOfficialEventGetByIdResponse(
 			Capacity:        officialEvent.Capacity,
 			ShopId:          officialEvent.ShopId,
 			ShopName:        officialEvent.ShopName,
+			PrefectureId:    officialEvent.PrefectureId,
+			PrefectureName:  officialEvent.PrefectureName,
 		},
 	}
 }

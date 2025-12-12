@@ -17,6 +17,8 @@ type OfficialEventResponse struct {
 	Capacity        uint      `json:"capacity"`
 	ShopId          uint      `json:"shop_id"`
 	ShopName        string    `json:"shop_name"`
+	PrefectureId    uint      `json:"prefecture_id"`
+	PrefectureName  string    `json:"prefecture_name"`
 }
 
 type OfficialEventGetResponse struct {

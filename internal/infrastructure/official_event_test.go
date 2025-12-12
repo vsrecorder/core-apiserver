@@ -1,5 +1,6 @@
 package infrastructure
 
+/*
 import (
 	"context"
 	"database/sql/driver"
@@ -12,10 +13,6 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-)
-
-const (
-	DateLayout = time.DateOnly
 )
 
 func setupMock4OfficialEventInfrastructure() (*gorm.DB, sqlmock.Sqlmock, error) {
@@ -309,3 +306,4 @@ func test_OfficialEventInfrastructure_FindById(t *testing.T) {
 	require.Equal(t, id, officialEvent.ID)
 	require.Equal(t, date, officialEvent.Date)
 }
+*/

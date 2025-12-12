@@ -12,16 +12,13 @@ type OfficialEvent struct {
 	Date            time.Time
 	StartedAt       time.Time
 	EndedAt         time.Time
-	DeckCount       string
-	TypeId          uint
 	TypeName        string
-	CSPFlg          bool
-	LeagueId        uint
 	LeagueTitle     string
-	RegulationId    uint
 	RegulationTitle string
+	CSPFlg          bool
 	Capacity        uint
-	AttrId          uint
 	ShopId          uint
 	ShopName        string
+	PrefectureId    uint
+	PrefectureName  string
 }

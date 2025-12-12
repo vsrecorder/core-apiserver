@@ -12,18 +12,15 @@ type OfficialEvent struct {
 	Date            time.Time
 	StartedAt       time.Time
 	EndedAt         time.Time
-	DeckCount       string
-	TypeId          uint
 	TypeName        string
-	CSPFlg          bool
-	LeagueId        uint
 	LeagueTitle     string
-	RegulationId    uint
 	RegulationTitle string
+	CSPFlg          bool
 	Capacity        uint
-	AttrId          uint
 	ShopId          uint
 	ShopName        string
+	PrefectureId    uint
+	PrefectureName  string
 }
 
 func NewOfficialEvent(
@@ -34,18 +31,15 @@ func NewOfficialEvent(
 	date time.Time,
 	startedAt time.Time,
 	endedAt time.Time,
-	deckCount string,
-	typeId uint,
 	typeName string,
-	cspFlg bool,
-	leagueId uint,
 	leagueTitle string,
-	regulationId uint,
 	regulationTitle string,
+	cspFlg bool,
 	capacity uint,
-	attrId uint,
 	shopId uint,
 	shopName string,
+	prefectureId uint,
+	prefectureName string,
 ) *OfficialEvent {
 	return &OfficialEvent{
 		ID:              id,
@@ -55,17 +49,14 @@ func NewOfficialEvent(
 		Date:            date,
 		StartedAt:       startedAt,
 		EndedAt:         endedAt,
-		DeckCount:       deckCount,
-		TypeId:          typeId,
 		TypeName:        typeName,
-		CSPFlg:          cspFlg,
-		LeagueId:        leagueId,
 		LeagueTitle:     leagueTitle,
-		RegulationId:    regulationId,
 		RegulationTitle: regulationTitle,
+		CSPFlg:          cspFlg,
 		Capacity:        capacity,
-		AttrId:          attrId,
 		ShopId:          shopId,
 		ShopName:        shopName,
+		PrefectureId:    prefectureId,
+		PrefectureName:  prefectureName,
 	}
 }

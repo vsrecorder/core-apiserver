@@ -62,12 +62,16 @@ func (i *OfficialEvent) Find(
 				official_events.shop_id AS shop_id,
 				official_events.shop_name AS shop_name,
 				prefectures.id AS prefecture_id ,
-				prefectures.name AS prefecture_name
+				prefectures.name AS prefecture_name,
+				environments.id AS environment_id,
+				environments.title AS environment_title
 			`,
 			).Joins(
 				"LEFT JOIN shops ON shops.id = official_events.shop_id",
 			).Joins(
 				"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
+			).Joins(
+				"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
 			).Where(
 				"league_title = ? AND date BETWEEN ? AND ?", leagueTitle, startDate, endDate,
 			).Order(
@@ -102,12 +106,16 @@ func (i *OfficialEvent) Find(
 				official_events.shop_id AS shop_id,
 				official_events.shop_name AS shop_name,
 				prefectures.id AS prefecture_id ,
-				prefectures.name AS prefecture_name
+				prefectures.name AS prefecture_name,
+				environments.id AS environment_id,
+				environments.title AS environment_title
 			`,
 			).Joins(
 				"LEFT JOIN shops ON shops.id = official_events.shop_id",
 			).Joins(
 				"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
+			).Joins(
+				"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
 			).Where(
 				"date BETWEEN ? AND ?", startDate, endDate,
 			).Order(
@@ -157,12 +165,16 @@ func (i *OfficialEvent) Find(
 				official_events.shop_id AS shop_id,
 				official_events.shop_name AS shop_name,
 				prefectures.id AS prefecture_id ,
-				prefectures.name AS prefecture_name
+				prefectures.name AS prefecture_name,
+				environments.id AS environment_id,
+				environments.title AS environment_title
 			`,
 			).Joins(
 				"LEFT JOIN shops ON shops.id = official_events.shop_id",
 			).Joins(
 				"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
+			).Joins(
+				"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
 			).Where(
 				"type_id = ? AND league_title = ? AND date BETWEEN ? AND ?", typeId, leagueTitle, startDate, endDate,
 			).Order(
@@ -198,12 +210,16 @@ func (i *OfficialEvent) Find(
 				official_events.shop_id AS shop_id,
 				official_events.shop_name AS shop_name,
 				prefectures.id AS prefecture_id ,
-				prefectures.name AS prefecture_name
+				prefectures.name AS prefecture_name,
+				environments.id AS environment_id,
+				environments.title AS environment_title
 			`,
 			).Joins(
 				"LEFT JOIN shops ON shops.id = official_events.shop_id",
 			).Joins(
 				"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
+			).Joins(
+				"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
 			).Where(
 				"type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate,
 			).Order(
@@ -243,6 +259,8 @@ func (i *OfficialEvent) Find(
 				event.ShopName,
 				event.PrefectureId,
 				event.PrefectureName,
+				event.EnvironmentId,
+				event.EnvironmentTitle,
 			),
 		)
 	}
@@ -274,12 +292,16 @@ func (i *OfficialEvent) FindById(
 		official_events.shop_id AS shop_id,
 		official_events.shop_name AS shop_name,
 		prefectures.id AS prefecture_id ,
-		prefectures.name AS prefecture_name
+		prefectures.name AS prefecture_name,
+		environments.id AS environment_id,
+		environments.title AS environment_title
 	`,
 	).Joins(
 		"LEFT JOIN shops ON shops.id = official_events.shop_id",
 	).Joins(
 		"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
+	).Joins(
+		"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
 	).Where(
 		"official_events.id = ?", id,
 	).Scan(&event)
@@ -305,5 +327,7 @@ func (i *OfficialEvent) FindById(
 		event.ShopName,
 		event.PrefectureId,
 		event.PrefectureName,
+		event.EnvironmentId,
+		event.EnvironmentTitle,
 	), nil
 }

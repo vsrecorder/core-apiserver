@@ -76,7 +76,7 @@ func (i *OfficialEvent) Find(
 				"league_title = ? AND date BETWEEN ? AND ?", leagueTitle, startDate, endDate,
 			).Order(
 				"started_at ASC",
-			).Scan(&events)
+			).Find(&events)
 
 			if tx.Error != nil {
 				return nil, tx.Error
@@ -120,7 +120,7 @@ func (i *OfficialEvent) Find(
 				"date BETWEEN ? AND ?", startDate, endDate,
 			).Order(
 				"started_at ASC",
-			).Scan(&events)
+			).Find(&events)
 
 			if tx.Error != nil {
 				return nil, tx.Error
@@ -179,7 +179,7 @@ func (i *OfficialEvent) Find(
 				"type_id = ? AND league_title = ? AND date BETWEEN ? AND ?", typeId, leagueTitle, startDate, endDate,
 			).Order(
 				"started_at ASC",
-			).Scan(&events)
+			).Find(&events)
 
 			if tx.Error != nil {
 				return nil, tx.Error
@@ -224,7 +224,7 @@ func (i *OfficialEvent) Find(
 				"type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate,
 			).Order(
 				"started_at ASC",
-			).Scan(&events)
+			).Find(&events)
 
 			if tx.Error != nil {
 				return nil, tx.Error
@@ -304,7 +304,7 @@ func (i *OfficialEvent) FindById(
 		"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
 	).Where(
 		"official_events.id = ?", id,
-	).Scan(&event)
+	).Take(&event)
 
 	if tx.Error != nil {
 		return nil, tx.Error

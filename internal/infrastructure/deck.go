@@ -26,27 +26,88 @@ func (i *Deck) Find(
 	limit int,
 	offset int,
 ) ([]*entity.Deck, error) {
-	var models []*model.Deck
+	var deckJoinDeckCodes []*model.DeckJoinDeckCode
 
-	if tx := i.db.Where("private_code_flg = false AND code IS NOT NULL AND archived_at IS NULL").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+	tx := i.db.Table(
+		"decks",
+	).Select(`
+		decks.id AS deck_id,
+		decks.created_at AS deck_created_at,
+		decks.updated_at AS deck_updated_at,
+		decks.deleted_at AS deck_deleted_at,
+		decks.archived_at AS deck_archived_at,
+		decks.user_id AS deck_user_id,
+		decks.name AS deck_name,
+		decks.code AS deck_code,
+		decks.private_code_flg AS deck_private_code_flg,
+		decks.private_flg AS deck_private_flg,
+		deck_codes.id AS deck_code_id,
+		deck_codes.created_at AS deck_code_created_at,
+		deck_codes.updated_at AS deck_code_updated_at,
+		deck_codes.deleted_at AS deck_code_deleted_at,
+		deck_codes.user_id AS deck_code_user_id,
+		deck_codes.deck_id AS deck_code_deck_id,
+		deck_codes.code AS deck_code_code,
+		deck_codes.private_code_flg AS deck_code_private_code_flg,
+		deck_codes.memo AS deck_code_memo
+	`,
+	).Joins(`
+		LEFT JOIN (
+			SELECT DISTINCT ON (deck_id)
+				id,
+				created_at,
+				updated_at,
+				deleted_at,
+				user_id,
+				deck_id,
+				code,
+				private_code_flg
+			FROM deck_codes
+			ORDER BY deck_id, created_at DESC
+		) AS deck_codes ON decks.id = deck_codes.deck_id
+	`,
+	).Where(
+		"decks.private_flg = false AND decks.archived_at IS NULL AND decks.deleted_at IS NULL",
+	).Order(
+		"decks.created_at DESC",
+	).Limit(
+		limit,
+	).Offset(
+		offset,
+	).Scan(&deckJoinDeckCodes)
+
+	if tx.Error != nil {
 		return nil, tx.Error
 	}
 
-	var entities []*entity.Deck
-	for _, model := range models {
-		entity := entity.NewDeck(
-			model.ID,
-			model.CreatedAt,
-			model.ArchivedAt.Time,
-			model.UserId,
-			model.Name,
-			model.Code,
-			model.PrivateCodeFlg,
-		)
-		entities = append(entities, entity)
+	if len(deckJoinDeckCodes) == 0 {
+		return []*entity.Deck{}, nil
 	}
 
-	return entities, nil
+	var ret []*entity.Deck
+
+	for _, djdc := range deckJoinDeckCodes {
+		ret = append(ret, entity.NewDeck(
+			djdc.DeckID,
+			djdc.DeckCreatedAt,
+			djdc.DeckArchivedAt.Time,
+			djdc.DeckUserId,
+			djdc.DeckName,
+			djdc.DeckCode,
+			djdc.DeckPrivateCodeFlg,
+			djdc.DeckPrivateFlg,
+			entity.NewDeckCode(
+				djdc.DeckCodeID,
+				djdc.DeckCodeCreatedAt,
+				djdc.DeckCodeUserId,
+				djdc.DeckCodeDeckId,
+				djdc.DeckCodeCode,
+				djdc.DeckCodePrivateFlg,
+			),
+		))
+	}
+
+	return ret, nil
 }
 
 func (i *Deck) FindOnCursor(
@@ -54,50 +115,170 @@ func (i *Deck) FindOnCursor(
 	limit int,
 	cursor time.Time,
 ) ([]*entity.Deck, error) {
-	var models []*model.Deck
+	var deckJoinDeckCodes []*model.DeckJoinDeckCode
 
-	if tx := i.db.Where("created_at < ? AND private_code_flg = false AND code IS NOT NULL AND archived_at IS NULL", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+	tx := i.db.Table(
+		"decks",
+	).Select(`
+		decks.id AS deck_id,
+		decks.created_at AS deck_created_at,
+		decks.updated_at AS deck_updated_at,
+		decks.deleted_at AS deck_deleted_at,
+		decks.archived_at AS deck_archived_at,
+		decks.user_id AS deck_user_id,
+		decks.name AS deck_name,
+		decks.code AS deck_code,
+		decks.private_code_flg AS deck_private_code_flg,
+		decks.private_flg AS deck_private_flg,
+		deck_codes.id AS deck_code_id,
+		deck_codes.created_at AS deck_code_created_at,
+		deck_codes.updated_at AS deck_code_updated_at,
+		deck_codes.deleted_at AS deck_code_deleted_at,
+		deck_codes.user_id AS deck_code_user_id,
+		deck_codes.deck_id AS deck_code_deck_id,
+		deck_codes.code AS deck_code_code,
+		deck_codes.private_code_flg AS deck_code_private_code_flg,
+		deck_codes.memo AS deck_code_memo
+	`,
+	).Joins(`
+		LEFT JOIN (
+			SELECT DISTINCT ON (deck_id)
+				id,
+				created_at,
+				updated_at,
+				deleted_at,
+				user_id,
+				deck_id,
+				code,
+				private_code_flg
+			FROM deck_codes
+			ORDER BY deck_id, created_at DESC
+		) AS deck_codes ON decks.id = deck_codes.deck_id
+	`,
+	).Where(
+		"decks.created_at < ? AND decks.private_flg = false AND decks.archived_at IS NULL AND decks.deleted_at IS NULL", cursor,
+	).Order(
+		"decks.created_at DESC",
+	).Limit(
+		limit,
+	).Scan(&deckJoinDeckCodes)
+
+	if tx.Error != nil {
 		return nil, tx.Error
 	}
 
-	var entities []*entity.Deck
-	for _, model := range models {
-		entity := entity.NewDeck(
-			model.ID,
-			model.CreatedAt,
-			model.ArchivedAt.Time,
-			model.UserId,
-			model.Name,
-			model.Code,
-			model.PrivateCodeFlg,
-		)
-		entities = append(entities, entity)
+	if len(deckJoinDeckCodes) == 0 {
+		return []*entity.Deck{}, nil
 	}
 
-	return entities, nil
+	var ret []*entity.Deck
+
+	for _, djdc := range deckJoinDeckCodes {
+		ret = append(ret, entity.NewDeck(
+			djdc.DeckID,
+			djdc.DeckCreatedAt,
+			djdc.DeckArchivedAt.Time,
+			djdc.DeckUserId,
+			djdc.DeckName,
+			djdc.DeckCode,
+			djdc.DeckPrivateCodeFlg,
+			djdc.DeckPrivateFlg,
+			entity.NewDeckCode(
+				djdc.DeckCodeID,
+				djdc.DeckCodeCreatedAt,
+				djdc.DeckCodeUserId,
+				djdc.DeckCodeDeckId,
+				djdc.DeckCodeCode,
+				djdc.DeckCodePrivateFlg,
+			),
+		))
+	}
+
+	return ret, nil
 }
 
 func (i *Deck) FindById(
 	ctx context.Context,
 	id string,
 ) (*entity.Deck, error) {
-	var model *model.Deck
-
-	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+	// idの存在確認
+	if tx := i.db.Where("id = ?", id).First(&model.Deck{}); tx.Error != nil {
 		return nil, tx.Error
 	}
 
-	entity := entity.NewDeck(
-		model.ID,
-		model.CreatedAt,
-		model.ArchivedAt.Time,
-		model.UserId,
-		model.Name,
-		model.Code,
-		model.PrivateCodeFlg,
-	)
+	var deckJoinDeckCodes []*model.DeckJoinDeckCode
 
-	return entity, nil
+	tx := i.db.Table(
+		"decks",
+	).Select(`
+		decks.id AS deck_id,
+		decks.created_at AS deck_created_at,
+		decks.updated_at AS deck_updated_at,
+		decks.deleted_at AS deck_deleted_at,
+		decks.archived_at AS deck_archived_at,
+		decks.user_id AS deck_user_id,
+		decks.name AS deck_name,
+		decks.code AS deck_code,
+		decks.private_code_flg AS deck_private_code_flg,
+		decks.private_flg AS deck_private_flg,
+		deck_codes.id AS deck_code_id,
+		deck_codes.created_at AS deck_code_created_at,
+		deck_codes.updated_at AS deck_code_updated_at,
+		deck_codes.deleted_at AS deck_code_deleted_at,
+		deck_codes.user_id AS deck_code_user_id,
+		deck_codes.deck_id AS deck_code_deck_id,
+		deck_codes.code AS deck_code_code,
+		deck_codes.private_code_flg AS deck_code_private_code_flg,
+		deck_codes.memo AS deck_code_memo
+	`,
+	).Joins(`
+		LEFT JOIN (
+			SELECT DISTINCT ON (deck_id)
+				id,
+				created_at,
+				updated_at,
+				deleted_at,
+				user_id,
+				deck_id,
+				code,
+				private_code_flg
+			FROM deck_codes
+			WHERE deck_id = ?
+			ORDER BY deck_id, created_at DESC
+		) AS deck_codes ON decks.id = deck_codes.deck_id
+	`, id,
+	).Where(
+		"decks.id = ? AND decks.deleted_at IS NULL", id,
+	).Take(&deckJoinDeckCodes)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	var ret []*entity.Deck
+
+	for _, djdc := range deckJoinDeckCodes {
+		ret = append(ret, entity.NewDeck(
+			djdc.DeckID,
+			djdc.DeckCreatedAt,
+			djdc.DeckArchivedAt.Time,
+			djdc.DeckUserId,
+			djdc.DeckName,
+			djdc.DeckCode,
+			djdc.DeckPrivateCodeFlg,
+			djdc.DeckPrivateFlg,
+			entity.NewDeckCode(
+				djdc.DeckCodeID,
+				djdc.DeckCodeCreatedAt,
+				djdc.DeckCodeUserId,
+				djdc.DeckCodeDeckId,
+				djdc.DeckCodeCode,
+				djdc.DeckCodePrivateFlg,
+			),
+		))
+	}
+
+	return ret[0], nil
 }
 
 func (i *Deck) FindByUserId(
@@ -107,33 +288,144 @@ func (i *Deck) FindByUserId(
 	limit int,
 	offset int,
 ) ([]*entity.Deck, error) {
-	var models []*model.Deck
+	var deckJoinDeckCodes []*model.DeckJoinDeckCode
 
 	if archivedFlg {
-		if tx := i.db.Where("user_id = ? AND archived_at IS NOT NULL", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		tx := i.db.Table(
+			"decks",
+		).Select(`
+			decks.id AS deck_id,
+			decks.created_at AS deck_created_at,
+			decks.updated_at AS deck_updated_at,
+			decks.deleted_at AS deck_deleted_at,
+			decks.archived_at AS deck_archived_at,
+			decks.user_id AS deck_user_id,
+			decks.name AS deck_name,
+			decks.code AS deck_code,
+			decks.private_code_flg AS deck_private_code_flg,
+			decks.private_flg AS deck_private_flg,
+			deck_codes.id AS deck_code_id,
+			deck_codes.created_at AS deck_code_created_at,
+			deck_codes.updated_at AS deck_code_updated_at,
+			deck_codes.deleted_at AS deck_code_deleted_at,
+			deck_codes.user_id AS deck_code_user_id,
+			deck_codes.deck_id AS deck_code_deck_id,
+			deck_codes.code AS deck_code_code,
+			deck_codes.private_code_flg AS deck_code_private_code_flg,
+			deck_codes.memo AS deck_code_memo
+		`,
+		).Joins(`
+			LEFT JOIN (
+				SELECT DISTINCT ON (deck_id)
+					id,
+					created_at,
+					updated_at,
+					deleted_at,
+					user_id,
+					deck_id,
+					code,
+					private_code_flg
+				FROM deck_codes
+				WHERE user_id = ?
+				ORDER BY deck_id, created_at DESC
+			) AS deck_codes ON decks.id = deck_codes.deck_id
+		`, uid,
+		).Where(
+			"decks.user_id = ? AND decks.archived_at IS NOT NULL AND decks.deleted_at IS NULL", uid,
+		).Order(
+			"decks.created_at DESC",
+		).Limit(
+			limit,
+		).Offset(
+			offset,
+		).Scan(&deckJoinDeckCodes)
+
+		if tx.Error != nil {
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.db.Where("user_id = ? AND archived_at IS NULL", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		tx := i.db.Table(
+			"decks",
+		).Select(`
+			decks.id AS deck_id,
+			decks.created_at AS deck_created_at,
+			decks.updated_at AS deck_updated_at,
+			decks.deleted_at AS deck_deleted_at,
+			decks.archived_at AS deck_archived_at,
+			decks.user_id AS deck_user_id,
+			decks.name AS deck_name,
+			decks.code AS deck_code,
+			decks.private_code_flg AS deck_private_code_flg,
+			decks.private_flg AS deck_private_flg,
+			deck_codes.id AS deck_code_id,
+			deck_codes.created_at AS deck_code_created_at,
+			deck_codes.updated_at AS deck_code_updated_at,
+			deck_codes.deleted_at AS deck_code_deleted_at,
+			deck_codes.user_id AS deck_code_user_id,
+			deck_codes.deck_id AS deck_code_deck_id,
+			deck_codes.code AS deck_code_code,
+			deck_codes.private_code_flg AS deck_code_private_code_flg,
+			deck_codes.memo AS deck_code_memo
+		`,
+		).Joins(`
+			LEFT JOIN (
+				SELECT DISTINCT ON (deck_id)
+					id,
+					created_at,
+					updated_at,
+					deleted_at,
+					user_id,
+					deck_id,
+					code,
+					private_code_flg
+				FROM deck_codes
+				WHERE user_id = ?
+				ORDER BY deck_id, created_at DESC
+			) AS deck_codes ON decks.id = deck_codes.deck_id
+		`, uid,
+		).Where(
+			"decks.user_id = ? AND decks.archived_at IS NULL AND decks.deleted_at IS NULL", uid,
+		).Order(
+			"decks.created_at DESC",
+		).Limit(
+			limit,
+		).Offset(
+			offset,
+		).Scan(&deckJoinDeckCodes)
+
+		if tx.Error != nil {
 			return nil, tx.Error
 		}
 	}
 
-	var entities []*entity.Deck
-	for _, model := range models {
-		entity := entity.NewDeck(
-			model.ID,
-			model.CreatedAt,
-			model.ArchivedAt.Time,
-			model.UserId,
-			model.Name,
-			model.Code,
-			model.PrivateCodeFlg,
-		)
-		entities = append(entities, entity)
+	if len(deckJoinDeckCodes) == 0 {
+		return []*entity.Deck{}, nil
 	}
 
-	return entities, nil
+	var ret []*entity.Deck
+
+	for _, djdc := range deckJoinDeckCodes {
+		ret = append(ret, entity.NewDeck(
+			djdc.DeckID,
+			djdc.DeckCreatedAt,
+			djdc.DeckArchivedAt.Time,
+			djdc.DeckUserId,
+			djdc.DeckName,
+			djdc.DeckCode,
+			djdc.DeckPrivateCodeFlg,
+			djdc.DeckPrivateFlg,
+			entity.NewDeckCode(
+				djdc.DeckCodeID,
+				djdc.DeckCodeCreatedAt,
+				djdc.DeckCodeUserId,
+				djdc.DeckCodeDeckId,
+				djdc.DeckCodeCode,
+				djdc.DeckCodePrivateFlg,
+			),
+		))
+	}
+
+	return ret, nil
 }
 
 func (i *Deck) FindByUserIdOnCursor(
@@ -143,33 +435,138 @@ func (i *Deck) FindByUserIdOnCursor(
 	limit int,
 	cursor time.Time,
 ) ([]*entity.Deck, error) {
-	var models []*model.Deck
+	var deckJoinDeckCodes []*model.DeckJoinDeckCode
 
 	if archivedFlg {
-		if tx := i.db.Where("created_at < ? AND user_id = ? AND archived_at IS NOT NULL", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		tx := i.db.Table(
+			"decks",
+		).Select(`
+			decks.id AS deck_id,
+			decks.created_at AS deck_created_at,
+			decks.updated_at AS deck_updated_at,
+			decks.deleted_at AS deck_deleted_at,
+			decks.archived_at AS deck_archived_at,
+			decks.user_id AS deck_user_id,
+			decks.name AS deck_name,
+			decks.code AS deck_code,
+			decks.private_code_flg AS deck_private_code_flg,
+			decks.private_flg AS deck_private_flg,
+			deck_codes.id AS deck_code_id,
+			deck_codes.created_at AS deck_code_created_at,
+			deck_codes.updated_at AS deck_code_updated_at,
+			deck_codes.deleted_at AS deck_code_deleted_at,
+			deck_codes.user_id AS deck_code_user_id,
+			deck_codes.deck_id AS deck_code_deck_id,
+			deck_codes.code AS deck_code_code,
+			deck_codes.private_code_flg AS deck_code_private_code_flg,
+			deck_codes.memo AS deck_code_memo
+		`,
+		).Joins(`
+			LEFT JOIN (
+				SELECT DISTINCT ON (deck_id)
+					id,
+					created_at,
+					updated_at,
+					deleted_at,
+					user_id,
+					deck_id,
+					code,
+					private_code_flg
+				FROM deck_codes
+				WHERE user_id = ?
+			) AS deck_codes ON decks.id = deck_codes.deck_id
+		`, uid,
+		).Where(
+			"decks.created_at < ? AND decks.user_id = ? AND decks.archived_at IS NOT NULL AND decks.deleted_at IS NULL", cursor, uid,
+		).Order(
+			"decks.created_at DESC",
+		).Limit(
+			limit,
+		).Scan(&deckJoinDeckCodes)
+
+		if tx.Error != nil {
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.db.Where("created_at < ? AND user_id = ? AND archived_at IS NULL", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		tx := i.db.Table(
+			"decks",
+		).Select(`
+			decks.id AS deck_id,
+			decks.created_at AS deck_created_at,
+			decks.updated_at AS deck_updated_at,
+			decks.deleted_at AS deck_deleted_at,
+			decks.archived_at AS deck_archived_at,
+			decks.user_id AS deck_user_id,
+			decks.name AS deck_name,
+			decks.code AS deck_code,
+			decks.private_code_flg AS deck_private_code_flg,
+			decks.private_flg AS deck_private_flg,
+			deck_codes.id AS deck_code_id,
+			deck_codes.created_at AS deck_code_created_at,
+			deck_codes.updated_at AS deck_code_updated_at,
+			deck_codes.deleted_at AS deck_code_deleted_at,
+			deck_codes.user_id AS deck_code_user_id,
+			deck_codes.deck_id AS deck_code_deck_id,
+			deck_codes.code AS deck_code_code,
+			deck_codes.private_code_flg AS deck_code_private_code_flg,
+			deck_codes.memo AS deck_code_memo
+		`,
+		).Joins(`
+			LEFT JOIN (
+				SELECT DISTINCT ON (deck_id)
+					id,
+					created_at,
+					updated_at,
+					deleted_at,
+					user_id,
+					deck_id,
+					code,
+					private_code_flg
+				FROM deck_codes
+				WHERE user_id = ?
+			) AS deck_codes ON decks.id = deck_codes.deck_id
+		`, uid,
+		).Where(
+			"decks.created_at < ? AND decks.user_id = ? AND decks.archived_at IS NULL AND decks.deleted_at IS NULL", cursor, uid,
+		).Order(
+			"decks.created_at DESC",
+		).Limit(
+			limit,
+		).Scan(&deckJoinDeckCodes)
+
+		if tx.Error != nil {
 			return nil, tx.Error
 		}
 	}
 
-	var entities []*entity.Deck
-	for _, model := range models {
-		entity := entity.NewDeck(
-			model.ID,
-			model.CreatedAt,
-			model.ArchivedAt.Time,
-			model.UserId,
-			model.Name,
-			model.Code,
-			model.PrivateCodeFlg,
-		)
-		entities = append(entities, entity)
+	if len(deckJoinDeckCodes) == 0 {
+		return []*entity.Deck{}, nil
 	}
 
-	return entities, nil
+	var ret []*entity.Deck
+
+	for _, djdc := range deckJoinDeckCodes {
+		ret = append(ret, entity.NewDeck(
+			djdc.DeckID,
+			djdc.DeckCreatedAt,
+			djdc.DeckArchivedAt.Time,
+			djdc.DeckUserId,
+			djdc.DeckName,
+			djdc.DeckCode,
+			djdc.DeckPrivateCodeFlg,
+			djdc.DeckPrivateFlg,
+			entity.NewDeckCode(
+				djdc.DeckCodeID,
+				djdc.DeckCodeCreatedAt,
+				djdc.DeckCodeUserId,
+				djdc.DeckCodeDeckId,
+				djdc.DeckCodeCode,
+				djdc.DeckCodePrivateFlg,
+			),
+		))
+	}
+
+	return ret, nil
 }
 
 func (i *Deck) Save(
@@ -185,7 +582,7 @@ func (i *Deck) Save(
 		archivedAt.Valid = true
 	}
 
-	model := model.NewDeck(
+	deck := model.NewDeck(
 		entity.ID,
 		entity.CreatedAt,
 		archivedAt,
@@ -193,10 +590,34 @@ func (i *Deck) Save(
 		entity.Name,
 		entity.Code,
 		entity.PrivateCodeFlg,
+		entity.PrivateFlg,
 	)
 
-	if tx := i.db.Save(model); tx.Error != nil {
-		return tx.Error
+	if entity.LatestDeckCode != nil {
+		deckcode := model.NewDeckCode(
+			entity.LatestDeckCode.ID,
+			entity.LatestDeckCode.CreatedAt,
+			entity.LatestDeckCode.UserId,
+			entity.LatestDeckCode.DeckId,
+			entity.LatestDeckCode.Code,
+			entity.LatestDeckCode.PrivateCodeFlg,
+		)
+
+		return i.db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Save(deck).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Save(deckcode).Error; err != nil {
+				return err
+			}
+
+			return nil
+		}, &sql.TxOptions{Isolation: sql.LevelDefault})
+	} else {
+		if tx := i.db.Save(deck); tx.Error != nil {
+			return tx.Error
+		}
 	}
 
 	return nil

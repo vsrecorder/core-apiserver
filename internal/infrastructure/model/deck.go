@@ -17,6 +17,29 @@ type Deck struct {
 	Name           string
 	Code           string
 	PrivateCodeFlg bool
+	PrivateFlg     bool
+}
+
+type DeckJoinDeckCode struct {
+	DeckID             string
+	DeckCreatedAt      time.Time
+	DeckUpdatedAt      time.Time
+	DeckDeletedAt      gorm.DeletedAt
+	DeckArchivedAt     sql.NullTime
+	DeckUserId         string
+	DeckName           string
+	DeckCode           string
+	DeckPrivateCodeFlg bool
+	DeckPrivateFlg     bool
+	DeckCodeID         string
+	DeckCodeCreatedAt  time.Time
+	DeckCodeUpdatedAt  time.Time
+	DeckCodeDeletedAt  gorm.DeletedAt
+	DeckCodeUserId     string
+	DeckCodeDeckId     string
+	DeckCodeCode       string
+	DeckCodePrivateFlg bool
+	DeckCodeMemo       string
 }
 
 func NewDeck(
@@ -27,6 +50,7 @@ func NewDeck(
 	name string,
 	code string,
 	privateCodeFlg bool,
+	privateFlg bool,
 ) *Deck {
 	return &Deck{
 		ID:             id,
@@ -36,5 +60,6 @@ func NewDeck(
 		Name:           name,
 		Code:           code,
 		PrivateCodeFlg: privateCodeFlg,
+		PrivateFlg:     privateFlg,
 	}
 }

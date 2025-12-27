@@ -145,19 +145,27 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
-	controller.NewRecord(
-		r,
-		infrastructure.NewRecord(db),
-		usecase.NewRecord(
-			infrastructure.NewRecord(db),
-		),
-	).RegisterRoute(relativePath, false)
-
 	controller.NewDeck(
 		r,
 		infrastructure.NewDeck(db),
 		usecase.NewDeck(
 			infrastructure.NewDeck(db),
+		),
+	).RegisterRoute(relativePath, false)
+
+	controller.NewDeckCode(
+		r,
+		infrastructure.NewDeckCode(db),
+		usecase.NewDeckCode(
+			infrastructure.NewDeckCode(db),
+		),
+	).RegisterRoute(relativePath, false)
+
+	controller.NewRecord(
+		r,
+		infrastructure.NewRecord(db),
+		usecase.NewRecord(
+			infrastructure.NewRecord(db),
 		),
 	).RegisterRoute(relativePath, false)
 

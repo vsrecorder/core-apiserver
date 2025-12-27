@@ -69,7 +69,12 @@ func test_DeckController_Get(t *testing.T) {
 	c, mockUsecase := setup4TestDeckController(t, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
-		deck := entity.Deck{}
+		latestDeckCode := entity.DeckCode{}
+
+		deck := entity.Deck{
+			LatestDeckCode: &latestDeckCode,
+		}
+
 		decks := []*entity.Deck{
 			&deck,
 		}
@@ -96,7 +101,12 @@ func test_DeckController_Get(t *testing.T) {
 	})
 
 	t.Run("正常系_#02", func(t *testing.T) {
-		deck := entity.Deck{}
+		latestDeckCode := entity.DeckCode{}
+
+		deck := entity.Deck{
+			LatestDeckCode: &latestDeckCode,
+		}
+
 		decks := []*entity.Deck{
 			&deck,
 		}
@@ -149,7 +159,12 @@ func test_DeckController_Get(t *testing.T) {
 	})
 
 	t.Run("正常系_#04", func(t *testing.T) {
-		deck := entity.Deck{}
+		latestDeckCode := entity.DeckCode{}
+
+		deck := entity.Deck{
+			LatestDeckCode: &latestDeckCode,
+		}
+
 		decks := []*entity.Deck{
 			&deck,
 		}
@@ -220,6 +235,8 @@ func test_DeckController_GetById(t *testing.T) {
 		createdAt := time.Now().Local()
 		code := "01JGPC7829AMTNVVNX63VQF5XW"
 
+		latestDeckCode := entity.DeckCode{}
+
 		deck := &entity.Deck{
 			ID:             id,
 			CreatedAt:      createdAt,
@@ -228,6 +245,7 @@ func test_DeckController_GetById(t *testing.T) {
 			Name:           "",
 			Code:           code,
 			PrivateCodeFlg: false,
+			LatestDeckCode: &latestDeckCode,
 		}
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
@@ -265,6 +283,8 @@ func test_DeckController_GetById(t *testing.T) {
 		createdAt := time.Now().Local()
 		code := "01JGPC7829AMTNVVNX63VQF5XW"
 
+		latestDeckCode := entity.DeckCode{}
+
 		deck := &entity.Deck{
 			ID:             id,
 			CreatedAt:      createdAt,
@@ -273,6 +293,7 @@ func test_DeckController_GetById(t *testing.T) {
 			Name:           "",
 			Code:           code,
 			PrivateCodeFlg: true,
+			LatestDeckCode: &latestDeckCode,
 		}
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
@@ -291,43 +312,6 @@ func test_DeckController_GetById(t *testing.T) {
 		require.Equal(t, id, res.ID)
 		//require.Equal(t, createdAt, res.CreatedAt)
 		require.Equal(t, code, res.Code)
-	})
-
-	t.Run("正常系_#03", func(t *testing.T) {
-		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		createdAt := time.Now().Local()
-
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     time.Time{},
-			UserId:         "zor5SLfEfwfZ90yRVXzlxBEFARy2",
-			Name:           "",
-			Code:           "01JGPC7829AMTNVVNX63VQF5XW",
-			PrivateCodeFlg: true,
-		}
-
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", "/decks/"+id, nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckGetByIdResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Empty(t, res.Code)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
@@ -375,8 +359,11 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	c, mockUsecase := setup4TestDeckController(t, r)
 
 	t.Run("正常系_#01-01", func(t *testing.T) {
+		latestDeckCode := entity.DeckCode{}
+
 		deck := entity.Deck{
-			UserId: uid,
+			UserId:         uid,
+			LatestDeckCode: &latestDeckCode,
 		}
 
 		decks := []*entity.Deck{
@@ -408,8 +395,11 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	})
 
 	t.Run("正常系_#01-02", func(t *testing.T) {
+		latestDeckCode := entity.DeckCode{}
+
 		deck := entity.Deck{
-			UserId: uid,
+			UserId:         uid,
+			LatestDeckCode: &latestDeckCode,
 		}
 
 		decks := []*entity.Deck{
@@ -441,8 +431,11 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	})
 
 	t.Run("正常系_#02", func(t *testing.T) {
+		latestDeckCode := entity.DeckCode{}
+
 		deck := entity.Deck{
-			UserId: uid,
+			UserId:         uid,
+			LatestDeckCode: &latestDeckCode,
 		}
 
 		decks := []*entity.Deck{
@@ -502,8 +495,11 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	})
 
 	t.Run("正常系_#04", func(t *testing.T) {
+		latestDeckCode := entity.DeckCode{}
+
 		deck := entity.Deck{
-			UserId: uid,
+			UserId:         uid,
+			LatestDeckCode: &latestDeckCode,
 		}
 
 		decks := []*entity.Deck{
@@ -583,25 +579,26 @@ func test_DeckController_Create(t *testing.T) {
 			ArchivedAt:     time.Time{},
 			UserId:         "",
 			Name:           "ロスギラ",
-			Code:           "",
+			Code:           "RUSyy2-NjZkO3-MMMMXE",
 			PrivateCodeFlg: false,
+			PrivateFlg:     false,
 		}
 
-		param := usecase.NewDeckParam(
+		param := usecase.NewDeckCreateParam(
 			"",
 			"ロスギラ",
-			"",
+			false,
+			"RUSyy2-NjZkO3-MMMMXE",
 			false,
 		)
 
 		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
 
 		data := dto.DeckCreateRequest{
-			DeckRequest: dto.DeckRequest{
-				Name:           "ロスギラ",
-				Code:           "",
-				PrivateCodeFlg: false,
-			},
+			Name:               "ロスギラ",
+			PrivateFlg:         false,
+			DeckCode:           "RUSyy2-NjZkO3-MMMMXE",
+			PrivateDeckCodeFlg: false,
 		}
 
 		dataBytes, err := json.Marshal(data)
@@ -644,25 +641,25 @@ func test_DeckController_Create(t *testing.T) {
 			ArchivedAt:     time.Time{},
 			UserId:         uid,
 			Name:           "ロスギラ",
-			Code:           "",
+			Code:           "RUSyy2-NjZkO3-MMMMXE",
 			PrivateCodeFlg: false,
 		}
 
-		param := usecase.NewDeckParam(
+		param := usecase.NewDeckCreateParam(
 			uid,
 			"ロスギラ",
-			"",
+			false,
+			"RUSyy2-NjZkO3-MMMMXE",
 			false,
 		)
 
 		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
 
 		data := dto.DeckCreateRequest{
-			DeckRequest: dto.DeckRequest{
-				Name:           "ロスギラ",
-				Code:           "",
-				PrivateCodeFlg: false,
-			},
+			Name:               "ロスギラ",
+			PrivateFlg:         false,
+			DeckCode:           "RUSyy2-NjZkO3-MMMMXE",
+			PrivateDeckCodeFlg: false,
 		}
 
 		dataBytes, err := json.Marshal(data)
@@ -691,11 +688,10 @@ func test_DeckController_Create(t *testing.T) {
 		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
 
 		data := dto.DeckCreateRequest{
-			DeckRequest: dto.DeckRequest{
-				Name:           "ロスギラ",
-				Code:           "",
-				PrivateCodeFlg: false,
-			},
+			Name:               "ロスギラ",
+			PrivateFlg:         false,
+			DeckCode:           "RUSyy2-NjZkO3-MMMMXE",
+			PrivateDeckCodeFlg: false,
 		}
 
 		dataBytes, err := json.Marshal(data)
@@ -730,23 +726,19 @@ func test_DeckController_Update(t *testing.T) {
 			Name:           "ロスギラ",
 			Code:           "",
 			PrivateCodeFlg: false,
+			PrivateFlg:     false,
 		}
 
-		param := usecase.NewDeckParam(
-			"",
+		param := usecase.NewDeckUpdateParam(
 			"ロスギラ",
-			"",
 			false,
 		)
 
 		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(deck, nil)
 
 		data := dto.DeckUpdateRequest{
-			DeckRequest: dto.DeckRequest{
-				Name:           "ロスギラ",
-				Code:           "",
-				PrivateCodeFlg: false,
-			},
+			Name:       "ロスギラ",
+			PrivateFlg: false,
 		}
 
 		dataBytes, err := json.Marshal(data)
@@ -791,23 +783,19 @@ func test_DeckController_Update(t *testing.T) {
 			Name:           "ロスギラ",
 			Code:           "",
 			PrivateCodeFlg: false,
+			PrivateFlg:     false,
 		}
 
-		param := usecase.NewDeckParam(
-			uid,
+		param := usecase.NewDeckUpdateParam(
 			"ロスギラ",
-			"",
 			false,
 		)
 
 		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(deck, nil)
 
 		data := dto.DeckUpdateRequest{
-			DeckRequest: dto.DeckRequest{
-				Name:           "ロスギラ",
-				Code:           "",
-				PrivateCodeFlg: false,
-			},
+			Name:       "ロスギラ",
+			PrivateFlg: false,
 		}
 
 		dataBytes, err := json.Marshal(data)
@@ -839,11 +827,8 @@ func test_DeckController_Update(t *testing.T) {
 		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(nil, errors.New(""))
 
 		data := dto.DeckUpdateRequest{
-			DeckRequest: dto.DeckRequest{
-				Name:           "ロスギラ",
-				Code:           "",
-				PrivateCodeFlg: false,
-			},
+			Name:       "ロスギラ",
+			PrivateFlg: false,
 		}
 
 		dataBytes, err := json.Marshal(data)

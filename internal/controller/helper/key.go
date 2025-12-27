@@ -194,6 +194,28 @@ func GetDeckUpdateRequest(ctx *gin.Context) dto.DeckUpdateRequest {
 	return deckRequest
 }
 
+func SetDeckCodeCreateRequest(ctx *gin.Context, value dto.DeckCodeCreateRequest) {
+	ctx.Set("deck_code_create_request", value)
+}
+
+func GetDeckCodeCreateRequest(ctx *gin.Context) dto.DeckCodeCreateRequest {
+	value, _ := ctx.Get("deck_code_create_request")
+	ret, _ := value.(dto.DeckCodeCreateRequest)
+
+	return ret
+}
+
+func SetDeckCodeUpdateRequest(ctx *gin.Context, value dto.DeckCodeUpdateRequest) {
+	ctx.Set("deck_code_update_request", value)
+}
+
+func GetDeckCodeUpdateRequest(ctx *gin.Context) dto.DeckCodeUpdateRequest {
+	value, _ := ctx.Get("deck_code_update_request")
+	ret, _ := value.(dto.DeckCodeUpdateRequest)
+
+	return ret
+}
+
 func SetMatchCreateRequest(ctx *gin.Context, value dto.MatchCreateRequest) {
 	ctx.Set("match_create_request", value)
 }

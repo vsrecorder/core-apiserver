@@ -2,18 +2,16 @@ package dto
 
 import "time"
 
-type DeckRequest struct {
-	Name           string `json:"name"`
-	Code           string `json:"code"`
-	PrivateCodeFlg bool   `json:"private_code_flg"`
-}
-
 type DeckCreateRequest struct {
-	DeckRequest
+	Name               string `json:"name"`
+	PrivateFlg         bool   `json:"private_flg"`
+	DeckCode           string `json:"deck_code"`
+	PrivateDeckCodeFlg bool   `json:"private_deck_code_flg"`
 }
 
 type DeckUpdateRequest struct {
-	DeckRequest
+	Name       string `json:"name"`
+	PrivateFlg bool   `json:"private_flg"`
 }
 
 type DeckData struct {
@@ -22,13 +20,15 @@ type DeckData struct {
 }
 
 type DeckResponse struct {
-	ID             string    `json:"id"`
-	CreatedAt      time.Time `json:"created_at"`
-	ArchivedAt     time.Time `json:"archived_at"`
-	UserId         string    `json:"user_id"`
-	Name           string    `json:"name"`
-	Code           string    `json:"code"`
-	PrivateCodeFlg bool      `json:"private_code_flg"`
+	ID             string           `json:"id"`
+	CreatedAt      time.Time        `json:"created_at"`
+	ArchivedAt     time.Time        `json:"archived_at"`
+	UserId         string           `json:"user_id"`
+	Name           string           `json:"name"`
+	Code           string           `json:"code"`
+	PrivateCodeFlg bool             `json:"private_code_flg"`
+	PrivateFlg     bool             `json:"private_flg"`
+	LatestDeckCode DeckCodeResponse `json:"latest_deck_code"`
 }
 
 type DeckGetResponse struct {

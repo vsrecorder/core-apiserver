@@ -2,38 +2,29 @@ package entity
 
 import "time"
 
-type Deck struct {
+type DeckCode struct {
 	ID             string
 	CreatedAt      time.Time
-	ArchivedAt     time.Time
 	UserId         string
-	Name           string
+	DeckId         string
 	Code           string
 	PrivateCodeFlg bool
-	PrivateFlg     bool
-	LatestDeckCode *DeckCode
 }
 
-func NewDeck(
+func NewDeckCode(
 	id string,
 	createdAt time.Time,
-	archivedAt time.Time,
 	userId string,
-	name string,
+	deckId string,
 	code string,
 	privateCodeFlg bool,
-	privateFlg bool,
-	latestDeckCode *DeckCode,
-) *Deck {
-	return &Deck{
+) *DeckCode {
+	return &DeckCode{
 		ID:             id,
 		CreatedAt:      createdAt,
-		ArchivedAt:     archivedAt,
 		UserId:         userId,
-		Name:           name,
+		DeckId:         deckId,
 		Code:           code,
 		PrivateCodeFlg: privateCodeFlg,
-		PrivateFlg:     privateFlg,
-		LatestDeckCode: latestDeckCode,
 	}
 }

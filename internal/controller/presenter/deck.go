@@ -27,6 +27,15 @@ func NewDeckGetResponse(
 				Code:           deck.Code,
 				Name:           deck.Name,
 				PrivateCodeFlg: deck.PrivateCodeFlg,
+				PrivateFlg:     deck.PrivateFlg,
+				LatestDeckCode: dto.DeckCodeResponse{
+					ID:             deck.LatestDeckCode.ID,
+					CreatedAt:      deck.LatestDeckCode.CreatedAt,
+					UserId:         deck.LatestDeckCode.UserId,
+					DeckId:         deck.LatestDeckCode.DeckId,
+					Code:           deck.LatestDeckCode.Code,
+					PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				},
 			},
 		})
 	}
@@ -51,6 +60,15 @@ func NewDeckGetByIdResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+			},
 		},
 	}
 }
@@ -75,6 +93,15 @@ func NewDeckGetByUserIdResponse(
 				Code:           deck.Code,
 				Name:           deck.Name,
 				PrivateCodeFlg: deck.PrivateCodeFlg,
+				PrivateFlg:     deck.PrivateFlg,
+				LatestDeckCode: dto.DeckCodeResponse{
+					ID:             deck.LatestDeckCode.ID,
+					CreatedAt:      deck.LatestDeckCode.CreatedAt,
+					UserId:         deck.LatestDeckCode.UserId,
+					DeckId:         deck.LatestDeckCode.DeckId,
+					Code:           deck.LatestDeckCode.Code,
+					PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				},
 			},
 		})
 	}
@@ -100,6 +127,7 @@ func NewDeckCreateResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
 		},
 	}
 }
@@ -116,6 +144,7 @@ func NewDeckUpdateResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
 		},
 	}
 }
@@ -132,6 +161,7 @@ func NewDeckArchiveResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
 		},
 	}
 }
@@ -148,6 +178,7 @@ func NewDeckUnarchiveResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
 		},
 	}
 }

@@ -59,7 +59,7 @@ func (mr *MockDeckInterfaceMockRecorder) Archive(ctx, id any) *gomock.Call {
 }
 
 // Create mocks base method.
-func (m *MockDeckInterface) Create(ctx context.Context, param *usecase.DeckParam) (*entity.Deck, error) {
+func (m *MockDeckInterface) Create(ctx context.Context, param *usecase.DeckCreateParam) (*entity.Deck, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, param)
 	ret0, _ := ret[0].(*entity.Deck)
@@ -178,7 +178,7 @@ func (mr *MockDeckInterfaceMockRecorder) Unarchive(ctx, id any) *gomock.Call {
 }
 
 // Update mocks base method.
-func (m *MockDeckInterface) Update(ctx context.Context, id string, param *usecase.DeckParam) (*entity.Deck, error) {
+func (m *MockDeckInterface) Update(ctx context.Context, id string, param *usecase.DeckUpdateParam) (*entity.Deck, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, id, param)
 	ret0, _ := ret[0].(*entity.Deck)

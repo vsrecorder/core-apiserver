@@ -61,7 +61,8 @@ func (i *Deck) Find(
 				user_id,
 				deck_id,
 				code,
-				private_code_flg
+				private_code_flg,
+				memo
 			FROM deck_codes
 			ORDER BY deck_id, created_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
@@ -150,7 +151,8 @@ func (i *Deck) FindOnCursor(
 				user_id,
 				deck_id,
 				code,
-				private_code_flg
+				private_code_flg,
+				memo
 			FROM deck_codes
 			ORDER BY deck_id, created_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
@@ -241,7 +243,8 @@ func (i *Deck) FindById(
 				user_id,
 				deck_id,
 				code,
-				private_code_flg
+				private_code_flg,
+				memo
 			FROM deck_codes
 			WHERE deck_id = ?
 			ORDER BY deck_id, created_at DESC
@@ -324,7 +327,8 @@ func (i *Deck) FindByUserId(
 					user_id,
 					deck_id,
 					code,
-					private_code_flg
+					private_code_flg,
+					memo
 				FROM deck_codes
 				WHERE user_id = ?
 				ORDER BY deck_id, created_at DESC
@@ -377,7 +381,8 @@ func (i *Deck) FindByUserId(
 					user_id,
 					deck_id,
 					code,
-					private_code_flg
+					private_code_flg,
+					memo
 				FROM deck_codes
 				WHERE user_id = ?
 				ORDER BY deck_id, created_at DESC
@@ -471,7 +476,8 @@ func (i *Deck) FindByUserIdOnCursor(
 					user_id,
 					deck_id,
 					code,
-					private_code_flg
+					private_code_flg,
+					memo
 				FROM deck_codes
 				WHERE user_id = ?
 			) AS deck_codes ON decks.id = deck_codes.deck_id
@@ -521,7 +527,8 @@ func (i *Deck) FindByUserIdOnCursor(
 					user_id,
 					deck_id,
 					code,
-					private_code_flg
+					private_code_flg,
+					memo
 				FROM deck_codes
 				WHERE user_id = ?
 			) AS deck_codes ON decks.id = deck_codes.deck_id

@@ -64,7 +64,9 @@ func (i *OfficialEvent) Find(
 				prefectures.id AS prefecture_id ,
 				prefectures.name AS prefecture_name,
 				environments.id AS environment_id,
-				environments.title AS environment_title
+				environments.title AS environment_title,
+				standard_regulations.id AS standard_regulation_id,
+				standard_regulations.marks AS standard_regulation_marks
 			`,
 			).Joins(
 				"LEFT JOIN shops ON shops.id = official_events.shop_id",
@@ -72,6 +74,8 @@ func (i *OfficialEvent) Find(
 				"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
 			).Joins(
 				"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
+			).Joins(
+				"LEFT JOIN standard_regulations ON standard_regulations.to_date >= official_events.date AND standard_regulations.from_date <= official_events.date",
 			).Where(
 				"league_title = ? AND date BETWEEN ? AND ?", leagueTitle, startDate, endDate,
 			).Order(
@@ -81,12 +85,6 @@ func (i *OfficialEvent) Find(
 			if tx.Error != nil {
 				return nil, tx.Error
 			}
-
-			/*
-				if tx := i.db.Where("league_title = ? AND date BETWEEN ? AND ?", leagueTitle, startDate, endDate).Order("started_at ASC").Find(&models); tx.Error != nil {
-					return nil, tx.Error
-				}
-			*/
 		} else {
 			tx := i.db.Table(
 				"official_events",
@@ -108,7 +106,9 @@ func (i *OfficialEvent) Find(
 				prefectures.id AS prefecture_id ,
 				prefectures.name AS prefecture_name,
 				environments.id AS environment_id,
-				environments.title AS environment_title
+				environments.title AS environment_title,
+				standard_regulations.id AS standard_regulation_id,
+				standard_regulations.marks AS standard_regulation_marks
 			`,
 			).Joins(
 				"LEFT JOIN shops ON shops.id = official_events.shop_id",
@@ -116,6 +116,8 @@ func (i *OfficialEvent) Find(
 				"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
 			).Joins(
 				"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
+			).Joins(
+				"LEFT JOIN standard_regulations ON standard_regulations.to_date >= official_events.date AND standard_regulations.from_date <= official_events.date",
 			).Where(
 				"date BETWEEN ? AND ?", startDate, endDate,
 			).Order(
@@ -125,12 +127,6 @@ func (i *OfficialEvent) Find(
 			if tx.Error != nil {
 				return nil, tx.Error
 			}
-
-			/*
-				if tx := i.db.Where("date BETWEEN ? AND ?", startDate, endDate).Order("started_at ASC").Find(&models); tx.Error != nil {
-					return nil, tx.Error
-				}
-			*/
 		}
 	} else { // 大型大会(typeId: 1) / シティ(typeId: 2) / トレリ(typeId: 3) / ジムイベント(typeId: 4) / オーガナイザーイベント(typeId: 6) / その他(typeId: 7)の場合
 		if 1 <= leagueType && leagueType <= 4 { // リーグの種類に指定がある場合
@@ -167,7 +163,9 @@ func (i *OfficialEvent) Find(
 				prefectures.id AS prefecture_id ,
 				prefectures.name AS prefecture_name,
 				environments.id AS environment_id,
-				environments.title AS environment_title
+				environments.title AS environment_title,
+				standard_regulations.id AS standard_regulation_id,
+				standard_regulations.marks AS standard_regulation_marks
 			`,
 			).Joins(
 				"LEFT JOIN shops ON shops.id = official_events.shop_id",
@@ -175,6 +173,8 @@ func (i *OfficialEvent) Find(
 				"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
 			).Joins(
 				"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
+			).Joins(
+				"LEFT JOIN standard_regulations ON standard_regulations.to_date >= official_events.date AND standard_regulations.from_date <= official_events.date",
 			).Where(
 				"type_id = ? AND league_title = ? AND date BETWEEN ? AND ?", typeId, leagueTitle, startDate, endDate,
 			).Order(
@@ -184,12 +184,6 @@ func (i *OfficialEvent) Find(
 			if tx.Error != nil {
 				return nil, tx.Error
 			}
-
-			/*
-				if tx := i.db.Where("type_id = ? AND league_title = ? AND date BETWEEN ? AND ?", typeId, leagueTitle, startDate, endDate).Order("started_at ASC").Find(&models); tx.Error != nil {
-					return nil, tx.Error
-				}
-			*/
 		} else {
 
 			tx := i.db.Table(
@@ -212,7 +206,9 @@ func (i *OfficialEvent) Find(
 				prefectures.id AS prefecture_id ,
 				prefectures.name AS prefecture_name,
 				environments.id AS environment_id,
-				environments.title AS environment_title
+				environments.title AS environment_title,
+				standard_regulations.id AS standard_regulation_id,
+				standard_regulations.marks AS standard_regulation_marks
 			`,
 			).Joins(
 				"LEFT JOIN shops ON shops.id = official_events.shop_id",
@@ -220,6 +216,8 @@ func (i *OfficialEvent) Find(
 				"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
 			).Joins(
 				"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
+			).Joins(
+				"LEFT JOIN standard_regulations ON standard_regulations.to_date >= official_events.date AND standard_regulations.from_date <= official_events.date",
 			).Where(
 				"type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate,
 			).Order(
@@ -229,12 +227,6 @@ func (i *OfficialEvent) Find(
 			if tx.Error != nil {
 				return nil, tx.Error
 			}
-
-			/*
-				if tx := i.db.Where("type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate).Order("started_at ASC").Find(&models); tx.Error != nil {
-					return nil, tx.Error
-				}
-			*/
 		}
 	}
 
@@ -261,6 +253,8 @@ func (i *OfficialEvent) Find(
 				event.PrefectureName,
 				event.EnvironmentId,
 				event.EnvironmentTitle,
+				event.StandardRegulationId,
+				event.StandardRegulationMarks,
 			),
 		)
 	}
@@ -294,7 +288,9 @@ func (i *OfficialEvent) FindById(
 		prefectures.id AS prefecture_id ,
 		prefectures.name AS prefecture_name,
 		environments.id AS environment_id,
-		environments.title AS environment_title
+		environments.title AS environment_title,
+		standard_regulations.id AS standard_regulation_id,
+		standard_regulations.marks AS standard_regulation_marks
 	`,
 	).Joins(
 		"LEFT JOIN shops ON shops.id = official_events.shop_id",
@@ -302,6 +298,8 @@ func (i *OfficialEvent) FindById(
 		"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
 	).Joins(
 		"LEFT JOIN environments ON environments.to_date >= official_events.date AND environments.from_date <= official_events.date",
+	).Joins(
+		"LEFT JOIN standard_regulations ON standard_regulations.to_date >= official_events.date AND standard_regulations.from_date <= official_events.date",
 	).Where(
 		"official_events.id = ?", id,
 	).Take(&event)
@@ -329,5 +327,7 @@ func (i *OfficialEvent) FindById(
 		event.PrefectureName,
 		event.EnvironmentId,
 		event.EnvironmentTitle,
+		event.StandardRegulationId,
+		event.StandardRegulationMarks,
 	), nil
 }

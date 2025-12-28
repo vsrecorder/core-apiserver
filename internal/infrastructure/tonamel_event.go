@@ -9,6 +9,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
+	"gorm.io/gorm"
 )
 
 type TonamelEvent struct {
@@ -22,7 +23,7 @@ func (i *TonamelEvent) FindById(
 	ctx context.Context,
 	id string,
 ) (*entity.TonamelEvent, error) {
-	m := &model.TonamelEvent{}
+	tonamelEvent := &model.TonamelEvent{}
 
 	// OGPチェッカーから指定されたIDに紐ずくTonamelのOGP情報を取得
 	res, err := http.Get("https://web-toolbox.dev/api/ogtag?url=https://tonamel.com/competition/" + id)
@@ -33,16 +34,20 @@ func (i *TonamelEvent) FindById(
 
 	body, _ := io.ReadAll(res.Body)
 
-	if err := json.Unmarshal(body, m); err != nil {
+	if err := json.Unmarshal(body, tonamelEvent); err != nil {
 		return nil, err
 	}
 
-	e := entity.NewTonamelEvent(
+	if !tonamelEvent.Success {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	ret := entity.NewTonamelEvent(
 		id,
-		m.Result.Metadata.Title,
-		m.Result.Metadata.Description,
-		m.Result.Metadata.Image,
+		tonamelEvent.Result.Metadata.Title,
+		tonamelEvent.Result.Metadata.Description,
+		tonamelEvent.Result.Metadata.Image,
 	)
 
-	return e, nil
+	return ret, nil
 }

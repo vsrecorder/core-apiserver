@@ -138,6 +138,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,
@@ -211,6 +212,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			true,
@@ -286,6 +288,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,
@@ -339,6 +342,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			datetime,
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,
@@ -370,6 +374,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,
@@ -428,6 +433,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			datetime,
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,
@@ -473,6 +479,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			true,
@@ -553,6 +560,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			datetime,
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			true,
@@ -584,6 +592,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,
@@ -635,6 +644,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,
@@ -686,6 +696,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			datetime,
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,
@@ -714,6 +725,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			userId,
 			"",
 			false,

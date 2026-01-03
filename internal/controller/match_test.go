@@ -243,6 +243,7 @@ func test_MatchController_Create(t *testing.T) {
 			CreatedAt:          createdAt,
 			RecordId:           recordId,
 			DeckId:             deckId,
+			DeckCodeId:         "",
 			UserId:             "",
 			OpponentsUserId:    "",
 			BO3Flg:             false,
@@ -272,6 +273,7 @@ func test_MatchController_Create(t *testing.T) {
 			deckId,
 			"",
 			"",
+			"",
 			false,
 			false,
 			false,
@@ -297,9 +299,10 @@ func test_MatchController_Create(t *testing.T) {
 
 		data := dto.MatchCreateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 
@@ -345,6 +348,7 @@ func test_MatchController_Create(t *testing.T) {
 			CreatedAt:          createdAt,
 			RecordId:           recordId,
 			DeckId:             deckId,
+			DeckCodeId:         "",
 			UserId:             uid,
 			OpponentsUserId:    "",
 			BO3Flg:             false,
@@ -372,6 +376,7 @@ func test_MatchController_Create(t *testing.T) {
 		param := usecase.NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			uid,
 			"",
 			false,
@@ -399,9 +404,10 @@ func test_MatchController_Create(t *testing.T) {
 
 		data := dto.MatchCreateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 
@@ -483,6 +489,7 @@ func test_MatchController_Update(t *testing.T) {
 			CreatedAt:          createdAt,
 			RecordId:           recordId,
 			DeckId:             deckId,
+			DeckCodeId:         "",
 			UserId:             "",
 			OpponentsUserId:    "",
 			BO3Flg:             false,
@@ -512,6 +519,7 @@ func test_MatchController_Update(t *testing.T) {
 			deckId,
 			"",
 			"",
+			"",
 			false,
 			false,
 			false,
@@ -537,9 +545,10 @@ func test_MatchController_Update(t *testing.T) {
 
 		data := dto.MatchUpdateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 
@@ -585,6 +594,7 @@ func test_MatchController_Update(t *testing.T) {
 			CreatedAt:          createdAt,
 			RecordId:           recordId,
 			DeckId:             deckId,
+			DeckCodeId:         "",
 			UserId:             uid,
 			OpponentsUserId:    "",
 			BO3Flg:             false,
@@ -612,6 +622,7 @@ func test_MatchController_Update(t *testing.T) {
 		param := usecase.NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			uid,
 			"",
 			false,
@@ -639,9 +650,10 @@ func test_MatchController_Update(t *testing.T) {
 
 		data := dto.MatchUpdateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 
@@ -686,9 +698,10 @@ func test_MatchController_Update(t *testing.T) {
 
 		data := dto.MatchUpdateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 

@@ -171,6 +171,7 @@ func (c *Match) Create(ctx *gin.Context) {
 	param := usecase.NewMatchParam(
 		req.RecordId,
 		req.DeckId,
+		req.DeckCodeId,
 		uid,
 		req.OpponentsUserId,
 		req.BO3Flg,
@@ -218,6 +219,7 @@ func (c *Match) Update(ctx *gin.Context) {
 	param := usecase.NewMatchParam(
 		req.RecordId,
 		req.DeckId,
+		req.DeckCodeId,
 		uid,
 		req.OpponentsUserId,
 		req.BO3Flg,

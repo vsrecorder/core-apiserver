@@ -118,19 +118,33 @@ CREATE TABLE decks (
     private_code_flg BOOLEAN DEFAULT NULL
 );
 
+CREATE TABLE deck_codes (
+    id                    VARCHAR(26) PRIMARY KEY, 
+    created_at            TIMESTAMP NOT NULL,
+    updated_at            TIMESTAMP NOT NULL,
+    deleted_at            TIMESTAMP DEFAULT NULL,
+    user_id               VARCHAR(32) NOT NULL,
+    deck_id               VARCHAR(26) NOT NULL,
+    code                  VARCHAR(21) DEFAULT NULL,
+    private_code_flg      BOOLEAN DEFAULT NULL,
+    memo                  TEXT,
+    FOREIGN KEY (deck_id) REFERENCES decks (id)
+);
+
 CREATE TABLE records (
-    id                                VARCHAR(26) PRIMARY KEY,
-    created_at                        TIMESTAMP NOT NULL,
-    updated_at                        TIMESTAMP NOT NULL,
-    deleted_at                        TIMESTAMP DEFAULT NULL,
-    official_event_id                 INT DEFAULT NULL,
-    tonamel_event_id                  VARCHAR(8) DEFAULT NULL,
-    friend_id                         VARCHAR(32) DEFAULT NULL,
-    user_id                           VARCHAR(32) NOT NULL,
-    deck_id                           VARCHAR(26) DEFAULT NULL,
-    private_flg                       BOOLEAN DEFAULT NULL,
-    tcg_meister_url                   TEXT,
-    memo                              TEXT
+    id                        VARCHAR(26) PRIMARY KEY,
+    created_at                TIMESTAMP NOT NULL,
+    updated_at                TIMESTAMP NOT NULL,
+    deleted_at                TIMESTAMP DEFAULT NULL,
+    official_event_id         INT DEFAULT NULL,
+    tonamel_event_id          VARCHAR(8) DEFAULT NULL,
+    friend_id                 VARCHAR(32) DEFAULT NULL,
+    user_id                   VARCHAR(32) NOT NULL,
+    deck_id                   VARCHAR(26) DEFAULT NULL,
+    deck_code_id              VARCHAR(26) DEFAULT NULL,
+    private_flg               BOOLEAN DEFAULT NULL,
+    tcg_meister_url           TEXT,
+    memo                      TEXT
 );
 
 CREATE TABLE matches (
@@ -140,6 +154,7 @@ CREATE TABLE matches (
     deleted_at                TIMESTAMP DEFAULT NULL,
     record_id                 VARCHAR(26) NOT NULL,
     deck_id                   VARCHAR(26) DEFAULT NULL,
+    deck_code_id              VARCHAR(26) DEFAULT NULL,
     user_id                   VARCHAR(32) NOT NULL,
     opponents_user_id         VARCHAR(32) DEFAULT NULL,
     bo3_flg                   BOOLEAN NOT NULL,

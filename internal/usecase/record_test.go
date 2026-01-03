@@ -425,6 +425,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			"",
+			"",
 			false,
 			"",
 			"",
@@ -432,6 +433,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 
 		param := NewRecordParam(
 			0,
+			"",
 			"",
 			"",
 			"",
@@ -455,6 +457,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 	t.Run("異常系_#01", func(t *testing.T) {
 		param := NewRecordParam(
 			0,
+			"",
 			"",
 			"",
 			"",
@@ -486,6 +489,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			"",
+			"",
 			false,
 			"",
 			"",
@@ -493,6 +497,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 
 		param := NewRecordParam(
 			0,
+			"",
 			"",
 			"",
 			"",
@@ -516,6 +521,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 
 		param := NewRecordParam(
 			0,
+			"",
 			"",
 			"",
 			"",
@@ -545,6 +551,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			"",
+			"",
 			false,
 			"",
 			"",
@@ -552,6 +559,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 
 		param := NewRecordParam(
 			0,
+			"",
 			"",
 			"",
 			"",

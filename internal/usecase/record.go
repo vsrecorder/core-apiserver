@@ -15,6 +15,7 @@ type RecordParam struct {
 	friendId        string
 	userId          string
 	deckId          string
+	deckCodeId      string
 	privateFlg      bool
 	tcgMeisterURL   string
 	memo            string
@@ -26,6 +27,7 @@ func NewRecordParam(
 	friendId string,
 	userId string,
 	deckId string,
+	deckCodeId string,
 	privateFlg bool,
 	tcgMeisterURL string,
 	memo string,
@@ -36,6 +38,7 @@ func NewRecordParam(
 		friendId:        friendId,
 		userId:          userId,
 		deckId:          deckId,
+		deckCodeId:      deckCodeId,
 		privateFlg:      privateFlg,
 		tcgMeisterURL:   tcgMeisterURL,
 		memo:            memo,
@@ -257,6 +260,7 @@ func (u *Record) Create(
 		param.friendId,
 		param.userId,
 		param.deckId,
+		param.deckCodeId,
 		param.privateFlg,
 		param.tcgMeisterURL,
 		param.memo,
@@ -290,6 +294,7 @@ func (u *Record) Update(
 		param.friendId,
 		param.userId,
 		param.deckId,
+		param.deckCodeId,
 		param.privateFlg,
 		param.tcgMeisterURL,
 		param.memo,

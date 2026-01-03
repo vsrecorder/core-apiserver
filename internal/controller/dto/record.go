@@ -9,6 +9,7 @@ type RecordRequest struct {
 	TonamelEventId  string `json:"tonamel_event_id"`
 	FriendId        string `json:"friend_id"`
 	DeckId          string `json:"deck_id"`
+	DeckCodeId      string `json:"deck_code_id"`
 	PrivateFlg      bool   `json:"private_flg"`
 	TCGMeisterURL   string `json:"tcg_meister_url"`
 	Memo            string `json:"memo"`
@@ -35,6 +36,7 @@ type RecordResponse struct {
 	FriendId        string    `json:"friend_id"`
 	UserId          string    `json:"user_id"`
 	DeckId          string    `json:"deck_id"`
+	DeckCodeId      string    `json:"deck_code_id"`
 	PrivateFlg      bool      `json:"private_flg"`
 	TCGMeisterURL   string    `json:"tcg_meister_url"`
 	Memo            string    `json:"memo"`

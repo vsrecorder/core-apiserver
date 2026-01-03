@@ -12,6 +12,7 @@ type Record struct {
 	FriendId        string
 	UserId          string
 	DeckId          string
+	DeckCodeId      string
 	PrivateFlg      bool
 	TCGMeisterURL   string
 	Memo            string
@@ -25,6 +26,7 @@ func NewRecord(
 	friendId string,
 	userId string,
 	deckId string,
+	deckCodeId string,
 	privateFlg bool,
 	tcgMeisterURL string,
 	memo string,
@@ -37,6 +39,7 @@ func NewRecord(
 		FriendId:        friendId,
 		UserId:          userId,
 		DeckId:          deckId,
+		DeckCodeId:      deckCodeId,
 		PrivateFlg:      privateFlg,
 		TCGMeisterURL:   tcgMeisterURL,
 		Memo:            memo,

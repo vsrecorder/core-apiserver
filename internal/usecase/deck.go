@@ -207,13 +207,13 @@ func (u *Deck) Create(
 	var LatestDeckCode *entity.DeckCode
 
 	if param.DeckCode != "" {
-		deckcodeId, err := generateId()
+		deckCodeId, err := generateId()
 		if err != nil {
 			return nil, err
 		}
 
 		LatestDeckCode = entity.NewDeckCode(
-			deckcodeId,
+			deckCodeId,
 			createdAt,
 			param.UserId,
 			deckId,

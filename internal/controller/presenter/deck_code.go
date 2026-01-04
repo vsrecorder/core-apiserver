@@ -16,6 +16,7 @@ func NewDeckCodeGetByIdResponse(
 			DeckId:         deckcode.DeckId,
 			Code:           deckcode.Code,
 			PrivateCodeFlg: deckcode.PrivateCodeFlg,
+			Memo:           deckcode.Memo,
 		},
 	}
 }
@@ -33,6 +34,7 @@ func NewDeckCodeGetByDeckIdResponse(
 			DeckId:         deckcode.DeckId,
 			Code:           deckcode.Code,
 			PrivateCodeFlg: deckcode.PrivateCodeFlg,
+			Memo:           deckcode.Memo,
 		})
 	}
 
@@ -50,6 +52,7 @@ func NewDeckCodeCreateResponse(
 			DeckId:         deckcode.DeckId,
 			Code:           deckcode.Code,
 			PrivateCodeFlg: deckcode.PrivateCodeFlg,
+			Memo:           deckcode.Memo,
 		},
 	}
 }
@@ -65,6 +68,7 @@ func NewDeckCodeUpdateResponse(
 			DeckId:         deckcode.DeckId,
 			Code:           deckcode.Code,
 			PrivateCodeFlg: deckcode.PrivateCodeFlg,
+			Memo:           deckcode.Memo,
 		},
 	}
 }

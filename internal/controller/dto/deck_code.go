@@ -6,10 +6,12 @@ type DeckCodeCreateRequest struct {
 	DeckId         string `json:"deck_id"`
 	Code           string `json:"code"`
 	PrivateCodeFlg bool   `json:"private_code_flg"`
+	Memo           string `json:"memo"`
 }
 
 type DeckCodeUpdateRequest struct {
-	PrivateCodeFlg bool `json:"private_code_flg"`
+	PrivateCodeFlg bool   `json:"private_code_flg"`
+	Memo           string `json:"memo"`
 }
 
 type DeckCodeResponse struct {
@@ -19,6 +21,7 @@ type DeckCodeResponse struct {
 	DeckId         string    `json:"deck_id"`
 	Code           string    `json:"code"`
 	PrivateCodeFlg bool      `json:"private_code_flg"`
+	Memo           string    `json:"memo"`
 }
 
 type DeckCodeGetByIdResponse struct {

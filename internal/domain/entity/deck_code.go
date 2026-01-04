@@ -9,6 +9,7 @@ type DeckCode struct {
 	DeckId         string
 	Code           string
 	PrivateCodeFlg bool
+	Memo           string
 }
 
 func NewDeckCode(
@@ -18,6 +19,7 @@ func NewDeckCode(
 	deckId string,
 	code string,
 	privateCodeFlg bool,
+	memo string,
 ) *DeckCode {
 	return &DeckCode{
 		ID:             id,
@@ -26,5 +28,6 @@ func NewDeckCode(
 		DeckId:         deckId,
 		Code:           code,
 		PrivateCodeFlg: privateCodeFlg,
+		Memo:           memo,
 	}
 }

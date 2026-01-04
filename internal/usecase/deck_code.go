@@ -14,10 +14,12 @@ type DeckCodeCreateParam struct {
 	DeckId     string
 	Code       string
 	PrivateFlg bool
+	Memo       string
 }
 
 type DeckCodeUpdateParam struct {
 	PrivateFlg bool
+	Memo       string
 }
 
 func NewDeckCodeCreateParam(
@@ -25,20 +27,24 @@ func NewDeckCodeCreateParam(
 	deckId string,
 	code string,
 	privateFlg bool,
+	memo string,
 ) *DeckCodeCreateParam {
 	return &DeckCodeCreateParam{
 		UserId:     userId,
 		DeckId:     deckId,
 		Code:       code,
 		PrivateFlg: privateFlg,
+		Memo:       memo,
 	}
 }
 
 func NewDeckCodeUpdateParam(
 	privateFlg bool,
+	memo string,
 ) *DeckCodeUpdateParam {
 	return &DeckCodeUpdateParam{
 		PrivateFlg: privateFlg,
+		Memo:       memo,
 	}
 }
 
@@ -127,6 +133,7 @@ func (u *DeckCode) Create(
 		param.DeckId,
 		param.Code,
 		param.PrivateFlg,
+		param.Memo,
 	)
 
 	if deckcode.Code != "" {
@@ -162,6 +169,7 @@ func (u *DeckCode) Update(
 		ret.DeckId,
 		ret.Code,
 		param.PrivateFlg,
+		param.Memo,
 	)
 
 	if err := u.repository.Save(ctx, deckcode); err != nil {

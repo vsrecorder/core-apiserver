@@ -36,6 +36,7 @@ func (i *DeckCode) FindById(
 		deckcode.DeckId,
 		deckcode.Code,
 		deckcode.PrivateCodeFlg,
+		deckcode.Memo,
 	)
 
 	return entity, nil
@@ -60,6 +61,7 @@ func (i *DeckCode) FindByDeckId(
 			deckcode.DeckId,
 			deckcode.Code,
 			deckcode.PrivateCodeFlg,
+			deckcode.Memo,
 		)
 		entities = append(entities, entity)
 	}
@@ -78,6 +80,7 @@ func (i *DeckCode) Save(
 		entity.DeckId,
 		entity.Code,
 		entity.PrivateCodeFlg,
+		entity.Memo,
 	)
 
 	if tx := i.db.Save(deckcode); tx.Error != nil {

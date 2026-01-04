@@ -104,6 +104,7 @@ func (i *Deck) Find(
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
 				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodeMemo,
 			),
 		))
 	}
@@ -192,6 +193,7 @@ func (i *Deck) FindOnCursor(
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
 				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodeMemo,
 			),
 		))
 	}
@@ -277,6 +279,7 @@ func (i *Deck) FindById(
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
 				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodeMemo,
 			),
 		))
 	}
@@ -426,6 +429,7 @@ func (i *Deck) FindByUserId(
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
 				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodeMemo,
 			),
 		))
 	}
@@ -569,6 +573,7 @@ func (i *Deck) FindByUserIdOnCursor(
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
 				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodeMemo,
 			),
 		))
 	}
@@ -608,6 +613,7 @@ func (i *Deck) Save(
 			entity.LatestDeckCode.DeckId,
 			entity.LatestDeckCode.Code,
 			entity.LatestDeckCode.PrivateCodeFlg,
+			entity.LatestDeckCode.Memo,
 		)
 
 		return i.db.Transaction(func(tx *gorm.DB) error {

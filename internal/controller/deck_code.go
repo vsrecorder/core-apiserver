@@ -167,6 +167,7 @@ func (c *DeckCode) Create(ctx *gin.Context) {
 		req.DeckId,
 		req.Code,
 		req.PrivateCodeFlg,
+		req.Memo,
 	)
 
 	deckcode, err := c.usecase.Create(context.Background(), param)
@@ -187,6 +188,7 @@ func (c *DeckCode) Update(ctx *gin.Context) {
 
 	param := usecase.NewDeckCodeUpdateParam(
 		req.PrivateCodeFlg,
+		req.Memo,
 	)
 
 	deckcode, err := c.usecase.Update(context.Background(), id, param)

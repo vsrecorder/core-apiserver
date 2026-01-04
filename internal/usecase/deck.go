@@ -212,6 +212,7 @@ func (u *Deck) Create(
 			return nil, err
 		}
 
+		memo := ""
 		LatestDeckCode = entity.NewDeckCode(
 			deckCodeId,
 			createdAt,
@@ -219,6 +220,7 @@ func (u *Deck) Create(
 			deckId,
 			param.DeckCode,
 			param.PrivateFlg,
+			memo,
 		)
 
 		if LatestDeckCode.Code != "" {

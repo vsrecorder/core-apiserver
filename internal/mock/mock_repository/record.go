@@ -71,6 +71,21 @@ func (mr *MockRecordInterfaceMockRecorder) Find(ctx, limit, offset any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Find", reflect.TypeOf((*MockRecordInterface)(nil).Find), ctx, limit, offset)
 }
 
+// FindByDeckCodeId mocks base method.
+func (m *MockRecordInterface) FindByDeckCodeId(ctx context.Context, deckCodeId string, limit, offset int) ([]*entity.Record, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByDeckCodeId", ctx, deckCodeId, limit, offset)
+	ret0, _ := ret[0].([]*entity.Record)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByDeckCodeId indicates an expected call of FindByDeckCodeId.
+func (mr *MockRecordInterfaceMockRecorder) FindByDeckCodeId(ctx, deckCodeId, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckCodeId", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckCodeId), ctx, deckCodeId, limit, offset)
+}
+
 // FindByDeckId mocks base method.
 func (m *MockRecordInterface) FindByDeckId(ctx context.Context, deckId string, limit, offset int) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()

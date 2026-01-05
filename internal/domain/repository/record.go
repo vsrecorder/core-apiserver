@@ -60,6 +60,13 @@ type RecordInterface interface {
 		offset int,
 	) ([]*entity.Record, error)
 
+	FindByDeckCodeId(
+		ctx context.Context,
+		deckCodeId string,
+		limit int,
+		offset int,
+	) ([]*entity.Record, error)
+
 	Save(
 		ctx context.Context,
 		entity *entity.Record,

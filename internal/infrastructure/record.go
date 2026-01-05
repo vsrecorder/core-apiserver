@@ -276,6 +276,39 @@ func (i *Record) FindByDeckId(
 	return entities, nil
 }
 
+func (i *Record) FindByDeckCodeId(
+	ctx context.Context,
+	deckCodeId string,
+	limit int,
+	offset int,
+) ([]*entity.Record, error) {
+	var models []*model.Record
+
+	if tx := i.db.Where("deck_code_id = ?", deckCodeId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	var entities []*entity.Record
+	for _, model := range models {
+		entity := entity.NewRecord(
+			model.ID,
+			model.CreatedAt,
+			model.OfficialEventId,
+			model.TonamelEventId,
+			model.FriendId,
+			model.UserId,
+			model.DeckId,
+			model.DeckCodeId,
+			model.PrivateFlg,
+			model.TCGMeisterURL,
+			model.Memo,
+		)
+		entities = append(entities, entity)
+	}
+
+	return entities, nil
+}
+
 func (i *Record) Save(
 	ctx context.Context,
 	entity *entity.Record,

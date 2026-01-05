@@ -98,6 +98,13 @@ type RecordInterface interface {
 		offset int,
 	) ([]*entity.Record, error)
 
+	FindByDeckCodeId(
+		ctx context.Context,
+		deckCodeId string,
+		limit int,
+		offset int,
+	) ([]*entity.Record, error)
+
 	Create(
 		ctx context.Context,
 		param *RecordParam,
@@ -234,6 +241,20 @@ func (u *Record) FindByDeckId(
 ) ([]*entity.Record, error) {
 	records, err := u.repository.FindByDeckId(ctx, deckId, limit, offset)
 
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (u *Record) FindByDeckCodeId(
+	ctx context.Context,
+	deckCodeId string,
+	limit int,
+	offset int,
+) ([]*entity.Record, error) {
+	records, err := u.repository.FindByDeckCodeId(ctx, deckCodeId, limit, offset)
 	if err != nil {
 		return nil, err
 	}

@@ -210,7 +210,7 @@ func (i *Deck) FindById(
 		return nil, tx.Error
 	}
 
-	var deckJoinDeckCodes []*model.DeckJoinDeckCode
+	var deckJoinDeckCodes *model.DeckJoinDeckCode
 
 	tx := i.db.Table(
 		"decks",
@@ -254,37 +254,33 @@ func (i *Deck) FindById(
 	`, id,
 	).Where(
 		"decks.id = ? AND decks.deleted_at IS NULL", id,
-	).Take(&deckJoinDeckCodes)
+	).Scan(&deckJoinDeckCodes)
 
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
 
-	var ret []*entity.Deck
+	ret := entity.NewDeck(
+		deckJoinDeckCodes.DeckID,
+		deckJoinDeckCodes.DeckCreatedAt,
+		deckJoinDeckCodes.DeckArchivedAt.Time,
+		deckJoinDeckCodes.DeckUserId,
+		deckJoinDeckCodes.DeckName,
+		deckJoinDeckCodes.DeckCode,
+		deckJoinDeckCodes.DeckPrivateCodeFlg,
+		deckJoinDeckCodes.DeckPrivateFlg,
+		entity.NewDeckCode(
+			deckJoinDeckCodes.DeckCodeID,
+			deckJoinDeckCodes.DeckCodeCreatedAt,
+			deckJoinDeckCodes.DeckCodeUserId,
+			deckJoinDeckCodes.DeckCodeDeckId,
+			deckJoinDeckCodes.DeckCodeCode,
+			deckJoinDeckCodes.DeckCodePrivateFlg,
+			deckJoinDeckCodes.DeckCodeMemo,
+		),
+	)
 
-	for _, djdc := range deckJoinDeckCodes {
-		ret = append(ret, entity.NewDeck(
-			djdc.DeckID,
-			djdc.DeckCreatedAt,
-			djdc.DeckArchivedAt.Time,
-			djdc.DeckUserId,
-			djdc.DeckName,
-			djdc.DeckCode,
-			djdc.DeckPrivateCodeFlg,
-			djdc.DeckPrivateFlg,
-			entity.NewDeckCode(
-				djdc.DeckCodeID,
-				djdc.DeckCodeCreatedAt,
-				djdc.DeckCodeUserId,
-				djdc.DeckCodeDeckId,
-				djdc.DeckCodeCode,
-				djdc.DeckCodePrivateFlg,
-				djdc.DeckCodeMemo,
-			),
-		))
-	}
-
-	return ret[0], nil
+	return ret, nil
 }
 
 func (i *Deck) FindByUserId(

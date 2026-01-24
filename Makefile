@@ -19,7 +19,7 @@ deploy:
 
 .PHONY: docker-build-and-push
 docker-build-and-push:
-	sudo docker build --no-cache -t vsrecorder/core-apiserver:latest . && sudo docker push vsrecorder/core-apiserver:latest
+	docker build --no-cache -t vsrecorder/core-apiserver:latest . && docker push vsrecorder/core-apiserver:latest
 
 .PHONY: mockgen
 mockgen:

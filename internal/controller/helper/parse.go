@@ -14,6 +14,7 @@ const (
 	DefaultOffset     = 0
 	DefaultTypeId     = 0
 	DefaultLeagueType = 0
+	DefaultEventType  = ""
 	DefaultArchived   = false
 
 	DateLayout = time.DateOnly
@@ -200,6 +201,23 @@ func ParseQueryLeagueType(ctx *gin.Context) (uint, error) {
 	}
 
 	return uint(leagueType), nil
+}
+
+func ParseQueryEventType(ctx *gin.Context) (string, error) {
+	query := GetQueryEventType(ctx)
+
+	if query == "" {
+		return DefaultEventType, nil
+	}
+
+	switch query {
+	case "official":
+		return "official", nil
+	case "tonamel":
+		return "tonamel", nil
+	default:
+		return DefaultEventType, nil
+	}
 }
 
 func ParseQueryArchive(ctx *gin.Context) (bool, error) {

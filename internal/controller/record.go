@@ -102,9 +102,10 @@ func (c *Record) Get(ctx *gin.Context) {
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
 		cursor := helper.GetCursor(ctx)
+		eventType := helper.GetEventType(ctx)
 
 		if !cursor.IsZero() {
-			records, err := c.usecase.FindOnCursor(context.Background(), limit, cursor)
+			records, err := c.usecase.FindOnCursor(context.Background(), limit, cursor, eventType)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 				ctx.Abort()
@@ -115,7 +116,7 @@ func (c *Record) Get(ctx *gin.Context) {
 
 			ctx.JSON(http.StatusOK, res)
 		} else {
-			records, err := c.usecase.Find(context.Background(), limit, offset)
+			records, err := c.usecase.Find(context.Background(), limit, offset, eventType)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 				ctx.Abort()
@@ -134,9 +135,10 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
 		cursor := helper.GetCursor(ctx)
+		eventType := helper.GetEventType(ctx)
 
 		if !cursor.IsZero() {
-			records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor)
+			records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor, eventType)
 
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
@@ -148,7 +150,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 
 			ctx.JSON(http.StatusOK, res)
 		} else {
-			records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset)
+			records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset, eventType)
 
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})

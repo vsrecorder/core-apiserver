@@ -37,7 +37,7 @@ func (i *Match) FindById(
 		"matches.id = ? AND matches.deleted_at IS NULL", id,
 	).Order(
 		"games.created_at ASC",
-	).Take(&results)
+	).Scan(&results)
 
 	if tx.Error != nil {
 		return nil, tx.Error
@@ -101,7 +101,7 @@ func (i *Match) FindByRecordId(
 		"records.id = ? AND records.deleted_at IS NULL AND matches.deleted_at IS NULL", recordId,
 	).Order(
 		"matches.created_at, games.created_at ASC",
-	).Find(&results)
+	).Scan(&results)
 
 	if tx.Error != nil {
 		return nil, tx.Error

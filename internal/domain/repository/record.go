@@ -8,28 +8,31 @@ import (
 )
 
 type RecordInterface interface {
+	FindById(
+		ctx context.Context,
+		id string,
+	) (*entity.Record, error)
+
 	Find(
 		ctx context.Context,
 		limit int,
 		offset int,
+		eventType string,
 	) ([]*entity.Record, error)
 
 	FindOnCursor(
 		ctx context.Context,
 		limit int,
 		cursor time.Time,
+		eventType string,
 	) ([]*entity.Record, error)
-
-	FindById(
-		ctx context.Context,
-		id string,
-	) (*entity.Record, error)
 
 	FindByUserId(
 		ctx context.Context,
 		uid string,
 		limit int,
 		offset int,
+		eventType string,
 	) ([]*entity.Record, error)
 
 	FindByUserIdOnCursor(
@@ -37,6 +40,7 @@ type RecordInterface interface {
 		uid string,
 		limit int,
 		cursor time.Time,
+		eventType string,
 	) ([]*entity.Record, error)
 
 	FindByOfficialEventId(

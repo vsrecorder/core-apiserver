@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -11,77 +12,15 @@ import (
 )
 
 type Record struct {
-	db *gorm.DB
+	db     *gorm.DB
+	logger *slog.Logger
 }
 
 func NewRecord(
 	db *gorm.DB,
+	logger *slog.Logger,
 ) repository.RecordInterface {
-	return &Record{db}
-}
-
-func (i *Record) Find(
-	ctx context.Context,
-	limit int,
-	offset int,
-) ([]*entity.Record, error) {
-	var models []*model.Record
-
-	if tx := i.db.Where("private_flg = false").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.PrivateFlg,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
-}
-
-func (i *Record) FindOnCursor(
-	ctx context.Context,
-	limit int,
-	cursor time.Time,
-) ([]*entity.Record, error) {
-	var models []*model.Record
-
-	if tx := i.db.Where("created_at < ? AND private_flg = false", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.PrivateFlg,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return &Record{db, logger}
 }
 
 func (i *Record) FindById(
@@ -111,16 +50,116 @@ func (i *Record) FindById(
 	return entity, nil
 }
 
+func (i *Record) Find(
+	ctx context.Context,
+	limit int,
+	offset int,
+	eventType string,
+) ([]*entity.Record, error) {
+	var models []*model.Record
+
+	switch eventType {
+	case "official":
+		if tx := i.db.Where("official_event_id != 0 AND private_flg = false").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "tonamel":
+		if tx := i.db.Where("tonamel_event_id != '' AND private_flg = false").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	default:
+		if tx := i.db.Where("private_flg = false").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	}
+
+	var entities []*entity.Record
+	for _, model := range models {
+		entity := entity.NewRecord(
+			model.ID,
+			model.CreatedAt,
+			model.OfficialEventId,
+			model.TonamelEventId,
+			model.FriendId,
+			model.UserId,
+			model.DeckId,
+			model.DeckCodeId,
+			model.PrivateFlg,
+			model.TCGMeisterURL,
+			model.Memo,
+		)
+		entities = append(entities, entity)
+	}
+
+	return entities, nil
+}
+
+func (i *Record) FindOnCursor(
+	ctx context.Context,
+	limit int,
+	cursor time.Time,
+	eventType string,
+) ([]*entity.Record, error) {
+	var models []*model.Record
+
+	switch eventType {
+	case "official":
+		if tx := i.db.Where("official_event_id != 0 AND created_at < ? AND private_flg = false", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "tonamel":
+		if tx := i.db.Where("tonamel_event_id != '' AND created_at < ? AND private_flg = false", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	default:
+		if tx := i.db.Where("created_at < ? AND private_flg = false", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	}
+
+	var entities []*entity.Record
+	for _, model := range models {
+		entity := entity.NewRecord(
+			model.ID,
+			model.CreatedAt,
+			model.OfficialEventId,
+			model.TonamelEventId,
+			model.FriendId,
+			model.UserId,
+			model.DeckId,
+			model.DeckCodeId,
+			model.PrivateFlg,
+			model.TCGMeisterURL,
+			model.Memo,
+		)
+		entities = append(entities, entity)
+	}
+
+	return entities, nil
+}
+
 func (i *Record) FindByUserId(
 	ctx context.Context,
 	uid string,
 	limit int,
 	offset int,
+	eventType string,
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("user_id = ?", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
-		return nil, tx.Error
+	switch eventType {
+	case "official":
+		if tx := i.db.Where("official_event_id != 0 AND user_id = ?", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "tonamel":
+		if tx := i.db.Where("tonamel_event_id != '' AND user_id = ?", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	default:
+		if tx := i.db.Where("user_id = ?", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
 	}
 
 	var entities []*entity.Record
@@ -149,11 +188,23 @@ func (i *Record) FindByUserIdOnCursor(
 	uid string,
 	limit int,
 	cursor time.Time,
+	eventType string,
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("created_at < ? AND user_id = ?", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
-		return nil, tx.Error
+	switch eventType {
+	case "official":
+		if tx := i.db.Where("official_event_id != 0 AND created_at < ? AND user_id = ?", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "tonamel":
+		if tx := i.db.Where("tonamel_event_id != '' AND created_at < ? AND user_id = ?", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	default:
+		if tx := i.db.Where("created_at < ? AND user_id = ?", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
 	}
 
 	var entities []*entity.Record

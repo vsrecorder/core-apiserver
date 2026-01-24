@@ -117,6 +117,17 @@ func GetLeagueType(ctx *gin.Context) uint {
 	return leagueType
 }
 
+func SetEventType(ctx *gin.Context, value string) {
+	ctx.Set("event_type", value)
+}
+
+func GetEventType(ctx *gin.Context) string {
+	value, _ := ctx.Get("event_type")
+	eventType, _ := value.(string)
+
+	return eventType
+}
+
 func SetOfficialEventId(ctx *gin.Context, value uint) {
 	ctx.Set("official_event_id", value)
 }

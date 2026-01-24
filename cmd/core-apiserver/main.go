@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -134,7 +135,7 @@ func main() {
 	controller.NewTonamelEvent(
 		r,
 		usecase.NewTonamelEvent(
-			infrastructure.NewTonamelEvent(),
+			infrastructure.NewTonamelEvent(slog.Default()),
 		),
 	).RegisterRoute(relativePath)
 
@@ -163,16 +164,16 @@ func main() {
 
 	controller.NewRecord(
 		r,
-		infrastructure.NewRecord(db),
+		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewRecord(
-			infrastructure.NewRecord(db),
+			infrastructure.NewRecord(db, slog.Default()),
 		),
 	).RegisterRoute(relativePath, false)
 
 	controller.NewMatch(
 		r,
 		infrastructure.NewMatch(db),
-		infrastructure.NewRecord(db),
+		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewMatch(
 			infrastructure.NewMatch(db),
 		),

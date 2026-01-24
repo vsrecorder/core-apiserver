@@ -302,7 +302,7 @@ func (i *OfficialEvent) FindById(
 		"LEFT JOIN standard_regulations ON standard_regulations.to_date >= official_events.date AND standard_regulations.from_date <= official_events.date",
 	).Where(
 		"official_events.id = ?", id,
-	).Take(&event)
+	).Scan(&event)
 
 	if tx.Error != nil {
 		return nil, tx.Error

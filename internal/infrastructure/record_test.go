@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"log/slog"
 	"regexp"
 	"testing"
 	"time"
@@ -38,7 +39,9 @@ func setup4RecordInfrastructure() (repository.RecordInterface, sqlmock.Sqlmock, 
 		return nil, nil, err
 	}
 
-	r := NewRecord(db)
+	logger := slog.Default()
+
+	r := NewRecord(db, logger)
 
 	return r, mock, err
 }
@@ -71,6 +74,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
+	eventType := ""
 
 	{
 		rows := sqlmock.NewRows([]string{
@@ -110,7 +114,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 			offset,
 		).WillReturnRows(rows)
 
-		records, err := r.Find(context.Background(), limit, offset)
+		records, err := r.Find(context.Background(), limit, offset, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, len(records))
@@ -141,7 +145,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 			offset,
 		).WillReturnRows(rows)
 
-		records, err := r.Find(context.Background(), limit, offset)
+		records, err := r.Find(context.Background(), limit, offset, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, len(records))
@@ -156,6 +160,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 	cursor := time.Now().Local()
 	datetime := time.Now().Local()
 	limit := 10
+	eventType := ""
 
 	{
 		rows := sqlmock.NewRows([]string{
@@ -195,7 +200,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 			limit,
 		).WillReturnRows(rows)
 
-		records, err := r.FindOnCursor(context.Background(), limit, cursor)
+		records, err := r.FindOnCursor(context.Background(), limit, cursor, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, len(records))
@@ -226,7 +231,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 			limit,
 		).WillReturnRows(rows)
 
-		records, err := r.FindOnCursor(context.Background(), limit, cursor)
+		records, err := r.FindOnCursor(context.Background(), limit, cursor, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, len(records))
@@ -290,6 +295,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
+	eventType := ""
 
 	rows := sqlmock.NewRows([]string{
 		"id",
@@ -329,7 +335,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 		offset,
 	).WillReturnRows(rows)
 
-	records, err := r.FindByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, offset)
+	records, err := r.FindByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, offset, eventType)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(records))
@@ -343,6 +349,7 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	cursor := time.Now().Local()
 	datetime := time.Now().Local()
 	limit := 10
+	eventType := ""
 
 	rows := sqlmock.NewRows([]string{
 		"id",
@@ -382,7 +389,7 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		limit,
 	).WillReturnRows(rows)
 
-	records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, cursor)
+	records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, cursor, eventType)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(records))

@@ -46,7 +46,7 @@ func main() {
 			// 各レコードに対して最新のdeck_code_idを取得し、Recordに反映する
 			for _, record := range records {
 				// Recordに紐付けられたDeckとDeckと紐付けられた最新のDeckCodeを結合して取得する
-				var deckJoinDeckCodes *model.DeckJoinDeckCode
+				var deckJoinDeckCodes model.DeckJoinDeckCode
 
 				tx := db.Table(
 					"decks",
@@ -96,6 +96,7 @@ func main() {
 					return tx.Error
 				}
 
+				// デッキコードがないものはスキップ
 				if deckJoinDeckCodes.DeckCodeID == "" {
 					continue
 				}

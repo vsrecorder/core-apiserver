@@ -341,6 +341,7 @@ CREATE TABLE pokemon_cards (
 
 
 GRANT SELECT ON decks TO grafana;
+GRANT SELECT ON deck_codes TO grafana;
 GRANT SELECT ON records TO grafana;
 GRANT SELECT ON matches TO grafana;
 GRANT SELECT ON games TO grafana;

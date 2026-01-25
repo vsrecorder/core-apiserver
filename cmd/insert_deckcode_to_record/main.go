@@ -96,6 +96,10 @@ func main() {
 					return tx.Error
 				}
 
+				if deckJoinDeckCodes.DeckCodeID == "" {
+					continue
+				}
+
 				deck := entity.NewDeck(
 					deckJoinDeckCodes.DeckID,
 					deckJoinDeckCodes.DeckCreatedAt,

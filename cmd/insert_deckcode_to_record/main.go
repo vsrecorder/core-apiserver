@@ -96,7 +96,7 @@ func main() {
 					return tx.Error
 				}
 
-				// デッキコードがないものはスキップ
+				// 結合した結果、Deckと紐付けられたDeckCodeがない(デッキコードがない)ものはスキップ
 				if deckJoinDeckCodes.DeckCodeID == "" {
 					continue
 				}

@@ -22,10 +22,10 @@ func NewCityleagueResult(
 
 func (i *CityleagueResult) FindByOfficialEventId(
 	ctx context.Context,
-	officialEventId string,
+	officialEventId uint,
 ) (*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
-	if tx := i.db.Where("official_event_id = ?", officialEventId).Order("point DESC, player_id ASC").First(&models); tx.Error != nil {
+	if tx := i.db.Where("official_event_id = ?", officialEventId).Order("point DESC, player_id ASC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 

@@ -128,7 +128,7 @@ func (c *CityleagueResult) GetByOfficialEventId(ctx *gin.Context) {
 func (c *CityleagueResult) Get(ctx *gin.Context) {
 	leagueType := helper.GetLeagueType(ctx)
 	date := time.Now()
-	fromDate := date.AddDate(0, 0, -7)
+	fromDate := date.AddDate(0, 0, -6)
 	fromDate = time.Date(fromDate.Year(), fromDate.Month(), fromDate.Day(), 0, 0, 0, 0, time.Local)
 	toDate := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
 

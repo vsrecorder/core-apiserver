@@ -49,6 +49,29 @@ func main() {
 		log.Fatalf("failed to connect database: %v\n", err)
 	}
 
+	// Deckのprivate_code_flgの値をprivate_flgにコピーする処理
+	{
+		// すべてのDeckを取得(論理削除されたものも含む)
+		var decks []*model.Deck
+		if tx := db.Unscoped().Order("created_at DESC").Find(&decks); tx.Error != nil {
+			return
+		}
+
+		db.Transaction(func(tx *gorm.DB) error {
+			for _, deck := range decks {
+				// private_code_flgの値をprivate_flgにコピー
+				deck.PrivateFlg = deck.PrivateCodeFlg
+
+				if tx := db.Save(&deck); tx.Error != nil {
+					return tx.Error
+				}
+			}
+
+			return nil
+		}, &sql.TxOptions{Isolation: sql.LevelDefault})
+	}
+
+	// DeckのcodeからDeckCodeを作成する処理
 	{
 		// デッキコードが存在するすべてのDeckを取得(論理削除されたものも含む)
 		var decks []*model.Deck
@@ -93,4 +116,3 @@ func main() {
 		}, &sql.TxOptions{Isolation: sql.LevelDefault})
 	}
 }
-

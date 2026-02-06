@@ -116,7 +116,7 @@ func main() {
 						deckJoinDeckCodes.DeckCodeUserId,
 						deckJoinDeckCodes.DeckCodeDeckId,
 						deckJoinDeckCodes.DeckCodeCode,
-						deckJoinDeckCodes.DeckCodePrivateFlg,
+						deckJoinDeckCodes.DeckCodePrivateCodeFlg,
 						deckJoinDeckCodes.DeckCodeMemo,
 					),
 				)

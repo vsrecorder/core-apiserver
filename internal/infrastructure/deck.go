@@ -103,7 +103,7 @@ func (i *Deck) Find(
 				djdc.DeckCodeUserId,
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
-				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
 		))
@@ -192,7 +192,7 @@ func (i *Deck) FindOnCursor(
 				djdc.DeckCodeUserId,
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
-				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
 		))
@@ -275,7 +275,7 @@ func (i *Deck) FindById(
 			deckJoinDeckCodes.DeckCodeUserId,
 			deckJoinDeckCodes.DeckCodeDeckId,
 			deckJoinDeckCodes.DeckCodeCode,
-			deckJoinDeckCodes.DeckCodePrivateFlg,
+			deckJoinDeckCodes.DeckCodePrivateCodeFlg,
 			deckJoinDeckCodes.DeckCodeMemo,
 		),
 	)
@@ -424,7 +424,7 @@ func (i *Deck) FindByUserId(
 				djdc.DeckCodeUserId,
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
-				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
 		))
@@ -568,7 +568,7 @@ func (i *Deck) FindByUserIdOnCursor(
 				djdc.DeckCodeUserId,
 				djdc.DeckCodeDeckId,
 				djdc.DeckCodeCode,
-				djdc.DeckCodePrivateFlg,
+				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
 		))

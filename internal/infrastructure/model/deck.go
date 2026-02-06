@@ -21,25 +21,25 @@ type Deck struct {
 }
 
 type DeckJoinDeckCode struct {
-	DeckID             string
-	DeckCreatedAt      time.Time
-	DeckUpdatedAt      time.Time
-	DeckDeletedAt      gorm.DeletedAt
-	DeckArchivedAt     sql.NullTime
-	DeckUserId         string
-	DeckName           string
-	DeckCode           string
-	DeckPrivateCodeFlg bool
-	DeckPrivateFlg     bool
-	DeckCodeID         string
-	DeckCodeCreatedAt  time.Time
-	DeckCodeUpdatedAt  time.Time
-	DeckCodeDeletedAt  gorm.DeletedAt
-	DeckCodeUserId     string
-	DeckCodeDeckId     string
-	DeckCodeCode       string
-	DeckCodePrivateFlg bool
-	DeckCodeMemo       string
+	DeckID                 string
+	DeckCreatedAt          time.Time
+	DeckUpdatedAt          time.Time
+	DeckDeletedAt          gorm.DeletedAt
+	DeckArchivedAt         sql.NullTime
+	DeckUserId             string
+	DeckName               string
+	DeckCode               string
+	DeckPrivateCodeFlg     bool
+	DeckPrivateFlg         bool
+	DeckCodeID             string
+	DeckCodeCreatedAt      time.Time
+	DeckCodeUpdatedAt      time.Time
+	DeckCodeDeletedAt      gorm.DeletedAt
+	DeckCodeUserId         string
+	DeckCodeDeckId         string
+	DeckCodeCode           string
+	DeckCodePrivateCodeFlg bool
+	DeckCodeMemo           string
 }
 
 func NewDeck(

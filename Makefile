@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 .PHONY: test
 test:
 	go mod tidy

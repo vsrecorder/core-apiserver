@@ -219,7 +219,7 @@ func (u *Deck) Create(
 			param.UserId,
 			deckId,
 			param.DeckCode,
-			param.PrivateFlg,
+			param.PrivateDeckCodeFlg,
 			memo,
 		)
 

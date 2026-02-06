@@ -149,6 +149,7 @@ func main() {
 	controller.NewDeck(
 		r,
 		infrastructure.NewDeck(db),
+		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewDeck(
 			infrastructure.NewDeck(db),
 		),

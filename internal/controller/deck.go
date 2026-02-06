@@ -21,17 +21,19 @@ const (
 )
 
 type Deck struct {
-	router     *gin.Engine
-	repository repository.DeckInterface
-	usecase    usecase.DeckInterface
+	router           *gin.Engine
+	deckRepository   repository.DeckInterface
+	recordRepository repository.RecordInterface
+	usecase          usecase.DeckInterface
 }
 
 func NewDeck(
 	router *gin.Engine,
-	repository repository.DeckInterface,
+	deckRepository repository.DeckInterface,
+	recordRepository repository.RecordInterface,
 	usecase usecase.DeckInterface,
 ) *Deck {
-	return &Deck{router, repository, usecase}
+	return &Deck{router, deckRepository, recordRepository, usecase}
 }
 
 func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
@@ -81,7 +83,7 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 		r.GET(
 			"/:id",
 			auth.OptionalAuthenticationMiddleware(),
-			auth.DeckGetByIdAuthorizationMiddleware(c.repository),
+			auth.DeckGetByIdAuthorizationMiddleware(c.deckRepository),
 			c.GetById,
 		)
 		r.POST(
@@ -93,26 +95,26 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 		r.PUT(
 			"/:id",
 			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckUpdateAuthorizationMiddleware(c.repository),
+			auth.DeckUpdateAuthorizationMiddleware(c.deckRepository),
 			validation.DeckUpdateMiddleware(),
 			c.Update,
 		)
 		r.PATCH(
 			"/:id/archive",
 			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckArchiveAuthorizationMiddleware(c.repository),
+			auth.DeckArchiveAuthorizationMiddleware(c.deckRepository),
 			c.Archive,
 		)
 		r.PATCH(
 			"/:id/unarchive",
 			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckUnarchiveAuthorizationMiddleware(c.repository),
+			auth.DeckUnarchiveAuthorizationMiddleware(c.deckRepository),
 			c.Unarchive,
 		)
 		r.DELETE(
 			"/:id",
 			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckDeleteAuthorizationMiddleware(c.repository),
+			auth.DeckDeleteAuthorizationMiddleware(c.deckRepository, c.recordRepository),
 			c.Delete,
 		)
 	}

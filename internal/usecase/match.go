@@ -20,6 +20,7 @@ type GameParam struct {
 type MatchParam struct {
 	RecordId           string
 	DeckId             string
+	DeckCodeId         string
 	UserId             string
 	OpponentsUserId    string
 	BO3Flg             bool
@@ -52,6 +53,7 @@ func NewGameParam(
 func NewMatchParam(
 	recordId string,
 	deckId string,
+	deckCodeId string,
 	userId string,
 	opponentsUserId string,
 	bo3Flg bool,
@@ -67,6 +69,7 @@ func NewMatchParam(
 	return &MatchParam{
 		RecordId:           recordId,
 		DeckId:             deckId,
+		DeckCodeId:         deckCodeId,
 		UserId:             userId,
 		OpponentsUserId:    opponentsUserId,
 		BO3Flg:             bo3Flg,
@@ -186,6 +189,7 @@ func (u *Match) Create(
 		createdAt,
 		param.RecordId,
 		param.DeckId,
+		param.DeckCodeId,
 		param.UserId,
 		param.OpponentsUserId,
 		param.BO3Flg,
@@ -287,6 +291,7 @@ func (u *Match) Update(
 		ret.CreatedAt,
 		param.RecordId,
 		param.DeckId,
+		param.DeckCodeId,
 		param.UserId,
 		param.OpponentsUserId,
 		param.BO3Flg,

@@ -5,23 +5,24 @@ import (
 )
 
 type OfficialEvent struct {
-	ID              uint
-	Title           string
-	Address         string
-	Venue           string
-	Date            time.Time
-	StartedAt       time.Time
-	EndedAt         time.Time
-	DeckCount       string
-	TypeId          uint
-	TypeName        string
-	CSPFlg          bool
-	LeagueId        uint
-	LeagueTitle     string
-	RegulationId    uint
-	RegulationTitle string
-	Capacity        uint
-	AttrId          uint
-	ShopId          uint
-	ShopName        string
+	ID                      uint
+	Title                   string
+	Address                 string
+	Venue                   string
+	Date                    time.Time
+	StartedAt               time.Time
+	EndedAt                 time.Time
+	TypeName                string
+	LeagueTitle             string
+	RegulationTitle         string
+	CSPFlg                  bool
+	Capacity                uint
+	ShopId                  uint
+	ShopName                string
+	PrefectureId            uint
+	PrefectureName          string
+	EnvironmentId           string
+	EnvironmentTitle        string
+	StandardRegulationId    string
+	StandardRegulationMarks string
 }

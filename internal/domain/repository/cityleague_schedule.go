@@ -11,6 +11,7 @@ type CityleagueScheduleInterface interface {
 	Find(
 		ctx context.Context,
 	) ([]*entity.CityleagueSchedule, error)
+
 	FindById(
 		ctx context.Context,
 		id string,

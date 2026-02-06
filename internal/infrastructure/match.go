@@ -30,7 +30,7 @@ func (i *Match) FindById(
 	tx := i.db.Table(
 		"matches",
 	).Select(
-		"matches.id AS match_id,matches.created_at AS match_created_at,matches.updated_at AS match_updated_at,matches.deleted_at AS match_deleted_at,matches.record_id AS match_record_id,matches.deck_id AS match_deck_id,matches.user_id AS match_user_id,matches.opponents_user_id AS match_opponents_user_id,matches.bo3_flg AS match_bo3_flg,matches.qualifying_round_flg AS match_qualifying_round_flg,matches.final_tournament_flg AS match_final_tournament_flg,matches.default_victory_flg AS match_default_victory_flg,matches.default_defeat_flg AS match_default_defeat_flg,matches.victory_flg AS match_victory_flg,matches.opponents_deck_info AS match_opponents_deck_info,matches.memo AS match_memo,games.id AS game_id,games.created_at AS game_created_at,games.updated_at AS game_updated_at,games.deleted_at AS game_deleted_at,games.match_id AS game_match_id, games.user_id AS game_user_id, games.go_first AS game_go_first, games.winning_flg AS game_winning_flg,games.your_prize_cards AS game_your_prize_cards,games.opponents_prize_cards AS game_opponents_prize_cards,games.memo AS game_memo",
+		"matches.id AS match_id,matches.created_at AS match_created_at,matches.updated_at AS match_updated_at,matches.deleted_at AS match_deleted_at,matches.record_id AS match_record_id,matches.deck_id AS match_deck_id,matches.deck_code_id AS match_deck_code_id,matches.user_id AS match_user_id,matches.opponents_user_id AS match_opponents_user_id,matches.bo3_flg AS match_bo3_flg,matches.qualifying_round_flg AS match_qualifying_round_flg,matches.final_tournament_flg AS match_final_tournament_flg,matches.default_victory_flg AS match_default_victory_flg,matches.default_defeat_flg AS match_default_defeat_flg,matches.victory_flg AS match_victory_flg,matches.opponents_deck_info AS match_opponents_deck_info,matches.memo AS match_memo,games.id AS game_id,games.created_at AS game_created_at,games.updated_at AS game_updated_at,games.deleted_at AS game_deleted_at,games.match_id AS game_match_id, games.user_id AS game_user_id, games.go_first AS game_go_first, games.winning_flg AS game_winning_flg,games.your_prize_cards AS game_your_prize_cards,games.opponents_prize_cards AS game_opponents_prize_cards,games.memo AS game_memo",
 	).Joins(
 		"INNER JOIN games on matches.id = games.match_id",
 	).Where(
@@ -68,6 +68,7 @@ func (i *Match) FindById(
 		results[0].MatchCreatedAt,
 		results[0].MatchRecordId,
 		results[0].MatchDeckId,
+		results[0].MatchDeckCodeId,
 		results[0].MatchUserId,
 		results[0].MatchOpponentsUserId,
 		results[0].MatchBO3Flg,
@@ -93,7 +94,7 @@ func (i *Match) FindByRecordId(
 	tx := i.db.Table(
 		"records",
 	).Select(
-		"matches.id AS match_id,matches.created_at AS match_created_at,matches.updated_at AS match_updated_at,matches.deleted_at AS match_deleted_at,matches.record_id AS match_record_id,matches.deck_id AS match_deck_id,matches.user_id AS match_user_id,matches.opponents_user_id AS match_opponents_user_id,matches.bo3_flg AS match_bo3_flg,matches.qualifying_round_flg AS match_qualifying_round_flg,matches.final_tournament_flg AS match_final_tournament_flg,matches.default_victory_flg AS match_default_victory_flg,matches.default_defeat_flg AS match_default_defeat_flg,matches.victory_flg AS match_victory_flg,matches.opponents_deck_info AS match_opponents_deck_info,matches.memo AS match_memo,games.id AS game_id,games.created_at AS game_created_at,games.updated_at AS game_updated_at,games.deleted_at AS game_deleted_at,games.match_id AS game_match_id, games.user_id AS game_user_id, games.go_first AS game_go_first, games.winning_flg AS game_winning_flg,games.your_prize_cards AS game_your_prize_cards,games.opponents_prize_cards AS game_opponents_prize_cards,games.memo AS game_memo",
+		"matches.id AS match_id,matches.created_at AS match_created_at,matches.updated_at AS match_updated_at,matches.deleted_at AS match_deleted_at,matches.record_id AS match_record_id,matches.deck_id AS match_deck_id,matches.deck_code_id AS match_deck_code_id,matches.user_id AS match_user_id,matches.opponents_user_id AS match_opponents_user_id,matches.bo3_flg AS match_bo3_flg,matches.qualifying_round_flg AS match_qualifying_round_flg,matches.final_tournament_flg AS match_final_tournament_flg,matches.default_victory_flg AS match_default_victory_flg,matches.default_defeat_flg AS match_default_defeat_flg,matches.victory_flg AS match_victory_flg,matches.opponents_deck_info AS match_opponents_deck_info,matches.memo AS match_memo,games.id AS game_id,games.created_at AS game_created_at,games.updated_at AS game_updated_at,games.deleted_at AS game_deleted_at,games.match_id AS game_match_id, games.user_id AS game_user_id, games.go_first AS game_go_first, games.winning_flg AS game_winning_flg,games.your_prize_cards AS game_your_prize_cards,games.opponents_prize_cards AS game_opponents_prize_cards,games.memo AS game_memo",
 	).Joins(
 		"INNER JOIN matches on records.id = matches.record_id INNER JOIN games on matches.id = games.match_id",
 	).Where(
@@ -137,6 +138,7 @@ func (i *Match) FindByRecordId(
 				result.MatchCreatedAt,
 				result.MatchRecordId,
 				result.MatchDeckId,
+				result.MatchDeckCodeId,
 				result.MatchUserId,
 				result.MatchOpponentsUserId,
 				result.MatchBO3Flg,
@@ -187,6 +189,7 @@ func (i *Match) Create(
 		entity.CreatedAt,
 		entity.RecordId,
 		entity.DeckId,
+		entity.DeckCodeId,
 		entity.UserId,
 		entity.OpponentsUserId,
 		entity.BO3Flg,
@@ -247,6 +250,7 @@ func (i *Match) Update(
 		entity.CreatedAt,
 		entity.RecordId,
 		entity.DeckId,
+		entity.DeckCodeId,
 		entity.UserId,
 		entity.OpponentsUserId,
 		entity.BO3Flg,

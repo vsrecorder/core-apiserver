@@ -15,6 +15,7 @@ type EventResultResponse struct {
 	OfficialEventId      uint              `json:"official_event_id"`
 	LeagueType           uint              `json:"league_type"`
 	Date                 time.Time         `json:"date"`
+	EventDetailResultURL string            `json:"event_detail_result_url"`
 	Results              []*ResultResponse `json:"results"`
 }
 

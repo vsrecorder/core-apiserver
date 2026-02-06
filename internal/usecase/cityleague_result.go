@@ -10,7 +10,7 @@ import (
 type CityleagueResultInterface interface {
 	FindByOfficialEventId(
 		ctx context.Context,
-		officialEventId string,
+		officialEventId uint,
 	) (*entity.CityleagueResult, error)
 
 	FindByCityleagueScheduleId(
@@ -45,7 +45,7 @@ func NewCityleagueResult(
 
 func (u *CityleagueResult) FindByOfficialEventId(
 	ctx context.Context,
-	officialEventId string,
+	officialEventId uint,
 ) (*entity.CityleagueResult, error) {
 	return u.repository.FindByOfficialEventId(ctx, officialEventId)
 }

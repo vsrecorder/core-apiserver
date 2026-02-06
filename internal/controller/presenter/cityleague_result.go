@@ -1,6 +1,7 @@
 package presenter
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
@@ -32,7 +33,8 @@ func NewCityleagueResultGetByDateResponse(
 			CityleagueScheduleId: cityleagueResult.CityleagueScheduleId,
 			OfficialEventId:      cityleagueResult.OfficialEventId,
 			LeagueType:           cityleagueResult.LeagueType,
-			Date:                 cityleagueResult.EventDate.In(time.Local),
+			Date:                 time.Date(cityleagueResult.EventDate.Year(), cityleagueResult.EventDate.Month(), cityleagueResult.EventDate.Day(), 0, 0, 0, 0, time.Local),
+			EventDetailResultURL: fmt.Sprintf("https://players.pokemon-card.com/event/detail/%d/result", cityleagueResult.OfficialEventId),
 			Results:              results,
 		})
 	}
@@ -74,7 +76,8 @@ func NewCityleagueResultGetByTermResponse(
 			CityleagueScheduleId: cityleagueResult.CityleagueScheduleId,
 			OfficialEventId:      cityleagueResult.OfficialEventId,
 			LeagueType:           cityleagueResult.LeagueType,
-			Date:                 cityleagueResult.EventDate.In(time.Local),
+			Date:                 time.Date(cityleagueResult.EventDate.Year(), cityleagueResult.EventDate.Month(), cityleagueResult.EventDate.Day(), 0, 0, 0, 0, time.Local),
+			EventDetailResultURL: fmt.Sprintf("https://players.pokemon-card.com/event/detail/%d/result", cityleagueResult.OfficialEventId),
 			Results:              results,
 		})
 	}
@@ -86,6 +89,33 @@ func NewCityleagueResultGetByTermResponse(
 			ToDate:       toDate.In(time.Local),
 			Count:        count,
 			EventResults: eventResults,
+		},
+	}
+}
+
+func NewCityleagueResultGetByOfficialEventIdResponse(
+	cityleagueResult *entity.CityleagueResult,
+) *dto.CityleagueResultGetByOfficialEventIdResponse {
+	results := []*dto.ResultResponse{}
+
+	for _, result := range cityleagueResult.EventResults {
+		results = append(results, &dto.ResultResponse{
+			PlayerId:   result.PlayerId,
+			PlayerName: result.PlayerName,
+			Rank:       result.Rank,
+			Point:      result.Point,
+			DeckCode:   result.DeckCode,
+		})
+	}
+
+	return &dto.CityleagueResultGetByOfficialEventIdResponse{
+		EventResultResponse: dto.EventResultResponse{
+			CityleagueScheduleId: cityleagueResult.CityleagueScheduleId,
+			OfficialEventId:      cityleagueResult.OfficialEventId,
+			LeagueType:           cityleagueResult.LeagueType,
+			Date:                 time.Date(cityleagueResult.EventDate.Year(), cityleagueResult.EventDate.Month(), cityleagueResult.EventDate.Day(), 0, 0, 0, 0, time.Local),
+			EventDetailResultURL: fmt.Sprintf("https://players.pokemon-card.com/event/detail/%d/result", cityleagueResult.OfficialEventId),
+			Results:              results,
 		},
 	}
 }

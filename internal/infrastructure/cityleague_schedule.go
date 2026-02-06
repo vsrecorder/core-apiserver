@@ -15,7 +15,6 @@ type CityleagueSchedule struct {
 }
 
 func NewCityleagueSchedule(
-
 	db *gorm.DB,
 ) repository.CityleagueScheduleInterface {
 	return &CityleagueSchedule{db}

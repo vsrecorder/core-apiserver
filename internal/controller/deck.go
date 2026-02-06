@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -20,17 +21,19 @@ const (
 )
 
 type Deck struct {
-	router     *gin.Engine
-	repository repository.DeckInterface
-	usecase    usecase.DeckInterface
+	router           *gin.Engine
+	deckRepository   repository.DeckInterface
+	recordRepository repository.RecordInterface
+	usecase          usecase.DeckInterface
 }
 
 func NewDeck(
 	router *gin.Engine,
-	repository repository.DeckInterface,
+	deckRepository repository.DeckInterface,
+	recordRepository repository.RecordInterface,
 	usecase usecase.DeckInterface,
 ) *Deck {
-	return &Deck{router, repository, usecase}
+	return &Deck{router, deckRepository, recordRepository, usecase}
 }
 
 func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
@@ -80,6 +83,7 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 		r.GET(
 			"/:id",
 			auth.OptionalAuthenticationMiddleware(),
+			auth.DeckGetByIdAuthorizationMiddleware(c.deckRepository),
 			c.GetById,
 		)
 		r.POST(
@@ -91,26 +95,26 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 		r.PUT(
 			"/:id",
 			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckUpdateAuthorizationMiddleware(c.repository),
+			auth.DeckUpdateAuthorizationMiddleware(c.deckRepository),
 			validation.DeckUpdateMiddleware(),
 			c.Update,
 		)
 		r.PATCH(
 			"/:id/archive",
 			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckArchiveAuthorizationMiddleware(c.repository),
+			auth.DeckArchiveAuthorizationMiddleware(c.deckRepository),
 			c.Archive,
 		)
 		r.PATCH(
 			"/:id/unarchive",
 			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckUnarchiveAuthorizationMiddleware(c.repository),
+			auth.DeckUnarchiveAuthorizationMiddleware(c.deckRepository),
 			c.Unarchive,
 		)
 		r.DELETE(
 			"/:id",
 			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckDeleteAuthorizationMiddleware(c.repository),
+			auth.DeckDeleteAuthorizationMiddleware(c.deckRepository, c.recordRepository),
 			c.Delete,
 		)
 	}
@@ -124,10 +128,21 @@ func (c *Deck) Get(ctx *gin.Context) {
 
 		if !cursor.IsZero() {
 			decks, err := c.usecase.FindOnCursor(context.Background(), limit, cursor)
+			fmt.Println(decks)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 				ctx.Abort()
 				return
+			}
+
+			for _, deck := range decks {
+				if deck.LatestDeckCode.PrivateCodeFlg {
+					deck.LatestDeckCode.Code = ""
+				}
+
+				if deck.PrivateCodeFlg {
+					deck.Code = ""
+				}
 			}
 
 			res := presenter.NewDeckGetResponse(limit, offset, cursor, decks)
@@ -141,6 +156,16 @@ func (c *Deck) Get(ctx *gin.Context) {
 				return
 			}
 
+			for _, deck := range decks {
+				if deck.LatestDeckCode.PrivateCodeFlg {
+					deck.LatestDeckCode.Code = ""
+				}
+
+				if deck.PrivateCodeFlg {
+					deck.Code = ""
+				}
+			}
+
 			res := presenter.NewDeckGetResponse(limit, offset, cursor, decks)
 
 			ctx.JSON(http.StatusOK, res)
@@ -149,9 +174,7 @@ func (c *Deck) Get(ctx *gin.Context) {
 }
 
 func (c *Deck) GetByUserId(ctx *gin.Context) {
-	uid := helper.GetUID(ctx)
-
-	if uid != "" {
+	if uid := helper.GetUID(ctx); uid != "" {
 		archived := helper.GetArchived(ctx)
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
@@ -165,6 +188,16 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 				return
 			}
 
+			for _, deck := range decks {
+				if deck.LatestDeckCode.PrivateCodeFlg && uid != deck.LatestDeckCode.UserId {
+					deck.LatestDeckCode.Code = ""
+				}
+
+				if deck.PrivateCodeFlg && uid != deck.UserId {
+					deck.Code = ""
+				}
+			}
+
 			res := presenter.NewDeckGetByUserIdResponse(archived, limit, offset, cursor, decks)
 
 			ctx.JSON(http.StatusOK, res)
@@ -176,6 +209,15 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 				return
 			}
 
+			for _, deck := range decks {
+				if deck.LatestDeckCode.PrivateCodeFlg && uid != deck.LatestDeckCode.UserId {
+					deck.LatestDeckCode.Code = ""
+				}
+
+				if deck.PrivateCodeFlg && uid != deck.UserId {
+					deck.Code = ""
+				}
+			}
 			res := presenter.NewDeckGetByUserIdResponse(archived, limit, offset, cursor, decks)
 
 			ctx.JSON(http.StatusOK, res)
@@ -185,6 +227,7 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 
 func (c *Deck) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
+	uid := helper.GetUID(ctx)
 
 	deck, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {
@@ -199,10 +242,12 @@ func (c *Deck) GetById(ctx *gin.Context) {
 		return
 	}
 
-	if helper.GetUID(ctx) != deck.UserId {
-		if deck.PrivateCodeFlg {
-			deck.Code = ""
-		}
+	if deck.LatestDeckCode.PrivateCodeFlg && uid != deck.LatestDeckCode.UserId {
+		deck.LatestDeckCode.Code = ""
+	}
+
+	if deck.PrivateCodeFlg && uid != deck.UserId {
+		deck.Code = ""
 	}
 
 	res := presenter.NewDeckGetByIdResponse(deck)
@@ -214,11 +259,12 @@ func (c *Deck) Create(ctx *gin.Context) {
 	req := helper.GetDeckCreateRequest(ctx)
 	uid := helper.GetUID(ctx)
 
-	param := usecase.NewDeckParam(
+	param := usecase.NewDeckCreateParam(
 		uid,
 		req.Name,
-		req.Code,
-		req.PrivateCodeFlg,
+		req.PrivateFlg,
+		req.DeckCode,
+		req.PrivateDeckCodeFlg,
 	)
 
 	deck, err := c.usecase.Create(context.Background(), param)
@@ -236,13 +282,10 @@ func (c *Deck) Create(ctx *gin.Context) {
 func (c *Deck) Update(ctx *gin.Context) {
 	req := helper.GetDeckUpdateRequest(ctx)
 	id := helper.GetId(ctx)
-	uid := helper.GetUID(ctx)
 
-	param := usecase.NewDeckParam(
-		uid,
+	param := usecase.NewDeckUpdateParam(
 		req.Name,
-		req.Code,
-		req.PrivateCodeFlg,
+		req.PrivateFlg,
 	)
 
 	deck, err := c.usecase.Update(context.Background(), id, param)

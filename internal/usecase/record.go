@@ -15,6 +15,7 @@ type RecordParam struct {
 	friendId        string
 	userId          string
 	deckId          string
+	deckCodeId      string
 	privateFlg      bool
 	tcgMeisterURL   string
 	memo            string
@@ -26,6 +27,7 @@ func NewRecordParam(
 	friendId string,
 	userId string,
 	deckId string,
+	deckCodeId string,
 	privateFlg bool,
 	tcgMeisterURL string,
 	memo string,
@@ -36,6 +38,7 @@ func NewRecordParam(
 		friendId:        friendId,
 		userId:          userId,
 		deckId:          deckId,
+		deckCodeId:      deckCodeId,
 		privateFlg:      privateFlg,
 		tcgMeisterURL:   tcgMeisterURL,
 		memo:            memo,
@@ -43,28 +46,31 @@ func NewRecordParam(
 }
 
 type RecordInterface interface {
+	FindById(
+		ctx context.Context,
+		id string,
+	) (*entity.Record, error)
+
 	Find(
 		ctx context.Context,
 		limit int,
 		offset int,
+		eventType string,
 	) ([]*entity.Record, error)
 
 	FindOnCursor(
 		ctx context.Context,
 		limit int,
 		cursor time.Time,
+		eventType string,
 	) ([]*entity.Record, error)
-
-	FindById(
-		ctx context.Context,
-		id string,
-	) (*entity.Record, error)
 
 	FindByUserId(
 		ctx context.Context,
 		uid string,
 		limit int,
 		offset int,
+		eventType string,
 	) ([]*entity.Record, error)
 
 	FindByUserIdOnCursor(
@@ -72,6 +78,7 @@ type RecordInterface interface {
 		uid string,
 		limit int,
 		cursor time.Time,
+		eventType string,
 	) ([]*entity.Record, error)
 
 	FindByOfficialEventId(
@@ -91,6 +98,13 @@ type RecordInterface interface {
 	FindByDeckId(
 		ctx context.Context,
 		deckId string,
+		limit int,
+		offset int,
+	) ([]*entity.Record, error)
+
+	FindByDeckCodeId(
+		ctx context.Context,
+		deckCodeId string,
 		limit int,
 		offset int,
 	) ([]*entity.Record, error)
@@ -122,34 +136,6 @@ func NewRecord(
 	return &Record{repository}
 }
 
-func (u *Record) Find(
-	ctx context.Context,
-	limit int,
-	offset int,
-) ([]*entity.Record, error) {
-	records, err := u.repository.Find(ctx, limit, offset)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return records, nil
-}
-
-func (u *Record) FindOnCursor(
-	ctx context.Context,
-	limit int,
-	cursor time.Time,
-) ([]*entity.Record, error) {
-	records, err := u.repository.FindOnCursor(ctx, limit, cursor)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return records, nil
-}
-
 func (u *Record) FindById(
 	ctx context.Context,
 	id string,
@@ -163,13 +149,44 @@ func (u *Record) FindById(
 	return record, nil
 }
 
+func (u *Record) Find(
+	ctx context.Context,
+	limit int,
+	offset int,
+	eventType string,
+) ([]*entity.Record, error) {
+	records, err := u.repository.Find(ctx, limit, offset, eventType)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (u *Record) FindOnCursor(
+	ctx context.Context,
+	limit int,
+	cursor time.Time,
+	eventType string,
+) ([]*entity.Record, error) {
+	records, err := u.repository.FindOnCursor(ctx, limit, cursor, eventType)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
 func (u *Record) FindByUserId(
 	ctx context.Context,
 	uid string,
 	limit int,
 	offset int,
+	eventType string,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindByUserId(ctx, uid, limit, offset)
+	records, err := u.repository.FindByUserId(ctx, uid, limit, offset, eventType)
 
 	if err != nil {
 		return nil, err
@@ -183,8 +200,9 @@ func (u *Record) FindByUserIdOnCursor(
 	uid string,
 	limit int,
 	cursor time.Time,
+	eventType string,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindByUserIdOnCursor(ctx, uid, limit, cursor)
+	records, err := u.repository.FindByUserIdOnCursor(ctx, uid, limit, cursor, eventType)
 
 	if err != nil {
 		return nil, err
@@ -238,6 +256,20 @@ func (u *Record) FindByDeckId(
 	return records, nil
 }
 
+func (u *Record) FindByDeckCodeId(
+	ctx context.Context,
+	deckCodeId string,
+	limit int,
+	offset int,
+) ([]*entity.Record, error) {
+	records, err := u.repository.FindByDeckCodeId(ctx, deckCodeId, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
 func (u *Record) Create(
 	ctx context.Context,
 	param *RecordParam,
@@ -257,6 +289,7 @@ func (u *Record) Create(
 		param.friendId,
 		param.userId,
 		param.deckId,
+		param.deckCodeId,
 		param.privateFlg,
 		param.tcgMeisterURL,
 		param.memo,
@@ -290,6 +323,7 @@ func (u *Record) Update(
 		param.friendId,
 		param.userId,
 		param.deckId,
+		param.deckCodeId,
 		param.privateFlg,
 		param.tcgMeisterURL,
 		param.memo,

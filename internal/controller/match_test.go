@@ -22,12 +22,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func setupMock4TestMatchController(t *testing.T) (*mock_repository.MockMatchInterface, *mock_usecase.MockMatchInterface) {
+func setupMock4TestMatchController(t *testing.T) (*mock_repository.MockMatchInterface, *mock_repository.MockRecordInterface, *mock_usecase.MockMatchInterface) {
 	mockCtrl := gomock.NewController(t)
-	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
+	mockMatchRepository := mock_repository.NewMockMatchInterface(mockCtrl)
+	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 	mockUsecase := mock_usecase.NewMockMatchInterface(mockCtrl)
 
-	return mockRepository, mockUsecase
+	return mockMatchRepository, mockRecordRepository, mockUsecase
 }
 
 func setup4TestMatchController(t *testing.T, r *gin.Engine) (
@@ -35,9 +36,9 @@ func setup4TestMatchController(t *testing.T, r *gin.Engine) (
 	*mock_usecase.MockMatchInterface,
 ) {
 	authDisable := true
-	mockRepository, mockUsecase := setupMock4TestMatchController(t)
+	mockMatchRepository, mockRecordRepository, mockUsecase := setupMock4TestMatchController(t)
 
-	c := NewMatch(r, mockRepository, mockUsecase)
+	c := NewMatch(r, mockMatchRepository, mockRecordRepository, mockUsecase)
 	c.RegisterRoute("", authDisable)
 
 	return c, mockUsecase
@@ -182,7 +183,7 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 		require.Equal(t, uid, res[0].UserId)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("正常系_#02", func(t *testing.T) {
 		r := gin.Default()
 		c, mockUsecase := setup4TestMatchController(t, r)
 
@@ -197,13 +198,13 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 
 		c.router.ServeHTTP(w, req)
 
-		var res dto.MatchGetByIdResponse
+		var res []*dto.MatchGetByRecordIdResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
-		require.Equal(t, http.StatusNotFound, w.Code)
+		require.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
 		c, mockUsecase := setup4TestMatchController(t, r)
 
@@ -242,6 +243,7 @@ func test_MatchController_Create(t *testing.T) {
 			CreatedAt:          createdAt,
 			RecordId:           recordId,
 			DeckId:             deckId,
+			DeckCodeId:         "",
 			UserId:             "",
 			OpponentsUserId:    "",
 			BO3Flg:             false,
@@ -271,6 +273,7 @@ func test_MatchController_Create(t *testing.T) {
 			deckId,
 			"",
 			"",
+			"",
 			false,
 			false,
 			false,
@@ -296,9 +299,10 @@ func test_MatchController_Create(t *testing.T) {
 
 		data := dto.MatchCreateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 
@@ -344,6 +348,7 @@ func test_MatchController_Create(t *testing.T) {
 			CreatedAt:          createdAt,
 			RecordId:           recordId,
 			DeckId:             deckId,
+			DeckCodeId:         "",
 			UserId:             uid,
 			OpponentsUserId:    "",
 			BO3Flg:             false,
@@ -371,6 +376,7 @@ func test_MatchController_Create(t *testing.T) {
 		param := usecase.NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			uid,
 			"",
 			false,
@@ -398,9 +404,10 @@ func test_MatchController_Create(t *testing.T) {
 
 		data := dto.MatchCreateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 
@@ -482,6 +489,7 @@ func test_MatchController_Update(t *testing.T) {
 			CreatedAt:          createdAt,
 			RecordId:           recordId,
 			DeckId:             deckId,
+			DeckCodeId:         "",
 			UserId:             "",
 			OpponentsUserId:    "",
 			BO3Flg:             false,
@@ -511,6 +519,7 @@ func test_MatchController_Update(t *testing.T) {
 			deckId,
 			"",
 			"",
+			"",
 			false,
 			false,
 			false,
@@ -536,9 +545,10 @@ func test_MatchController_Update(t *testing.T) {
 
 		data := dto.MatchUpdateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 
@@ -584,6 +594,7 @@ func test_MatchController_Update(t *testing.T) {
 			CreatedAt:          createdAt,
 			RecordId:           recordId,
 			DeckId:             deckId,
+			DeckCodeId:         "",
 			UserId:             uid,
 			OpponentsUserId:    "",
 			BO3Flg:             false,
@@ -611,6 +622,7 @@ func test_MatchController_Update(t *testing.T) {
 		param := usecase.NewMatchParam(
 			recordId,
 			deckId,
+			"",
 			uid,
 			"",
 			false,
@@ -638,9 +650,10 @@ func test_MatchController_Update(t *testing.T) {
 
 		data := dto.MatchUpdateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 
@@ -685,9 +698,10 @@ func test_MatchController_Update(t *testing.T) {
 
 		data := dto.MatchUpdateRequest{
 			MatchRequest: dto.MatchRequest{
-				RecordId: recordId,
-				DeckId:   deckId,
-				Games:    gameRequest,
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
 			},
 		}
 

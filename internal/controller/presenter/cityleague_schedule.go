@@ -13,11 +13,14 @@ func NewCityleagueScheduleGetResponse(
 	ret := []*dto.CityleagueScheduleResponse{}
 
 	for _, cityleagueSchedule := range cityleagueSchedules {
+		fromDate := time.Date(cityleagueSchedule.FromDate.Year(), cityleagueSchedule.FromDate.Month(), cityleagueSchedule.FromDate.Day(), 0, 0, 0, 0, time.Local)
+		toDate := time.Date(cityleagueSchedule.ToDate.Year(), cityleagueSchedule.ToDate.Month(), cityleagueSchedule.ToDate.Day(), 0, 0, 0, 0, time.Local)
+
 		ret = append(ret, &dto.CityleagueScheduleResponse{
 			ID:       cityleagueSchedule.ID,
 			Title:    cityleagueSchedule.Title,
-			FromDate: cityleagueSchedule.FromDate.In(time.Local),
-			ToDate:   cityleagueSchedule.ToDate.In(time.Local),
+			FromDate: fromDate,
+			ToDate:   toDate,
 		})
 	}
 
@@ -27,11 +30,14 @@ func NewCityleagueScheduleGetResponse(
 func NewCityleagueScheduleGetByIdResponse(
 	cityleagueSchedule *entity.CityleagueSchedule,
 ) *dto.CityleagueScheduleResponse {
+	fromDate := time.Date(cityleagueSchedule.FromDate.Year(), cityleagueSchedule.FromDate.Month(), cityleagueSchedule.FromDate.Day(), 0, 0, 0, 0, time.Local)
+	toDate := time.Date(cityleagueSchedule.ToDate.Year(), cityleagueSchedule.ToDate.Month(), cityleagueSchedule.ToDate.Day(), 0, 0, 0, 0, time.Local)
+
 	return &dto.CityleagueScheduleResponse{
 		ID:       cityleagueSchedule.ID,
 		Title:    cityleagueSchedule.Title,
-		FromDate: cityleagueSchedule.FromDate.In(time.Local),
-		ToDate:   cityleagueSchedule.ToDate.In(time.Local),
+		FromDate: fromDate,
+		ToDate:   toDate,
 	}
 
 }
@@ -39,10 +45,13 @@ func NewCityleagueScheduleGetByIdResponse(
 func NewCityleagueScheduleGetByDateResponse(
 	cityleagueSchedule *entity.CityleagueSchedule,
 ) *dto.CityleagueScheduleResponse {
+	fromDate := time.Date(cityleagueSchedule.FromDate.Year(), cityleagueSchedule.FromDate.Month(), cityleagueSchedule.FromDate.Day(), 0, 0, 0, 0, time.Local)
+	toDate := time.Date(cityleagueSchedule.ToDate.Year(), cityleagueSchedule.ToDate.Month(), cityleagueSchedule.ToDate.Day(), 0, 0, 0, 0, time.Local)
+
 	return &dto.CityleagueScheduleResponse{
 		ID:       cityleagueSchedule.ID,
 		Title:    cityleagueSchedule.Title,
-		FromDate: cityleagueSchedule.FromDate.In(time.Local),
-		ToDate:   cityleagueSchedule.ToDate.In(time.Local),
+		FromDate: fromDate,
+		ToDate:   toDate,
 	}
 }

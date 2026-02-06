@@ -38,33 +38,10 @@ func (c *CityleagueResult) RegisterRoute(relativePath string) {
 		c.GetByDate,
 		validation.CityleagueResultGetByTermMiddleware(),
 		c.GetByTerm,
+		validation.CityleagueResultGetByOfficialEventIdMiddleware(),
+		c.GetByOfficialEventId,
 		c.Get,
 	)
-}
-
-func (c *CityleagueResult) Get(ctx *gin.Context) {
-	leagueType := helper.GetLeagueType(ctx)
-	date := time.Now()
-	fromDate := date.AddDate(0, 0, -7)
-	fromDate = time.Date(fromDate.Year(), fromDate.Month(), fromDate.Day(), 0, 0, 0, 0, time.Local)
-	toDate := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
-
-	cityleagueResults, err := c.usecase.FindByTerm(context.Background(), leagueType, fromDate, toDate)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
-		return
-	}
-
-	res := presenter.NewCityleagueResultGetByTermResponse(leagueType, fromDate, toDate, len(cityleagueResults), cityleagueResults)
-
-	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *CityleagueResult) GetByDate(ctx *gin.Context) {
@@ -120,4 +97,55 @@ func (c *CityleagueResult) GetByTerm(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, res)
 	ctx.Abort()
+}
+
+func (c *CityleagueResult) GetByOfficialEventId(ctx *gin.Context) {
+	id := helper.GetOfficialEventId(ctx)
+
+	if id == 0 {
+		return
+	}
+
+	cityleagueResults, err := c.usecase.FindByOfficialEventId(context.Background(), id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
+			ctx.Abort()
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewCityleagueResultGetByOfficialEventIdResponse(cityleagueResults)
+
+	ctx.JSON(http.StatusOK, res)
+	ctx.Abort()
+}
+
+func (c *CityleagueResult) Get(ctx *gin.Context) {
+	leagueType := helper.GetLeagueType(ctx)
+	date := time.Now()
+	fromDate := date.AddDate(0, 0, -6)
+	fromDate = time.Date(fromDate.Year(), fromDate.Month(), fromDate.Day(), 0, 0, 0, 0, time.Local)
+	toDate := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
+
+	cityleagueResults, err := c.usecase.FindByTerm(context.Background(), leagueType, fromDate, toDate)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
+			ctx.Abort()
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewCityleagueResultGetByTermResponse(leagueType, fromDate, toDate, len(cityleagueResults), cityleagueResults)
+
+	ctx.JSON(http.StatusOK, res)
 }

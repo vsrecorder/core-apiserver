@@ -117,6 +117,17 @@ func GetLeagueType(ctx *gin.Context) uint {
 	return leagueType
 }
 
+func SetEventType(ctx *gin.Context, value string) {
+	ctx.Set("event_type", value)
+}
+
+func GetEventType(ctx *gin.Context) string {
+	value, _ := ctx.Get("event_type")
+	eventType, _ := value.(string)
+
+	return eventType
+}
+
 func SetOfficialEventId(ctx *gin.Context, value uint) {
 	ctx.Set("official_event_id", value)
 }
@@ -192,6 +203,28 @@ func GetDeckUpdateRequest(ctx *gin.Context) dto.DeckUpdateRequest {
 	deckRequest, _ := value.(dto.DeckUpdateRequest)
 
 	return deckRequest
+}
+
+func SetDeckCodeCreateRequest(ctx *gin.Context, value dto.DeckCodeCreateRequest) {
+	ctx.Set("deck_code_create_request", value)
+}
+
+func GetDeckCodeCreateRequest(ctx *gin.Context) dto.DeckCodeCreateRequest {
+	value, _ := ctx.Get("deck_code_create_request")
+	ret, _ := value.(dto.DeckCodeCreateRequest)
+
+	return ret
+}
+
+func SetDeckCodeUpdateRequest(ctx *gin.Context, value dto.DeckCodeUpdateRequest) {
+	ctx.Set("deck_code_update_request", value)
+}
+
+func GetDeckCodeUpdateRequest(ctx *gin.Context) dto.DeckCodeUpdateRequest {
+	value, _ := ctx.Get("deck_code_update_request")
+	ret, _ := value.(dto.DeckCodeUpdateRequest)
+
+	return ret
 }
 
 func SetMatchCreateRequest(ctx *gin.Context, value dto.MatchCreateRequest) {

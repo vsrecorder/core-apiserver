@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -9,24 +10,42 @@ import (
 	"gorm.io/gorm"
 )
 
-type DeckParam struct {
-	UserId         string
-	Name           string
-	Code           string
-	PrivateCodeFlg bool
+type DeckCreateParam struct {
+	UserId             string
+	Name               string
+	PrivateFlg         bool
+	DeckCode           string
+	PrivateDeckCodeFlg bool
 }
 
-func NewDeckParam(
+func NewDeckCreateParam(
 	userId string,
 	name string,
-	code string,
-	privateCodeFlg bool,
-) *DeckParam {
-	return &DeckParam{
-		UserId:         userId,
-		Name:           name,
-		Code:           code,
-		PrivateCodeFlg: privateCodeFlg,
+	privateFlg bool,
+	deckcode string,
+	privateDeckCodeFlg bool,
+) *DeckCreateParam {
+	return &DeckCreateParam{
+		UserId:             userId,
+		Name:               name,
+		PrivateFlg:         privateFlg,
+		DeckCode:           deckcode,
+		PrivateDeckCodeFlg: privateDeckCodeFlg,
+	}
+}
+
+type DeckUpdateParam struct {
+	Name       string
+	PrivateFlg bool
+}
+
+func NewDeckUpdateParam(
+	name string,
+	privateFlg bool,
+) *DeckUpdateParam {
+	return &DeckUpdateParam{
+		Name:       name,
+		PrivateFlg: privateFlg,
 	}
 }
 
@@ -66,13 +85,13 @@ type DeckInterface interface {
 
 	Create(
 		ctx context.Context,
-		param *DeckParam,
+		param *DeckCreateParam,
 	) (*entity.Deck, error)
 
 	Update(
 		ctx context.Context,
 		id string,
-		param *DeckParam,
+		param *DeckUpdateParam,
 	) (*entity.Deck, error)
 
 	Archive(
@@ -176,31 +195,52 @@ func (u *Deck) FindByUserIdOnCursor(
 
 func (u *Deck) Create(
 	ctx context.Context,
-	param *DeckParam,
+	param *DeckCreateParam,
 ) (*entity.Deck, error) {
-	id, err := generateId()
+	deckId, err := generateId()
 	if err != nil {
 		return nil, err
 	}
 
 	createdAt := time.Now().Local()
 	archivedAt := time.Time{}
+	var LatestDeckCode *entity.DeckCode
+
+	if param.DeckCode != "" {
+		deckCodeId, err := generateId()
+		if err != nil {
+			return nil, err
+		}
+
+		memo := ""
+		LatestDeckCode = entity.NewDeckCode(
+			deckCodeId,
+			createdAt,
+			param.UserId,
+			deckId,
+			param.DeckCode,
+			param.PrivateDeckCodeFlg,
+			memo,
+		)
+
+		if LatestDeckCode.Code != "" {
+			if err := uploadDeckImage(LatestDeckCode.Code); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	deck := entity.NewDeck(
-		id,
+		deckId,
 		createdAt,
 		archivedAt,
 		param.UserId,
 		param.Name,
-		param.Code,
-		param.PrivateCodeFlg,
+		param.DeckCode,
+		param.PrivateDeckCodeFlg,
+		param.PrivateFlg,
+		LatestDeckCode,
 	)
-
-	if deck.Code != "" {
-		if err := uploadDeckImage(deck.Code); err != nil {
-			return nil, err
-		}
-	}
 
 	if err := u.repository.Save(ctx, deck); err != nil {
 		return nil, err
@@ -212,7 +252,7 @@ func (u *Deck) Create(
 func (u *Deck) Update(
 	ctx context.Context,
 	id string,
-	param *DeckParam,
+	param *DeckUpdateParam,
 ) (*entity.Deck, error) {
 	// 指定されたidのDeckが存在するか確認
 	ret, err := u.repository.FindById(ctx, id)
@@ -226,13 +266,21 @@ func (u *Deck) Update(
 		id,
 		ret.CreatedAt,
 		ret.ArchivedAt,
-		param.UserId,
+		ret.UserId,
 		param.Name,
-		param.Code,
-		param.PrivateCodeFlg,
+		ret.Code,
+		ret.PrivateCodeFlg,
+		param.PrivateFlg,
+		ret.LatestDeckCode,
 	)
 
-	if deck.Code != "" && deck.Code != ret.Code {
+	// デッキコードの変更は禁止
+	// 元のデッキコードが空の場合は変更を許可
+	if ret.Code != "" && ret.Code != deck.Code {
+		return nil, errors.New("deck code change is not allowed")
+	}
+
+	if deck.Code != "" {
 		if err := uploadDeckImage(deck.Code); err != nil {
 			return nil, err
 		}
@@ -265,6 +313,8 @@ func (u *Deck) Archive(
 		ret.Name,
 		ret.Code,
 		ret.PrivateCodeFlg,
+		ret.PrivateFlg,
+		ret.LatestDeckCode,
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {
@@ -294,6 +344,8 @@ func (u *Deck) Unarchive(
 		ret.Name,
 		ret.Code,
 		ret.PrivateCodeFlg,
+		ret.PrivateFlg,
+		ret.LatestDeckCode,
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {

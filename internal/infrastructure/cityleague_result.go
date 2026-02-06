@@ -22,10 +22,10 @@ func NewCityleagueResult(
 
 func (i *CityleagueResult) FindByOfficialEventId(
 	ctx context.Context,
-	officialEventId string,
+	officialEventId uint,
 ) (*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
-	if tx := i.db.Where("official_event_id = ?", officialEventId).Order("point DESC, player_id ASC").First(&models); tx.Error != nil {
+	if tx := i.db.Where("official_event_id = ?", officialEventId).Order("point DESC, player_id ASC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -57,7 +57,7 @@ func (i *CityleagueResult) FindByCityleagueScheduleId(
 	cityleagueScheduleId string,
 ) ([]*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
-	if tx := i.db.Where("league_type = ? AND cityleague_id = ?", leagueType, cityleagueScheduleId).Order("event_date ASC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("league_type = ? AND cityleague_id = ?", leagueType, cityleagueScheduleId).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -157,11 +157,11 @@ func (i *CityleagueResult) FindByTerm(
 ) ([]*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
 	if leagueType == 0 {
-		if tx := i.db.Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date ASC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.db.Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date ASC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	}

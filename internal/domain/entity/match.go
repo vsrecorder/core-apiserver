@@ -9,6 +9,7 @@ type Match struct {
 	CreatedAt          time.Time
 	RecordId           string
 	DeckId             string
+	DeckCodeId         string
 	UserId             string
 	OpponentsUserId    string
 	BO3Flg             bool
@@ -27,6 +28,7 @@ func NewMatch(
 	createdAt time.Time,
 	recordId string,
 	deckId string,
+	deckCodeId string,
 	userId string,
 	opponentsUserId string,
 	bo3Flg bool,
@@ -44,6 +46,7 @@ func NewMatch(
 		CreatedAt:          createdAt,
 		RecordId:           recordId,
 		DeckId:             deckId,
+		DeckCodeId:         deckCodeId,
 		UserId:             userId,
 		OpponentsUserId:    opponentsUserId,
 		BO3Flg:             bo3Flg,

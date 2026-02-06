@@ -9,6 +9,7 @@ type Metadata struct {
 type Result struct {
 	URL      string `json:"url"`
 	Success  bool   `json:"success"`
+	Error    string `json:"error"`
 	Metadata `json:"metadata"`
 }
 

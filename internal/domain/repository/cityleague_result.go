@@ -10,7 +10,7 @@ import (
 type CityleagueResultInterface interface {
 	FindByOfficialEventId(
 		ctx context.Context,
-		officialEventId string,
+		officialEventId uint,
 	) (*entity.CityleagueResult, error)
 
 	FindByCityleagueScheduleId(

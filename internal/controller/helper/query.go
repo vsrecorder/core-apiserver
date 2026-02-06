@@ -36,12 +36,20 @@ func GetQueryEndDate(ctx *gin.Context) string {
 	return ctx.Query("end_date")
 }
 
+func GetQueryOfficialEventId(ctx *gin.Context) string {
+	return ctx.Query("official_event_id")
+}
+
 func GetQueryTypeId(ctx *gin.Context) string {
 	return ctx.Query("type_id")
 }
 
 func GetQueryLeagueType(ctx *gin.Context) string {
 	return ctx.Query("league_type")
+}
+
+func GetQueryEventType(ctx *gin.Context) string {
+	return ctx.Query("event_type")
 }
 
 func GetQueryArchived(ctx *gin.Context) string {

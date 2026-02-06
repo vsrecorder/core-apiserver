@@ -74,8 +74,9 @@ func test_RecordController_Get(t *testing.T) {
 
 		limit := 10
 		offset := 0
+		eventType := ""
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(records, nil)
+		mockUsecase.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -101,8 +102,9 @@ func test_RecordController_Get(t *testing.T) {
 
 		limit := 10
 		offset := 0
+		eventType := ""
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(records, nil)
+		mockUsecase.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -126,8 +128,9 @@ func test_RecordController_Get(t *testing.T) {
 		limit := 10
 		offset := 0
 		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
+		eventType := ""
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(records, nil)
+		mockUsecase.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -156,8 +159,9 @@ func test_RecordController_Get(t *testing.T) {
 		offset := 0
 		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
+		eventType := ""
 
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(records, nil)
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursor, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -177,7 +181,7 @@ func test_RecordController_Get(t *testing.T) {
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
-		mockUsecase.EXPECT().Find(context.Background(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Find(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -193,7 +197,7 @@ func test_RecordController_Get(t *testing.T) {
 		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -293,8 +297,9 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		limit := 10
 		offset := 0
+		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -324,8 +329,9 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		limit := 10
 		offset := 0
+		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -350,8 +356,9 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		limit := 10
 		offset := 0
 		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
+		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -383,8 +390,9 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		offset := 0
 		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
+		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursor).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursor, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -407,8 +415,9 @@ func test_RecordController_GetByUserId(t *testing.T) {
 	t.Run("異常系_#01", func(t *testing.T) {
 		limit := 10
 		offset := 0
+		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -424,7 +433,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -462,6 +471,7 @@ func test_RecordController_Create(t *testing.T) {
 			"",
 			"",
 			"",
+			"",
 			privateFlg,
 			"",
 			"",
@@ -475,6 +485,7 @@ func test_RecordController_Create(t *testing.T) {
 				TonamelEventId:  "",
 				FriendId:        "",
 				DeckId:          "",
+				DeckCodeId:      "",
 				PrivateFlg:      privateFlg,
 				TCGMeisterURL:   "",
 				Memo:            "",
@@ -534,6 +545,7 @@ func test_RecordController_Create(t *testing.T) {
 			"",
 			uid,
 			"",
+			"",
 			privateFlg,
 			"",
 			"",
@@ -547,6 +559,7 @@ func test_RecordController_Create(t *testing.T) {
 				TonamelEventId:  "",
 				FriendId:        "",
 				DeckId:          "",
+				DeckCodeId:      "",
 				PrivateFlg:      privateFlg,
 				TCGMeisterURL:   "",
 				Memo:            "",
@@ -637,6 +650,7 @@ func test_RecordController_Update(t *testing.T) {
 			"",
 			"",
 			"",
+			"",
 			privateFlg,
 			"",
 			"",
@@ -650,6 +664,7 @@ func test_RecordController_Update(t *testing.T) {
 				TonamelEventId:  "",
 				FriendId:        "",
 				DeckId:          "",
+				DeckCodeId:      "",
 				PrivateFlg:      privateFlg,
 				TCGMeisterURL:   "",
 				Memo:            "",
@@ -709,6 +724,7 @@ func test_RecordController_Update(t *testing.T) {
 			"",
 			uid,
 			"",
+			"",
 			privateFlg,
 			"",
 			"",
@@ -722,6 +738,7 @@ func test_RecordController_Update(t *testing.T) {
 				TonamelEventId:  "",
 				FriendId:        "",
 				DeckId:          "",
+				DeckCodeId:      "",
 				PrivateFlg:      privateFlg,
 				TCGMeisterURL:   "",
 				Memo:            "",
@@ -765,6 +782,7 @@ func test_RecordController_Update(t *testing.T) {
 			"",
 			"",
 			"",
+			"",
 			privateFlg,
 			"",
 			"",
@@ -778,6 +796,7 @@ func test_RecordController_Update(t *testing.T) {
 				TonamelEventId:  "",
 				FriendId:        "",
 				DeckId:          "",
+				DeckCodeId:      "",
 				PrivateFlg:      privateFlg,
 				TCGMeisterURL:   "",
 				Memo:            "",

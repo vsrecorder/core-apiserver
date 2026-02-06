@@ -10,6 +10,8 @@ type Deck struct {
 	Name           string
 	Code           string
 	PrivateCodeFlg bool
+	PrivateFlg     bool
+	LatestDeckCode *DeckCode
 }
 
 func NewDeck(
@@ -20,6 +22,8 @@ func NewDeck(
 	name string,
 	code string,
 	privateCodeFlg bool,
+	privateFlg bool,
+	latestDeckCode *DeckCode,
 ) *Deck {
 	return &Deck{
 		ID:             id,
@@ -29,5 +33,7 @@ func NewDeck(
 		Name:           name,
 		Code:           code,
 		PrivateCodeFlg: privateCodeFlg,
+		PrivateFlg:     privateFlg,
+		LatestDeckCode: latestDeckCode,
 	}
 }

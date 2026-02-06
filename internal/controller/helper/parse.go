@@ -10,11 +10,13 @@ import (
 )
 
 const (
-	DefaultLimit      = 10
-	DefaultOffset     = 0
-	DefaultTypeId     = 0
-	DefaultLeagueType = 0
-	DefaultArchived   = false
+	DefaultLimit           = 10
+	DefaultOffset          = 0
+	DefaultOfficialEventId = 0
+	DefaultTypeId          = 0
+	DefaultLeagueType      = 0
+	DefaultEventType       = ""
+	DefaultArchived        = false
 
 	DateLayout = time.DateOnly
 )
@@ -162,6 +164,24 @@ func ParseQueryEndDate(ctx *gin.Context) (endDate time.Time, err error) {
 	return endDate, nil
 }
 
+func ParseQueryOfficialEventId(ctx *gin.Context) (uint, error) {
+	query := GetQueryOfficialEventId(ctx)
+
+	if query == "" {
+		return DefaultOfficialEventId, nil
+	}
+
+	officialEventId, err := strconv.Atoi(query)
+
+	if err != nil { // 取得したクエリパラメータが数値か否か
+		return DefaultOfficialEventId, err
+	} else if officialEventId < 0 {
+		return uint(officialEventId), errors.New("bad query parameter")
+	}
+
+	return uint(officialEventId), nil
+}
+
 func ParseQueryTypeId(ctx *gin.Context) (uint, error) {
 	query := GetQueryTypeId(ctx)
 
@@ -200,6 +220,23 @@ func ParseQueryLeagueType(ctx *gin.Context) (uint, error) {
 	}
 
 	return uint(leagueType), nil
+}
+
+func ParseQueryEventType(ctx *gin.Context) (string, error) {
+	query := GetQueryEventType(ctx)
+
+	if query == "" {
+		return DefaultEventType, nil
+	}
+
+	switch query {
+	case "official":
+		return "official", nil
+	case "tonamel":
+		return "tonamel", nil
+	default:
+		return DefaultEventType, nil
+	}
 }
 
 func ParseQueryArchive(ctx *gin.Context) (bool, error) {

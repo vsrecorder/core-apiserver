@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"log/slog"
 	"regexp"
 	"testing"
 	"time"
@@ -38,7 +39,9 @@ func setup4RecordInfrastructure() (repository.RecordInterface, sqlmock.Sqlmock, 
 		return nil, nil, err
 	}
 
-	r := NewRecord(db)
+	logger := slog.Default()
+
+	r := NewRecord(db, logger)
 
 	return r, mock, err
 }
@@ -71,6 +74,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
+	eventType := ""
 
 	{
 		rows := sqlmock.NewRows([]string{
@@ -83,6 +87,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 			"friend_id",
 			"user_id",
 			"deck_id",
+			"deck_code_id",
 			"private_flg",
 			"tcg_meister_url",
 			"memo",
@@ -96,20 +101,20 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 			"",
 			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 			"",
+			"",
 			false,
 			"",
 			"",
 		)
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE private_flg = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+			`SELECT * FROM "records" WHERE private_flg = false AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		)).WithArgs(
-			false,
 			limit,
 			offset,
 		).WillReturnRows(rows)
 
-		records, err := r.Find(context.Background(), limit, offset)
+		records, err := r.Find(context.Background(), limit, offset, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, len(records))
@@ -127,20 +132,20 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 			"friend_id",
 			"user_id",
 			"deck_id",
+			"deck_code_id",
 			"private_flg",
 			"tcg_meister_url",
 			"memo",
 		})
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE private_flg = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+			`SELECT * FROM "records" WHERE private_flg = false AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		)).WithArgs(
-			false,
 			limit,
 			offset,
 		).WillReturnRows(rows)
 
-		records, err := r.Find(context.Background(), limit, offset)
+		records, err := r.Find(context.Background(), limit, offset, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, len(records))
@@ -155,6 +160,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 	cursor := time.Now().Local()
 	datetime := time.Now().Local()
 	limit := 10
+	eventType := ""
 
 	{
 		rows := sqlmock.NewRows([]string{
@@ -167,6 +173,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 			"friend_id",
 			"user_id",
 			"deck_id",
+			"deck_code_id",
 			"private_flg",
 			"tcg_meister_url",
 			"memo",
@@ -180,6 +187,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 			"",
 			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 			"",
+			"",
 			false,
 			"",
 			"",
@@ -192,7 +200,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 			limit,
 		).WillReturnRows(rows)
 
-		records, err := r.FindOnCursor(context.Background(), limit, cursor)
+		records, err := r.FindOnCursor(context.Background(), limit, cursor, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, len(records))
@@ -210,6 +218,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 			"friend_id",
 			"user_id",
 			"deck_id",
+			"deck_code_id",
 			"private_flg",
 			"tcg_meister_url",
 			"memo",
@@ -222,7 +231,7 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 			limit,
 		).WillReturnRows(rows)
 
-		records, err := r.FindOnCursor(context.Background(), limit, cursor)
+		records, err := r.FindOnCursor(context.Background(), limit, cursor, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, len(records))
@@ -246,6 +255,7 @@ func test_RecordInfrastructure_FindById(t *testing.T) {
 		"friend_id",
 		"user_id",
 		"deck_id",
+		"deck_code_id",
 		"private_flg",
 		"tcg_meister_url",
 		"memo",
@@ -258,6 +268,7 @@ func test_RecordInfrastructure_FindById(t *testing.T) {
 		"",
 		"",
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+		"",
 		"",
 		false,
 		"",
@@ -284,6 +295,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
+	eventType := ""
 
 	rows := sqlmock.NewRows([]string{
 		"id",
@@ -295,6 +307,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 		"friend_id",
 		"user_id",
 		"deck_id",
+		"deck_code_id",
 		"private_flg",
 		"tcg_meister_url",
 		"memo",
@@ -307,6 +320,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 		"",
 		"",
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+		"",
 		"",
 		false,
 		"",
@@ -321,7 +335,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 		offset,
 	).WillReturnRows(rows)
 
-	records, err := r.FindByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, offset)
+	records, err := r.FindByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, offset, eventType)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(records))
@@ -335,6 +349,7 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	cursor := time.Now().Local()
 	datetime := time.Now().Local()
 	limit := 10
+	eventType := ""
 
 	rows := sqlmock.NewRows([]string{
 		"id",
@@ -346,6 +361,7 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		"friend_id",
 		"user_id",
 		"deck_id",
+		"deck_code_id",
 		"private_flg",
 		"tcg_meister_url",
 		"memo",
@@ -358,6 +374,7 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		"",
 		"",
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+		"",
 		"",
 		false,
 		"",
@@ -372,7 +389,7 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		limit,
 	).WillReturnRows(rows)
 
-	records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, cursor)
+	records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, cursor, eventType)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(records))
@@ -397,6 +414,7 @@ func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {
 		"friend_id",
 		"user_id",
 		"deck_id",
+		"deck_code_id",
 		"private_flg",
 		"tcg_meister_url",
 		"memo",
@@ -409,6 +427,7 @@ func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {
 		"",
 		"",
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+		"",
 		"",
 		false,
 		"",
@@ -449,6 +468,7 @@ func test_RecordInfrastructure_FindByTonamelEventId(t *testing.T) {
 		"friend_id",
 		"user_id",
 		"deck_id",
+		"deck_code_id",
 		"private_flg",
 		"tcg_meister_url",
 		"memo",
@@ -461,6 +481,7 @@ func test_RecordInfrastructure_FindByTonamelEventId(t *testing.T) {
 		"YFUVY",
 		"",
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+		"",
 		"",
 		false,
 		"",
@@ -501,6 +522,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 		"friend_id",
 		"user_id",
 		"deck_id",
+		"deck_code_id",
 		"private_flg",
 		"tcg_meister_url",
 		"memo",
@@ -514,6 +536,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 		"",
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 		"01JHAKSVXZ4XW91TDQ8EDP1N8P",
+		"",
 		false,
 		"",
 		"",
@@ -543,8 +566,8 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(
 		`UPDATE "records" SET "created_at"=$1,"updated_at"=$2,"deleted_at"=$3,"official_event_id"=$4,"tonamel_event_id"=$5,`+
-			`"friend_id"=$6,"user_id"=$7,"deck_id"=$8,"private_flg"=$9,"tcg_meister_url"=$10,"memo"=$11 `+
-			`WHERE "records"."deleted_at" IS NULL AND "id" = $12`,
+			`"friend_id"=$6,"user_id"=$7,"deck_id"=$8,"deck_code_id"=$9,"private_flg"=$10,"tcg_meister_url"=$11,"memo"=$12 `+
+			`WHERE "records"."deleted_at" IS NULL AND "id" = $13`,
 	)).WithArgs(
 		datetime,
 		AnyTime{},
@@ -553,6 +576,7 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 		"",
 		"",
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+		"",
 		"",
 		false,
 		"",
@@ -569,6 +593,7 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 		FriendId:        "",
 		UserId:          "CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 		DeckId:          "",
+		DeckCodeId:      "",
 		PrivateFlg:      false,
 		TCGMeisterURL:   "",
 		Memo:            "",

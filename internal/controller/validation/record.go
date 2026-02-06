@@ -31,9 +31,12 @@ func RecordGetMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		eventType, err := helper.ParseQueryEventType(ctx)
+
 		helper.SetLimit(ctx, limit)
 		helper.SetOffset(ctx, offset)
 		helper.SetCursor(ctx, cursor)
+		helper.SetEventType(ctx, eventType)
 	}
 }
 

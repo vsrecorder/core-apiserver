@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth"
+	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
@@ -20,17 +21,19 @@ const (
 )
 
 type Match struct {
-	router     *gin.Engine
-	repository repository.MatchInterface
-	usecase    usecase.MatchInterface
+	router           *gin.Engine
+	matchRepository  repository.MatchInterface
+	recordRepository repository.RecordInterface
+	usecase          usecase.MatchInterface
 }
 
 func NewMatch(
 	router *gin.Engine,
-	repository repository.MatchInterface,
+	matchRepository repository.MatchInterface,
+	recordRepository repository.RecordInterface,
 	usecase usecase.MatchInterface,
 ) *Match {
-	return &Match{router, repository, usecase}
+	return &Match{router, matchRepository, recordRepository, usecase}
 }
 
 func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
@@ -69,6 +72,8 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 			r := c.router.Group(relativePath + MatchesPath)
 			r.GET(
 				"/:id",
+				auth.OptionalAuthenticationMiddleware(),
+				auth.MatchGetByIdAuthorizationMiddleware(c.matchRepository, c.recordRepository),
 				c.GetById,
 			)
 			r.POST(
@@ -80,14 +85,14 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 			r.PUT(
 				"/:id",
 				auth.RequiredAuthenticationMiddleware(),
-				auth.MatchUpdateAuthorizationMiddleware(c.repository),
+				auth.MatchUpdateAuthorizationMiddleware(c.matchRepository),
 				validation.MatchUpdateMiddleware(),
 				c.Update,
 			)
 			r.DELETE(
 				"/:id",
 				auth.RequiredAuthenticationMiddleware(),
-				auth.MatchDeleteAuthorizationMiddleware(c.repository),
+				auth.MatchDeleteAuthorizationMiddleware(c.matchRepository),
 				c.Delete,
 			)
 		}
@@ -96,6 +101,8 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 			r := c.router.Group(relativePath + RecordsPath)
 			r.GET(
 				"/:id"+MatchesPath,
+				auth.OptionalAuthenticationMiddleware(),
+				auth.MatchGetByRecordIdAuthorizationMiddleware(c.recordRepository),
 				c.GetByRecordId,
 			)
 		}
@@ -124,13 +131,12 @@ func (c *Match) GetById(ctx *gin.Context) {
 }
 
 func (c *Match) GetByRecordId(ctx *gin.Context) {
-	id := helper.GetId(ctx)
+	recordId := helper.GetId(ctx)
 
-	matches, err := c.usecase.FindByRecordId(context.Background(), id)
+	matches, err := c.usecase.FindByRecordId(context.Background(), recordId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+			ctx.JSON(http.StatusOK, []*dto.MatchGetByRecordIdResponse{})
 			return
 		}
 
@@ -165,6 +171,7 @@ func (c *Match) Create(ctx *gin.Context) {
 	param := usecase.NewMatchParam(
 		req.RecordId,
 		req.DeckId,
+		req.DeckCodeId,
 		uid,
 		req.OpponentsUserId,
 		req.BO3Flg,
@@ -212,6 +219,7 @@ func (c *Match) Update(ctx *gin.Context) {
 	param := usecase.NewMatchParam(
 		req.RecordId,
 		req.DeckId,
+		req.DeckCodeId,
 		uid,
 		req.OpponentsUserId,
 		req.BO3Flg,

@@ -70,3 +70,17 @@ func CityleagueResultGetByTermMiddleware() gin.HandlerFunc {
 		helper.SetToDate(ctx, toDate)
 	}
 }
+
+func CityleagueResultGetByOfficialEventIdMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		officialEventId, err := helper.ParseQueryOfficialEventId(ctx)
+
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+			ctx.Abort()
+			return
+		}
+
+		helper.SetOfficialEventId(ctx, officialEventId)
+	}
+}

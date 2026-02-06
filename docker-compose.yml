@@ -1,5 +1,5 @@
 services:
-  vsr-api:
+  core-apiserver:
     image: vsrecorder/core-apiserver:latest
     restart: always
     ports:

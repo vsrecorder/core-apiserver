@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	entropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+	entropy    = rand.New(rand.NewSource(time.Now().UnixNano()))
+	DateLayout = time.DateOnly
 )
 
 // GORM側で更新される カラム updated_at, deleted_at の値をテストでPASSするための構造体

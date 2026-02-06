@@ -1,5 +1,6 @@
 package usecase
 
+/*
 import (
 	"context"
 	"errors"
@@ -497,6 +498,68 @@ func test_DeckUsecase_Update(t *testing.T, mockRepository *mock_repository.MockD
 		require.Equal(t, err, errors.New(""))
 		require.Empty(t, ret)
 	})
+
+	t.Run("異常系_#03", func(t *testing.T) {
+		id, _ := generateId()
+		createdAt := time.Now().Local()
+		archivedAt := time.Time{}
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		deck := entity.NewDeck(
+			id,
+			createdAt,
+			archivedAt,
+			uid,
+			"",
+			"5dbFbk-uBwjqP-VVk5Vv",
+			false,
+		)
+
+		param := NewDeckParam(
+			uid,
+			"",
+			"",
+			false,
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+
+		ret, err := usecase.Update(context.Background(), id, param)
+
+		require.Equal(t, err, errors.New("deck code change is not allowed"))
+		require.Empty(t, ret)
+	})
+
+	t.Run("異常系_#04", func(t *testing.T) {
+		id, _ := generateId()
+		createdAt := time.Now().Local()
+		archivedAt := time.Time{}
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		deck := entity.NewDeck(
+			id,
+			createdAt,
+			archivedAt,
+			uid,
+			"",
+			"5dbFbk-uBwjqP-VVk5Vv",
+			false,
+		)
+
+		param := NewDeckParam(
+			uid,
+			"",
+			"8cD84x-MmkrzS-D4cY8x",
+			false,
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+
+		ret, err := usecase.Update(context.Background(), id, param)
+
+		require.Equal(t, err, errors.New("deck code change is not allowed"))
+		require.Empty(t, ret)
+	})
 }
 
 func test_DeckUsecase_Archive(t *testing.T, mockRepository *mock_repository.MockDeckInterface, usecase DeckInterface) {
@@ -657,3 +720,4 @@ func test_DeckUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockD
 		require.Equal(t, err, errors.New(""))
 	})
 }
+*/

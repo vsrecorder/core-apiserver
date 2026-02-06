@@ -5,25 +5,26 @@ import (
 )
 
 type OfficialEvent struct {
-	ID              uint
-	Title           string
-	Address         string
-	Venue           string
-	Date            time.Time
-	StartedAt       time.Time
-	EndedAt         time.Time
-	DeckCount       string
-	TypeId          uint
-	TypeName        string
-	CSPFlg          bool
-	LeagueId        uint
-	LeagueTitle     string
-	RegulationId    uint
-	RegulationTitle string
-	Capacity        uint
-	AttrId          uint
-	ShopId          uint
-	ShopName        string
+	ID                      uint
+	Title                   string
+	Address                 string
+	Venue                   string
+	Date                    time.Time
+	StartedAt               time.Time
+	EndedAt                 time.Time
+	TypeName                string
+	LeagueTitle             string
+	RegulationTitle         string
+	CSPFlg                  bool
+	Capacity                uint
+	ShopId                  uint
+	ShopName                string
+	PrefectureId            uint
+	PrefectureName          string
+	EnvironmentId           string
+	EnvironmentTitle        string
+	StandardRegulationId    string
+	StandardRegulationMarks string
 }
 
 func NewOfficialEvent(
@@ -34,38 +35,40 @@ func NewOfficialEvent(
 	date time.Time,
 	startedAt time.Time,
 	endedAt time.Time,
-	deckCount string,
-	typeId uint,
 	typeName string,
-	cspFlg bool,
-	leagueId uint,
 	leagueTitle string,
-	regulationId uint,
 	regulationTitle string,
+	cspFlg bool,
 	capacity uint,
-	attrId uint,
 	shopId uint,
 	shopName string,
+	prefectureId uint,
+	prefectureName string,
+	environmentId string,
+	environmentTitle string,
+	standardRegulationId string,
+	standardRegulationMarks string,
 ) *OfficialEvent {
 	return &OfficialEvent{
-		ID:              id,
-		Title:           title,
-		Address:         address,
-		Venue:           venue,
-		Date:            date,
-		StartedAt:       startedAt,
-		EndedAt:         endedAt,
-		DeckCount:       deckCount,
-		TypeId:          typeId,
-		TypeName:        typeName,
-		CSPFlg:          cspFlg,
-		LeagueId:        leagueId,
-		LeagueTitle:     leagueTitle,
-		RegulationId:    regulationId,
-		RegulationTitle: regulationTitle,
-		Capacity:        capacity,
-		AttrId:          attrId,
-		ShopId:          shopId,
-		ShopName:        shopName,
+		ID:                      id,
+		Title:                   title,
+		Address:                 address,
+		Venue:                   venue,
+		Date:                    date,
+		StartedAt:               startedAt,
+		EndedAt:                 endedAt,
+		TypeName:                typeName,
+		LeagueTitle:             leagueTitle,
+		RegulationTitle:         regulationTitle,
+		CSPFlg:                  cspFlg,
+		Capacity:                capacity,
+		ShopId:                  shopId,
+		ShopName:                shopName,
+		PrefectureId:            prefectureId,
+		PrefectureName:          prefectureName,
+		EnvironmentId:           environmentId,
+		EnvironmentTitle:        environmentTitle,
+		StandardRegulationId:    standardRegulationId,
+		StandardRegulationMarks: standardRegulationMarks,
 	}
 }

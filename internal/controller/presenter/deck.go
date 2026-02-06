@@ -27,6 +27,16 @@ func NewDeckGetResponse(
 				Code:           deck.Code,
 				Name:           deck.Name,
 				PrivateCodeFlg: deck.PrivateCodeFlg,
+				PrivateFlg:     deck.PrivateFlg,
+				LatestDeckCode: dto.DeckCodeResponse{
+					ID:             deck.LatestDeckCode.ID,
+					CreatedAt:      deck.LatestDeckCode.CreatedAt,
+					UserId:         deck.LatestDeckCode.UserId,
+					DeckId:         deck.LatestDeckCode.DeckId,
+					Code:           deck.LatestDeckCode.Code,
+					PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+					Memo:           deck.LatestDeckCode.Memo,
+				},
 			},
 		})
 	}
@@ -51,6 +61,16 @@ func NewDeckGetByIdResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				Memo:           deck.LatestDeckCode.Memo,
+			},
 		},
 	}
 }
@@ -75,6 +95,16 @@ func NewDeckGetByUserIdResponse(
 				Code:           deck.Code,
 				Name:           deck.Name,
 				PrivateCodeFlg: deck.PrivateCodeFlg,
+				PrivateFlg:     deck.PrivateFlg,
+				LatestDeckCode: dto.DeckCodeResponse{
+					ID:             deck.LatestDeckCode.ID,
+					CreatedAt:      deck.LatestDeckCode.CreatedAt,
+					UserId:         deck.LatestDeckCode.UserId,
+					DeckId:         deck.LatestDeckCode.DeckId,
+					Code:           deck.LatestDeckCode.Code,
+					PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+					Memo:           deck.LatestDeckCode.Memo,
+				},
 			},
 		})
 	}
@@ -100,6 +130,16 @@ func NewDeckCreateResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				Memo:           deck.LatestDeckCode.Memo,
+			},
 		},
 	}
 }
@@ -116,6 +156,16 @@ func NewDeckUpdateResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				Memo:           deck.LatestDeckCode.Memo,
+			},
 		},
 	}
 }
@@ -132,6 +182,16 @@ func NewDeckArchiveResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				Memo:           deck.LatestDeckCode.Memo,
+			},
 		},
 	}
 }
@@ -148,6 +208,16 @@ func NewDeckUnarchiveResponse(
 			Code:           deck.Code,
 			Name:           deck.Name,
 			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				Memo:           deck.LatestDeckCode.Memo,
+			},
 		},
 	}
 }

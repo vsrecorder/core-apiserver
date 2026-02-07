@@ -158,6 +158,7 @@ func main() {
 	controller.NewDeckCode(
 		r,
 		infrastructure.NewDeckCode(db),
+		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewDeckCode(
 			infrastructure.NewDeckCode(db),
 		),

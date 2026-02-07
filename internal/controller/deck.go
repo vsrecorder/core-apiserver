@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -46,6 +45,10 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 			c.GetByUserId,
 		)
 		r.GET(
+			"/all",
+			c.GetAll,
+		)
+		r.GET(
 			"/:id",
 			c.GetById,
 		)
@@ -79,6 +82,11 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 			validation.DeckGetMiddleware(),
 			c.Get,
 			c.GetByUserId,
+		)
+		r.GET(
+			"/all",
+			auth.RequiredAuthenticationMiddleware(),
+			c.GetAll,
 		)
 		r.GET(
 			"/:id",
@@ -128,7 +136,6 @@ func (c *Deck) Get(ctx *gin.Context) {
 
 		if !cursor.IsZero() {
 			decks, err := c.usecase.FindOnCursor(context.Background(), limit, cursor)
-			fmt.Println(decks)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 				ctx.Abort()
@@ -171,6 +178,20 @@ func (c *Deck) Get(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, res)
 		}
 	}
+}
+
+func (c *Deck) GetAll(ctx *gin.Context) {
+	uid := helper.GetUID(ctx)
+	decks, err := c.usecase.FindAll(context.Background(), uid)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewDeckGetAllResponse(decks)
+
+	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *Deck) GetByUserId(ctx *gin.Context) {

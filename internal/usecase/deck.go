@@ -56,6 +56,11 @@ type DeckInterface interface {
 		offset int,
 	) ([]*entity.Deck, error)
 
+	FindAll(
+		ctx context.Context,
+		uid string,
+	) ([]*entity.Deck, error)
+
 	FindOnCursor(
 		ctx context.Context,
 		limit int,
@@ -126,6 +131,19 @@ func (u *Deck) Find(
 	offset int,
 ) ([]*entity.Deck, error) {
 	decks, err := u.repository.Find(ctx, limit, offset)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return decks, nil
+}
+
+func (u *Deck) FindAll(
+	ctx context.Context,
+	uid string,
+) ([]*entity.Deck, error) {
+	decks, err := u.repository.FindAll(ctx, uid)
 
 	if err != nil {
 		return nil, err

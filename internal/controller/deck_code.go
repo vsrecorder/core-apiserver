@@ -20,17 +20,19 @@ const (
 )
 
 type DeckCode struct {
-	router     *gin.Engine
-	repository repository.DeckCodeInterface
-	usecase    usecase.DeckCodeInterface
+	router             *gin.Engine
+	deckcodeRepository repository.DeckCodeInterface
+	recordRepository   repository.RecordInterface
+	usecase            usecase.DeckCodeInterface
 }
 
 func NewDeckCode(
 	router *gin.Engine,
-	repository repository.DeckCodeInterface,
+	deckcodeRepository repository.DeckCodeInterface,
+	recordRepository repository.RecordInterface,
 	usecase usecase.DeckCodeInterface,
 ) *DeckCode {
-	return &DeckCode{router, repository, usecase}
+	return &DeckCode{router, deckcodeRepository, recordRepository, usecase}
 }
 
 func (c *DeckCode) RegisterRoute(relativePath string, authDisable bool) {
@@ -81,14 +83,14 @@ func (c *DeckCode) RegisterRoute(relativePath string, authDisable bool) {
 			r.PUT(
 				"/:id",
 				auth.RequiredAuthenticationMiddleware(),
-				auth.DeckCodeUpdateAuthorizationMiddleware(c.repository),
+				auth.DeckCodeUpdateAuthorizationMiddleware(c.deckcodeRepository),
 				validation.DeckCodeUpdateMiddleware(),
 				c.Update,
 			)
 			r.DELETE(
 				"/:id",
 				auth.RequiredAuthenticationMiddleware(),
-				auth.DeckCodeDeleteAuthorizationMiddleware(c.repository),
+				auth.DeckCodeDeleteAuthorizationMiddleware(c.deckcodeRepository, c.recordRepository),
 				c.Delete,
 			)
 		}

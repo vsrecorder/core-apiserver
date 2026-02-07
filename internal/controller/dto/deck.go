@@ -38,6 +38,8 @@ type DeckGetResponse struct {
 	Decks  []*DeckData `json:"decks"`
 }
 
+type DeckGetAllResponse []DeckResponse
+
 type DeckGetByIdResponse struct {
 	DeckResponse
 }

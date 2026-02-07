@@ -14,6 +14,11 @@ type DeckInterface interface {
 		offset int,
 	) ([]*entity.Deck, error)
 
+	FindAll(
+		ctx context.Context,
+		uid string,
+	) ([]*entity.Deck, error)
+
 	FindOnCursor(
 		ctx context.Context,
 		limit int,

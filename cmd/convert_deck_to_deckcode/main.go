@@ -81,9 +81,11 @@ func main() {
 
 		db.Transaction(func(tx *gorm.DB) error {
 			for _, deck := range decks {
-				// DeckCodeが存在しなければ追加
-				tx := db.Where("user_id = ? AND deck_id = ? AND code = ?", deck.UserId, deck.ID, deck.Code).First(&model.DeckCode{})
 
+				var deckcode *model.DeckCode
+				tx := db.Where("user_id = ? AND deck_id = ? AND code = ?", deck.UserId, deck.ID, deck.Code).First(&deckcode)
+
+				// DeckCodeが存在しなければ追加
 				if tx.Error == gorm.ErrRecordNotFound {
 					fmt.Println(deck)
 
@@ -92,7 +94,7 @@ func main() {
 						return err
 					}
 
-					deckcode := model.DeckCode{
+					if tx := db.Save(&model.DeckCode{
 						ID:             id,
 						CreatedAt:      deck.CreatedAt,
 						UpdatedAt:      deck.CreatedAt,
@@ -100,15 +102,24 @@ func main() {
 						DeckId:         deck.ID,
 						Code:           deck.Code,
 						PrivateCodeFlg: deck.PrivateCodeFlg,
-					}
-
-					if tx := db.Save(&deckcode); tx.Error != nil {
+					}); tx.Error != nil {
 						return tx.Error
 					}
 				} else if tx.Error != nil {
 					return tx.Error
 				} else {
-					continue
+					// DeckCodeを更新
+					if tx := db.Save(&model.DeckCode{
+						ID:             deckcode.ID,
+						CreatedAt:      deck.CreatedAt,
+						UpdatedAt:      deck.CreatedAt,
+						UserId:         deck.UserId,
+						DeckId:         deck.ID,
+						Code:           deck.Code,
+						PrivateCodeFlg: deck.PrivateCodeFlg,
+					}); tx.Error != nil {
+						return tx.Error
+					}
 				}
 			}
 

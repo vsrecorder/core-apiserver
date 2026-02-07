@@ -49,6 +49,35 @@ func NewDeckGetResponse(
 	}
 }
 
+func NewDeckGetAllResponse(
+	decks []*entity.Deck,
+) *dto.DeckGetAllResponse {
+	ret := dto.DeckGetAllResponse{}
+	for _, deck := range decks {
+		ret = append(ret, dto.DeckResponse{
+			ID:             deck.ID,
+			CreatedAt:      deck.CreatedAt,
+			ArchivedAt:     deck.ArchivedAt,
+			UserId:         deck.UserId,
+			Code:           deck.Code,
+			Name:           deck.Name,
+			PrivateCodeFlg: deck.PrivateCodeFlg,
+			PrivateFlg:     deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				Memo:           deck.LatestDeckCode.Memo,
+			},
+		})
+	}
+
+	return &ret
+}
+
 func NewDeckGetByIdResponse(
 	deck *entity.Deck,
 ) *dto.DeckGetByIdResponse {

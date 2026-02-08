@@ -19,6 +19,10 @@ run:
 deploy:
 	docker compose pull && docker compose down && docker compose up -d
 
+.PHONY: restart
+restart:
+	docker compose down && docker compose up -d
+
 .PHONY: docker-build-and-push
 docker-build-and-push:
 	docker build --no-cache -t vsrecorder/core-apiserver:latest . && docker push vsrecorder/core-apiserver:latest

@@ -116,6 +116,7 @@ CREATE TABLE decks (
     name             VARCHAR(32) NOT NULL,
     code             VARCHAR(21) DEFAULT NULL,
     private_code_flg BOOLEAN DEFAULT NULL
+    private_flg BOOLEAN DEFAULT NULL
 );
 
 CREATE TABLE deck_codes (

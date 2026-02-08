@@ -83,7 +83,7 @@ func main() {
 			for _, deck := range decks {
 
 				var deckcode *model.DeckCode
-				tx := db.Where("user_id = ? AND deck_id = ? AND code = ?", deck.UserId, deck.ID, deck.Code).First(&deckcode)
+				tx := db.Where("user_id = ? AND deck_id = ?", deck.UserId, deck.ID).Order("created_at DESC, updated_at DESC").First(&deckcode)
 
 				// DeckCodeが存在しなければ追加
 				if tx.Error == gorm.ErrRecordNotFound {
@@ -108,18 +108,29 @@ func main() {
 				} else if tx.Error != nil {
 					return tx.Error
 				} else {
-					// DeckCodeを更新
-					if tx := db.Save(&model.DeckCode{
-						ID:             deckcode.ID,
-						CreatedAt:      deck.CreatedAt,
-						UpdatedAt:      deck.CreatedAt,
-						UserId:         deck.UserId,
-						DeckId:         deck.ID,
-						Code:           deck.Code,
-						PrivateCodeFlg: deck.PrivateCodeFlg,
-					}); tx.Error != nil {
-						return tx.Error
+					// DeckのデッキコードとDeckCodeのデッキコードが一致している場合一致している場合
+					if deck.Code == deckcode.Code {
+						// DeckCodeを更新
+						if tx := db.Save(&model.DeckCode{
+							ID:             deckcode.ID,
+							CreatedAt:      deck.CreatedAt,
+							UpdatedAt:      deck.CreatedAt,
+							UserId:         deck.UserId,
+							DeckId:         deck.ID,
+							Code:           deck.Code,
+							PrivateCodeFlg: deck.PrivateCodeFlg,
+						}); tx.Error != nil {
+							return tx.Error
+						}
+					} else {
+						// デッキコードが一致していない場合は、新しいDeckCodeが追加されているので
+						// Deckのデッキコードを更新する
+						deck.Code = deckcode.Code
+						if tx := db.Save(deck); tx.Error != nil {
+							return tx.Error
+						}
 					}
+
 				}
 			}
 

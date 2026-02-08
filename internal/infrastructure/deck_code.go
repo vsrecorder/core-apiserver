@@ -48,7 +48,7 @@ func (i *DeckCode) FindByDeckId(
 ) ([]*entity.DeckCode, error) {
 	var deckcodes []*model.DeckCode
 
-	if tx := i.db.Where("deck_id = ? ", deckId).Order("created_at DESC").Find(&deckcodes); tx.Error != nil {
+	if tx := i.db.Where("deck_id = ? ", deckId).Order("created_at DESC, updated_at DESC").Find(&deckcodes); tx.Error != nil {
 		return nil, tx.Error
 	}
 

@@ -64,7 +64,7 @@ func (i *Deck) Find(
 				private_code_flg,
 				memo
 			FROM deck_codes
-			ORDER BY deck_id, created_at DESC
+			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
 	`,
 	).Where(
@@ -155,7 +155,7 @@ func (i *Deck) FindAll(
 					memo
 				FROM deck_codes
 				WHERE user_id = ?
-				ORDER BY deck_id, created_at DESC
+				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
 	).Where(
@@ -242,7 +242,7 @@ func (i *Deck) FindOnCursor(
 				private_code_flg,
 				memo
 			FROM deck_codes
-			ORDER BY deck_id, created_at DESC
+			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
 	`,
 	).Where(
@@ -336,7 +336,7 @@ func (i *Deck) FindById(
 				memo
 			FROM deck_codes
 			WHERE deck_id = ?
-			ORDER BY deck_id, created_at DESC
+			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
 	`, id,
 	).Where(
@@ -417,7 +417,7 @@ func (i *Deck) FindByUserId(
 					memo
 				FROM deck_codes
 				WHERE user_id = ?
-				ORDER BY deck_id, created_at DESC
+				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
 		).Where(
@@ -471,7 +471,7 @@ func (i *Deck) FindByUserId(
 					memo
 				FROM deck_codes
 				WHERE user_id = ?
-				ORDER BY deck_id, created_at DESC
+				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
 		).Where(
@@ -567,6 +567,7 @@ func (i *Deck) FindByUserIdOnCursor(
 					memo
 				FROM deck_codes
 				WHERE user_id = ?
+				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
 		).Where(
@@ -618,6 +619,7 @@ func (i *Deck) FindByUserIdOnCursor(
 					memo
 				FROM deck_codes
 				WHERE user_id = ?
+				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
 		).Where(

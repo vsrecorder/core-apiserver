@@ -12,6 +12,7 @@ type OfficialEvent struct {
 	Date                    time.Time
 	StartedAt               time.Time
 	EndedAt                 time.Time
+	TypeId                  uint
 	TypeName                string
 	LeagueTitle             string
 	RegulationTitle         string
@@ -35,6 +36,7 @@ func NewOfficialEvent(
 	date time.Time,
 	startedAt time.Time,
 	endedAt time.Time,
+	typeId uint,
 	typeName string,
 	leagueTitle string,
 	regulationTitle string,
@@ -57,6 +59,7 @@ func NewOfficialEvent(
 		Date:                    date,
 		StartedAt:               startedAt,
 		EndedAt:                 endedAt,
+		TypeId:                  typeId,
 		TypeName:                typeName,
 		LeagueTitle:             leagueTitle,
 		RegulationTitle:         regulationTitle,

@@ -12,6 +12,7 @@ type OfficialEvent struct {
 	Date                    time.Time
 	StartedAt               time.Time
 	EndedAt                 time.Time
+	TypeId                  uint
 	TypeName                string
 	LeagueTitle             string
 	RegulationTitle         string

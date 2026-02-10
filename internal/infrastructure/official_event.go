@@ -54,6 +54,7 @@ func (i *OfficialEvent) Find(
 				official_events.date AS date,
 				official_events.started_at AS started_at,
 				official_events.ended_at AS ended_at,
+				official_events.type_id AS type_id,
 				official_events.type_name AS type_name,
 				official_events.league_title AS league_title,
 				official_events.regulation_title AS regulation_title,
@@ -96,6 +97,7 @@ func (i *OfficialEvent) Find(
 				official_events.date AS date,
 				official_events.started_at AS started_at,
 				official_events.ended_at AS ended_at,
+				official_events.type_id AS type_id,
 				official_events.type_name AS type_name,
 				official_events.league_title AS league_title,
 				official_events.regulation_title AS regulation_title,
@@ -153,6 +155,7 @@ func (i *OfficialEvent) Find(
 				official_events.date AS date,
 				official_events.started_at AS started_at,
 				official_events.ended_at AS ended_at,
+				official_events.type_id AS type_id,
 				official_events.type_name AS type_name,
 				official_events.league_title AS league_title,
 				official_events.regulation_title AS regulation_title,
@@ -185,7 +188,6 @@ func (i *OfficialEvent) Find(
 				return nil, tx.Error
 			}
 		} else {
-
 			tx := i.db.Table(
 				"official_events",
 			).Select(`
@@ -196,6 +198,7 @@ func (i *OfficialEvent) Find(
 				official_events.date AS date,
 				official_events.started_at AS started_at,
 				official_events.ended_at AS ended_at,
+				official_events.type_id AS type_id,
 				official_events.type_name AS type_name,
 				official_events.league_title AS league_title,
 				official_events.regulation_title AS regulation_title,
@@ -242,6 +245,7 @@ func (i *OfficialEvent) Find(
 				event.Date,
 				event.StartedAt,
 				event.EndedAt,
+				event.TypeId,
 				event.TypeName,
 				event.LeagueTitle,
 				event.RegulationTitle,
@@ -278,6 +282,7 @@ func (i *OfficialEvent) FindById(
 		official_events.date AS date,
 		official_events.started_at AS started_at,
 		official_events.ended_at AS ended_at,
+		official_events.type_id AS type_id,
 		official_events.type_name AS type_name,
 		official_events.league_title AS league_title,
 		official_events.regulation_title AS regulation_title,
@@ -316,6 +321,7 @@ func (i *OfficialEvent) FindById(
 		event.Date,
 		event.StartedAt,
 		event.EndedAt,
+		event.TypeId,
 		event.TypeName,
 		event.LeagueTitle,
 		event.RegulationTitle,

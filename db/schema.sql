@@ -203,8 +203,6 @@ CREATE TABLE player_users (
 
 CREATE UNIQUE INDEX unique_player_users ON player_users (player_id, user_id) WHERE deleted_at IS NULL;
 
-CREATE TABLE official_event_results (
-);
 
 CREATE TABLE environments (
     id         VARCHAR(8) PRIMARY KEY,

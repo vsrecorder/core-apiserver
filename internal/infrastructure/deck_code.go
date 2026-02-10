@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
@@ -83,11 +84,18 @@ func (i *DeckCode) Save(
 		entity.Memo,
 	)
 
-	if tx := i.db.Save(deckcode); tx.Error != nil {
-		return tx.Error
-	}
+	return i.db.Transaction(func(tx *gorm.DB) error {
+		// α版との整合性を取るため、Deckのcodeカラムも更新する
+		if ret := tx.Model(&model.Deck{}).Where("id = ?", deckcode.DeckId).Update("code", deckcode.Code); ret.Error != nil {
+			return ret.Error
+		}
 
-	return nil
+		if err := tx.Save(deckcode).Error; err != nil {
+			return err
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
 }
 
 func (i *DeckCode) Delete(

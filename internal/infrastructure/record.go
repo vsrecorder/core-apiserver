@@ -299,11 +299,68 @@ func (i *Record) FindByDeckId(
 	deckId string,
 	limit int,
 	offset int,
+	eventType string,
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("deck_id = ?", deckId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
-		return nil, tx.Error
+	switch eventType {
+	case "official":
+		if tx := i.db.Where("official_event_id != 0 AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "tonamel":
+		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	default:
+		if tx := i.db.Where("deck_id = ?", deckId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	}
+
+	var entities []*entity.Record
+	for _, model := range models {
+		entity := entity.NewRecord(
+			model.ID,
+			model.CreatedAt,
+			model.OfficialEventId,
+			model.TonamelEventId,
+			model.FriendId,
+			model.UserId,
+			model.DeckId,
+			model.DeckCodeId,
+			model.PrivateFlg,
+			model.TCGMeisterURL,
+			model.Memo,
+		)
+		entities = append(entities, entity)
+	}
+
+	return entities, nil
+}
+
+func (i *Record) FindByDeckIdOnCursor(
+	ctx context.Context,
+	deckId string,
+	limit int,
+	cursor time.Time,
+	eventType string,
+) ([]*entity.Record, error) {
+	var models []*model.Record
+
+	switch eventType {
+	case "official":
+		if tx := i.db.Where("official_event_id != 0 AND deck_id = ? AND created_at < ?", deckId, cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "tonamel":
+		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ? AND created_at < ?", deckId, cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	default:
+		if tx := i.db.Where("deck_id = ? AND created_at < ?", deckId, cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
 	}
 
 	var entities []*entity.Record

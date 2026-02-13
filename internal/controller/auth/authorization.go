@@ -109,7 +109,8 @@ func DeckDeleteAuthorizationMiddleware(deckRepository repository.DeckInterface, 
 
 		limit := 1
 		offset := 0
-		records, err := recordRepository.FindByDeckId(context.Background(), id, limit, offset)
+		eventType := ""
+		records, err := recordRepository.FindByDeckId(context.Background(), id, limit, offset, eventType)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			ctx.Abort()

@@ -511,6 +511,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	datetime := time.Now().Local()
 	limit := 10
 	offset := 10
+	eventType := ""
 
 	rows := sqlmock.NewRows([]string{
 		"id",
@@ -550,7 +551,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 		offset,
 	).WillReturnRows(rows)
 
-	records, err := r.FindByDeckId(context.Background(), "01JHAKSVXZ4XW91TDQ8EDP1N8P", limit, offset)
+	records, err := r.FindByDeckId(context.Background(), "01JHAKSVXZ4XW91TDQ8EDP1N8P", limit, offset, eventType)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(records))

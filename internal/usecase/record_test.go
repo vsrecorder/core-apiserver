@@ -31,6 +31,7 @@ func TestRecordUsecase(t *testing.T) {
 		"FindByOfficialEventId": test_RecordUsecase_FindByOfficialEventId,
 		"FindByTonamelEventId":  test_RecordUsecase_FindByTonamelEventId,
 		"FindByDeckId":          test_RecordUsecase_FindByDeckId,
+		"FindByDeckIdOnCursor":  test_RecordUsecase_FindByDeckIdOnCursor,
 		"Create":                test_RecordUsecase_Create,
 		"Update":                test_RecordUsecase_Update,
 		"Delete":                test_RecordUsecase_Delete,
@@ -389,6 +390,7 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 
 		limit := 10
 		offset := 0
+		eventType := ""
 
 		record := &entity.Record{
 			ID:     id,
@@ -399,9 +401,9 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 			record,
 		}
 
-		mockRepository.EXPECT().FindByDeckId(context.Background(), deckId, limit, offset).Return(records, nil)
+		mockRepository.EXPECT().FindByDeckId(context.Background(), deckId, limit, offset, eventType).Return(records, nil)
 
-		ret, err := usecase.FindByDeckId(context.Background(), deckId, limit, offset)
+		ret, err := usecase.FindByDeckId(context.Background(), deckId, limit, offset, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, id, ret[0].ID)
@@ -414,10 +416,58 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 
 		limit := 10
 		offset := 0
+		eventType := ""
 
-		mockRepository.EXPECT().FindByDeckId(context.Background(), deckId, limit, offset).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindByDeckId(context.Background(), deckId, limit, offset, eventType).Return(nil, errors.New(""))
 
-		ret, err := usecase.FindByDeckId(context.Background(), deckId, limit, offset)
+		ret, err := usecase.FindByDeckId(context.Background(), deckId, limit, offset, eventType)
+
+		require.Equal(t, err, errors.New(""))
+		require.Empty(t, ret)
+	})
+}
+
+func test_RecordUsecase_FindByDeckIdOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
+	t.Run("正常系_#01", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		deckId, err := generateId()
+		require.NoError(t, err)
+
+		limit := 10
+		cursor := time.Now().Local()
+		eventType := ""
+
+		record := &entity.Record{
+			ID:     id,
+			DeckId: deckId,
+		}
+
+		records := []*entity.Record{
+			record,
+		}
+
+		mockRepository.EXPECT().FindByDeckIdOnCursor(context.Background(), deckId, limit, cursor, eventType).Return(records, nil)
+
+		ret, err := usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursor, eventType)
+
+		require.NoError(t, err)
+		require.Equal(t, id, ret[0].ID)
+		require.Equal(t, deckId, ret[0].DeckId)
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		deckId, err := generateId()
+		require.NoError(t, err)
+
+		limit := 10
+		cursor := time.Now().Local()
+		eventType := ""
+
+		mockRepository.EXPECT().FindByDeckIdOnCursor(context.Background(), deckId, limit, cursor, eventType).Return(nil, errors.New(""))
+
+		ret, err := usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursor, eventType)
 
 		require.Equal(t, err, errors.New(""))
 		require.Empty(t, ret)

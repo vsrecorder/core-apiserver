@@ -100,6 +100,15 @@ type RecordInterface interface {
 		deckId string,
 		limit int,
 		offset int,
+		eventType string,
+	) ([]*entity.Record, error)
+
+	FindByDeckIdOnCursor(
+		ctx context.Context,
+		deckId string,
+		limit int,
+		cursor time.Time,
+		eventType string,
 	) ([]*entity.Record, error)
 
 	FindByDeckCodeId(
@@ -246,8 +255,25 @@ func (u *Record) FindByDeckId(
 	deckId string,
 	limit int,
 	offset int,
+	eventType string,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindByDeckId(ctx, deckId, limit, offset)
+	records, err := u.repository.FindByDeckId(ctx, deckId, limit, offset, eventType)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (u *Record) FindByDeckIdOnCursor(
+	ctx context.Context,
+	deckId string,
+	limit int,
+	cursor time.Time,
+	eventType string,
+) ([]*entity.Record, error) {
+	records, err := u.repository.FindByDeckIdOnCursor(ctx, deckId, limit, cursor, eventType)
 
 	if err != nil {
 		return nil, err

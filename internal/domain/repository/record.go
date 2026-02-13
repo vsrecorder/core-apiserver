@@ -62,6 +62,15 @@ type RecordInterface interface {
 		deckId string,
 		limit int,
 		offset int,
+		eventType string,
+	) ([]*entity.Record, error)
+
+	FindByDeckIdOnCursor(
+		ctx context.Context,
+		deckId string,
+		limit int,
+		cursor time.Time,
+		eventType string,
 	) ([]*entity.Record, error)
 
 	FindByDeckCodeId(

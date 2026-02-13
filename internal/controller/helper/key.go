@@ -139,6 +139,17 @@ func GetOfficialEventId(ctx *gin.Context) uint {
 	return officialEventId
 }
 
+func SetDeckId(ctx *gin.Context, value string) {
+	ctx.Set("deck_id", value)
+}
+
+func GetDeckId(ctx *gin.Context) string {
+	value, _ := ctx.Get("deck_id")
+	deckId, _ := value.(string)
+
+	return deckId
+}
+
 func SetUID(ctx *gin.Context, value string) {
 	ctx.Set("uid", value)
 }

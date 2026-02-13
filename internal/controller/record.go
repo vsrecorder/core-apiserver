@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -136,31 +137,62 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 		offset := helper.GetOffset(ctx)
 		cursor := helper.GetCursor(ctx)
 		eventType := helper.GetEventType(ctx)
+		deckId := helper.GetDeckId(ctx)
 
 		if !cursor.IsZero() {
-			records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor, eventType)
+			if deckId != "" {
+				fmt.Println("ok")
+				records, err := c.usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursor, eventType)
 
-			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-				ctx.Abort()
-				return
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+					ctx.Abort()
+					return
+				}
+
+				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+
+				ctx.JSON(http.StatusOK, res)
+			} else {
+				records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor, eventType)
+
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+					ctx.Abort()
+					return
+				}
+
+				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+
+				ctx.JSON(http.StatusOK, res)
 			}
-
-			res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
-
-			ctx.JSON(http.StatusOK, res)
 		} else {
-			records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset, eventType)
+			if deckId != "" {
+				records, err := c.usecase.FindByDeckId(context.Background(), deckId, limit, offset, eventType)
 
-			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-				ctx.Abort()
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+					ctx.Abort()
+					return
+				}
+
+				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+
+				ctx.JSON(http.StatusOK, res)
 				return
+			} else {
+				records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset, eventType)
+
+				if err != nil {
+					ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+					ctx.Abort()
+					return
+				}
+
+				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+
+				ctx.JSON(http.StatusOK, res)
 			}
-
-			res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
-
-			ctx.JSON(http.StatusOK, res)
 		}
 
 	}

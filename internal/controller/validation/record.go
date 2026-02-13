@@ -37,6 +37,8 @@ func RecordGetMiddleware() gin.HandlerFunc {
 		helper.SetOffset(ctx, offset)
 		helper.SetCursor(ctx, cursor)
 		helper.SetEventType(ctx, eventType)
+
+		helper.SetDeckId(ctx, helper.GetQueryDeckId(ctx))
 	}
 }
 

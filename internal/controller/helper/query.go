@@ -40,6 +40,10 @@ func GetQueryOfficialEventId(ctx *gin.Context) string {
 	return ctx.Query("official_event_id")
 }
 
+func GetQueryDeckId(ctx *gin.Context) string {
+	return ctx.Query("deck_id")
+}
+
 func GetQueryTypeId(ctx *gin.Context) string {
 	return ctx.Query("type_id")
 }

@@ -211,6 +211,7 @@ CREATE TABLE environments (
     to_date    DATE NOT NULL
 );
 
+INSERT INTO environments VALUES ('m4','ニンジャスピナー','2026-03-13','2026-04-09');
 INSERT INTO environments VALUES ('m3','ムニキスゼロ','2026-01-23','2026-03-12');
 INSERT INTO environments VALUES ('mc','スタートデッキ100 バトルコレクション','2025-12-19','2026-01-22');
 INSERT INTO environments VALUES ('m2a','MEGAドリームex','2025-11-28','2025-12-18');
@@ -249,6 +250,7 @@ CREATE TABLE cityleague_schedules (
     to_date    DATE NOT NULL
 );
 
+INSERT INTO cityleague_schedules VALUES ('2026s4','シティリーグ2026 シーズン4','2026-03-14','2026-05-06');
 INSERT INTO cityleague_schedules VALUES ('2026s3','シティリーグ2026 シーズン3','2026-01-10','2026-03-08');
 INSERT INTO cityleague_schedules VALUES ('2026s2','シティリーグ2026 シーズン2','2025-11-08','2026-01-04');
 INSERT INTO cityleague_schedules VALUES ('2026s1','シティリーグ2026 シーズン1','2025-09-06','2025-11-03');

@@ -2,6 +2,7 @@ services:
   core-apiserver:
     image: vsrecorder/core-apiserver:latest
     restart: always
+    network_mode: "host"
     ports:
       - 8914:8914
     environment:

@@ -33,13 +33,24 @@ func checkDeckCode(ctx *gin.Context, deckCode string) {
 		return
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
-		return
-	}
-
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		switch resp.StatusCode {
+		case http.StatusServiceUnavailable:
+			ctx.JSON(http.StatusServiceUnavailable, gin.H{"message": "service unavailable"})
+			ctx.Abort()
+			return
+		case http.StatusGatewayTimeout:
+			ctx.JSON(http.StatusGatewayTimeout, gin.H{"message": "gateway timeout"})
+			ctx.Abort()
+			return
+		default:
+			ctx.JSON(http.StatusBadGateway, gin.H{"message": "bad gateway", "status": resp.Status})
+			ctx.Abort()
+			return
+		}
+	}
 
 	body, err := io.ReadAll(resp.Body)
 

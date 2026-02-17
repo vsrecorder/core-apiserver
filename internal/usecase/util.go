@@ -63,12 +63,13 @@ func uploadDeckImage(deckCode string) error {
 		options.BaseEndpoint = &baseEndpoint
 	})
 
-	if _, err = s3client.GetObject(ctx, &s3.GetObjectInput{
+	// すでにアップロードされている場合はスキップする
+	if _, err = s3client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String("vsrecorder"),
 		Key:    aws.String(fmt.Sprintf("images/decks/%s.jpg", deckCode)),
 	}); err != nil {
-		var noKey *types.NoSuchKey
-		if errors.As(err, &noKey) {
+		var notFound *types.NotFound
+		if errors.As(err, &notFound) {
 			url := fmt.Sprintf("https://www.pokemon-card.com/deck/deckView.php/deckID/%s.png", deckCode)
 
 			resp, err := http.Get(url)

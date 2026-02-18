@@ -118,6 +118,7 @@ func main() {
 		AllowOrigins: []string{
 			"http://localhost:3000",
 			"https://vsrecorder.mobi",
+			"https://beta.vsrecorder.mobi",
 			"https://local.vsrecorder.mobi",
 		},
 		AllowCredentials: false,

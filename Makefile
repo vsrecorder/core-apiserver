@@ -58,3 +58,7 @@ up:
 .PHONY: down
 down:
 	docker compose down
+
+.PHONY: log
+log:
+	docker logs -f core-apiserver-core-apiserver-1

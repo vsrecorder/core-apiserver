@@ -40,6 +40,10 @@ func (i *CityleagueResult) FindByOfficialEventId(
 		))
 	}
 
+	if len(models) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
 	ret := entity.NewCityleagueResult(
 		models[0].CityleagueScheduleId,
 		models[0].OfficialEventId,
@@ -83,6 +87,10 @@ func (i *CityleagueResult) FindByCityleagueScheduleId(
 				cr.Point,
 				cr.DeckCode,
 			))
+		}
+
+		if len(cityleagueResults) == 0 {
+			continue
 		}
 
 		ret = append(ret, entity.NewCityleagueResult(
@@ -137,6 +145,10 @@ func (i *CityleagueResult) FindByDate(
 			))
 		}
 
+		if len(cityleagueResults) == 0 {
+			continue
+		}
+
 		ret = append(ret, entity.NewCityleagueResult(
 			cityleagueResults[0].CityleagueScheduleId,
 			cityleagueResults[0].OfficialEventId,
@@ -188,6 +200,10 @@ func (i *CityleagueResult) FindByTerm(
 				cr.Point,
 				cr.DeckCode,
 			))
+		}
+
+		if len(cityleagueResults) == 0 {
+			continue
 		}
 
 		ret = append(ret, entity.NewCityleagueResult(

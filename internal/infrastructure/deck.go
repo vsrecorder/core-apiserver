@@ -64,6 +64,7 @@ func (i *Deck) Find(
 				private_code_flg,
 				memo
 			FROM deck_codes
+			WHERE deleted_at IS NULL
 			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
 	`,
@@ -154,7 +155,7 @@ func (i *Deck) FindAll(
 					private_code_flg,
 					memo
 				FROM deck_codes
-				WHERE user_id = ?
+				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
@@ -242,6 +243,7 @@ func (i *Deck) FindOnCursor(
 				private_code_flg,
 				memo
 			FROM deck_codes
+			WHERE deleted_at IS NULL
 			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
 	`,
@@ -335,7 +337,7 @@ func (i *Deck) FindById(
 				private_code_flg,
 				memo
 			FROM deck_codes
-			WHERE deck_id = ?
+			WHERE deck_id = ? AND deleted_at IS NULL
 			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
 	`, id,
@@ -416,7 +418,7 @@ func (i *Deck) FindByUserId(
 					private_code_flg,
 					memo
 				FROM deck_codes
-				WHERE user_id = ?
+				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
@@ -470,7 +472,7 @@ func (i *Deck) FindByUserId(
 					private_code_flg,
 					memo
 				FROM deck_codes
-				WHERE user_id = ?
+				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
@@ -566,7 +568,7 @@ func (i *Deck) FindByUserIdOnCursor(
 					private_code_flg,
 					memo
 				FROM deck_codes
-				WHERE user_id = ?
+				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,
@@ -618,7 +620,7 @@ func (i *Deck) FindByUserIdOnCursor(
 					private_code_flg,
 					memo
 				FROM deck_codes
-				WHERE user_id = ?
+				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
 		`, uid,

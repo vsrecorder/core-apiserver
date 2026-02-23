@@ -24,7 +24,6 @@ func NewDeckGetResponse(
 				CreatedAt:  deck.CreatedAt,
 				ArchivedAt: deck.ArchivedAt,
 				UserId:     deck.UserId,
-				Code:       deck.Code,
 				Name:       deck.Name,
 				PrivateFlg: deck.PrivateFlg,
 				LatestDeckCode: dto.DeckCodeResponse{
@@ -58,7 +57,6 @@ func NewDeckGetAllResponse(
 			CreatedAt:  deck.CreatedAt,
 			ArchivedAt: deck.ArchivedAt,
 			UserId:     deck.UserId,
-			Code:       deck.Code,
 			Name:       deck.Name,
 			PrivateFlg: deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
@@ -85,7 +83,6 @@ func NewDeckGetByIdResponse(
 			CreatedAt:  deck.CreatedAt,
 			ArchivedAt: deck.ArchivedAt,
 			UserId:     deck.UserId,
-			Code:       deck.Code,
 			Name:       deck.Name,
 			PrivateFlg: deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
@@ -118,7 +115,6 @@ func NewDeckGetByUserIdResponse(
 				CreatedAt:  deck.CreatedAt,
 				ArchivedAt: deck.ArchivedAt,
 				UserId:     deck.UserId,
-				Code:       deck.Code,
 				Name:       deck.Name,
 				PrivateFlg: deck.PrivateFlg,
 				LatestDeckCode: dto.DeckCodeResponse{
@@ -152,7 +148,6 @@ func NewDeckCreateResponse(
 			CreatedAt:  deck.CreatedAt,
 			ArchivedAt: deck.ArchivedAt,
 			UserId:     deck.UserId,
-			Code:       deck.Code,
 			Name:       deck.Name,
 			PrivateFlg: deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
@@ -177,7 +172,6 @@ func NewDeckUpdateResponse(
 			CreatedAt:  deck.CreatedAt,
 			ArchivedAt: deck.ArchivedAt,
 			UserId:     deck.UserId,
-			Code:       deck.Code,
 			Name:       deck.Name,
 			PrivateFlg: deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
@@ -202,7 +196,6 @@ func NewDeckArchiveResponse(
 			CreatedAt:  deck.CreatedAt,
 			ArchivedAt: deck.ArchivedAt,
 			UserId:     deck.UserId,
-			Code:       deck.Code,
 			Name:       deck.Name,
 			PrivateFlg: deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
@@ -227,7 +220,6 @@ func NewDeckUnarchiveResponse(
 			CreatedAt:  deck.CreatedAt,
 			ArchivedAt: deck.ArchivedAt,
 			UserId:     deck.UserId,
-			Code:       deck.Code,
 			Name:       deck.Name,
 			PrivateFlg: deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{

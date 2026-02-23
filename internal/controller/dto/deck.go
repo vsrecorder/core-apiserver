@@ -25,7 +25,6 @@ type DeckResponse struct {
 	ArchivedAt     time.Time        `json:"archived_at"`
 	UserId         string           `json:"user_id"`
 	Name           string           `json:"name"`
-	Code           string           `json:"code"`
 	PrivateFlg     bool             `json:"private_flg"`
 	LatestDeckCode DeckCodeResponse `json:"latest_deck_code"`
 }

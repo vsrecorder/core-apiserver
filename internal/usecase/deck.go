@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -254,7 +253,6 @@ func (u *Deck) Create(
 		archivedAt,
 		param.UserId,
 		param.Name,
-		param.DeckCode,
 		param.PrivateFlg,
 		LatestDeckCode,
 	)
@@ -285,22 +283,9 @@ func (u *Deck) Update(
 		ret.ArchivedAt,
 		ret.UserId,
 		param.Name,
-		ret.Code,
 		param.PrivateFlg,
 		ret.LatestDeckCode,
 	)
-
-	// デッキコードの変更は禁止
-	// 元のデッキコードが空の場合は変更を許可
-	if ret.Code != "" && ret.Code != deck.Code {
-		return nil, errors.New("deck code change is not allowed")
-	}
-
-	if deck.Code != "" {
-		if err := uploadDeckImage(deck.Code); err != nil {
-			return nil, err
-		}
-	}
 
 	if err := u.repository.Save(ctx, deck); err != nil {
 		return nil, err
@@ -327,7 +312,6 @@ func (u *Deck) Archive(
 		archivedAt,
 		ret.UserId,
 		ret.Name,
-		ret.Code,
 		ret.PrivateFlg,
 		ret.LatestDeckCode,
 	)
@@ -357,7 +341,6 @@ func (u *Deck) Unarchive(
 		archivedAt,
 		ret.UserId,
 		ret.Name,
-		ret.Code,
 		ret.PrivateFlg,
 		ret.LatestDeckCode,
 	)

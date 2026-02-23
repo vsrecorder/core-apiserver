@@ -8,7 +8,6 @@ type Deck struct {
 	ArchivedAt     time.Time
 	UserId         string
 	Name           string
-	Code           string
 	PrivateFlg     bool
 	LatestDeckCode *DeckCode
 }
@@ -19,7 +18,6 @@ func NewDeck(
 	archivedAt time.Time,
 	userId string,
 	name string,
-	code string,
 	privateFlg bool,
 	latestDeckCode *DeckCode,
 ) *Deck {
@@ -29,7 +27,6 @@ func NewDeck(
 		ArchivedAt:     archivedAt,
 		UserId:         userId,
 		Name:           name,
-		Code:           code,
 		PrivateFlg:     privateFlg,
 		LatestDeckCode: latestDeckCode,
 	}

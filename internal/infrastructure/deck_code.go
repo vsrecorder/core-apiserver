@@ -85,11 +85,6 @@ func (i *DeckCode) Save(
 	)
 
 	return i.db.Transaction(func(tx *gorm.DB) error {
-		// α版との整合性を取るため、Deckのcodeカラムも更新する
-		if ret := tx.Model(&model.Deck{}).Where("id = ?", deckcode.DeckId).Update("code", deckcode.Code); ret.Error != nil {
-			return ret.Error
-		}
-
 		if err := tx.Save(deckcode).Error; err != nil {
 			return err
 		}

@@ -15,7 +15,6 @@ type Deck struct {
 	ArchivedAt sql.NullTime
 	UserId     string
 	Name       string
-	Code       string
 	PrivateFlg bool
 }
 
@@ -27,7 +26,6 @@ type DeckJoinDeckCode struct {
 	DeckArchivedAt         sql.NullTime
 	DeckUserId             string
 	DeckName               string
-	DeckCode               string
 	DeckPrivateFlg         bool
 	DeckCodeID             string
 	DeckCodeCreatedAt      time.Time
@@ -46,7 +44,6 @@ func NewDeck(
 	archivedAt sql.NullTime,
 	userId string,
 	name string,
-	code string,
 	privateFlg bool,
 ) *Deck {
 	return &Deck{
@@ -55,7 +52,6 @@ func NewDeck(
 		ArchivedAt: archivedAt,
 		UserId:     userId,
 		Name:       name,
-		Code:       code,
 		PrivateFlg: privateFlg,
 	}
 }

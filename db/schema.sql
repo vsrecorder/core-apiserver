@@ -343,6 +343,22 @@ CREATE TABLE pokemon_cards (
 
 
 
+CREATE TABLE pokemon_sprites (
+    id      VARCHAR(128) PRIMARY KEY,
+    name    VARCHAR(256) NOT NULL
+);
+
+CREATE TABLE match_pokemon_sprites (
+    match_id VARCHAR(26) NOT NULL,
+    position SMALLINT NOT NULL CHECK (position > 0),
+    pokemon_sprite_id VARCHAR(128) NOT NULL,
+    PRIMARY KEY (match_id, position),
+    FOREIGN KEY (match_id)          REFERENCES matches(id),
+    FOREIGN KEY (pokemon_sprite_id) REFERENCES pokemon_sprites(id)
+);
+
+
+
 GRANT SELECT ON decks TO grafana;
 GRANT SELECT ON deck_codes TO grafana;
 GRANT SELECT ON records TO grafana;
@@ -355,6 +371,8 @@ GRANT SELECT ON cityleague_results TO grafana;
 GRANT SELECT ON standard_regulations TO grafana;
 GRANT SELECT ON cards TO grafana;
 GRANT SELECT ON pokemon_cards TO grafana;
+GRANT SELECT ON pokemon_sprites TO grafana;
+GRANT SELECT ON match_pokemon_sprites TO grafana;
 
 
 

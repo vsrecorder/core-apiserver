@@ -8,16 +8,15 @@ import (
 )
 
 type Deck struct {
-	ID             string `gorm:"primaryKey"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      gorm.DeletedAt `gorm:"index"`
-	ArchivedAt     sql.NullTime
-	UserId         string
-	Name           string
-	Code           string
-	PrivateCodeFlg bool
-	PrivateFlg     bool
+	ID         string `gorm:"primaryKey"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  gorm.DeletedAt `gorm:"index"`
+	ArchivedAt sql.NullTime
+	UserId     string
+	Name       string
+	Code       string
+	PrivateFlg bool
 }
 
 type DeckJoinDeckCode struct {
@@ -29,7 +28,6 @@ type DeckJoinDeckCode struct {
 	DeckUserId             string
 	DeckName               string
 	DeckCode               string
-	DeckPrivateCodeFlg     bool
 	DeckPrivateFlg         bool
 	DeckCodeID             string
 	DeckCodeCreatedAt      time.Time
@@ -49,17 +47,15 @@ func NewDeck(
 	userId string,
 	name string,
 	code string,
-	privateCodeFlg bool,
 	privateFlg bool,
 ) *Deck {
 	return &Deck{
-		ID:             id,
-		CreatedAt:      createdAt,
-		ArchivedAt:     archivedAt,
-		UserId:         userId,
-		Name:           name,
-		Code:           code,
-		PrivateCodeFlg: privateCodeFlg,
-		PrivateFlg:     privateFlg,
+		ID:         id,
+		CreatedAt:  createdAt,
+		ArchivedAt: archivedAt,
+		UserId:     userId,
+		Name:       name,
+		Code:       code,
+		PrivateFlg: privateFlg,
 	}
 }

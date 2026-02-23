@@ -255,7 +255,6 @@ func (u *Deck) Create(
 		param.UserId,
 		param.Name,
 		param.DeckCode,
-		param.PrivateDeckCodeFlg,
 		param.PrivateFlg,
 		LatestDeckCode,
 	)
@@ -287,7 +286,6 @@ func (u *Deck) Update(
 		ret.UserId,
 		param.Name,
 		ret.Code,
-		ret.PrivateCodeFlg,
 		param.PrivateFlg,
 		ret.LatestDeckCode,
 	)
@@ -330,7 +328,6 @@ func (u *Deck) Archive(
 		ret.UserId,
 		ret.Name,
 		ret.Code,
-		ret.PrivateCodeFlg,
 		ret.PrivateFlg,
 		ret.LatestDeckCode,
 	)
@@ -361,7 +358,6 @@ func (u *Deck) Unarchive(
 		ret.UserId,
 		ret.Name,
 		ret.Code,
-		ret.PrivateCodeFlg,
 		ret.PrivateFlg,
 		ret.LatestDeckCode,
 	)

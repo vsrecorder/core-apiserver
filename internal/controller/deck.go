@@ -146,10 +146,6 @@ func (c *Deck) Get(ctx *gin.Context) {
 				if deck.LatestDeckCode.PrivateCodeFlg {
 					deck.LatestDeckCode.Code = ""
 				}
-
-				if deck.PrivateCodeFlg {
-					deck.Code = ""
-				}
 			}
 
 			res := presenter.NewDeckGetResponse(limit, offset, cursor, decks)
@@ -166,10 +162,6 @@ func (c *Deck) Get(ctx *gin.Context) {
 			for _, deck := range decks {
 				if deck.LatestDeckCode.PrivateCodeFlg {
 					deck.LatestDeckCode.Code = ""
-				}
-
-				if deck.PrivateCodeFlg {
-					deck.Code = ""
 				}
 			}
 
@@ -213,10 +205,6 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 				if deck.LatestDeckCode.PrivateCodeFlg && uid != deck.LatestDeckCode.UserId {
 					deck.LatestDeckCode.Code = ""
 				}
-
-				if deck.PrivateCodeFlg && uid != deck.UserId {
-					deck.Code = ""
-				}
 			}
 
 			res := presenter.NewDeckGetByUserIdResponse(archived, limit, offset, cursor, decks)
@@ -233,10 +221,6 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 			for _, deck := range decks {
 				if deck.LatestDeckCode.PrivateCodeFlg && uid != deck.LatestDeckCode.UserId {
 					deck.LatestDeckCode.Code = ""
-				}
-
-				if deck.PrivateCodeFlg && uid != deck.UserId {
-					deck.Code = ""
 				}
 			}
 			res := presenter.NewDeckGetByUserIdResponse(archived, limit, offset, cursor, decks)
@@ -265,10 +249,6 @@ func (c *Deck) GetById(ctx *gin.Context) {
 
 	if deck.LatestDeckCode.PrivateCodeFlg && uid != deck.LatestDeckCode.UserId {
 		deck.LatestDeckCode.Code = ""
-	}
-
-	if deck.PrivateCodeFlg && uid != deck.UserId {
-		deck.Code = ""
 	}
 
 	res := presenter.NewDeckGetByIdResponse(deck)

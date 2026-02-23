@@ -26,7 +26,6 @@ type DeckResponse struct {
 	UserId         string           `json:"user_id"`
 	Name           string           `json:"name"`
 	Code           string           `json:"code"`
-	PrivateCodeFlg bool             `json:"private_code_flg"`
 	PrivateFlg     bool             `json:"private_flg"`
 	LatestDeckCode DeckCodeResponse `json:"latest_deck_code"`
 }

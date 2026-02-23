@@ -678,8 +678,11 @@ func (i *Deck) Save(
 				return err
 			}
 
-			if err := tx.Save(deckcode).Error; err != nil {
-				return err
+			// デッキコードのIDが空でない場合は保存する
+			if deckcode.ID != "" {
+				if err := tx.Save(deckcode).Error; err != nil {
+					return err
+				}
 			}
 
 			return nil

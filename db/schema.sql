@@ -114,7 +114,6 @@ CREATE TABLE decks (
     archived_at      TIMESTAMP DEFAULT NULL,
     user_id          VARCHAR(32) NOT NULL,
     name             VARCHAR(32) NOT NULL,
-    code             VARCHAR(21) DEFAULT NULL,
     private_flg      BOOLEAN DEFAULT NULL
 );
 

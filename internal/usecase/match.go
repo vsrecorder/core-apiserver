@@ -9,6 +9,10 @@ import (
 	"gorm.io/gorm"
 )
 
+type PokemonSpriteParam struct {
+	ID string
+}
+
 type GameParam struct {
 	GoFirst             bool
 	WinningFlg          bool
@@ -32,6 +36,15 @@ type MatchParam struct {
 	OpponentsDeckInfo  string
 	Memo               string
 	Games              []*GameParam
+	PokemonSprites     []*PokemonSpriteParam
+}
+
+func NewPokemonSpriteParam(
+	id string,
+) *PokemonSpriteParam {
+	return &PokemonSpriteParam{
+		ID: id,
+	}
 }
 
 func NewGameParam(
@@ -65,6 +78,7 @@ func NewMatchParam(
 	opponentsDeckInfo string,
 	memo string,
 	games []*GameParam,
+	pokemonSprites []*PokemonSpriteParam,
 ) *MatchParam {
 	return &MatchParam{
 		RecordId:           recordId,
@@ -81,6 +95,7 @@ func NewMatchParam(
 		OpponentsDeckInfo:  opponentsDeckInfo,
 		Memo:               memo,
 		Games:              games,
+		PokemonSprites:     pokemonSprites,
 	}
 }
 
@@ -184,6 +199,11 @@ func (u *Match) Create(
 		)
 	}
 
+	var pokemonSprites []*entity.PokemonSprite
+	for _, pokemonSprite := range param.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(pokemonSprite.ID))
+	}
+
 	match := entity.NewMatch(
 		matchId,
 		createdAt,
@@ -201,6 +221,7 @@ func (u *Match) Create(
 		param.OpponentsDeckInfo,
 		param.Memo,
 		games,
+		pokemonSprites,
 	)
 
 	if err := u.repository.Create(ctx, match); err != nil {
@@ -286,6 +307,11 @@ func (u *Match) Update(
 		}
 	}
 
+	var pokemonSprites []*entity.PokemonSprite
+	for _, pokemonSprite := range param.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(pokemonSprite.ID))
+	}
+
 	match := entity.NewMatch(
 		ret.ID,
 		ret.CreatedAt,
@@ -303,6 +329,7 @@ func (u *Match) Update(
 		param.OpponentsDeckInfo,
 		param.Memo,
 		games,
+		pokemonSprites,
 	)
 
 	if err := u.repository.Update(ctx, match); err != nil {

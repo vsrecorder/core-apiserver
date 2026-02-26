@@ -96,6 +96,17 @@ func (i *Match) FindById(
 		games = append(games, game)
 	}
 
+	var matchPokemonSpriteModels []*model.MatchPokemonSprite
+	if tx := i.db.Where("match_id = ?", id).Find(&matchPokemonSpriteModels); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	var pokemonSprites []*entity.PokemonSprite
+	for _, matchPokemonSpriteModel := range matchPokemonSpriteModels {
+		entity := entity.NewPokemonSprite(matchPokemonSpriteModel.PokemonSpriteId)
+		pokemonSprites = append(pokemonSprites, entity)
+	}
+
 	match := entity.NewMatch(
 		results[0].MatchID,
 		results[0].MatchCreatedAt,
@@ -113,6 +124,7 @@ func (i *Match) FindById(
 		results[0].MatchOpponentsDeckInfo,
 		results[0].MatchMemo,
 		games,
+		pokemonSprites,
 	)
 
 	return match, nil
@@ -201,6 +213,17 @@ func (i *Match) FindByRecordId(
 				games = append(games, game)
 			}
 
+			var matchPokemonSpriteModels []*model.MatchPokemonSprite
+			if tx := i.db.Where("match_id = ?", result.MatchID).Find(&matchPokemonSpriteModels); tx.Error != nil {
+				return nil, tx.Error
+			}
+
+			var pokemonSprites []*entity.PokemonSprite
+			for _, matchPokemonSpriteModel := range matchPokemonSpriteModels {
+				entity := entity.NewPokemonSprite(matchPokemonSpriteModel.PokemonSpriteId)
+				pokemonSprites = append(pokemonSprites, entity)
+			}
+
 			match := entity.NewMatch(
 				result.MatchID,
 				result.MatchCreatedAt,
@@ -218,6 +241,7 @@ func (i *Match) FindByRecordId(
 				result.MatchOpponentsDeckInfo,
 				result.MatchMemo,
 				games,
+				pokemonSprites,
 			)
 
 			v[result.MatchID] = match
@@ -292,6 +316,11 @@ func (i *Match) Create(
 		)
 	}
 
+	var matchPokemonSpriteModals []*model.MatchPokemonSprite
+	for i, pokemonSprite := range entity.PokemonSprites {
+		matchPokemonSpriteModals = append(matchPokemonSpriteModals, model.NewMatchPokemonSprite(entity.ID, uint(i+1), pokemonSprite.ID))
+	}
+
 	return i.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(matchModel).Error; err != nil {
 			return err
@@ -299,6 +328,12 @@ func (i *Match) Create(
 
 		for _, gameModel := range gameModels {
 			if err := tx.Save(gameModel).Error; err != nil {
+				return err
+			}
+		}
+
+		for _, matchPokemonSpriteModal := range matchPokemonSpriteModals {
+			if err := tx.Save(matchPokemonSpriteModal).Error; err != nil {
 				return err
 			}
 		}
@@ -335,9 +370,24 @@ func (i *Match) Update(
 		entity.Memo,
 	)
 
+	var matchPokemonSpriteModals []*model.MatchPokemonSprite
+	for i, pokemonSprite := range entity.PokemonSprites {
+		matchPokemonSpriteModals = append(matchPokemonSpriteModals, model.NewMatchPokemonSprite(entity.ID, uint(i+1), pokemonSprite.ID))
+	}
+
 	return i.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(matchModel).Error; err != nil {
 			return err
+		}
+
+		if tx := tx.Where("match_id = ?", entity.ID).Delete(&model.MatchPokemonSprite{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		for _, matchPokemonSpriteModal := range matchPokemonSpriteModals {
+			if err := tx.Save(matchPokemonSpriteModal).Error; err != nil {
+				return err
+			}
 		}
 
 		// len(models) <= len(entity.Games) の場合は新しくGameが追加されている可能性がある

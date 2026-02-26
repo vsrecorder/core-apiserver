@@ -1,16 +1,19 @@
 package model
 
-type PokemonSprite struct {
-	ID   string `gorm:"primaryKey"`
-	Name string
+type MatchPokemonSprite struct {
+	MatchId         string `gorm:"primaryKey"`
+	Position        uint   `gorm:"primaryKey"`
+	PokemonSpriteId string
 }
 
-func NewPokemonSprite(
-	id string,
-	name string,
-) *PokemonSprite {
-	return &PokemonSprite{
-		ID:   id,
-		Name: name,
+func NewMatchPokemonSprite(
+	match_id string,
+	position uint,
+	pokemon_sprite_id string,
+) *MatchPokemonSprite {
+	return &MatchPokemonSprite{
+		MatchId:         match_id,
+		Position:        position,
+		PokemonSpriteId: pokemon_sprite_id,
 	}
 }

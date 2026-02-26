@@ -268,6 +268,8 @@ func test_MatchController_Create(t *testing.T) {
 			),
 		)
 
+		var pokemonSprites []*usecase.PokemonSpriteParam
+
 		param := usecase.NewMatchParam(
 			recordId,
 			deckId,
@@ -283,6 +285,7 @@ func test_MatchController_Create(t *testing.T) {
 			"",
 			"",
 			games,
+			pokemonSprites,
 		)
 
 		mockUsecase.EXPECT().Create(context.Background(), param).Return(match, nil)
@@ -373,6 +376,8 @@ func test_MatchController_Create(t *testing.T) {
 			),
 		)
 
+		var pokemonSprites []*usecase.PokemonSpriteParam
+
 		param := usecase.NewMatchParam(
 			recordId,
 			deckId,
@@ -388,6 +393,7 @@ func test_MatchController_Create(t *testing.T) {
 			"",
 			"",
 			games,
+			pokemonSprites,
 		)
 
 		mockUsecase.EXPECT().Create(context.Background(), param).Return(match, nil)
@@ -514,6 +520,8 @@ func test_MatchController_Update(t *testing.T) {
 			),
 		)
 
+		var pokemonSprites []*usecase.PokemonSpriteParam
+
 		param := usecase.NewMatchParam(
 			recordId,
 			deckId,
@@ -529,6 +537,7 @@ func test_MatchController_Update(t *testing.T) {
 			"",
 			"",
 			games,
+			pokemonSprites,
 		)
 
 		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(match, nil)
@@ -619,6 +628,8 @@ func test_MatchController_Update(t *testing.T) {
 			),
 		)
 
+		var pokemonSprites []*usecase.PokemonSpriteParam
+
 		param := usecase.NewMatchParam(
 			recordId,
 			deckId,
@@ -634,6 +645,7 @@ func test_MatchController_Update(t *testing.T) {
 			"",
 			"",
 			games,
+			pokemonSprites,
 		)
 
 		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(match, nil)

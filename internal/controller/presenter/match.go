@@ -27,6 +27,13 @@ func NewMatchGetByIdResponse(
 		)
 	}
 
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range match.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID: pokemonSprite.ID,
+		})
+	}
+
 	return &dto.MatchGetByIdResponse{
 		MatchResponse: dto.MatchResponse{
 			ID:                 match.ID,
@@ -45,6 +52,7 @@ func NewMatchGetByIdResponse(
 			OpponentsDeckInfo:  match.OpponentsDeckInfo,
 			Memo:               match.Memo,
 			Games:              gamesResponse,
+			PokemonSprites:     pokemonSpritesResponse,
 		},
 	}
 }
@@ -73,6 +81,13 @@ func NewMatchGetByRecordIdResponse(
 			)
 		}
 
+		pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+		for _, pokemonSprite := range match.PokemonSprites {
+			pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+				ID: pokemonSprite.ID,
+			})
+		}
+
 		matchesResponse = append(
 			matchesResponse,
 			&dto.MatchResponse{
@@ -92,6 +107,7 @@ func NewMatchGetByRecordIdResponse(
 				OpponentsDeckInfo:  match.OpponentsDeckInfo,
 				Memo:               match.Memo,
 				Games:              gamesResponse,
+				PokemonSprites:     pokemonSpritesResponse,
 			},
 		)
 	}
@@ -121,6 +137,13 @@ func NewMatchCreateResponse(
 		)
 	}
 
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range match.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID: pokemonSprite.ID,
+		})
+	}
+
 	return &dto.MatchCreateResponse{
 		MatchResponse: dto.MatchResponse{
 			ID:                 match.ID,
@@ -139,6 +162,7 @@ func NewMatchCreateResponse(
 			OpponentsDeckInfo:  match.OpponentsDeckInfo,
 			Memo:               match.Memo,
 			Games:              gamesResponse,
+			PokemonSprites:     pokemonSpritesResponse,
 		},
 	}
 }
@@ -165,6 +189,13 @@ func NewMatchUpdateResponse(
 		)
 	}
 
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range match.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID: pokemonSprite.ID,
+		})
+	}
+
 	return &dto.MatchUpdateResponse{
 		MatchResponse: dto.MatchResponse{
 			ID:                 match.ID,
@@ -183,6 +214,7 @@ func NewMatchUpdateResponse(
 			OpponentsDeckInfo:  match.OpponentsDeckInfo,
 			Memo:               match.Memo,
 			Games:              gamesResponse,
+			PokemonSprites:     pokemonSpritesResponse,
 		},
 	}
 }

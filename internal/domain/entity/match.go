@@ -21,6 +21,7 @@ type Match struct {
 	OpponentsDeckInfo  string
 	Memo               string
 	Games              []*Game
+	PokemonSprites     []*PokemonSprite
 }
 
 func NewMatch(
@@ -40,6 +41,7 @@ func NewMatch(
 	opponentsDeckInfo string,
 	memo string,
 	games []*Game,
+	pokemonSprites []*PokemonSprite,
 ) *Match {
 	return &Match{
 		ID:                 id,
@@ -58,5 +60,6 @@ func NewMatch(
 		OpponentsDeckInfo:  opponentsDeckInfo,
 		Memo:               memo,
 		Games:              games,
+		PokemonSprites:     pokemonSprites,
 	}
 }

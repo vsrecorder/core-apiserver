@@ -154,6 +154,11 @@ func (c *Match) Create(ctx *gin.Context) {
 	req := helper.GetMatchCreateRequest(ctx)
 	uid := helper.GetUID(ctx)
 
+	var pokemonSprites []*usecase.PokemonSpriteParam
+	for _, pokemonSprite := range req.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, usecase.NewPokemonSpriteParam(pokemonSprite.ID))
+	}
+
 	var games []*usecase.GameParam
 	for _, gameReq := range req.Games {
 		games = append(
@@ -183,6 +188,7 @@ func (c *Match) Create(ctx *gin.Context) {
 		req.OpponentsDeckInfo,
 		req.Memo,
 		games,
+		pokemonSprites,
 	)
 
 	match, err := c.usecase.Create(context.Background(), param)
@@ -202,6 +208,11 @@ func (c *Match) Update(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 	uid := helper.GetUID(ctx)
 
+	var pokemonSprites []*usecase.PokemonSpriteParam
+	for _, pokemonSprite := range req.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, usecase.NewPokemonSpriteParam(pokemonSprite.ID))
+	}
+
 	var games []*usecase.GameParam
 	for _, gameReq := range req.Games {
 		games = append(
@@ -231,6 +242,7 @@ func (c *Match) Update(ctx *gin.Context) {
 		req.OpponentsDeckInfo,
 		req.Memo,
 		games,
+		pokemonSprites,
 	)
 
 	match, err := c.usecase.Update(context.Background(), id, param)

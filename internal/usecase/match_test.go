@@ -135,6 +135,8 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSpriteParams []*PokemonSpriteParam
+
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
@@ -150,6 +152,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			gameParams,
+			pokemonSpriteParams,
 		)
 
 		mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
@@ -209,6 +212,8 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSpriteParams []*PokemonSpriteParam
+
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
@@ -224,6 +229,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			gameParams,
+			pokemonSpriteParams,
 		)
 
 		mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
@@ -285,6 +291,8 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSpriteParams []*PokemonSpriteParam
+
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
@@ -300,6 +308,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			gameParams,
+			pokemonSpriteParams,
 		)
 
 		mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(errors.New(""))
@@ -337,6 +346,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSprite []*entity.PokemonSprite
+
 		match := entity.NewMatch(
 			matchId,
 			datetime,
@@ -354,6 +365,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			games,
+			pokemonSprite,
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(match, nil)
@@ -371,6 +383,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSpriteParams []*PokemonSpriteParam
+
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
@@ -386,6 +400,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			gameParams,
+			pokemonSpriteParams,
 		)
 
 		ret, err := usecase.Update(context.Background(), matchId, matchParam)
@@ -428,6 +443,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSprite []*entity.PokemonSprite
+
 		match := entity.NewMatch(
 			matchId,
 			datetime,
@@ -445,6 +462,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			games,
+			pokemonSprite,
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(match, nil)
@@ -476,6 +494,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSpriteParams []*PokemonSpriteParam
+
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
@@ -491,6 +511,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			gameParams,
+			pokemonSpriteParams,
 		)
 
 		ret, err := usecase.Update(context.Background(), matchId, matchParam)
@@ -555,6 +576,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSprite []*entity.PokemonSprite
+
 		match := entity.NewMatch(
 			matchId,
 			datetime,
@@ -572,6 +595,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			games,
+			pokemonSprite,
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(match, nil)
@@ -589,6 +613,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSpriteParams []*PokemonSpriteParam
+
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
@@ -604,6 +630,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			gameParams,
+			pokemonSpriteParams,
 		)
 
 		ret, err := usecase.Update(context.Background(), matchId, matchParam)
@@ -641,6 +668,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSpriteParams []*PokemonSpriteParam
+
 		matchParam := NewMatchParam(
 			recordId,
 			deckId,
@@ -656,6 +685,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			gameParams,
+			pokemonSpriteParams,
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(nil, errors.New(""))
@@ -691,6 +721,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			),
 		)
 
+		var pokemonSprite []*entity.PokemonSprite
+
 		match := entity.NewMatch(
 			matchId,
 			datetime,
@@ -708,6 +740,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			games,
+			pokemonSprite,
 		)
 
 		var gameParams []*GameParam
@@ -721,6 +754,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 				"",
 			),
 		)
+
+		var pokemonSpriteParams []*PokemonSpriteParam
 
 		matchParam := NewMatchParam(
 			recordId,
@@ -737,6 +772,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			"",
 			"",
 			gameParams,
+			pokemonSpriteParams,
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(match, nil)

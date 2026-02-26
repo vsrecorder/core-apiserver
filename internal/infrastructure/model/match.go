@@ -57,12 +57,6 @@ type MatchJoinGame struct {
 	GameMemo                string
 }
 
-type MatchPokemonSprite struct {
-	MatchID         string `gorm:"primaryKey"`
-	Position        int    `gorm:"primaryKey"`
-	PokemonSpriteID string
-}
-
 func NewMatch(
 	id string,
 	createdAt time.Time,

@@ -244,10 +244,10 @@ INSERT INTO environments VALUES ('s11a', '白熱のアルカナ','2022-09-02','2
 
 
 CREATE TABLE cityleague_schedules (
-    id         VARCHAR(6) PRIMARY KEY,
-    title      VARCHAR(255) NOT NULL,
-    from_date  DATE NOT NULL,
-    to_date    DATE NOT NULL
+    id          VARCHAR(6) PRIMARY KEY,
+    title       VARCHAR(255) NOT NULL,
+    from_date   DATE NOT NULL,
+    to_date     DATE NOT NULL
 );
 
 INSERT INTO cityleague_schedules VALUES ('2026s4','シティリーグ2026 シーズン4','2026-03-14','2026-05-06');
@@ -271,21 +271,58 @@ INSERT INTO cityleague_schedules VALUES ('2023s2','シティリーグ2023 シー
 INSERT INTO cityleague_schedules VALUES ('2023s1','シティリーグ2023 シーズン1','2022-10-08','2022-11-27');
 
 
+
+
+
 CREATE TABLE cityleague_results (
-    cityleague_schedule_id VARCHAR(6) NOT NULL,
-    official_event_id      INT NOT NULL,
-    league_type            INT NOT NULL,
-    event_date             DATE DEFAULT NULL,
-    player_id              VARCHAR(10) NOT NULL,
-    player_name            VARCHAR(255) NOT NULL,
-    rank                   SMALLINT NOT NULL,
-    point                  SMALLINT NOT NULL,
-    deck_code              VARCHAR(21) NOT NULL,
+    cityleague_schedule_id               VARCHAR(6) NOT NULL,
+    official_event_id                    INT NOT NULL,
+    league_type                          INT NOT NULL,
+    event_date                           DATE DEFAULT NULL,
+    player_id                            VARCHAR(10) NOT NULL,
+    player_name                          VARCHAR(255) NOT NULL,
+    rank                                 SMALLINT NOT NULL,
+    point                                SMALLINT NOT NULL,
+    deck_code                            VARCHAR(21) NOT NULL,
     FOREIGN KEY (cityleague_schedule_id) REFERENCES cityleague_schedules (id),
     FOREIGN KEY (official_event_id)      REFERENCES official_events (id)
 );
 
 CREATE UNIQUE INDEX cityleague_results_unique ON cityleague_results (cityleague_schedule_id, official_event_id, player_id);
+
+
+
+
+
+CREATE TABLE championsleague_schedules (
+    id          VARCHAR(63) PRIMARY KEY,
+    title       VARCHAR(255) NOT NULL,
+    from_date   DATE NOT NULL,
+    to_date     DATE NOT NULL
+);
+
+INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_may','チャンピオンズリーグ2026 愛知 May','2026-05-09','2026-05-10');
+INSERT INTO championsleague_schedules VALUES ('cl2026_osaka','チャンピオンズリーグ2026 大阪','2026-03-28','2026-03-29');
+INSERT INTO championsleague_schedules VALUES ('cl2026_fukuoka','チャンピオンズリーグ2026 福岡','2026-02-21','2026-02-22');
+INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_dec','チャンピオンズリーグ2026 愛知 Dec.','2025-12-06','2025-12-07');
+INSERT INTO championsleague_schedules VALUES ('cl2026_yokohama','チャンピオンズリーグ2026 横浜','2025-09-20','2025-09-21');
+
+
+
+
+
+CREATE TABLE championsleague_results (
+    championsleague_schedule_id               VARCHAR(6) NOT NULL,
+    official_event_id                         INT NOT NULL,
+    league_type                               INT NOT NULL,
+    event_date                                DATE DEFAULT NULL,
+    player_id                                 VARCHAR(10) NOT NULL,
+    player_name                               VARCHAR(255) NOT NULL,
+    rank                                      SMALLINT NOT NULL,
+    deck_code                                 VARCHAR(21) NOT NULL,
+    FOREIGN KEY (championsleague_schedule_id) REFERENCES championsleague_schedules (id),
+    FOREIGN KEY (official_event_id)           REFERENCES official_events (id)
+);
 
 
 

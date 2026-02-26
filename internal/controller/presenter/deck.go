@@ -17,6 +17,13 @@ func NewDeckGetResponse(
 	ret := []*dto.DeckData{}
 
 	for _, deck := range decks {
+		pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+		for _, pokemonSprite := range deck.PokemonSprites {
+			pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+				ID: pokemonSprite.ID,
+			})
+		}
+
 		ret = append(ret, &dto.DeckData{
 			Cursor: base64.StdEncoding.EncodeToString([]byte(deck.CreatedAt.Format(time.RFC3339))),
 			Data: &dto.DeckResponse{
@@ -35,6 +42,7 @@ func NewDeckGetResponse(
 					PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 					Memo:           deck.LatestDeckCode.Memo,
 				},
+				PokemonSprites: pokemonSpritesResponse,
 			},
 		})
 	}
@@ -52,6 +60,13 @@ func NewDeckGetAllResponse(
 ) *dto.DeckGetAllResponse {
 	ret := dto.DeckGetAllResponse{}
 	for _, deck := range decks {
+		pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+		for _, pokemonSprite := range deck.PokemonSprites {
+			pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+				ID: pokemonSprite.ID,
+			})
+		}
+
 		ret = append(ret, dto.DeckResponse{
 			ID:         deck.ID,
 			CreatedAt:  deck.CreatedAt,
@@ -68,6 +83,7 @@ func NewDeckGetAllResponse(
 				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 				Memo:           deck.LatestDeckCode.Memo,
 			},
+			PokemonSprites: pokemonSpritesResponse,
 		})
 	}
 
@@ -77,6 +93,13 @@ func NewDeckGetAllResponse(
 func NewDeckGetByIdResponse(
 	deck *entity.Deck,
 ) *dto.DeckGetByIdResponse {
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range deck.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID: pokemonSprite.ID,
+		})
+	}
+
 	return &dto.DeckGetByIdResponse{
 		DeckResponse: dto.DeckResponse{
 			ID:         deck.ID,
@@ -94,6 +117,7 @@ func NewDeckGetByIdResponse(
 				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 				Memo:           deck.LatestDeckCode.Memo,
 			},
+			PokemonSprites: pokemonSpritesResponse,
 		},
 	}
 }
@@ -108,6 +132,13 @@ func NewDeckGetByUserIdResponse(
 	ret := []*dto.DeckData{}
 
 	for _, deck := range decks {
+		pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+		for _, pokemonSprite := range deck.PokemonSprites {
+			pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+				ID: pokemonSprite.ID,
+			})
+		}
+
 		ret = append(ret, &dto.DeckData{
 			Cursor: base64.StdEncoding.EncodeToString([]byte(deck.CreatedAt.Format(time.RFC3339))),
 			Data: &dto.DeckResponse{
@@ -126,6 +157,7 @@ func NewDeckGetByUserIdResponse(
 					PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 					Memo:           deck.LatestDeckCode.Memo,
 				},
+				PokemonSprites: pokemonSpritesResponse,
 			},
 		})
 	}
@@ -142,6 +174,14 @@ func NewDeckGetByUserIdResponse(
 func NewDeckCreateResponse(
 	deck *entity.Deck,
 ) *dto.DeckCreateResponse {
+
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range deck.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID: pokemonSprite.ID,
+		})
+	}
+
 	return &dto.DeckCreateResponse{
 		DeckResponse: dto.DeckResponse{
 			ID:         deck.ID,
@@ -159,6 +199,7 @@ func NewDeckCreateResponse(
 				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 				Memo:           deck.LatestDeckCode.Memo,
 			},
+			PokemonSprites: pokemonSpritesResponse,
 		},
 	}
 }
@@ -166,6 +207,13 @@ func NewDeckCreateResponse(
 func NewDeckUpdateResponse(
 	deck *entity.Deck,
 ) *dto.DeckUpdateResponse {
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range deck.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID: pokemonSprite.ID,
+		})
+	}
+
 	return &dto.DeckUpdateResponse{
 		DeckResponse: dto.DeckResponse{
 			ID:         deck.ID,
@@ -183,6 +231,7 @@ func NewDeckUpdateResponse(
 				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 				Memo:           deck.LatestDeckCode.Memo,
 			},
+			PokemonSprites: pokemonSpritesResponse,
 		},
 	}
 }
@@ -190,6 +239,13 @@ func NewDeckUpdateResponse(
 func NewDeckArchiveResponse(
 	deck *entity.Deck,
 ) *dto.DeckArchiveResponse {
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range deck.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID: pokemonSprite.ID,
+		})
+	}
+
 	return &dto.DeckArchiveResponse{
 		DeckResponse: dto.DeckResponse{
 			ID:         deck.ID,
@@ -207,6 +263,7 @@ func NewDeckArchiveResponse(
 				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 				Memo:           deck.LatestDeckCode.Memo,
 			},
+			PokemonSprites: pokemonSpritesResponse,
 		},
 	}
 }
@@ -214,6 +271,13 @@ func NewDeckArchiveResponse(
 func NewDeckUnarchiveResponse(
 	deck *entity.Deck,
 ) *dto.DeckUnarchiveResponse {
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range deck.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID: pokemonSprite.ID,
+		})
+	}
+
 	return &dto.DeckUnarchiveResponse{
 		DeckResponse: dto.DeckResponse{
 			ID:         deck.ID,
@@ -231,6 +295,7 @@ func NewDeckUnarchiveResponse(
 				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 				Memo:           deck.LatestDeckCode.Memo,
 			},
+			PokemonSprites: pokemonSpritesResponse,
 		},
 	}
 }

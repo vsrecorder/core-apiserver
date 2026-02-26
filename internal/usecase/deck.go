@@ -34,17 +34,20 @@ func NewDeckCreateParam(
 }
 
 type DeckUpdateParam struct {
-	Name       string
-	PrivateFlg bool
+	Name           string
+	PrivateFlg     bool
+	PokemonSprites []*PokemonSpriteParam
 }
 
 func NewDeckUpdateParam(
 	name string,
 	privateFlg bool,
+	pokemonSprites []*PokemonSpriteParam,
 ) *DeckUpdateParam {
 	return &DeckUpdateParam{
-		Name:       name,
-		PrivateFlg: privateFlg,
+		Name:           name,
+		PrivateFlg:     privateFlg,
+		PokemonSprites: pokemonSprites,
 	}
 }
 
@@ -247,6 +250,8 @@ func (u *Deck) Create(
 		}
 	}
 
+	var pokemonSprites []*entity.PokemonSprite
+
 	deck := entity.NewDeck(
 		deckId,
 		createdAt,
@@ -255,6 +260,7 @@ func (u *Deck) Create(
 		param.Name,
 		param.PrivateFlg,
 		LatestDeckCode,
+		pokemonSprites,
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {
@@ -277,6 +283,11 @@ func (u *Deck) Update(
 		return nil, err
 	}
 
+	var pokemonSprites []*entity.PokemonSprite
+	for _, pokemonSprite := range param.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(pokemonSprite.ID))
+	}
+
 	deck := entity.NewDeck(
 		id,
 		ret.CreatedAt,
@@ -285,6 +296,7 @@ func (u *Deck) Update(
 		param.Name,
 		param.PrivateFlg,
 		ret.LatestDeckCode,
+		pokemonSprites,
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {
@@ -314,6 +326,7 @@ func (u *Deck) Archive(
 		ret.Name,
 		ret.PrivateFlg,
 		ret.LatestDeckCode,
+		ret.PokemonSprites,
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {
@@ -343,6 +356,7 @@ func (u *Deck) Unarchive(
 		ret.Name,
 		ret.PrivateFlg,
 		ret.LatestDeckCode,
+		ret.PokemonSprites,
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {

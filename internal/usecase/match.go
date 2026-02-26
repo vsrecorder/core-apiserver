@@ -9,10 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type PokemonSpriteParam struct {
-	ID string
-}
-
 type GameParam struct {
 	GoFirst             bool
 	WinningFlg          bool
@@ -37,14 +33,6 @@ type MatchParam struct {
 	Memo               string
 	Games              []*GameParam
 	PokemonSprites     []*PokemonSpriteParam
-}
-
-func NewPokemonSpriteParam(
-	id string,
-) *PokemonSpriteParam {
-	return &PokemonSpriteParam{
-		ID: id,
-	}
 }
 
 func NewGameParam(

@@ -284,9 +284,15 @@ func (c *Deck) Update(ctx *gin.Context) {
 	req := helper.GetDeckUpdateRequest(ctx)
 	id := helper.GetId(ctx)
 
+	var pokemonSprites []*usecase.PokemonSpriteParam
+	for _, pokemonSprite := range req.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, usecase.NewPokemonSpriteParam(pokemonSprite.ID))
+	}
+
 	param := usecase.NewDeckUpdateParam(
 		req.Name,
 		req.PrivateFlg,
+		pokemonSprites,
 	)
 
 	deck, err := c.usecase.Update(context.Background(), id, param)

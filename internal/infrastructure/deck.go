@@ -87,6 +87,17 @@ func (i *Deck) Find(
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
+		var deckPokemonSpriteModels []*model.DeckPokemonSprite
+		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
+			return nil, tx.Error
+		}
+
+		var pokemonSprites []*entity.PokemonSprite
+		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
+			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
+			pokemonSprites = append(pokemonSprites, entity)
+		}
+
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
@@ -103,6 +114,7 @@ func (i *Deck) Find(
 				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
+			pokemonSprites,
 		))
 	}
 
@@ -170,6 +182,17 @@ func (i *Deck) FindAll(
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
+		var deckPokemonSpriteModels []*model.DeckPokemonSprite
+		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
+			return nil, tx.Error
+		}
+
+		var pokemonSprites []*entity.PokemonSprite
+		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
+			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
+			pokemonSprites = append(pokemonSprites, entity)
+		}
+
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
@@ -186,6 +209,7 @@ func (i *Deck) FindAll(
 				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
+			pokemonSprites,
 		))
 	}
 
@@ -256,6 +280,17 @@ func (i *Deck) FindOnCursor(
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
+		var deckPokemonSpriteModels []*model.DeckPokemonSprite
+		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
+			return nil, tx.Error
+		}
+
+		var pokemonSprites []*entity.PokemonSprite
+		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
+			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
+			pokemonSprites = append(pokemonSprites, entity)
+		}
+
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
@@ -272,6 +307,7 @@ func (i *Deck) FindOnCursor(
 				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
+			pokemonSprites,
 		))
 	}
 
@@ -335,6 +371,17 @@ func (i *Deck) FindById(
 		return nil, tx.Error
 	}
 
+	var deckPokemonSpriteModels []*model.DeckPokemonSprite
+	if tx := i.db.Where("deck_id = ?", deckJoinDeckCodes.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	var pokemonSprites []*entity.PokemonSprite
+	for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
+		entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
+		pokemonSprites = append(pokemonSprites, entity)
+	}
+
 	ret := entity.NewDeck(
 		deckJoinDeckCodes.DeckID,
 		deckJoinDeckCodes.DeckCreatedAt,
@@ -351,6 +398,7 @@ func (i *Deck) FindById(
 			deckJoinDeckCodes.DeckCodePrivateCodeFlg,
 			deckJoinDeckCodes.DeckCodeMemo,
 		),
+		pokemonSprites,
 	)
 
 	return ret, nil
@@ -478,6 +526,17 @@ func (i *Deck) FindByUserId(
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
+		var deckPokemonSpriteModels []*model.DeckPokemonSprite
+		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
+			return nil, tx.Error
+		}
+
+		var pokemonSprites []*entity.PokemonSprite
+		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
+			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
+			pokemonSprites = append(pokemonSprites, entity)
+		}
+
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
@@ -494,6 +553,7 @@ func (i *Deck) FindByUserId(
 				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
+			pokemonSprites,
 		))
 	}
 
@@ -618,6 +678,17 @@ func (i *Deck) FindByUserIdOnCursor(
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
+		var deckPokemonSpriteModels []*model.DeckPokemonSprite
+		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
+			return nil, tx.Error
+		}
+
+		var pokemonSprites []*entity.PokemonSprite
+		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
+			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
+			pokemonSprites = append(pokemonSprites, entity)
+		}
+
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
@@ -634,6 +705,7 @@ func (i *Deck) FindByUserIdOnCursor(
 				djdc.DeckCodePrivateCodeFlg,
 				djdc.DeckCodeMemo,
 			),
+			pokemonSprites,
 		))
 	}
 
@@ -662,6 +734,11 @@ func (i *Deck) Save(
 		entity.PrivateFlg,
 	)
 
+	var deckPokemonSpriteModals []*model.DeckPokemonSprite
+	for i, pokemonSprite := range entity.PokemonSprites {
+		deckPokemonSpriteModals = append(deckPokemonSpriteModals, model.NewDeckPokemonSprite(entity.ID, uint(i+1), pokemonSprite.ID))
+	}
+
 	if entity.LatestDeckCode != nil {
 		deckcode := model.NewDeckCode(
 			entity.LatestDeckCode.ID,
@@ -674,6 +751,16 @@ func (i *Deck) Save(
 		)
 
 		return i.db.Transaction(func(tx *gorm.DB) error {
+			if tx := tx.Where("deck_id = ?", entity.ID).Delete(&model.DeckPokemonSprite{}); tx.Error != nil {
+				return tx.Error
+			}
+
+			for _, deckPokemonSpriteModal := range deckPokemonSpriteModals {
+				if err := tx.Save(deckPokemonSpriteModal).Error; err != nil {
+					return err
+				}
+			}
+
 			if err := tx.Save(deck).Error; err != nil {
 				return err
 			}
@@ -688,12 +775,24 @@ func (i *Deck) Save(
 			return nil
 		}, &sql.TxOptions{Isolation: sql.LevelDefault})
 	} else {
-		if tx := i.db.Save(deck); tx.Error != nil {
-			return tx.Error
-		}
-	}
+		return i.db.Transaction(func(tx *gorm.DB) error {
+			if tx := tx.Where("deck_id = ?", entity.ID).Delete(&model.DeckPokemonSprite{}); tx.Error != nil {
+				return tx.Error
+			}
 
-	return nil
+			for _, deckPokemonSpriteModal := range deckPokemonSpriteModals {
+				if err := tx.Save(deckPokemonSpriteModal).Error; err != nil {
+					return err
+				}
+			}
+
+			if err := tx.Save(deck).Error; err != nil {
+				return err
+			}
+
+			return nil
+		}, &sql.TxOptions{Isolation: sql.LevelDefault})
+	}
 }
 
 func (i *Deck) Delete(

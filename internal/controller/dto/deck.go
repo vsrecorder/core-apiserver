@@ -10,8 +10,9 @@ type DeckCreateRequest struct {
 }
 
 type DeckUpdateRequest struct {
-	Name       string `json:"name"`
-	PrivateFlg bool   `json:"private_flg"`
+	Name           string                  `json:"name"`
+	PrivateFlg     bool                    `json:"private_flg"`
+	PokemonSprites []*PokemonSpriteRequest `json:"pokemon_sprites"`
 }
 
 type DeckData struct {
@@ -20,13 +21,14 @@ type DeckData struct {
 }
 
 type DeckResponse struct {
-	ID             string           `json:"id"`
-	CreatedAt      time.Time        `json:"created_at"`
-	ArchivedAt     time.Time        `json:"archived_at"`
-	UserId         string           `json:"user_id"`
-	Name           string           `json:"name"`
-	PrivateFlg     bool             `json:"private_flg"`
-	LatestDeckCode DeckCodeResponse `json:"latest_deck_code"`
+	ID             string                   `json:"id"`
+	CreatedAt      time.Time                `json:"created_at"`
+	ArchivedAt     time.Time                `json:"archived_at"`
+	UserId         string                   `json:"user_id"`
+	Name           string                   `json:"name"`
+	PrivateFlg     bool                     `json:"private_flg"`
+	LatestDeckCode DeckCodeResponse         `json:"latest_deck_code"`
+	PokemonSprites []*PokemonSpriteResponse `json:"pokemon_sprites"`
 }
 
 type DeckGetResponse struct {

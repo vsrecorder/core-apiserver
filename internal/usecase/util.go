@@ -23,6 +23,18 @@ var (
 	entropy = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
+type PokemonSpriteParam struct {
+	ID string
+}
+
+func NewPokemonSpriteParam(
+	id string,
+) *PokemonSpriteParam {
+	return &PokemonSpriteParam{
+		ID: id,
+	}
+}
+
 func generateId() (string, error) {
 	ms := ulid.Timestamp(time.Now())
 	id, err := ulid.New(ms, entropy)

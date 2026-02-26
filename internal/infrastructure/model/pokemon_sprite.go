@@ -17,3 +17,21 @@ func NewMatchPokemonSprite(
 		PokemonSpriteId: pokemon_sprite_id,
 	}
 }
+
+type DeckPokemonSprite struct {
+	DeckId          string `gorm:"primaryKey"`
+	Position        uint   `gorm:"primaryKey"`
+	PokemonSpriteId string
+}
+
+func NewDeckPokemonSprite(
+	deck_id string,
+	position uint,
+	pokemon_sprite_id string,
+) *DeckPokemonSprite {
+	return &DeckPokemonSprite{
+		DeckId:          deck_id,
+		Position:        position,
+		PokemonSpriteId: pokemon_sprite_id,
+	}
+}

@@ -6,7 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vsrecorder/core-apiserver/internal/controller/auth"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
@@ -78,51 +79,51 @@ func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
 		r := c.router.Group(relativePath + DecksPath)
 		r.GET(
 			"",
-			auth.OptionalAuthenticationMiddleware(),
+			authentication.OptionalAuthenticationMiddleware(),
 			validation.DeckGetMiddleware(),
 			c.Get,
 			c.GetByUserId,
 		)
 		r.GET(
 			"/all",
-			auth.RequiredAuthenticationMiddleware(),
+			authentication.RequiredAuthenticationMiddleware(),
 			c.GetAll,
 		)
 		r.GET(
 			"/:id",
-			auth.OptionalAuthenticationMiddleware(),
-			auth.DeckGetByIdAuthorizationMiddleware(c.deckRepository),
+			authentication.OptionalAuthenticationMiddleware(),
+			authorization.DeckGetByIdAuthorizationMiddleware(c.deckRepository),
 			c.GetById,
 		)
 		r.POST(
 			"",
-			auth.RequiredAuthenticationMiddleware(),
+			authentication.RequiredAuthenticationMiddleware(),
 			validation.DeckCreateMiddleware(),
 			c.Create,
 		)
 		r.PUT(
 			"/:id",
-			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckUpdateAuthorizationMiddleware(c.deckRepository),
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.DeckUpdateAuthorizationMiddleware(c.deckRepository),
 			validation.DeckUpdateMiddleware(),
 			c.Update,
 		)
 		r.PATCH(
 			"/:id/archive",
-			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckArchiveAuthorizationMiddleware(c.deckRepository),
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.DeckArchiveAuthorizationMiddleware(c.deckRepository),
 			c.Archive,
 		)
 		r.PATCH(
 			"/:id/unarchive",
-			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckUnarchiveAuthorizationMiddleware(c.deckRepository),
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.DeckUnarchiveAuthorizationMiddleware(c.deckRepository),
 			c.Unarchive,
 		)
 		r.DELETE(
 			"/:id",
-			auth.RequiredAuthenticationMiddleware(),
-			auth.DeckDeleteAuthorizationMiddleware(c.deckRepository, c.recordRepository),
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.DeckDeleteAuthorizationMiddleware(c.deckRepository, c.recordRepository),
 			c.Delete,
 		)
 	}

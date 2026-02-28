@@ -6,7 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vsrecorder/core-apiserver/internal/controller/auth"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
@@ -71,26 +72,26 @@ func (c *DeckCode) RegisterRoute(relativePath string, authDisable bool) {
 			r := c.router.Group(relativePath + DeckCodesPath)
 			r.GET(
 				"/:id",
-				auth.OptionalAuthenticationMiddleware(),
+				authentication.OptionalAuthenticationMiddleware(),
 				c.GetById,
 			)
 			r.POST(
 				"",
-				auth.RequiredAuthenticationMiddleware(),
+				authentication.RequiredAuthenticationMiddleware(),
 				validation.DeckCodeCreateMiddleware(),
 				c.Create,
 			)
 			r.PUT(
 				"/:id",
-				auth.RequiredAuthenticationMiddleware(),
-				auth.DeckCodeUpdateAuthorizationMiddleware(c.deckcodeRepository),
+				authentication.RequiredAuthenticationMiddleware(),
+				authorization.DeckCodeUpdateAuthorizationMiddleware(c.deckcodeRepository),
 				validation.DeckCodeUpdateMiddleware(),
 				c.Update,
 			)
 			r.DELETE(
 				"/:id",
-				auth.RequiredAuthenticationMiddleware(),
-				auth.DeckCodeDeleteAuthorizationMiddleware(c.deckcodeRepository, c.recordRepository),
+				authentication.RequiredAuthenticationMiddleware(),
+				authorization.DeckCodeDeleteAuthorizationMiddleware(c.deckcodeRepository, c.recordRepository),
 				c.Delete,
 			)
 		}
@@ -99,7 +100,7 @@ func (c *DeckCode) RegisterRoute(relativePath string, authDisable bool) {
 			r := c.router.Group(relativePath + DecksPath)
 			r.GET(
 				"/:id"+DeckCodesPath,
-				auth.OptionalAuthenticationMiddleware(),
+				authentication.OptionalAuthenticationMiddleware(),
 				c.GetByDeckId,
 			)
 		}

@@ -6,7 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vsrecorder/core-apiserver/internal/controller/auth"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
@@ -72,27 +73,27 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 			r := c.router.Group(relativePath + MatchesPath)
 			r.GET(
 				"/:id",
-				auth.OptionalAuthenticationMiddleware(),
-				auth.MatchGetByIdAuthorizationMiddleware(c.matchRepository, c.recordRepository),
+				authentication.OptionalAuthenticationMiddleware(),
+				authorization.MatchGetByIdAuthorizationMiddleware(c.matchRepository, c.recordRepository),
 				c.GetById,
 			)
 			r.POST(
 				"",
-				auth.RequiredAuthenticationMiddleware(),
+				authentication.RequiredAuthenticationMiddleware(),
 				validation.MatchCreateMiddleware(),
 				c.Create,
 			)
 			r.PUT(
 				"/:id",
-				auth.RequiredAuthenticationMiddleware(),
-				auth.MatchUpdateAuthorizationMiddleware(c.matchRepository),
+				authentication.RequiredAuthenticationMiddleware(),
+				authorization.MatchUpdateAuthorizationMiddleware(c.matchRepository),
 				validation.MatchUpdateMiddleware(),
 				c.Update,
 			)
 			r.DELETE(
 				"/:id",
-				auth.RequiredAuthenticationMiddleware(),
-				auth.MatchDeleteAuthorizationMiddleware(c.matchRepository),
+				authentication.RequiredAuthenticationMiddleware(),
+				authorization.MatchDeleteAuthorizationMiddleware(c.matchRepository),
 				c.Delete,
 			)
 		}
@@ -101,8 +102,8 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 			r := c.router.Group(relativePath + RecordsPath)
 			r.GET(
 				"/:id"+MatchesPath,
-				auth.OptionalAuthenticationMiddleware(),
-				auth.MatchGetByRecordIdAuthorizationMiddleware(c.recordRepository),
+				authentication.OptionalAuthenticationMiddleware(),
+				authorization.MatchGetByRecordIdAuthorizationMiddleware(c.recordRepository),
 				c.GetByRecordId,
 			)
 		}

@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vsrecorder/core-apiserver/internal/controller/auth"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
@@ -65,34 +66,34 @@ func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
 		r := c.router.Group(relativePath + RecordsPath)
 		r.GET(
 			"",
-			auth.OptionalAuthenticationMiddleware(),
+			authentication.OptionalAuthenticationMiddleware(),
 			validation.RecordGetMiddleware(),
 			c.Get,
 			c.GetByUserId,
 		)
 		r.GET(
 			"/:id",
-			auth.OptionalAuthenticationMiddleware(),
-			auth.RecordGetByIdAuthorizationMiddleware(c.repository),
+			authentication.OptionalAuthenticationMiddleware(),
+			authorization.RecordGetByIdAuthorizationMiddleware(c.repository),
 			c.GetById,
 		)
 		r.POST(
 			"",
-			auth.RequiredAuthenticationMiddleware(),
+			authentication.RequiredAuthenticationMiddleware(),
 			validation.RecordCreateMiddleware(),
 			c.Create,
 		)
 		r.PUT(
 			"/:id",
-			auth.RequiredAuthenticationMiddleware(),
-			auth.RecordUpdateAuthorizationMiddleware(c.repository),
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.RecordUpdateAuthorizationMiddleware(c.repository),
 			validation.RecordUpdateMiddleware(),
 			c.Update,
 		)
 		r.DELETE(
 			"/:id",
-			auth.RequiredAuthenticationMiddleware(),
-			auth.RecordDeleteAuthorizationMiddleware(c.repository),
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.RecordDeleteAuthorizationMiddleware(c.repository),
 			c.Delete,
 		)
 	}

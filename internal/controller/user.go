@@ -6,7 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vsrecorder/core-apiserver/internal/controller/auth"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
@@ -66,21 +67,21 @@ func (c *User) RegisterRoute(relativePath string, authDisable bool) {
 		)
 		r.POST(
 			"",
-			auth.RequiredAuthenticationMiddleware(),
+			authentication.RequiredAuthenticationMiddleware(),
 			validation.UserCreateMiddleware(),
 			c.Create,
 		)
 		r.PUT(
 			"/:id",
-			auth.RequiredAuthenticationMiddleware(),
-			auth.UserUpdateAuthorizationMiddleware(c.repository),
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.UserUpdateAuthorizationMiddleware(c.repository),
 			validation.UserUpdateMiddleware(),
 			c.Update,
 		)
 		r.DELETE(
 			"/:id",
-			auth.RequiredAuthenticationMiddleware(),
-			auth.UserDeleteAuthorizationMiddleware(c.repository),
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.UserDeleteAuthorizationMiddleware(c.repository),
 			c.Delete,
 		)
 	}

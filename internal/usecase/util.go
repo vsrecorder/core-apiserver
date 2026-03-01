@@ -8,6 +8,7 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"math/rand"
 	"net/http"
 	"time"
@@ -61,6 +62,54 @@ func convertPNG2JPG(imageBytes []byte) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("unable to convert %#v to jpeg", contentType)
+}
+
+func uploadDeckResultHTML(deckCode string) error {
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	baseEndpoint := "https://s3.isk01.sakurastorage.jp"
+	s3client := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.BaseEndpoint = &baseEndpoint
+	})
+
+	// すでにアップロードされている場合はスキップする
+	if _, err = s3client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String("vsrecorder"),
+		Key:    aws.String(fmt.Sprintf("deck-result_html/%s", deckCode)),
+	}); err != nil {
+		var notFound *types.NotFound
+		if errors.As(err, &notFound) {
+			url := fmt.Sprintf("https://www.pokemon-card.com/deck/result.html/deckID/%s", deckCode)
+
+			resp, err := http.Get(url)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			if _, err = s3client.PutObject(ctx, &s3.PutObjectInput{
+				ACL:    "public-read",
+				Bucket: aws.String("vsrecorder"),
+				Key:    aws.String(fmt.Sprintf("deck-result_html/%s", deckCode)),
+				Body:   bytes.NewReader(bodyBytes),
+			}); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func uploadDeckImage(deckCode string) error {

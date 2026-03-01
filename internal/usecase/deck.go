@@ -244,6 +244,10 @@ func (u *Deck) Create(
 		)
 
 		if LatestDeckCode.Code != "" {
+			if err := uploadDeckResultHTML(LatestDeckCode.Code); err != nil {
+				return nil, err
+			}
+
 			if err := uploadDeckImage(LatestDeckCode.Code); err != nil {
 				return nil, err
 			}

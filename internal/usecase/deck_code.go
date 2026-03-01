@@ -137,6 +137,10 @@ func (u *DeckCode) Create(
 	)
 
 	if deckcode.Code != "" {
+		if err := uploadDeckResultHTML(deckcode.Code); err != nil {
+			return nil, err
+		}
+
 		if err := uploadDeckImage(deckcode.Code); err != nil {
 			return nil, err
 		}

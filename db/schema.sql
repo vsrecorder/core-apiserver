@@ -405,24 +405,25 @@ CREATE TABLE deck_pokemon_sprites (
 
 
 
-GRANT SELECT ON decks TO grafana;
-GRANT SELECT ON deck_codes TO grafana;
-GRANT SELECT ON records TO grafana;
-GRANT SELECT ON matches TO grafana;
-GRANT SELECT ON games TO grafana;
-GRANT SELECT ON users TO grafana;
-GRANT SELECT ON environments TO grafana;
-GRANT SELECT ON cityleague_schedules TO grafana;
-GRANT SELECT ON cityleague_results TO grafana;
-GRANT SELECT ON standard_regulations TO grafana;
-GRANT SELECT ON cards TO grafana;
-GRANT SELECT ON pokemon_cards TO grafana;
-GRANT SELECT ON pokemon_sprites TO grafana;
+
+
+GRANT SELECT ON cards                 TO grafana;
+GRANT SELECT ON cityleague_schedules  TO grafana;
+GRANT SELECT ON cityleague_results    TO grafana;
+GRANT SELECT ON deck_codes            TO grafana;
+GRANT SELECT ON deck_pokemon_sprites  TO grafana;
+GRANT SELECT ON decks                 TO grafana;
+GRANT SELECT ON environments          TO grafana;
+GRANT SELECT ON games                 TO grafana;
 GRANT SELECT ON match_pokemon_sprites TO grafana;
-GRANT SELECT ON deck_pokemon_sprites TO grafana;
-
-
-
+GRANT SELECT ON matches               TO grafana;
+GRANT SELECT ON official_events       TO grafana;
+GRANT SELECT ON pokemon_cards         TO grafana;
+GRANT SELECT ON pokemon_sprites       TO grafana;
+GRANT SELECT ON records               TO grafana;
+GRANT SELECT ON shops                 TO grafana;
+GRANT SELECT ON standard_regulations  TO grafana;
+GRANT SELECT ON users                 TO grafana;
 
 
 GRANT SELECT ON <table_name> TO grafana;

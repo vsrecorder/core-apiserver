@@ -96,6 +96,11 @@ func uploadDeckResultHTML(deckCode string) error {
 				return err
 			}
 
+			// メンテナンス中のときはアップロードしない
+			if bytes.Contains(bodyBytes, []byte("現在メンテナンスをしております")) {
+				return errors.New("deck result page is under maintenance")
+			}
+
 			if _, err = s3client.PutObject(ctx, &s3.PutObjectInput{
 				ACL:    "public-read",
 				Bucket: aws.String("vsrecorder"),

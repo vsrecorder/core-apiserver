@@ -117,6 +117,9 @@ CREATE TABLE decks (
     private_flg      BOOLEAN DEFAULT NULL
 );
 
+CREATE INDEX idx_decks_created_at ON decks(created_at);
+CREATE INDEX idx_decks_deleted_at ON decks(deleted_at);
+
 CREATE TABLE deck_codes (
     id                    VARCHAR(26) PRIMARY KEY, 
     created_at            TIMESTAMP NOT NULL,
@@ -129,6 +132,9 @@ CREATE TABLE deck_codes (
     memo                  TEXT,
     FOREIGN KEY (deck_id) REFERENCES decks (id)
 );
+
+CREATE INDEX idx_deck_codes_created_at ON deck_codes(created_at);
+CREATE INDEX idx_deck_codes_deleted_at ON deck_codes(deleted_at);
 
 CREATE TABLE records (
     id                        VARCHAR(26) PRIMARY KEY,
@@ -145,6 +151,9 @@ CREATE TABLE records (
     tcg_meister_url           TEXT,
     memo                      TEXT
 );
+
+CREATE INDEX idx_records_created_at ON records(created_at);
+CREATE INDEX idx_records_deleted_at ON records(deleted_at);
 
 CREATE TABLE matches (
     id                        VARCHAR(26) PRIMARY KEY,
@@ -191,6 +200,9 @@ CREATE TABLE users (
     image_url   VARCHAR(255) DEFAULT NULL
 );
 
+CREATE INDEX idx_users_created_at ON users(created_at);
+CREATE INDEX idx_users_deleted_at ON users(deleted_at);
+
 CREATE TABLE player_users (
     created_at  TIMESTAMP NOT NULL,
     updated_at  TIMESTAMP NOT NULL,
@@ -211,6 +223,7 @@ CREATE TABLE environments (
 
 update environments set to_date = '2026-05-21' where id = '';
 
+INSERT INTO environments VALUES ('m5','アビスアイ','2026-05-22','2026-07-30');
 INSERT INTO environments VALUES ('m4','ニンジャスピナー','2026-03-13','2026-05-21');
 INSERT INTO environments VALUES ('m3','ムニキスゼロ','2026-01-23','2026-03-12');
 INSERT INTO environments VALUES ('mc','スタートデッキ100 バトルコレクション','2025-12-19','2026-01-22');

@@ -15,8 +15,6 @@ build:
 	go mod tidy
 	go build -o bin/core-apiserver cmd/core-apiserver/main.go
 
-
-
 PHONY: mockgen
 mockgen:
 	mockgen -source=./internal/domain/repository/record.go -destination=./internal/mock/mock_repository/record.go
@@ -36,8 +34,6 @@ mockgen:
 	mockgen -source=./internal/usecase/match.go -destination=./internal/mock/mock_usecase/match.go
 	mockgen -source=./internal/usecase/game.go -destination=./internal/mock/mock_usecase/game.go
 	mockgen -source=./internal/usecase/environment.go -destination=./internal/mock/mock_usecase/environment.go
-
-
 
 .PHONY: image
 image:

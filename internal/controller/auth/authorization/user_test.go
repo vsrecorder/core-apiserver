@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"go.uber.org/mock/gomock"
+	"gorm.io/gorm"
 )
 
 func TestUserAuthorizationMiddleware(t *testing.T) {
@@ -32,20 +34,20 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockUserInterface(mockCtrl)
 
-	// パスパラメータで使用するid
-	id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-
-	// authenticationでセットされるuid
-	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-
 	t.Run("正常系_#01", func(t *testing.T) {
+		// パスパラメータで使用するid
+		id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// authenticationでセットされるuid
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
-		// Middlewareのテストのためuidをセット
+		// authentication後に実行されるMiddlewareのため、uidをセットしておく
 		helper.SetUID(ginContext, uid)
 
-		// idが必要なMiddlewareのテストのためパスパラメータを追加
+		// パスパラメータにidが必要なMiddlewareのため、パスパラメータを追加
 		ginContext.Params = append(
 			ginContext.Params,
 			gin.Param{
@@ -60,12 +62,6 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(user, nil)
 
-		// Middlewareのテストのためpathは何でもよい
-		req, err := http.NewRequest("GET", "/", nil)
-		require.NoError(t, err)
-
-		ginContext.Request = req
-
 		middleware := UserAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
 
@@ -77,11 +73,104 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
-		// Middlewareのテストのためpathは何でもよい
-		req, err := http.NewRequest("GET", "/", nil)
+		middleware := UserAuthorizationMiddleware(mockRepository)
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	// idに対応するユーザーが存在しない場合のテスト
+	t.Run("異常系_#02", func(t *testing.T) {
+		// パスパラメータで使用するid
+		id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// authenticationでセットされるuid
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// authentication後に実行されるMiddlewareのため、uidをセットしておく
+		helper.SetUID(ginContext, uid)
+
+		// パスパラメータにidが必要なMiddlewareのため、パスパラメータを追加
+		ginContext.Params = append(
+			ginContext.Params,
+			gin.Param{
+				Key:   "id",
+				Value: id,
+			},
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+
+		middleware := UserAuthorizationMiddleware(mockRepository)
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	// idに対応するユーザーの取得に失敗した場合のテスト
+	t.Run("異常系_#03", func(t *testing.T) {
+		// パスパラメータで使用するid
+		id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// authenticationでセットされるuid
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// authentication後に実行されるMiddlewareのため、uidをセットしておく
+		helper.SetUID(ginContext, uid)
+
+		// パスパラメータにidが必要なMiddlewareのため、パスパラメータを追加
+		ginContext.Params = append(
+			ginContext.Params,
+			gin.Param{
+				Key:   "id",
+				Value: id,
+			},
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+
+		middleware := UserAuthorizationMiddleware(mockRepository)
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	// 認証されたユーザーがidに対応するユーザーと異なる場合のテスト
+	t.Run("異常系_#04", func(t *testing.T) {
+		// パスパラメータで使用するid
+		id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// authenticationでセットされるuid
+		// uidをidと異なる値にする
+		uid, err := generateId()
 		require.NoError(t, err)
 
-		ginContext.Request = req
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// authentication後に実行されるMiddlewareのため、uidをセットしておく
+		helper.SetUID(ginContext, uid)
+
+		// パスパラメータにidが必要なMiddlewareのため、パスパラメータを追加
+		ginContext.Params = append(
+			ginContext.Params,
+			gin.Param{
+				Key:   "id",
+				Value: id,
+			},
+		)
+
+		user := &entity.User{
+			ID: id,
+		}
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(user, nil)
 
 		middleware := UserAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)

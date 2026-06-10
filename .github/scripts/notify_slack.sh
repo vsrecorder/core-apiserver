@@ -30,7 +30,7 @@ curl -X POST \
             \"type\": \"section\",
             \"text\": {
                 \"type\": \"mrkdwn\",
-                \"text\": \"${STATUS_ICON} ${STATUS_TEXT}: ${_ACTIONS}\n:memo: Commit: ${_COMMIT}\n:github: Repository: ${_REPOSITORY}\n:bust_in_silhouette:  Author: ${ACTOR}\"
+                \"text\": \"${STATUS_ICON} ${STATUS_TEXT}: ${_ACTIONS}\n:memo: Commit: ${_COMMIT}\n:github: Repository: ${_REPOSITORY}\n:bust_in_silhouette: Author: ${ACTOR}\"
             }
         }]
     }]}" \

@@ -20,7 +20,7 @@ jobs:
       - name: Run Test
         run: go test -v -cover -race ./...
 
-  build-container-image:
+  build-and-push-container-image:
     needs:
       - test
     runs-on: ubuntu-latest
@@ -36,13 +36,16 @@ jobs:
         run: |
           DOCKER_BUILDKIT=1 \
           docker build . \
-            --cache-from vsrecorder/core-apiserver:latest \
-            --tag vsrecorder/core-apiserver:latest
+            --cache-from vsrecorder/core-apiserver:develop \
+            --tag vsrecorder/core-apiserver:develop
+      - name: Push Container Image
+        run: |
+          docker push vsrecorder/core-apiserver:develop
 
   notify-slack:
     if: ${{ always() }}
     needs:
-      - build-container-image
+      - build-and-push-container-image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository

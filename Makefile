@@ -37,7 +37,8 @@ mockgen:
 
 .PHONY: image
 image:
-	docker build --no-cache -t vsrecorder/core-apiserver:local . && docker push vsrecorder/core-apiserver:local
+	docker build . --no-cache -t vsrecorder/core-apiserver:local && \
+	docker push vsrecorder/core-apiserver:local
 
 .PHONY: deploy
 deploy:

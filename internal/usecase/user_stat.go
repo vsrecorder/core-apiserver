@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -55,8 +54,6 @@ func (u *UserStat) GetUserStat(
 		if err != nil {
 			return nil, err
 		}
-
-		fmt.Println(env.FromDate, env.ToDate)
 
 		// 環境の期間（to_dateは含む日付なので翌日0時をexclusive上限とする）
 		envFrom := time.Date(env.FromDate.Year(), env.FromDate.Month(), env.FromDate.Day(), 0, 0, 0, 0, time.Local)

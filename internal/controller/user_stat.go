@@ -42,8 +42,9 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetId(ctx)
 	yearMonth := helper.GetYearMonth(ctx)
 	environmentId := helper.GetEnvironmentId(ctx)
+	season := helper.GetSeason(ctx)
 
-	stats, err := c.usecase.GetUserStat(context.Background(), uid, yearMonth, environmentId)
+	stats, err := c.usecase.GetUserStat(context.Background(), uid, yearMonth, environmentId, season)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
@@ -56,7 +57,7 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewUserStatResponse(stats, yearMonth, environmentId)
+	res := presenter.NewUserStatResponse(stats, yearMonth, environmentId, season)
 
 	ctx.JSON(http.StatusOK, res)
 }

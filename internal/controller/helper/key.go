@@ -194,6 +194,17 @@ func GetEnvironmentId(ctx *gin.Context) string {
 	return environmentId
 }
 
+func SetSeason(ctx *gin.Context, value string) {
+	ctx.Set("season", value)
+}
+
+func GetSeason(ctx *gin.Context) string {
+	value, _ := ctx.Get("season")
+	season, _ := value.(string)
+
+	return season
+}
+
 func SetRecordCreateRequest(ctx *gin.Context, value dto.RecordCreateRequest) {
 	ctx.Set("record_create_request", value)
 }

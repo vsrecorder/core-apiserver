@@ -270,3 +270,19 @@ func ParseQueryYearMonth(ctx *gin.Context) (string, error) {
 
 	return query, nil
 }
+
+func ParseQuerySeason(ctx *gin.Context) (string, error) {
+	query := GetQuerySeason(ctx)
+
+	if query == "" {
+		return "", nil
+	}
+
+	// 形式 YYYY のバリデーション
+	_, err := time.Parse("2006", query)
+	if err != nil {
+		return "", err
+	}
+
+	return query, nil
+}

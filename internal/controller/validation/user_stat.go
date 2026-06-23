@@ -19,5 +19,13 @@ func UserStatGetMiddleware() gin.HandlerFunc {
 
 		environmentId := helper.GetQueryEnvironmentId(ctx)
 		helper.SetEnvironmentId(ctx, environmentId)
+
+		season, err := helper.ParseQuerySeason(ctx)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+			ctx.Abort()
+			return
+		}
+		helper.SetSeason(ctx, season)
 	}
 }

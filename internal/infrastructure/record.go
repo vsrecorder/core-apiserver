@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"time"
 
@@ -446,9 +447,26 @@ func (i *Record) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	if tx := i.db.Where("id = ?", id).Delete(&model.Record{}); tx.Error != nil {
+	var matches []*model.Match
+	if tx := i.db.Where("record_id = ?", id).Order("created_at ASC").Find(&matches); tx.Error != nil {
 		return tx.Error
 	}
 
-	return nil
+	return i.db.Transaction(func(tx *gorm.DB) error {
+		for _, match := range matches {
+			if tx := tx.Where("match_id = ?", match.ID).Delete(&model.Game{}); tx.Error != nil {
+				return tx.Error
+			}
+		}
+
+		if tx := tx.Where("record_id = ?", id).Delete(&model.Match{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		if tx := tx.Where("id = ?", id).Delete(&model.Record{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
 }

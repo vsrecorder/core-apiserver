@@ -25,6 +25,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/match.go -destination=./internal/mock/mock_repository/match.go
 	mockgen -source=./internal/domain/repository/game.go -destination=./internal/mock/mock_repository/game.go
 	mockgen -source=./internal/domain/repository/environment.go -destination=./internal/mock/mock_repository/environment.go
+	mockgen -source=./internal/domain/repository/user_stat.go -destination=./internal/mock/mock_repository/user_stat.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go
 	mockgen -source=./internal/usecase/user.go -destination=./internal/mock/mock_usecase/user.go
@@ -34,6 +35,7 @@ mockgen:
 	mockgen -source=./internal/usecase/match.go -destination=./internal/mock/mock_usecase/match.go
 	mockgen -source=./internal/usecase/game.go -destination=./internal/mock/mock_usecase/game.go
 	mockgen -source=./internal/usecase/environment.go -destination=./internal/mock/mock_usecase/environment.go
+	mockgen -source=./internal/usecase/user_stat.go -destination=./internal/mock/mock_usecase/user_stat.go
 
 .PHONY: image
 image:

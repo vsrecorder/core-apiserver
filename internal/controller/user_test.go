@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -22,6 +24,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var l = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
 func setupMock4TestUserController(t *testing.T) (*mock_repository.MockUserInterface, *mock_usecase.MockUserInterface) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockUserInterface(mockCtrl)
@@ -30,7 +34,7 @@ func setupMock4TestUserController(t *testing.T) (*mock_repository.MockUserInterf
 	return mockRepository, mockUsecase
 }
 
-func setup4TestUserController(t *testing.T, r *gin.Engine) (
+func setup4TestUserController(t *testing.T, l *slog.Logger, r *gin.Engine) (
 	*User,
 	*mock_usecase.MockUserInterface,
 ) {
@@ -38,7 +42,7 @@ func setup4TestUserController(t *testing.T, r *gin.Engine) (
 
 	mockRepository, mockUsecase := setupMock4TestUserController(t)
 
-	c := NewUser(r, mockRepository, mockUsecase)
+	c := NewUser(l, r, mockRepository, mockUsecase)
 	c.RegisterRoute("", authDisable)
 
 	return c, mockUsecase
@@ -61,7 +65,8 @@ func TestUserController(t *testing.T) {
 
 func test_UserController_GetById(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup4TestUserController(t, r)
+
+	c, mockUsecase := setup4TestUserController(t, l, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
@@ -120,7 +125,7 @@ func test_UserController_Create(t *testing.T) {
 			helper.SetUID(ctx, id)
 		})
 
-		c, mockUsecase := setup4TestUserController(t, r)
+		c, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -178,7 +183,7 @@ func test_UserController_Create(t *testing.T) {
 			helper.SetUID(ctx, id)
 		})
 
-		c, mockUsecase := setup4TestUserController(t, r)
+		c, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -214,7 +219,7 @@ func test_UserController_Create(t *testing.T) {
 			helper.SetUID(ctx, id)
 		})
 
-		c, mockUsecase := setup4TestUserController(t, r)
+		c, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -252,7 +257,7 @@ func test_UserController_Update(t *testing.T) {
 			helper.SetUID(ctx, id)
 		})
 
-		c, mockUsecase := setup4TestUserController(t, r)
+		c, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -309,7 +314,7 @@ func test_UserController_Update(t *testing.T) {
 			helper.SetUID(ctx, id)
 		})
 
-		c, mockUsecase := setup4TestUserController(t, r)
+		c, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -339,7 +344,7 @@ func test_UserController_Update(t *testing.T) {
 
 func test_UserController_Delete(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup4TestUserController(t, r)
+	c, mockUsecase := setup4TestUserController(t, l, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()

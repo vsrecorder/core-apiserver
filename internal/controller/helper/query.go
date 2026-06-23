@@ -59,3 +59,11 @@ func GetQueryEventType(ctx *gin.Context) string {
 func GetQueryArchived(ctx *gin.Context) string {
 	return ctx.Query("archived")
 }
+
+func GetQueryYearMonth(ctx *gin.Context) string {
+	return ctx.Query("year_month")
+}
+
+func GetQueryEnvironmentId(ctx *gin.Context) string {
+	return ctx.Query("environment_id")
+}

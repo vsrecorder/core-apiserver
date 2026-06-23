@@ -254,3 +254,19 @@ func ParseQueryArchive(ctx *gin.Context) (bool, error) {
 
 	return ret, nil
 }
+
+func ParseQueryYearMonth(ctx *gin.Context) (string, error) {
+	query := GetQueryYearMonth(ctx)
+
+	if query == "" {
+		return "", nil
+	}
+
+	// 形式 YYYY-MM のバリデーション
+	_, err := time.Parse("2006-01", query)
+	if err != nil {
+		return "", err
+	}
+
+	return query, nil
+}

@@ -172,6 +172,28 @@ func GetArchived(ctx *gin.Context) bool {
 	return archived
 }
 
+func SetYearMonth(ctx *gin.Context, value string) {
+	ctx.Set("year_month", value)
+}
+
+func GetYearMonth(ctx *gin.Context) string {
+	value, _ := ctx.Get("year_month")
+	yearMonth, _ := value.(string)
+
+	return yearMonth
+}
+
+func SetEnvironmentId(ctx *gin.Context, value string) {
+	ctx.Set("environment_id", value)
+}
+
+func GetEnvironmentId(ctx *gin.Context) string {
+	value, _ := ctx.Get("environment_id")
+	environmentId, _ := value.(string)
+
+	return environmentId
+}
+
 func SetRecordCreateRequest(ctx *gin.Context, value dto.RecordCreateRequest) {
 	ctx.Set("record_create_request", value)
 }

@@ -612,25 +612,142 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 }
 
 func test_RecordInfrastructure_Delete(t *testing.T) {
-	r, mock, err := setup4RecordInfrastructure()
-	require.NoError(t, err)
-
-	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(
-		`UPDATE "records" SET "deleted_at"=$1 WHERE id = $2 AND "records"."deleted_at" IS NULL`,
-	)).WithArgs(
-		AnyTime{},
-		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-	).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectCommit()
-
-	{
-		err := r.Delete(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+	t.Run("matchesなし", func(t *testing.T) {
+		r, mock, err := setup4RecordInfrastructure()
 		require.NoError(t, err)
-	}
 
-	{
-		err := mock.ExpectationsWereMet()
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "matches" WHERE record_id = $1 AND "matches"."deleted_at" IS NULL ORDER BY created_at ASC`,
+		)).WithArgs(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+		mock.ExpectBegin()
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "matches" SET "deleted_at"=$1 WHERE record_id = $2 AND "matches"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnResult(sqlmock.NewResult(0, 0))
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "records" SET "deleted_at"=$1 WHERE id = $2 AND "records"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectCommit()
+
+		err = r.Delete(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TN2")
 		require.NoError(t, err)
-	}
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("matchesあり", func(t *testing.T) {
+		r, mock, err := setup4RecordInfrastructure()
+		require.NoError(t, err)
+
+		datetime := time.Now().Local()
+
+		matchRows := sqlmock.NewRows([]string{
+			"id",
+			"created_at",
+			"updated_at",
+			"deleted_at",
+			"record_id",
+			"deck_id",
+			"deck_code_id",
+			"user_id",
+			"opponents_user_id",
+			"bo3_flg",
+			"qualifying_round_flg",
+			"final_tournament_flg",
+			"default_victory_flg",
+			"default_defeat_flg",
+			"victory_flg",
+			"opponents_deck_info",
+			"memo",
+		}).AddRow(
+			"01MATCH0000000000000000001",
+			datetime,
+			datetime,
+			gorm.DeletedAt{},
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			"",
+			"",
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			"",
+			false,
+			false,
+			false,
+			false,
+			false,
+			true,
+			"",
+			"",
+		).AddRow(
+			"01MATCH0000000000000000002",
+			datetime,
+			datetime,
+			gorm.DeletedAt{},
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			"",
+			"",
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			"",
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			"",
+			"",
+		)
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "matches" WHERE record_id = $1 AND "matches"."deleted_at" IS NULL ORDER BY created_at ASC`,
+		)).WithArgs(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnRows(matchRows)
+
+		mock.ExpectBegin()
+
+		// match ごとに games をソフトデリート
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "games" SET "deleted_at"=$1 WHERE match_id = $2 AND "games"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01MATCH0000000000000000001",
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "games" SET "deleted_at"=$1 WHERE match_id = $2 AND "games"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01MATCH0000000000000000002",
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "matches" SET "deleted_at"=$1 WHERE record_id = $2 AND "matches"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnResult(sqlmock.NewResult(0, 2))
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "records" SET "deleted_at"=$1 WHERE id = $2 AND "records"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectCommit()
+
+		err = r.Delete(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }

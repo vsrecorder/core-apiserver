@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,6 +16,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/vsrecorder/core-apiserver/internal"
 	"github.com/vsrecorder/core-apiserver/internal/controller"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
@@ -22,7 +25,13 @@ import (
 )
 
 const (
+	ExitCodeOK = iota
+	ExitCodeNG
+)
+
+const (
 	relativePath = "/api/v1beta"
+	appName      = "core-apiserver"
 )
 
 type APIServer struct {
@@ -41,21 +50,33 @@ func NewAPIServer(addr string, handler http.Handler, db *gorm.DB) *APIServer {
 }
 
 func (s *APIServer) Start(ctx context.Context) error {
+	ln, err := net.Listen("tcp", s.httpServer.Addr)
+	if err != nil {
+		return fmt.Errorf("listen error: %w", err)
+	}
+
+	errCh := make(chan error, 1)
+
 	go func() {
-		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("server listen error: %v", err)
+		if err := s.httpServer.Serve(ln); err != nil &&
+			err != http.ErrServerClosed {
+			errCh <- err
 		}
 	}()
-	log.Printf("server started on %s", s.httpServer.Addr)
 
-	<-ctx.Done()
-	return s.Shutdown()
+	select {
+	case err := <-errCh:
+		return fmt.Errorf("http server error: %w", err)
+
+	case <-ctx.Done():
+		return s.Shutdown()
+	}
 }
 
 func (s *APIServer) Shutdown() error {
 	log.Println("shutting down gracefully...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	if err := s.httpServer.Shutdown(ctx); err != nil {
@@ -73,7 +94,6 @@ func (s *APIServer) Shutdown() error {
 		}
 	}
 
-	log.Printf("db closed")
 	log.Println("server exited cleanly")
 
 	return nil
@@ -86,7 +106,7 @@ func main() {
 
 	if _, err := config.LoadDefaultConfig(context.Background()); err != nil {
 		log.Printf("failed to load default config: %v", err)
-		return
+		os.Exit(ExitCodeNG)
 	}
 
 	dbHostname := os.Getenv("DB_HOSTNAME")
@@ -97,10 +117,24 @@ func main() {
 
 	db, err := postgres.NewDB(dbHostname, dbPort, userName, userPassword, dbName)
 	if err != nil {
-		log.Fatalf("failed to connect database: %v\n", err)
+		log.Printf("failed to connect database: %v\n", err)
+		os.Exit(ExitCodeNG)
 	}
 
-	r := gin.Default()
+	logger := internal.InitLogger(internal.LogConfig{
+		Level:   "info",
+		AppName: appName,
+	})
+
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+
+	r.Use(
+		internal.RequestIDMiddleware(),
+		internal.AccessLogMiddleware(logger),
+		gin.Recovery(),
+	)
+
 	r.SetTrustedProxies(nil)
 	r.Use(cors.New(cors.Config{
 		AllowHeaders: []string{
@@ -125,6 +159,7 @@ func main() {
 	}))
 
 	controller.NewUser(
+		logger,
 		r,
 		infrastructure.NewUser(db),
 		usecase.NewUser(
@@ -201,13 +236,29 @@ func main() {
 		infrastructure.NewStandardRegulation(db),
 	).RegisterRoute(relativePath)
 
+	controller.NewUserStat(
+		r,
+		usecase.NewUserStat(
+			infrastructure.NewUserStat(db),
+			infrastructure.NewEnvironment(db),
+		),
+	).RegisterRoute(relativePath)
+
 	{
-		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		ctx, stop := signal.NotifyContext(
+			context.Background(),
+			syscall.SIGINT,
+			syscall.SIGTERM,
+		)
 		defer stop()
 
 		server := NewAPIServer(":8914", r, db)
+
 		if err := server.Start(ctx); err != nil {
-			log.Fatalf("failed to run server: %v", err)
+			log.Printf("server error: %v", err)
+			os.Exit(ExitCodeNG)
 		}
+
+		os.Exit(ExitCodeOK)
 	}
 }

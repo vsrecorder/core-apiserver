@@ -472,5 +472,4 @@ func (i *Match) Delete(
 
 		return nil
 	}, &sql.TxOptions{Isolation: sql.LevelDefault})
-
 }

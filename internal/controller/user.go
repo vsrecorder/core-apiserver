@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -25,17 +26,19 @@ var (
 )
 
 type User struct {
+	logger     *slog.Logger
 	router     *gin.Engine
 	repository repository.UserInterface
 	usecase    usecase.UserInterface
 }
 
 func NewUser(
+	logger *slog.Logger,
 	router *gin.Engine,
 	repository repository.UserInterface,
 	usecase usecase.UserInterface,
 ) *User {
-	return &User{router, repository, usecase}
+	return &User{logger, router, repository, usecase}
 }
 
 func (c *User) RegisterRoute(relativePath string, authDisable bool) {
@@ -89,6 +92,10 @@ func (c *User) RegisterRoute(relativePath string, authDisable bool) {
 
 func (c *User) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
+
+	c.logger.Info("controller_user_GetByID", slog.String("id", id))
+	c.logger.Warn("controller_user_GetByID", slog.String("id", id))
+	c.logger.Error("controller_user_GetByID", slog.String("id", id))
 
 	user, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {

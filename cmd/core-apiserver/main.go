@@ -242,6 +242,9 @@ func main() {
 			infrastructure.NewUserStat(db),
 			infrastructure.NewEnvironment(db),
 		),
+		usecase.NewUserStatHistory(
+			infrastructure.NewUserStatHistory(db),
+		),
 	).RegisterRoute(relativePath)
 
 	{

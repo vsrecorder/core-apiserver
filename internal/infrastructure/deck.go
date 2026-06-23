@@ -799,9 +799,23 @@ func (i *Deck) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	if tx := i.db.Where("id = ?", id).Delete(&model.Deck{}); tx.Error != nil {
+	var deckCodes []*model.DeckCode
+	if tx := i.db.Where("deck_id = ?", id).Order("created_at ASC").Find(&deckCodes); tx.Error != nil {
 		return tx.Error
 	}
 
-	return nil
+	return i.db.Transaction(func(tx *gorm.DB) error {
+		for _, deckCode := range deckCodes {
+			if tx := tx.Where("id = ?", deckCode.ID).Delete(&model.DeckCode{}); tx.Error != nil {
+				return tx.Error
+			}
+		}
+
+		if tx := i.db.Where("id = ?", id).Delete(&model.Deck{}); tx.Error != nil {
+			return tx.Error
+
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
 }

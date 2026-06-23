@@ -205,6 +205,17 @@ func GetSeason(ctx *gin.Context) string {
 	return season
 }
 
+func SetPeriod(ctx *gin.Context, value string) {
+	ctx.Set("period", value)
+}
+
+func GetPeriod(ctx *gin.Context) string {
+	value, _ := ctx.Get("period")
+	period, _ := value.(string)
+
+	return period
+}
+
 func SetRecordCreateRequest(ctx *gin.Context, value dto.RecordCreateRequest) {
 	ctx.Set("record_create_request", value)
 }

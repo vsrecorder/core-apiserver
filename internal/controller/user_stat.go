@@ -18,15 +18,17 @@ const (
 )
 
 type UserStat struct {
-	router  *gin.Engine
-	usecase usecase.UserStatInterface
+	router         *gin.Engine
+	usecase        usecase.UserStatInterface
+	historyUsecase usecase.UserStatHistoryInterface
 }
 
 func NewUserStat(
 	router *gin.Engine,
 	usecase usecase.UserStatInterface,
+	historyUsecase usecase.UserStatHistoryInterface,
 ) *UserStat {
-	return &UserStat{router, usecase}
+	return &UserStat{router, usecase, historyUsecase}
 }
 
 func (c *UserStat) RegisterRoute(relativePath string) {
@@ -35,6 +37,11 @@ func (c *UserStat) RegisterRoute(relativePath string) {
 		"/:id"+UserStatsPath,
 		validation.UserStatGetMiddleware(),
 		c.GetByUserId,
+	)
+	r.GET(
+		"/:id"+UserStatsPath+"/history",
+		validation.UserStatHistoryGetMiddleware(),
+		c.GetHistoryByUserId,
 	)
 }
 
@@ -58,6 +65,23 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 	}
 
 	res := presenter.NewUserStatResponse(stats, yearMonth, environmentId, season)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *UserStat) GetHistoryByUserId(ctx *gin.Context) {
+	uid := helper.GetId(ctx)
+	period := helper.GetPeriod(ctx)
+	season := helper.GetSeason(ctx)
+
+	history, err := c.historyUsecase.GetUserStatHistory(context.Background(), uid, period, season)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewUserStatHistoryResponse(uid, period, season, history)
 
 	ctx.JSON(http.StatusOK, res)
 }

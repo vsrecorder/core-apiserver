@@ -221,8 +221,9 @@ CREATE TABLE environments (
     to_date    DATE NOT NULL
 );
 
-update environments set to_date = '2026-05-21' where id = '';
+update environments set to_date = '2026-09-' where id = 'm6';
 
+INSERT INTO environments VALUES ('m6','ストームエメラルダ','2026-07-31','2026-09-15');
 INSERT INTO environments VALUES ('m5','アビスアイ','2026-05-22','2026-07-30');
 INSERT INTO environments VALUES ('m4','ニンジャスピナー','2026-03-13','2026-05-21');
 INSERT INTO environments VALUES ('m3','ムニキスゼロ','2026-01-23','2026-03-12');

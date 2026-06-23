@@ -54,8 +54,7 @@ func (u *UserStatHistory) GetUserStatHistory(
 				return nil, err
 			}
 		} else {
-			// フロントエンドの判定（10月以降なら翌年シーズン）に合わせる
-			if now.Month() >= time.October {
+			if now.Month() >= time.September {
 				seasonYear = now.Year() + 1
 			} else {
 				seasonYear = now.Year()

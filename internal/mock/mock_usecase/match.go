@@ -86,6 +86,21 @@ func (mr *MockMatchInterfaceMockRecorder) FindById(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockMatchInterface)(nil).FindById), ctx, id)
 }
 
+// FindByRecordId mocks base method.
+func (m *MockMatchInterface) FindByRecordId(ctx context.Context, recordId string) ([]*entity.Match, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByRecordId", ctx, recordId)
+	ret0, _ := ret[0].([]*entity.Match)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByRecordId indicates an expected call of FindByRecordId.
+func (mr *MockMatchInterfaceMockRecorder) FindByRecordId(ctx, recordId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByRecordId", reflect.TypeOf((*MockMatchInterface)(nil).FindByRecordId), ctx, recordId)
+}
+
 // FindByUserId mocks base method.
 func (m *MockMatchInterface) FindByUserId(ctx context.Context, userId string, limit int) ([]*entity.Match, error) {
 	m.ctrl.T.Helper()
@@ -114,21 +129,6 @@ func (m *MockMatchInterface) FindLatest(ctx context.Context, limit int) ([]*enti
 func (mr *MockMatchInterfaceMockRecorder) FindLatest(ctx, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLatest", reflect.TypeOf((*MockMatchInterface)(nil).FindLatest), ctx, limit)
-}
-
-// FindByRecordId mocks base method.
-func (m *MockMatchInterface) FindByRecordId(ctx context.Context, recordId string) ([]*entity.Match, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByRecordId", ctx, recordId)
-	ret0, _ := ret[0].([]*entity.Match)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindByRecordId indicates an expected call of FindByRecordId.
-func (mr *MockMatchInterfaceMockRecorder) FindByRecordId(ctx, recordId any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByRecordId", reflect.TypeOf((*MockMatchInterface)(nil).FindByRecordId), ctx, recordId)
 }
 
 // Update mocks base method.

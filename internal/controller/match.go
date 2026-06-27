@@ -42,6 +42,10 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 		{
 			r := c.router.Group(relativePath + MatchesPath)
 			r.GET(
+				"",
+				c.GetLatest,
+			)
+			r.GET(
 				"/:id",
 				c.GetById,
 			)
@@ -71,6 +75,11 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 	} else {
 		{
 			r := c.router.Group(relativePath + MatchesPath)
+			r.GET(
+				"",
+				authentication.RequiredAuthenticationMiddleware(),
+				c.GetLatest,
+			)
 			r.GET(
 				"/:id",
 				authentication.OptionalAuthenticationMiddleware(),
@@ -107,7 +116,41 @@ func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
 				c.GetByRecordId,
 			)
 		}
+
+		{
+			r := c.router.Group(relativePath + UsersPath)
+			r.GET(
+				"/:id"+MatchesPath,
+				authentication.RequiredAuthenticationMiddleware(),
+				c.GetByUserId,
+			)
+		}
 	}
+}
+
+func (c *Match) GetLatest(ctx *gin.Context) {
+	limit, err := helper.ParseQueryLimit(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+		ctx.Abort()
+		return
+	}
+
+	matches, err := c.usecase.FindLatest(context.Background(), limit)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusOK, []*dto.MatchResponse{})
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewMatchGetByRecordIdResponse(matches)
+
+	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *Match) GetById(ctx *gin.Context) {
@@ -138,6 +181,40 @@ func (c *Match) GetByRecordId(ctx *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusOK, []*dto.MatchGetByRecordIdResponse{})
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		ctx.Abort()
+		return
+	}
+
+	res := presenter.NewMatchGetByRecordIdResponse(matches)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *Match) GetByUserId(ctx *gin.Context) {
+	userId := helper.GetId(ctx)
+	uid := helper.GetUID(ctx)
+
+	if uid != userId {
+		ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
+		ctx.Abort()
+		return
+	}
+
+	limit, err := helper.ParseQueryLimit(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+		ctx.Abort()
+		return
+	}
+
+	matches, err := c.usecase.FindByUserId(context.Background(), userId, limit)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusOK, []*dto.MatchResponse{})
 			return
 		}
 

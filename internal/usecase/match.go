@@ -98,6 +98,17 @@ type MatchInterface interface {
 		recordId string,
 	) ([]*entity.Match, error)
 
+	FindByUserId(
+		ctx context.Context,
+		userId string,
+		limit int,
+	) ([]*entity.Match, error)
+
+	FindLatest(
+		ctx context.Context,
+		limit int,
+	) ([]*entity.Match, error)
+
 	Create(
 		ctx context.Context,
 		param *MatchParam,
@@ -143,6 +154,33 @@ func (u *Match) FindByRecordId(
 	recordId string,
 ) ([]*entity.Match, error) {
 	matches, err := u.repository.FindByRecordId(ctx, recordId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}
+
+func (u *Match) FindByUserId(
+	ctx context.Context,
+	userId string,
+	limit int,
+) ([]*entity.Match, error) {
+	matches, err := u.repository.FindByUserId(ctx, userId, limit)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}
+
+func (u *Match) FindLatest(
+	ctx context.Context,
+	limit int,
+) ([]*entity.Match, error) {
+	matches, err := u.repository.FindLatest(ctx, limit)
 
 	if err != nil {
 		return nil, err

@@ -247,6 +247,22 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	controller.NewDeckUsageStat(
+		r,
+		usecase.NewDeckUsageStat(
+			infrastructure.NewDeckUsageStat(db),
+			infrastructure.NewEnvironment(db),
+		),
+	).RegisterRoute(relativePath, false)
+
+	controller.NewOpponentDeckUsageStat(
+		r,
+		usecase.NewOpponentDeckUsageStat(
+			infrastructure.NewOpponentDeckUsageStat(db),
+			infrastructure.NewEnvironment(db),
+		),
+	).RegisterRoute(relativePath, false)
+
 	{
 		ctx, stop := signal.NotifyContext(
 			context.Background(),

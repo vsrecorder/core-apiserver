@@ -276,6 +276,293 @@ func (i *Match) FindByRecordId(
 	return matches, nil
 }
 
+func (i *Match) FindByUserId(
+	ctx context.Context,
+	userId string,
+	limit int,
+) ([]*entity.Match, error) {
+	var results []*model.MatchJoinGame
+
+	subQuery := i.db.Table("matches").
+		Select("id").
+		Where("user_id = ? AND deleted_at IS NULL", userId).
+		Order("created_at DESC").
+		Limit(limit)
+
+	tx := i.db.Table(
+		"matches",
+	).Select(`
+		matches.id AS match_id,
+		matches.created_at AS match_created_at,
+		matches.updated_at AS match_updated_at,
+		matches.deleted_at AS match_deleted_at,
+		matches.record_id AS match_record_id,
+		matches.deck_id AS match_deck_id,
+		matches.deck_code_id AS match_deck_code_id,
+		matches.user_id AS match_user_id,
+		matches.opponents_user_id AS match_opponents_user_id,
+		matches.bo3_flg AS match_bo3_flg,
+		matches.qualifying_round_flg AS match_qualifying_round_flg,
+		matches.final_tournament_flg AS match_final_tournament_flg,
+		matches.default_victory_flg AS match_default_victory_flg,
+		matches.default_defeat_flg AS match_default_defeat_flg,
+		matches.victory_flg AS match_victory_flg,
+		matches.opponents_deck_info AS match_opponents_deck_info,
+		matches.memo AS match_memo,
+		games.id AS game_id,
+		games.created_at AS game_created_at,
+		games.updated_at AS game_updated_at,
+		games.deleted_at AS game_deleted_at,
+		games.match_id AS game_match_id,
+		games.user_id AS game_user_id,
+		games.go_first AS game_go_first,
+		games.winning_flg AS game_winning_flg,
+		games.your_prize_cards AS game_your_prize_cards,
+		games.opponents_prize_cards AS game_opponents_prize_cards,
+		games.memo AS game_memo`,
+	).Joins(
+		"LEFT JOIN games ON matches.id = games.match_id",
+	).Where(
+		"matches.id IN (?)", subQuery,
+	).Order(
+		"matches.created_at DESC, games.created_at ASC",
+	).Scan(&results)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	if len(results) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	v := make(map[string]*entity.Match)
+	var keys []string
+
+	for _, result := range results {
+		match, ok := v[result.MatchID]
+
+		if !ok {
+			var games []*entity.Game
+
+			if result.GameID != "" {
+				game := entity.NewGame(
+					result.GameID,
+					result.GameCreatedAt,
+					result.MatchID,
+					result.MatchUserId,
+					result.GameGoFirst,
+					result.GameWinningFlg,
+					result.GameYourPrizeCards,
+					result.GameOpponentsPrizeCards,
+					result.GameMemo,
+				)
+				games = append(games, game)
+			}
+
+			var matchPokemonSpriteModels []*model.MatchPokemonSprite
+			if tx := i.db.Where("match_id = ?", result.MatchID).Find(&matchPokemonSpriteModels); tx.Error != nil {
+				return nil, tx.Error
+			}
+
+			var pokemonSprites []*entity.PokemonSprite
+			for _, matchPokemonSpriteModel := range matchPokemonSpriteModels {
+				entity := entity.NewPokemonSprite(matchPokemonSpriteModel.PokemonSpriteId)
+				pokemonSprites = append(pokemonSprites, entity)
+			}
+
+			match := entity.NewMatch(
+				result.MatchID,
+				result.MatchCreatedAt,
+				result.MatchRecordId,
+				result.MatchDeckId,
+				result.MatchDeckCodeId,
+				result.MatchUserId,
+				result.MatchOpponentsUserId,
+				result.MatchBO3Flg,
+				result.MatchQualifyingRoundFlg,
+				result.MatchFinalTournamentFlg,
+				result.MatchDefaultVictoryFlg,
+				result.MatchDefaultDefeatFlg,
+				result.MatchVictoryFlg,
+				result.MatchOpponentsDeckInfo,
+				result.MatchMemo,
+				games,
+				pokemonSprites,
+			)
+
+			v[result.MatchID] = match
+			keys = append(keys, result.MatchID)
+		} else {
+			if result.GameID != "" {
+				game := entity.NewGame(
+					result.GameID,
+					result.GameCreatedAt,
+					result.MatchID,
+					result.MatchUserId,
+					result.GameGoFirst,
+					result.GameWinningFlg,
+					result.GameYourPrizeCards,
+					result.GameOpponentsPrizeCards,
+					result.GameMemo,
+				)
+				match.Games = append(match.Games, game)
+			}
+		}
+	}
+
+	// created_at DESC 順を維持するため keys を逆順ソートしない
+	// subquery により既に DESC 順で取得済み
+	var matches []*entity.Match
+	for _, key := range keys {
+		matches = append(matches, v[key])
+	}
+
+	return matches, nil
+}
+
+func (i *Match) FindLatest(
+	ctx context.Context,
+	limit int,
+) ([]*entity.Match, error) {
+	var results []*model.MatchJoinGame
+
+	subQuery := i.db.Table("matches").
+		Select("id").
+		Where("deleted_at IS NULL").
+		Order("created_at DESC").
+		Limit(limit)
+
+	tx := i.db.Table(
+		"matches",
+	).Select(`
+		matches.id AS match_id,
+		matches.created_at AS match_created_at,
+		matches.updated_at AS match_updated_at,
+		matches.deleted_at AS match_deleted_at,
+		matches.record_id AS match_record_id,
+		matches.deck_id AS match_deck_id,
+		matches.deck_code_id AS match_deck_code_id,
+		matches.user_id AS match_user_id,
+		matches.opponents_user_id AS match_opponents_user_id,
+		matches.bo3_flg AS match_bo3_flg,
+		matches.qualifying_round_flg AS match_qualifying_round_flg,
+		matches.final_tournament_flg AS match_final_tournament_flg,
+		matches.default_victory_flg AS match_default_victory_flg,
+		matches.default_defeat_flg AS match_default_defeat_flg,
+		matches.victory_flg AS match_victory_flg,
+		matches.opponents_deck_info AS match_opponents_deck_info,
+		matches.memo AS match_memo,
+		games.id AS game_id,
+		games.created_at AS game_created_at,
+		games.updated_at AS game_updated_at,
+		games.deleted_at AS game_deleted_at,
+		games.match_id AS game_match_id,
+		games.user_id AS game_user_id,
+		games.go_first AS game_go_first,
+		games.winning_flg AS game_winning_flg,
+		games.your_prize_cards AS game_your_prize_cards,
+		games.opponents_prize_cards AS game_opponents_prize_cards,
+		games.memo AS game_memo`,
+	).Joins(
+		"LEFT JOIN games ON matches.id = games.match_id",
+	).Where(
+		"matches.id IN (?)", subQuery,
+	).Order(
+		"matches.created_at DESC, games.created_at ASC",
+	).Scan(&results)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	if len(results) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	v := make(map[string]*entity.Match)
+	var keys []string
+
+	for _, result := range results {
+		match, ok := v[result.MatchID]
+
+		if !ok {
+			var games []*entity.Game
+
+			if result.GameID != "" {
+				game := entity.NewGame(
+					result.GameID,
+					result.GameCreatedAt,
+					result.MatchID,
+					result.MatchUserId,
+					result.GameGoFirst,
+					result.GameWinningFlg,
+					result.GameYourPrizeCards,
+					result.GameOpponentsPrizeCards,
+					result.GameMemo,
+				)
+				games = append(games, game)
+			}
+
+			var matchPokemonSpriteModels []*model.MatchPokemonSprite
+			if tx := i.db.Where("match_id = ?", result.MatchID).Find(&matchPokemonSpriteModels); tx.Error != nil {
+				return nil, tx.Error
+			}
+
+			var pokemonSprites []*entity.PokemonSprite
+			for _, matchPokemonSpriteModel := range matchPokemonSpriteModels {
+				entity := entity.NewPokemonSprite(matchPokemonSpriteModel.PokemonSpriteId)
+				pokemonSprites = append(pokemonSprites, entity)
+			}
+
+			match := entity.NewMatch(
+				result.MatchID,
+				result.MatchCreatedAt,
+				result.MatchRecordId,
+				result.MatchDeckId,
+				result.MatchDeckCodeId,
+				result.MatchUserId,
+				result.MatchOpponentsUserId,
+				result.MatchBO3Flg,
+				result.MatchQualifyingRoundFlg,
+				result.MatchFinalTournamentFlg,
+				result.MatchDefaultVictoryFlg,
+				result.MatchDefaultDefeatFlg,
+				result.MatchVictoryFlg,
+				result.MatchOpponentsDeckInfo,
+				result.MatchMemo,
+				games,
+				pokemonSprites,
+			)
+
+			v[result.MatchID] = match
+			keys = append(keys, result.MatchID)
+		} else {
+			if result.GameID != "" {
+				game := entity.NewGame(
+					result.GameID,
+					result.GameCreatedAt,
+					result.MatchID,
+					result.MatchUserId,
+					result.GameGoFirst,
+					result.GameWinningFlg,
+					result.GameYourPrizeCards,
+					result.GameOpponentsPrizeCards,
+					result.GameMemo,
+				)
+				match.Games = append(match.Games, game)
+			}
+		}
+	}
+
+	var matches []*entity.Match
+	for _, key := range keys {
+		matches = append(matches, v[key])
+	}
+
+	return matches, nil
+}
+
 func (i *Match) Create(
 	ctx context.Context,
 	entity *entity.Match,

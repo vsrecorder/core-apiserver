@@ -174,7 +174,6 @@ func NewDeckGetByUserIdResponse(
 func NewDeckCreateResponse(
 	deck *entity.Deck,
 ) *dto.DeckCreateResponse {
-
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range deck.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{

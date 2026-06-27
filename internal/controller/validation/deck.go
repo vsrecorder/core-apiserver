@@ -60,12 +60,7 @@ func DeckCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if req.DeckCode == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
-			return
-
-		} else {
+		if req.DeckCode != "" {
 			checkDeckCode(ctx, req.DeckCode)
 		}
 

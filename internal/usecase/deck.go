@@ -224,7 +224,7 @@ func (u *Deck) Create(
 
 	createdAt := time.Now().Local()
 	archivedAt := time.Time{}
-	var LatestDeckCode *entity.DeckCode
+	LatestDeckCode := entity.NewDeckCode("", time.Time{}, "", "", "", false, "")
 
 	if param.DeckCode != "" {
 		deckCodeId, err := generateId()

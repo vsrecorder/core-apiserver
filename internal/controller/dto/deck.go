@@ -3,10 +3,11 @@ package dto
 import "time"
 
 type DeckCreateRequest struct {
-	Name               string `json:"name"`
-	PrivateFlg         bool   `json:"private_flg"`
-	DeckCode           string `json:"deck_code"`
-	PrivateDeckCodeFlg bool   `json:"private_deck_code_flg"`
+	Name               string                  `json:"name"`
+	PrivateFlg         bool                    `json:"private_flg"`
+	DeckCode           string                  `json:"deck_code"`
+	PrivateDeckCodeFlg bool                    `json:"private_deck_code_flg"`
+	PokemonSprites     []*PokemonSpriteRequest `json:"pokemon_sprites"`
 }
 
 type DeckUpdateRequest struct {

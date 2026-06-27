@@ -261,12 +261,18 @@ func (c *Deck) Create(ctx *gin.Context) {
 	req := helper.GetDeckCreateRequest(ctx)
 	uid := helper.GetUID(ctx)
 
+	var pokemonSprites []*usecase.PokemonSpriteParam
+	for _, pokemonSprite := range req.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, usecase.NewPokemonSpriteParam(pokemonSprite.ID))
+	}
+
 	param := usecase.NewDeckCreateParam(
 		uid,
 		req.Name,
 		req.PrivateFlg,
 		req.DeckCode,
 		req.PrivateDeckCodeFlg,
+		pokemonSprites,
 	)
 
 	deck, err := c.usecase.Create(context.Background(), param)

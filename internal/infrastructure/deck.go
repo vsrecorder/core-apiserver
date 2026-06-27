@@ -751,6 +751,11 @@ func (i *Deck) Save(
 		)
 
 		return i.db.Transaction(func(tx *gorm.DB) error {
+			// Deck を先に保存して FK 制約を満たす
+			if err := tx.Save(deck).Error; err != nil {
+				return err
+			}
+
 			if tx := tx.Where("deck_id = ?", entity.ID).Delete(&model.DeckPokemonSprite{}); tx.Error != nil {
 				return tx.Error
 			}
@@ -759,10 +764,6 @@ func (i *Deck) Save(
 				if err := tx.Save(deckPokemonSpriteModal).Error; err != nil {
 					return err
 				}
-			}
-
-			if err := tx.Save(deck).Error; err != nil {
-				return err
 			}
 
 			// デッキコードのIDが空でない場合は保存する
@@ -776,6 +777,11 @@ func (i *Deck) Save(
 		}, &sql.TxOptions{Isolation: sql.LevelDefault})
 	} else {
 		return i.db.Transaction(func(tx *gorm.DB) error {
+			// Deck を先に保存して FK 制約を満たす
+			if err := tx.Save(deck).Error; err != nil {
+				return err
+			}
+
 			if tx := tx.Where("deck_id = ?", entity.ID).Delete(&model.DeckPokemonSprite{}); tx.Error != nil {
 				return tx.Error
 			}
@@ -784,10 +790,6 @@ func (i *Deck) Save(
 				if err := tx.Save(deckPokemonSpriteModal).Error; err != nil {
 					return err
 				}
-			}
-
-			if err := tx.Save(deck).Error; err != nil {
-				return err
 			}
 
 			return nil

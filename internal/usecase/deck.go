@@ -15,6 +15,7 @@ type DeckCreateParam struct {
 	PrivateFlg         bool
 	DeckCode           string
 	PrivateDeckCodeFlg bool
+	PokemonSprites     []*PokemonSpriteParam
 }
 
 func NewDeckCreateParam(
@@ -23,6 +24,7 @@ func NewDeckCreateParam(
 	privateFlg bool,
 	deckcode string,
 	privateDeckCodeFlg bool,
+	pokemonSprites []*PokemonSpriteParam,
 ) *DeckCreateParam {
 	return &DeckCreateParam{
 		UserId:             userId,
@@ -30,6 +32,7 @@ func NewDeckCreateParam(
 		PrivateFlg:         privateFlg,
 		DeckCode:           deckcode,
 		PrivateDeckCodeFlg: privateDeckCodeFlg,
+		PokemonSprites:     pokemonSprites,
 	}
 }
 
@@ -255,6 +258,9 @@ func (u *Deck) Create(
 	}
 
 	var pokemonSprites []*entity.PokemonSprite
+	for _, pokemonSprite := range param.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(pokemonSprite.ID))
+	}
 
 	deck := entity.NewDeck(
 		deckId,

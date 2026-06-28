@@ -24,9 +24,9 @@ func NewOpponentDeckUsage(
 
 // OpponentDeckUsageStat はユーザーの対戦相手デッキ分布の集計結果を表す
 type OpponentDeckUsageStat struct {
-	UserId      string
+	UserId       string
 	TotalMatches int
-	Decks       []*OpponentDeckUsage
+	Decks        []*OpponentDeckUsage
 }
 
 func NewOpponentDeckUsageStat(
@@ -35,8 +35,8 @@ func NewOpponentDeckUsageStat(
 	decks []*OpponentDeckUsage,
 ) *OpponentDeckUsageStat {
 	return &OpponentDeckUsageStat{
-		UserId:      userId,
+		UserId:       userId,
 		TotalMatches: totalMatches,
-		Decks:       decks,
+		Decks:        decks,
 	}
 }

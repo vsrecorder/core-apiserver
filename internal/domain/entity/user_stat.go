@@ -1,14 +1,14 @@
 package entity
 
 type UserStat struct {
-	UserId              string
-	TotalRecords        int
-	OfficialEventCount  int
-	TonamelEventCount   int
-	TotalMatches        int
-	Wins                int
-	Losses              int
-	WinRate             float64
+	UserId             string
+	TotalRecords       int
+	OfficialEventCount int
+	TonamelEventCount  int
+	TotalMatches       int
+	Wins               int
+	Losses             int
+	WinRate            float64
 }
 
 func NewUserStat(

@@ -33,8 +33,8 @@ func (i *UserStatHistory) FindUserStatHistory(
 
 	tx := i.db.Table("matches").
 		Select(
-			"TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS year_month, " +
-				"COUNT(*) AS total_matches, " +
+			"TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS year_month, "+
+				"COUNT(*) AS total_matches, "+
 				"SUM(CASE WHEN victory_flg = true THEN 1 ELSE 0 END) AS wins",
 		).
 		Where("user_id = ? AND deleted_at IS NULL", userId).

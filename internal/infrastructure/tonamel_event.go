@@ -2,15 +2,15 @@ package infrastructure
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
+	"golang.org/x/net/html"
 	"gorm.io/gorm"
 )
 
@@ -26,19 +26,14 @@ func (i *TonamelEvent) FindById(
 	ctx context.Context,
 	id string,
 ) (*entity.TonamelEvent, error) {
-	tonamelEvent := &model.TonamelEvent{}
-
 	url := "https://tonamel.com/competition/" + id
-	apiURL := "https://web-toolbox.dev/api/ogtag?url=" + url
 
-	// OGPチェッカーから指定されたIDに紐ずくTonamelのOGP情報を取得
-	res, err := http.Get(apiURL)
+	res, err := http.Get(url)
 	if err != nil {
 		i.logger.Error(
-			"failed to fetch Tonamel OGP via OGP checker",
+			"failed to fetch Tonamel event page",
 			slog.String("tonamel_id", id),
-			slog.String("request_url", apiURL),
-			slog.Int("status_code", res.StatusCode),
+			slog.String("request_url", url),
 			slog.String("error_message", err.Error()),
 		)
 
@@ -46,60 +41,125 @@ func (i *TonamelEvent) FindById(
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode == http.StatusNotFound {
 		i.logger.Error(
-			"OGP checker returned non-200 status",
+			"Tonamel event not found",
 			slog.String("tonamel_id", id),
-			slog.String("request_url", apiURL),
+			slog.String("request_url", url),
 			slog.Int("status_code", res.StatusCode),
-		)
-
-		return nil, fmt.Errorf("ogp checker status: %d", res.StatusCode)
-	}
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		i.logger.Error(
-			"failed to read OGP checker response body",
-			slog.String("tonamel_id", id),
-			slog.String("request_url", apiURL),
-			slog.Int("status_code", res.StatusCode),
-			slog.String("error_message", err.Error()),
-		)
-
-		return nil, err
-	}
-
-	if err := json.Unmarshal(body, tonamelEvent); err != nil {
-		i.logger.Error(
-			"failed to unmarshal TonamelEvent model",
-			slog.String("tonamel_id", id),
-			slog.String("request_url", apiURL),
-			slog.Int("status_code", res.StatusCode),
-			slog.String("error_message", err.Error()),
-		)
-
-		return nil, err
-	}
-
-	if !tonamelEvent.Success {
-		i.logger.Error(
-			"Tonamel OGP not found or OGP checker not available",
-			slog.String("tonamel_id", id),
-			slog.String("request_url", apiURL),
-			slog.Int("status_code", res.StatusCode),
-			slog.String("error_message", tonamelEvent.Result.Error),
 		)
 
 		return nil, gorm.ErrRecordNotFound
 	}
 
-	ret := entity.NewTonamelEvent(
-		id,
-		tonamelEvent.Result.Metadata.Title,
-		tonamelEvent.Result.Metadata.Description,
-		tonamelEvent.Result.Metadata.Image,
-	)
+	if res.StatusCode != http.StatusOK {
+		i.logger.Error(
+			"Tonamel event page returned non-200 status",
+			slog.String("tonamel_id", id),
+			slog.String("request_url", url),
+			slog.Int("status_code", res.StatusCode),
+		)
+
+		return nil, fmt.Errorf("tonamel event page status: %d", res.StatusCode)
+	}
+
+	ogpTitle, ogpDescription, ogpImage, err := extractOGP(res.Body)
+	if err != nil {
+		i.logger.Error(
+			"failed to parse Tonamel event page HTML",
+			slog.String("tonamel_id", id),
+			slog.String("request_url", url),
+			slog.String("error_message", err.Error()),
+		)
+
+		return nil, err
+	}
+
+	if ogpTitle == "" {
+		i.logger.Error(
+			"Tonamel OGP title not found",
+			slog.String("tonamel_id", id),
+			slog.String("request_url", url),
+		)
+
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	ret := entity.NewTonamelEvent(id, ogpTitle, ogpDescription, ogpImage)
 
 	return ret, nil
+}
+
+// extractOGP はHTMLからog:title、og:description、og:imageを抽出する。
+// og:titleが存在しない場合はtwitter:titleまたは<title>タグへフォールバックする。
+// og:descriptionが存在しない場合はtwitter:descriptionまたはname=descriptionへフォールバックする。
+func extractOGP(r io.Reader) (title, description, image string, err error) {
+	doc, err := html.Parse(r)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// フォールバック用の値
+	var twitterTitle, twitterDescription, metaDescription, titleTagText string
+
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "meta" {
+			var property, name, content string
+			for _, a := range n.Attr {
+				switch strings.ToLower(a.Key) {
+				case "property":
+					property = a.Val
+				case "name":
+					name = a.Val
+				case "content":
+					content = a.Val
+				}
+			}
+			switch property {
+			case "og:title":
+				title = content
+			case "og:description":
+				description = content
+			case "og:image":
+				image = content
+			}
+			switch name {
+			case "twitter:title":
+				twitterTitle = content
+			case "twitter:description":
+				twitterDescription = content
+			case "description":
+				metaDescription = content
+			}
+		}
+		// <title>タグのテキストを取得
+		if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {
+			titleTagText = strings.TrimSpace(n.FirstChild.Data)
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(doc)
+
+	// フォールバック: og:title → twitter:title → <title>タグ
+	if title == "" {
+		if twitterTitle != "" {
+			title = twitterTitle
+		} else {
+			title = titleTagText
+		}
+	}
+
+	// フォールバック: og:description → twitter:description → name=description
+	if description == "" {
+		if twitterDescription != "" {
+			description = twitterDescription
+		} else {
+			description = metaDescription
+		}
+	}
+
+	return title, description, image, nil
 }

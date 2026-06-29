@@ -645,34 +645,3 @@ ALTER TABLE old_records RENAME TO records;
 */
 
 
-
-
-BEGIN;
-
-CREATE TABLE unofficial_events (
-    id         VARCHAR(26)  NOT NULL PRIMARY KEY,
-    created_at TIMESTAMP    NOT NULL,
-    updated_at TIMESTAMP    NOT NULL,
-    deleted_at TIMESTAMP    DEFAULT NULL,
-    user_id    VARCHAR(32)  NOT NULL,
-    title      VARCHAR(255) NOT NULL,
-    date       DATE         NOT NULL
-);
-
-CREATE INDEX idx_unofficial_events_deleted_at ON unofficial_events(deleted_at);
-
-COMMIT;
-
-
-
-
-BEGIN;
-
-ALTER TABLE records ADD COLUMN event_date          DATE        DEFAULT NULL;
-ALTER TABLE records ADD COLUMN unofficial_event_id VARCHAR(26) DEFAULT NULL;
-
-UPDATE records
-SET event_date = created_at::date
-WHERE event_date IS NULL AND tonamel_event_id IS NULL;
-
-COMMIT;

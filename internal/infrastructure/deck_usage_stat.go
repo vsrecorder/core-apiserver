@@ -42,10 +42,10 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.deck_id != ''", userId)
 
 	if !fromDate.IsZero() {
-		query = query.Where("records.created_at >= ?", fromDate)
+		query = query.Where("records.event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("records.created_at < ?", toDate)
+		query = query.Where("records.event_date < ?", toDate)
 	}
 
 	query = query.Group("records.deck_id, decks.name").Order("count DESC")

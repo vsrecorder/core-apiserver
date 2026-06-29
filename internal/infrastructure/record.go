@@ -40,9 +40,11 @@ func (i *Record) FindById(
 		model.OfficialEventId,
 		model.TonamelEventId,
 		model.FriendId,
+		model.UnofficialEventId,
 		model.UserId,
 		model.DeckId,
 		model.DeckCodeId,
+		model.EventDate,
 		model.PrivateFlg,
 		model.TCGMeisterURL,
 		model.Memo,
@@ -61,15 +63,19 @@ func (i *Record) Find(
 
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND private_flg = false").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("official_event_id != 0 AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND private_flg = false").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("tonamel_event_id != '' AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "unofficial":
+		if tx := i.db.Where("unofficial_event_id != '' AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	default:
-		if tx := i.db.Where("private_flg = false").Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	}
@@ -82,9 +88,11 @@ func (i *Record) Find(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -105,15 +113,19 @@ func (i *Record) FindOnCursor(
 
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND created_at < ? AND private_flg = false", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("official_event_id != 0 AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND private_flg = false", cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND created_at < ? AND private_flg = false", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("tonamel_event_id != '' AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND private_flg = false", cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "unofficial":
+		if tx := i.db.Where("unofficial_event_id != '' AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND private_flg = false", cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	default:
-		if tx := i.db.Where("created_at < ? AND private_flg = false", cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("(event_date < ? OR (event_date IS NULL AND created_at < ?)) AND private_flg = false", cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	}
@@ -126,9 +138,11 @@ func (i *Record) FindOnCursor(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -150,15 +164,19 @@ func (i *Record) FindByUserId(
 
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND user_id = ?", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("official_event_id != 0 AND user_id = ?", uid).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND user_id = ?", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("tonamel_event_id != '' AND user_id = ?", uid).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "unofficial":
+		if tx := i.db.Where("unofficial_event_id != '' AND user_id = ?", uid).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	default:
-		if tx := i.db.Where("user_id = ?", uid).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("user_id = ?", uid).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	}
@@ -171,9 +189,11 @@ func (i *Record) FindByUserId(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -195,15 +215,19 @@ func (i *Record) FindByUserIdOnCursor(
 
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND created_at < ? AND user_id = ?", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("official_event_id != 0 AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND user_id = ?", cursor, cursor, uid).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND created_at < ? AND user_id = ?", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("tonamel_event_id != '' AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND user_id = ?", cursor, cursor, uid).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "unofficial":
+		if tx := i.db.Where("unofficial_event_id != '' AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND user_id = ?", cursor, cursor, uid).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	default:
-		if tx := i.db.Where("created_at < ? AND user_id = ?", cursor, uid).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("(event_date < ? OR (event_date IS NULL AND created_at < ?)) AND user_id = ?", cursor, cursor, uid).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	}
@@ -216,9 +240,11 @@ func (i *Record) FindByUserIdOnCursor(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -237,7 +263,7 @@ func (i *Record) FindByOfficialEventId(
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("official_event_id = ? AND private_flg = ?", officialEventId, false).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("official_event_id = ? AND private_flg = ?", officialEventId, false).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -249,9 +275,11 @@ func (i *Record) FindByOfficialEventId(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -270,7 +298,7 @@ func (i *Record) FindByTonamelEventId(
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("tonamel_event_id = ? AND private_flg = ?", tonamelEventId, false).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("tonamel_event_id = ? AND private_flg = ?", tonamelEventId, false).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -282,9 +310,11 @@ func (i *Record) FindByTonamelEventId(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -306,15 +336,19 @@ func (i *Record) FindByDeckId(
 
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("official_event_id != 0 AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "unofficial":
+		if tx := i.db.Where("unofficial_event_id != '' AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	default:
-		if tx := i.db.Where("deck_id = ?", deckId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	}
@@ -327,9 +361,11 @@ func (i *Record) FindByDeckId(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -351,15 +387,19 @@ func (i *Record) FindByDeckIdOnCursor(
 
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND deck_id = ? AND created_at < ?", deckId, cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("official_event_id != 0 AND deck_id = ? AND (event_date < ? OR (event_date IS NULL AND created_at < ?))", deckId, cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ? AND created_at < ?", deckId, cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ? AND (event_date < ? OR (event_date IS NULL AND created_at < ?))", deckId, cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			return nil, tx.Error
+		}
+	case "unofficial":
+		if tx := i.db.Where("unofficial_event_id != '' AND deck_id = ? AND (event_date < ? OR (event_date IS NULL AND created_at < ?))", deckId, cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	default:
-		if tx := i.db.Where("deck_id = ? AND created_at < ?", deckId, cursor).Limit(limit).Order("created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("deck_id = ? AND (event_date < ? OR (event_date IS NULL AND created_at < ?))", deckId, cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			return nil, tx.Error
 		}
 	}
@@ -372,9 +412,11 @@ func (i *Record) FindByDeckIdOnCursor(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -393,7 +435,7 @@ func (i *Record) FindByDeckCodeId(
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("deck_code_id = ?", deckCodeId).Limit(limit).Offset(offset).Order("created_at DESC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("deck_code_id = ?", deckCodeId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -405,9 +447,11 @@ func (i *Record) FindByDeckCodeId(
 			model.OfficialEventId,
 			model.TonamelEventId,
 			model.FriendId,
+			model.UnofficialEventId,
 			model.UserId,
 			model.DeckId,
 			model.DeckCodeId,
+			model.EventDate,
 			model.PrivateFlg,
 			model.TCGMeisterURL,
 			model.Memo,
@@ -434,6 +478,8 @@ func (i *Record) Save(
 		entity.PrivateFlg,
 		entity.TCGMeisterURL,
 		entity.Memo,
+		entity.EventDate,
+		entity.UnofficialEventId,
 	)
 
 	if tx := i.db.Save(model); tx.Error != nil {
@@ -447,6 +493,13 @@ func (i *Record) Delete(
 	ctx context.Context,
 	id string,
 ) error {
+	// 削除対象の record が参照している自由形式イベント(unofficial_event)を把握するため、
+	// 先に record を取得しておく
+	var record model.Record
+	if tx := i.db.Where("id = ?", id).First(&record); tx.Error != nil {
+		return tx.Error
+	}
+
 	var matches []*model.Match
 	if tx := i.db.Where("record_id = ?", id).Order("created_at ASC").Find(&matches); tx.Error != nil {
 		return tx.Error
@@ -465,6 +518,13 @@ func (i *Record) Delete(
 
 		if tx := tx.Where("id = ?", id).Delete(&model.Record{}); tx.Error != nil {
 			return tx.Error
+		}
+
+		// 自由形式イベントを参照していた場合、紐づく unofficial_event も削除する(孤立行を残さない)
+		if record.UnofficialEventId != "" {
+			if tx := tx.Where("id = ?", record.UnofficialEventId).Delete(&model.UnofficialEvent{}); tx.Error != nil {
+				return tx.Error
+			}
 		}
 
 		return nil

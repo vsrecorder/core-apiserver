@@ -33,14 +33,15 @@ func (i *UserStatHistory) FindUserStatHistory(
 
 	tx := i.db.Table("matches").
 		Select(
-			"TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS year_month, "+
+			"TO_CHAR(DATE_TRUNC('month', records.event_date), 'YYYY-MM') AS year_month, "+
 				"COUNT(*) AS total_matches, "+
-				"SUM(CASE WHEN victory_flg = true THEN 1 ELSE 0 END) AS wins",
+				"SUM(CASE WHEN matches.victory_flg = true THEN 1 ELSE 0 END) AS wins",
 		).
-		Where("user_id = ? AND deleted_at IS NULL", userId).
-		Where("created_at >= ? AND created_at < ?", fromDate, toDate).
-		Group("DATE_TRUNC('month', created_at)").
-		Order("DATE_TRUNC('month', created_at) ASC").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
+		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId).
+		Where("records.event_date >= ? AND records.event_date < ?", fromDate, toDate).
+		Group("DATE_TRUNC('month', records.event_date)").
+		Order("DATE_TRUNC('month', records.event_date) ASC").
 		Scan(&results)
 
 	if tx.Error != nil {

@@ -48,10 +48,10 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 		)
 
 	if !fromDate.IsZero() {
-		query = query.Where("records.created_at >= ?", fromDate)
+		query = query.Where("records.event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("records.created_at < ?", toDate)
+		query = query.Where("records.event_date < ?", toDate)
 	}
 
 	query = query.Group("matches.opponents_deck_info").Order("count DESC")
@@ -78,13 +78,13 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 			)
 
 		if !fromDate.IsZero() {
-			latestQuery = latestQuery.Where("records.created_at >= ?", fromDate)
+			latestQuery = latestQuery.Where("records.event_date >= ?", fromDate)
 		}
 		if !toDate.IsZero() {
-			latestQuery = latestQuery.Where("records.created_at < ?", toDate)
+			latestQuery = latestQuery.Where("records.event_date < ?", toDate)
 		}
 
-		latestQuery = latestQuery.Order("records.created_at DESC").Limit(1)
+		latestQuery = latestQuery.Order("records.event_date DESC").Limit(1)
 
 		if tx := latestQuery.Scan(&latestMatch); tx.Error != nil {
 			return nil, tx.Error

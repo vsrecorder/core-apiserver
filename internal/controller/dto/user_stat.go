@@ -5,10 +5,11 @@ type UserStatResponse struct {
 	YearMonth          string  `json:"year_month,omitempty"`
 	EnvironmentId      string  `json:"environment_id,omitempty"`
 	Season             string  `json:"season,omitempty"`
-	TotalRecords       int     `json:"total_records"`
-	OfficialEventCount int     `json:"official_event_count"`
-	TonamelEventCount  int     `json:"tonamel_event_count"`
-	TotalMatches       int     `json:"total_matches"`
+	TotalRecords         int     `json:"total_records"`
+	OfficialEventCount   int     `json:"official_event_count"`
+	TonamelEventCount    int     `json:"tonamel_event_count"`
+	UnofficialEventCount int     `json:"unofficial_event_count"`
+	TotalMatches         int     `json:"total_matches"`
 	Wins               int     `json:"wins"`
 	Losses             int     `json:"losses"`
 	WinRate            float64 `json:"win_rate"`

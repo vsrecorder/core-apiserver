@@ -106,6 +106,18 @@ CREATE TABLE official_events (
     FOREIGN KEY (shop_id)   REFERENCES shops (id)
 );
 
+CREATE TABLE unofficial_events (
+    id         VARCHAR(26)  NOT NULL PRIMARY KEY,
+    created_at TIMESTAMP    NOT NULL,
+    updated_at TIMESTAMP    NOT NULL,
+    deleted_at TIMESTAMP    DEFAULT NULL,
+    user_id    VARCHAR(32)  NOT NULL,
+    title      VARCHAR(255) NOT NULL,
+    date       DATE         NOT NULL
+);
+
+CREATE INDEX idx_unofficial_events_deleted_at ON unofficial_events(deleted_at);
+
 CREATE TABLE decks (
     id               VARCHAR(26) PRIMARY KEY,
     created_at       TIMESTAMP NOT NULL,
@@ -144,9 +156,11 @@ CREATE TABLE records (
     official_event_id         INT DEFAULT NULL,
     tonamel_event_id          VARCHAR(8) DEFAULT NULL,
     friend_id                 VARCHAR(32) DEFAULT NULL,
+    unofficial_event_id       VARCHAR(26) DEFAULT NULL,
     user_id                   VARCHAR(32) NOT NULL,
     deck_id                   VARCHAR(26) DEFAULT NULL,
     deck_code_id              VARCHAR(26) DEFAULT NULL,
+    event_date                DATE DEFAULT NULL,
     private_flg               BOOLEAN DEFAULT NULL,
     tcg_meister_url           TEXT,
     memo                      TEXT
@@ -629,3 +643,36 @@ ALTER TABLE old_games RENAME TO games;
 ALTER TABLE old_matches RENAME TO matches;
 ALTER TABLE old_records RENAME TO records;
 */
+
+
+
+
+BEGIN;
+
+CREATE TABLE unofficial_events (
+    id         VARCHAR(26)  NOT NULL PRIMARY KEY,
+    created_at TIMESTAMP    NOT NULL,
+    updated_at TIMESTAMP    NOT NULL,
+    deleted_at TIMESTAMP    DEFAULT NULL,
+    user_id    VARCHAR(32)  NOT NULL,
+    title      VARCHAR(255) NOT NULL,
+    date       DATE         NOT NULL
+);
+
+CREATE INDEX idx_unofficial_events_deleted_at ON unofficial_events(deleted_at);
+
+COMMIT;
+
+
+
+
+BEGIN;
+
+ALTER TABLE records ADD COLUMN event_date          DATE        DEFAULT NULL;
+ALTER TABLE records ADD COLUMN unofficial_event_id VARCHAR(26) DEFAULT NULL;
+
+UPDATE records
+SET event_date = created_at::date
+WHERE event_date IS NULL AND tonamel_event_id IS NULL;
+
+COMMIT;

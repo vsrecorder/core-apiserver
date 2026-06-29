@@ -20,6 +20,10 @@ type Record struct {
 	PrivateFlg      bool
 	TCGMeisterURL   string
 	Memo            string
+	// 自由形式イベント用。開催日(EventDate)はユーザ入力値を保持し、
+	// イベント本体は unofficial_events テーブルへ分離して UnofficialEventId で参照する。
+	EventDate         time.Time
+	UnofficialEventId string
 }
 
 func NewRecord(
@@ -34,18 +38,22 @@ func NewRecord(
 	privateFlg bool,
 	tcgMeisterURL string,
 	memo string,
+	eventDate time.Time,
+	unofficialEventId string,
 ) *Record {
 	return &Record{
-		ID:              id,
-		CreatedAt:       createdAt,
-		OfficialEventId: officialEventId,
-		TonamelEventId:  tonamelEventId,
-		FriendId:        friendId,
-		UserId:          userId,
-		DeckId:          deckId,
-		DeckCodeId:      deckCodeId,
-		PrivateFlg:      privateFlg,
-		TCGMeisterURL:   tcgMeisterURL,
-		Memo:            memo,
+		ID:                id,
+		CreatedAt:         createdAt,
+		OfficialEventId:   officialEventId,
+		TonamelEventId:    tonamelEventId,
+		FriendId:          friendId,
+		UserId:            userId,
+		DeckId:            deckId,
+		DeckCodeId:        deckCodeId,
+		PrivateFlg:        privateFlg,
+		TCGMeisterURL:     tcgMeisterURL,
+		Memo:              memo,
+		EventDate:         eventDate,
+		UnofficialEventId: unofficialEventId,
 	}
 }

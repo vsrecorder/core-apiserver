@@ -17,20 +17,26 @@ func NewRecordGetResponse(
 	ret := []*dto.RecordData{}
 
 	for _, record := range records {
+		cursorTime := record.EventDate
+		if cursorTime.IsZero() {
+			cursorTime = record.CreatedAt
+		}
 		ret = append(ret, &dto.RecordData{
-			Cursor: base64.StdEncoding.EncodeToString([]byte(record.CreatedAt.Format(time.RFC3339))),
+			Cursor: base64.StdEncoding.EncodeToString([]byte(cursorTime.Format(time.RFC3339))),
 			Data: &dto.RecordResponse{
-				ID:              record.ID,
-				CreatedAt:       record.CreatedAt,
-				OfficialEventId: record.OfficialEventId,
-				TonamelEventId:  record.TonamelEventId,
-				FriendId:        record.FriendId,
-				UserId:          record.UserId,
-				DeckId:          record.DeckId,
-				DeckCodeId:      record.DeckCodeId,
-				PrivateFlg:      record.PrivateFlg,
-				TCGMeisterURL:   record.TCGMeisterURL,
-				Memo:            record.Memo,
+				ID:                record.ID,
+				CreatedAt:         record.CreatedAt,
+				OfficialEventId:   record.OfficialEventId,
+				TonamelEventId:    record.TonamelEventId,
+				FriendId:          record.FriendId,
+				UnofficialEventId: record.UnofficialEventId,
+				UserId:            record.UserId,
+				DeckId:            record.DeckId,
+				DeckCodeId:        record.DeckCodeId,
+				EventDate:         record.EventDate,
+				PrivateFlg:        record.PrivateFlg,
+				TCGMeisterURL:     record.TCGMeisterURL,
+				Memo:              record.Memo,
 			},
 		})
 	}
@@ -48,17 +54,19 @@ func NewRecordGetByIdResponse(
 ) *dto.RecordGetByIdResponse {
 	return &dto.RecordGetByIdResponse{
 		RecordResponse: dto.RecordResponse{
-			ID:              record.ID,
-			CreatedAt:       record.CreatedAt,
-			OfficialEventId: record.OfficialEventId,
-			TonamelEventId:  record.TonamelEventId,
-			FriendId:        record.FriendId,
-			UserId:          record.UserId,
-			DeckId:          record.DeckId,
-			DeckCodeId:      record.DeckCodeId,
-			PrivateFlg:      record.PrivateFlg,
-			TCGMeisterURL:   record.TCGMeisterURL,
-			Memo:            record.Memo,
+			ID:                record.ID,
+			CreatedAt:         record.CreatedAt,
+			OfficialEventId:   record.OfficialEventId,
+			TonamelEventId:    record.TonamelEventId,
+			FriendId:          record.FriendId,
+			UnofficialEventId: record.UnofficialEventId,
+			UserId:            record.UserId,
+			DeckId:            record.DeckId,
+			DeckCodeId:        record.DeckCodeId,
+			EventDate:         record.EventDate,
+			PrivateFlg:        record.PrivateFlg,
+			TCGMeisterURL:     record.TCGMeisterURL,
+			Memo:              record.Memo,
 		},
 	}
 }
@@ -72,20 +80,26 @@ func NewRecordGetByUserIdResponse(
 	ret := []*dto.RecordData{}
 
 	for _, record := range records {
+		cursorTime := record.EventDate
+		if cursorTime.IsZero() {
+			cursorTime = record.CreatedAt
+		}
 		ret = append(ret, &dto.RecordData{
-			Cursor: base64.StdEncoding.EncodeToString([]byte(record.CreatedAt.Format(time.RFC3339))),
+			Cursor: base64.StdEncoding.EncodeToString([]byte(cursorTime.Format(time.RFC3339))),
 			Data: &dto.RecordResponse{
-				ID:              record.ID,
-				CreatedAt:       record.CreatedAt,
-				OfficialEventId: record.OfficialEventId,
-				TonamelEventId:  record.TonamelEventId,
-				FriendId:        record.FriendId,
-				UserId:          record.UserId,
-				DeckId:          record.DeckId,
-				DeckCodeId:      record.DeckCodeId,
-				PrivateFlg:      record.PrivateFlg,
-				TCGMeisterURL:   record.TCGMeisterURL,
-				Memo:            record.Memo,
+				ID:                record.ID,
+				CreatedAt:         record.CreatedAt,
+				OfficialEventId:   record.OfficialEventId,
+				TonamelEventId:    record.TonamelEventId,
+				FriendId:          record.FriendId,
+				UnofficialEventId: record.UnofficialEventId,
+				UserId:            record.UserId,
+				DeckId:            record.DeckId,
+				DeckCodeId:        record.DeckCodeId,
+				EventDate:         record.EventDate,
+				PrivateFlg:        record.PrivateFlg,
+				TCGMeisterURL:     record.TCGMeisterURL,
+				Memo:              record.Memo,
 			},
 		})
 	}
@@ -103,17 +117,19 @@ func NewRecordCreateResponse(
 ) *dto.RecordCreateResponse {
 	return &dto.RecordCreateResponse{
 		RecordResponse: dto.RecordResponse{
-			ID:              record.ID,
-			CreatedAt:       record.CreatedAt,
-			OfficialEventId: record.OfficialEventId,
-			TonamelEventId:  record.TonamelEventId,
-			FriendId:        record.FriendId,
-			UserId:          record.UserId,
-			DeckId:          record.DeckId,
-			DeckCodeId:      record.DeckCodeId,
-			PrivateFlg:      record.PrivateFlg,
-			TCGMeisterURL:   record.TCGMeisterURL,
-			Memo:            record.Memo,
+			ID:                record.ID,
+			CreatedAt:         record.CreatedAt,
+			OfficialEventId:   record.OfficialEventId,
+			TonamelEventId:    record.TonamelEventId,
+			FriendId:          record.FriendId,
+			UnofficialEventId: record.UnofficialEventId,
+			UserId:            record.UserId,
+			DeckId:            record.DeckId,
+			DeckCodeId:        record.DeckCodeId,
+			EventDate:         record.EventDate,
+			PrivateFlg:        record.PrivateFlg,
+			TCGMeisterURL:     record.TCGMeisterURL,
+			Memo:              record.Memo,
 		},
 	}
 }
@@ -123,17 +139,19 @@ func NewRecordUpdateResponse(
 ) *dto.RecordUpdateResponse {
 	return &dto.RecordUpdateResponse{
 		RecordResponse: dto.RecordResponse{
-			ID:              record.ID,
-			CreatedAt:       record.CreatedAt,
-			OfficialEventId: record.OfficialEventId,
-			TonamelEventId:  record.TonamelEventId,
-			FriendId:        record.FriendId,
-			UserId:          record.UserId,
-			DeckId:          record.DeckId,
-			DeckCodeId:      record.DeckCodeId,
-			PrivateFlg:      record.PrivateFlg,
-			TCGMeisterURL:   record.TCGMeisterURL,
-			Memo:            record.Memo,
+			ID:                record.ID,
+			CreatedAt:         record.CreatedAt,
+			OfficialEventId:   record.OfficialEventId,
+			TonamelEventId:    record.TonamelEventId,
+			FriendId:          record.FriendId,
+			UnofficialEventId: record.UnofficialEventId,
+			UserId:            record.UserId,
+			DeckId:            record.DeckId,
+			DeckCodeId:        record.DeckCodeId,
+			EventDate:         record.EventDate,
+			PrivateFlg:        record.PrivateFlg,
+			TCGMeisterURL:     record.TCGMeisterURL,
+			Memo:              record.Memo,
 		},
 	}
 }

@@ -181,6 +181,13 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	controller.NewUnofficialEvent(
+		r,
+		usecase.NewUnofficialEvent(
+			infrastructure.NewUnofficialEvent(db),
+		),
+	).RegisterRoute(relativePath, false)
+
 	controller.NewDeck(
 		r,
 		infrastructure.NewDeck(db),

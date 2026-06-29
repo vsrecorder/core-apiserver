@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -215,6 +216,44 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
+	t.Run("正常系_#04_自由形式", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		eventDate := time.Date(2026, 6, 29, 0, 0, 0, 0, time.UTC)
+		privateFlg := true
+
+		expected := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId:   0,
+				TonamelEventId:    "",
+				FriendId:          "",
+				DeckId:            "",
+				PrivateFlg:        privateFlg,
+				TCGMeisterURL:     "",
+				Memo:              "",
+				EventDate:         eventDate,
+				UnofficialEventId: "01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := RecordCreateMiddleware()
+		middleware(ginContext)
+
+		actual := helper.GetRecordCreateRequest(ginContext)
+
+		require.Equal(t, expected, actual)
+	})
+
 	t.Run("異常系_#01", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
@@ -393,6 +432,40 @@ func test_RecordCreateMiddleware(t *testing.T) {
 				PrivateFlg:      privateFlg,
 				TCGMeisterURL:   "",
 				Memo:            "",
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := RecordCreateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_#07_自由形式と公式イベントの併用", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// 公式イベントと自由形式イベント名が同時に指定されている場合は bad request
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId:   10000,
+				TonamelEventId:    "",
+				FriendId:          "",
+				DeckId:            "",
+				PrivateFlg:        true,
+				TCGMeisterURL:     "",
+				Memo:              "",
+				EventDate:         time.Date(2026, 6, 29, 0, 0, 0, 0, time.UTC),
+				UnofficialEventId: "01HD7Y3K8D6FDHMHTZ2GT41TN2",
 			},
 		}
 

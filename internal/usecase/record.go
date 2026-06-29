@@ -10,38 +10,44 @@ import (
 )
 
 type RecordParam struct {
-	officialEventId uint
-	tonamelEventId  string
-	friendId        string
-	userId          string
-	deckId          string
-	deckCodeId      string
-	privateFlg      bool
-	tcgMeisterURL   string
-	memo            string
+	officialEventId   uint
+	tonamelEventId    string
+	friendId          string
+	unofficialEventId string
+	userId            string
+	deckId            string
+	deckCodeId        string
+	eventDate         time.Time
+	privateFlg        bool
+	tcgMeisterURL     string
+	memo              string
 }
 
 func NewRecordParam(
 	officialEventId uint,
 	tonamelEventId string,
 	friendId string,
+	unofficialEventId string,
 	userId string,
 	deckId string,
 	deckCodeId string,
+	eventDate time.Time,
 	privateFlg bool,
 	tcgMeisterURL string,
 	memo string,
 ) *RecordParam {
 	return &RecordParam{
-		officialEventId: officialEventId,
-		tonamelEventId:  tonamelEventId,
-		friendId:        friendId,
-		userId:          userId,
-		deckId:          deckId,
-		deckCodeId:      deckCodeId,
-		privateFlg:      privateFlg,
-		tcgMeisterURL:   tcgMeisterURL,
-		memo:            memo,
+		officialEventId:   officialEventId,
+		tonamelEventId:    tonamelEventId,
+		friendId:          friendId,
+		unofficialEventId: unofficialEventId,
+		userId:            userId,
+		deckId:            deckId,
+		deckCodeId:        deckCodeId,
+		eventDate:         eventDate,
+		privateFlg:        privateFlg,
+		tcgMeisterURL:     tcgMeisterURL,
+		memo:              memo,
 	}
 }
 
@@ -313,9 +319,11 @@ func (u *Record) Create(
 		param.officialEventId,
 		param.tonamelEventId,
 		param.friendId,
+		param.unofficialEventId,
 		param.userId,
 		param.deckId,
 		param.deckCodeId,
+		param.eventDate,
 		param.privateFlg,
 		param.tcgMeisterURL,
 		param.memo,
@@ -347,9 +355,11 @@ func (u *Record) Update(
 		param.officialEventId,
 		param.tonamelEventId,
 		param.friendId,
+		param.unofficialEventId,
 		param.userId,
 		param.deckId,
 		param.deckCodeId,
+		param.eventDate,
 		param.privateFlg,
 		param.tcgMeisterURL,
 		param.memo,

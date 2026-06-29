@@ -51,32 +51,7 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		/*
-			以下のデータで2つ以上値がある場合は bad request
-			データが一つもない場合も bad request
-			req.OfficialEventId
-			req.TonamelEventId
-			req.FriendId
-		*/
-		if req.OfficialEventId != 0 {
-			if !(req.TonamelEventId == "" && req.FriendId == "") {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
-				return
-			}
-		} else if req.TonamelEventId != "" {
-			if !(req.OfficialEventId == 0 && req.FriendId == "") {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
-				return
-			}
-		} else if req.FriendId != "" {
-			if !(req.OfficialEventId == 0 && req.TonamelEventId == "") {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
-				return
-			}
-		} else {
+		if !isValidRecordEventSource(req.RecordRequest) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
 			ctx.Abort()
 			return
@@ -95,32 +70,7 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		/*
-			以下のデータで2つ以上値がある場合は bad request
-			データが一つもない場合も bad request
-			req.OfficialEventId
-			req.TonamelEventId
-			req.FriendId
-		*/
-		if req.OfficialEventId != 0 {
-			if !(req.TonamelEventId == "" && req.FriendId == "") {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
-				return
-			}
-		} else if req.TonamelEventId != "" {
-			if !(req.OfficialEventId == 0 && req.FriendId == "") {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
-				return
-			}
-		} else if req.FriendId != "" {
-			if !(req.OfficialEventId == 0 && req.TonamelEventId == "") {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
-				return
-			}
-		} else {
+		if !isValidRecordEventSource(req.RecordRequest) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
 			ctx.Abort()
 			return
@@ -128,4 +78,34 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 
 		helper.SetRecordUpdateRequest(ctx, req)
 	}
+}
+
+/*
+記録の紐づくイベントは以下の4種類のうち、ちょうど1つだけ指定されている必要がある。
+2つ以上指定されている場合も、1つも指定されていない場合も bad request とする。
+  - 公式イベント   : OfficialEventId
+  - Tonamel       : TonamelEventId
+  - フレンド対戦   : FriendId
+  - 自由形式       : UnofficialEventId
+*/
+func isValidRecordEventSource(req dto.RecordRequest) bool {
+	count := 0
+	if req.OfficialEventId != 0 {
+		count++
+	}
+	if req.TonamelEventId != "" {
+		count++
+	}
+	if req.FriendId != "" {
+		count++
+	}
+	if req.UnofficialEventId != "" {
+		count++
+	}
+
+	if count != 1 {
+		return false
+	}
+
+	return true
 }

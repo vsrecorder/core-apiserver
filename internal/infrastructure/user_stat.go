@@ -33,14 +33,15 @@ func (i *UserStat) FindUserStat(
 	var matchResult matchStatsResult
 
 	matchQuery := i.db.Table("matches").
-		Select("COUNT(*) AS total_matches, SUM(CASE WHEN victory_flg = true THEN 1 ELSE 0 END) AS wins").
-		Where("user_id = ? AND deleted_at IS NULL", userId)
+		Select("COUNT(*) AS total_matches, SUM(CASE WHEN matches.victory_flg = true THEN 1 ELSE 0 END) AS wins").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
+		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 
 	if !fromDate.IsZero() {
-		matchQuery = matchQuery.Where("created_at >= ?", fromDate)
+		matchQuery = matchQuery.Where("records.event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		matchQuery = matchQuery.Where("created_at < ?", toDate)
+		matchQuery = matchQuery.Where("records.event_date < ?", toDate)
 	}
 
 	if tx := matchQuery.Scan(&matchResult); tx.Error != nil {
@@ -52,10 +53,10 @@ func (i *UserStat) FindUserStat(
 		Where("user_id = ? AND deleted_at IS NULL", userId)
 
 	if !fromDate.IsZero() {
-		recordQuery = recordQuery.Where("created_at >= ?", fromDate)
+		recordQuery = recordQuery.Where("event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		recordQuery = recordQuery.Where("created_at < ?", toDate)
+		recordQuery = recordQuery.Where("event_date < ?", toDate)
 	}
 
 	if tx := recordQuery.Count(&recordCount); tx.Error != nil {
@@ -67,10 +68,10 @@ func (i *UserStat) FindUserStat(
 		Where("user_id = ? AND deleted_at IS NULL AND official_event_id != 0", userId)
 
 	if !fromDate.IsZero() {
-		officialEventQuery = officialEventQuery.Where("created_at >= ?", fromDate)
+		officialEventQuery = officialEventQuery.Where("event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		officialEventQuery = officialEventQuery.Where("created_at < ?", toDate)
+		officialEventQuery = officialEventQuery.Where("event_date < ?", toDate)
 	}
 
 	if tx := officialEventQuery.Distinct("official_event_id").Count(&officialEventCount); tx.Error != nil {
@@ -82,13 +83,28 @@ func (i *UserStat) FindUserStat(
 		Where("user_id = ? AND deleted_at IS NULL AND tonamel_event_id != ''", userId)
 
 	if !fromDate.IsZero() {
-		tonamelEventQuery = tonamelEventQuery.Where("created_at >= ?", fromDate)
+		tonamelEventQuery = tonamelEventQuery.Where("event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		tonamelEventQuery = tonamelEventQuery.Where("created_at < ?", toDate)
+		tonamelEventQuery = tonamelEventQuery.Where("event_date < ?", toDate)
 	}
 
 	if tx := tonamelEventQuery.Distinct("tonamel_event_id").Count(&tonamelEventCount); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	var unofficialEventCount int64
+	unofficialEventQuery := i.db.Table("records").
+		Where("user_id = ? AND deleted_at IS NULL AND unofficial_event_id != ''", userId)
+
+	if !fromDate.IsZero() {
+		unofficialEventQuery = unofficialEventQuery.Where("event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		unofficialEventQuery = unofficialEventQuery.Where("event_date < ?", toDate)
+	}
+
+	if tx := unofficialEventQuery.Distinct("unofficial_event_id").Count(&unofficialEventCount); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -99,5 +115,5 @@ func (i *UserStat) FindUserStat(
 		winRate = float64(matchResult.Wins) / float64(matchResult.TotalMatches)
 	}
 
-	return entity.NewUserStat(userId, int(recordCount), int(officialEventCount), int(tonamelEventCount), matchResult.TotalMatches, matchResult.Wins, losses, winRate), nil
+	return entity.NewUserStat(userId, int(recordCount), int(officialEventCount), int(tonamelEventCount), int(unofficialEventCount), matchResult.TotalMatches, matchResult.Wins, losses, winRate), nil
 }

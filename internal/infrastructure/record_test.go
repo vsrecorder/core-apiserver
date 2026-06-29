@@ -108,7 +108,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 		)
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE private_flg = false AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+			`SELECT * FROM "records" WHERE private_flg = false AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $1 OFFSET $2`,
 		)).WithArgs(
 			limit,
 			offset,
@@ -139,7 +139,7 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 		})
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE private_flg = false AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+			`SELECT * FROM "records" WHERE private_flg = false AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $1 OFFSET $2`,
 		)).WithArgs(
 			limit,
 			offset,
@@ -194,8 +194,9 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 		)
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE (created_at < $1 AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT`,
+			`SELECT * FROM "records" WHERE ((event_date < $1 OR (event_date IS NULL AND created_at < $2)) AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT`,
 		)).WithArgs(
+			cursor,
 			cursor,
 			limit,
 		).WillReturnRows(rows)
@@ -225,8 +226,9 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 		})
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE (created_at < $1 AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT`,
+			`SELECT * FROM "records" WHERE ((event_date < $1 OR (event_date IS NULL AND created_at < $2)) AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT`,
 		)).WithArgs(
+			cursor,
 			cursor,
 			limit,
 		).WillReturnRows(rows)
@@ -328,7 +330,7 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE user_id = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT * FROM "records" WHERE user_id = $1 AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $2 OFFSET $3`,
 	)).WithArgs(
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 		limit,
@@ -382,8 +384,9 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE (created_at < $1 AND user_id = $2) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $3`,
+		`SELECT * FROM "records" WHERE ((event_date < $1 OR (event_date IS NULL AND created_at < $2)) AND user_id = $3) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $4`,
 	)).WithArgs(
+		cursor,
 		cursor,
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 		limit,
@@ -435,7 +438,7 @@ func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE (official_event_id = $1 AND private_flg = $2) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
+		`SELECT * FROM "records" WHERE (official_event_id = $1 AND private_flg = $2) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $3 OFFSET $4`,
 	)).WithArgs(
 		236790,
 		false,
@@ -489,7 +492,7 @@ func test_RecordInfrastructure_FindByTonamelEventId(t *testing.T) {
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE (tonamel_event_id = $1 AND private_flg = $2) AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
+		`SELECT * FROM "records" WHERE (tonamel_event_id = $1 AND private_flg = $2) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $3 OFFSET $4`,
 	)).WithArgs(
 		"YFUVY",
 		false,
@@ -544,7 +547,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE deck_id = $1 AND "records"."deleted_at" IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT * FROM "records" WHERE deck_id = $1 AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $2 OFFSET $3`,
 	)).WithArgs(
 		"01JHAKSVXZ4XW91TDQ8EDP1N8P",
 		limit,
@@ -567,8 +570,9 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(
 		`UPDATE "records" SET "created_at"=$1,"updated_at"=$2,"deleted_at"=$3,"official_event_id"=$4,"tonamel_event_id"=$5,`+
-			`"friend_id"=$6,"user_id"=$7,"deck_id"=$8,"deck_code_id"=$9,"private_flg"=$10,"tcg_meister_url"=$11,"memo"=$12 `+
-			`WHERE "records"."deleted_at" IS NULL AND "id" = $13`,
+			`"friend_id"=$6,"user_id"=$7,"deck_id"=$8,"deck_code_id"=$9,"private_flg"=$10,"tcg_meister_url"=$11,"memo"=$12,`+
+			`"event_date"=$13,"unofficial_event_id"=$14 `+
+			`WHERE "records"."deleted_at" IS NULL AND "id" = $15`,
 	)).WithArgs(
 		datetime,
 		AnyTime{},
@@ -581,6 +585,8 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 		"",
 		false,
 		"",
+		"",
+		AnyTime{},
 		"",
 		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
 	).WillReturnResult(sqlmock.NewResult(0, 1))
@@ -616,6 +622,17 @@ func test_RecordInfrastructure_Delete(t *testing.T) {
 		r, mock, err := setup4RecordInfrastructure()
 		require.NoError(t, err)
 
+		// 削除対象 record の取得(自由形式イベントを参照していないケース)
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE id = $1 AND "records"."deleted_at" IS NULL ORDER BY "records"."id" LIMIT $2`,
+		)).WithArgs(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			1,
+		).WillReturnRows(sqlmock.NewRows([]string{"id", "unofficial_event_id"}).AddRow(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			"",
+		))
+
 		mock.ExpectQuery(regexp.QuoteMeta(
 			`SELECT * FROM "matches" WHERE record_id = $1 AND "matches"."deleted_at" IS NULL ORDER BY created_at ASC`,
 		)).WithArgs(
@@ -650,6 +667,17 @@ func test_RecordInfrastructure_Delete(t *testing.T) {
 		require.NoError(t, err)
 
 		datetime := time.Now().Local()
+
+		// 削除対象 record の取得(自由形式イベントを参照していないケース)
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE id = $1 AND "records"."deleted_at" IS NULL ORDER BY "records"."id" LIMIT $2`,
+		)).WithArgs(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			1,
+		).WillReturnRows(sqlmock.NewRows([]string{"id", "unofficial_event_id"}).AddRow(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			"",
+		))
 
 		matchRows := sqlmock.NewRows([]string{
 			"id",
@@ -742,6 +770,58 @@ func test_RecordInfrastructure_Delete(t *testing.T) {
 		)).WithArgs(
 			AnyTime{},
 			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectCommit()
+
+		err = r.Delete(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("自由形式イベント_参照なしで削除", func(t *testing.T) {
+		r, mock, err := setup4RecordInfrastructure()
+		require.NoError(t, err)
+
+		// 削除対象 record は自由形式イベント(unofficial_event)を参照している
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE id = $1 AND "records"."deleted_at" IS NULL ORDER BY "records"."id" LIMIT $2`,
+		)).WithArgs(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			1,
+		).WillReturnRows(sqlmock.NewRows([]string{"id", "unofficial_event_id"}).AddRow(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			"01UNOFFICIALEVENT0000000001",
+		))
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "matches" WHERE record_id = $1 AND "matches"."deleted_at" IS NULL ORDER BY created_at ASC`,
+		)).WithArgs(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+		mock.ExpectBegin()
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "matches" SET "deleted_at"=$1 WHERE record_id = $2 AND "matches"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnResult(sqlmock.NewResult(0, 0))
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "records" SET "deleted_at"=$1 WHERE id = $2 AND "records"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// unofficial_event をソフトデリート
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "unofficial_events" SET "deleted_at"=$1 WHERE id = $2 AND "unofficial_events"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			"01UNOFFICIALEVENT0000000001",
 		).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		mock.ExpectCommit()

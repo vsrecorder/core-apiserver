@@ -216,6 +216,17 @@ func GetPeriod(ctx *gin.Context) string {
 	return period
 }
 
+func SetUnofficialEventCreateRequest(ctx *gin.Context, value dto.UnofficialEventCreateRequest) {
+	ctx.Set("unofficial_event_create_request", value)
+}
+
+func GetUnofficialEventCreateRequest(ctx *gin.Context) dto.UnofficialEventCreateRequest {
+	value, _ := ctx.Get("unofficial_event_create_request")
+	unofficialEventRequest, _ := value.(dto.UnofficialEventCreateRequest)
+
+	return unofficialEventRequest
+}
+
 func SetRecordCreateRequest(ctx *gin.Context, value dto.RecordCreateRequest) {
 	ctx.Set("record_create_request", value)
 }

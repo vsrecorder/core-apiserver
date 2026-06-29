@@ -5,17 +5,19 @@ import (
 )
 
 type Record struct {
-	ID              string
-	CreatedAt       time.Time
-	OfficialEventId uint
-	TonamelEventId  string
-	FriendId        string
-	UserId          string
-	DeckId          string
-	DeckCodeId      string
-	PrivateFlg      bool
-	TCGMeisterURL   string
-	Memo            string
+	ID                string
+	CreatedAt         time.Time
+	OfficialEventId   uint
+	TonamelEventId    string
+	FriendId          string
+	UnofficialEventId string
+	UserId            string
+	DeckId            string
+	DeckCodeId        string
+	EventDate         time.Time
+	PrivateFlg        bool
+	TCGMeisterURL     string
+	Memo              string
 }
 
 func NewRecord(
@@ -24,24 +26,28 @@ func NewRecord(
 	officialEventId uint,
 	tonamelEventId string,
 	friendId string,
+	unofficialEventId string,
 	userId string,
 	deckId string,
 	deckCodeId string,
+	eventDate time.Time,
 	privateFlg bool,
 	tcgMeisterURL string,
 	memo string,
 ) *Record {
 	return &Record{
-		ID:              id,
-		CreatedAt:       createdAt,
-		OfficialEventId: officialEventId,
-		TonamelEventId:  tonamelEventId,
-		FriendId:        friendId,
-		UserId:          userId,
-		DeckId:          deckId,
-		DeckCodeId:      deckCodeId,
-		PrivateFlg:      privateFlg,
-		TCGMeisterURL:   tcgMeisterURL,
-		Memo:            memo,
+		ID:                id,
+		CreatedAt:         createdAt,
+		OfficialEventId:   officialEventId,
+		TonamelEventId:    tonamelEventId,
+		UnofficialEventId: unofficialEventId,
+		FriendId:          friendId,
+		UserId:            userId,
+		DeckId:            deckId,
+		DeckCodeId:        deckCodeId,
+		EventDate:         eventDate,
+		PrivateFlg:        privateFlg,
+		TCGMeisterURL:     tcgMeisterURL,
+		Memo:              memo,
 	}
 }

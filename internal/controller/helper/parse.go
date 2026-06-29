@@ -234,6 +234,8 @@ func ParseQueryEventType(ctx *gin.Context) (string, error) {
 		return "official", nil
 	case "tonamel":
 		return "tonamel", nil
+	case "unofficial":
+		return "unofficial", nil
 	default:
 		return DefaultEventType, nil
 	}

@@ -18,21 +18,23 @@ type GameParam struct {
 }
 
 type MatchParam struct {
-	RecordId           string
-	DeckId             string
-	DeckCodeId         string
-	UserId             string
-	OpponentsUserId    string
-	BO3Flg             bool
-	QualifyingRoundFlg bool
-	FinalTournamentFlg bool
-	DefaultVictoryFlg  bool
-	DefaultDefeatFlg   bool
-	VictoryFlg         bool
-	OpponentsDeckInfo  string
-	Memo               string
-	Games              []*GameParam
-	PokemonSprites     []*PokemonSpriteParam
+	RecordId             string
+	DeckId               string
+	DeckCodeId           string
+	UserId               string
+	OpponentsUserId      string
+	BO3Flg               bool
+	GroupMatchFlg        bool
+	QualifyingRoundFlg   bool
+	FinalTournamentFlg   bool
+	DefaultVictoryFlg    bool
+	DefaultDefeatFlg     bool
+	VictoryFlg           bool
+	GroupMatchVictoryFlg bool
+	OpponentsDeckInfo    string
+	Memo                 string
+	Games                []*GameParam
+	PokemonSprites       []*PokemonSpriteParam
 }
 
 func NewGameParam(
@@ -58,32 +60,36 @@ func NewMatchParam(
 	userId string,
 	opponentsUserId string,
 	bo3Flg bool,
+	groupMatchFlg bool,
 	qualifyingRoundFlg bool,
 	finalTournamentFlg bool,
 	defaultVictoryFlg bool,
 	defaultDefeatFlg bool,
 	victoryFlg bool,
+	groupMatchVictoryFlg bool,
 	opponentsDeckInfo string,
 	memo string,
 	games []*GameParam,
 	pokemonSprites []*PokemonSpriteParam,
 ) *MatchParam {
 	return &MatchParam{
-		RecordId:           recordId,
-		DeckId:             deckId,
-		DeckCodeId:         deckCodeId,
-		UserId:             userId,
-		OpponentsUserId:    opponentsUserId,
-		BO3Flg:             bo3Flg,
-		QualifyingRoundFlg: qualifyingRoundFlg,
-		FinalTournamentFlg: finalTournamentFlg,
-		DefaultVictoryFlg:  defaultVictoryFlg,
-		DefaultDefeatFlg:   defaultDefeatFlg,
-		VictoryFlg:         victoryFlg,
-		OpponentsDeckInfo:  opponentsDeckInfo,
-		Memo:               memo,
-		Games:              games,
-		PokemonSprites:     pokemonSprites,
+		RecordId:             recordId,
+		DeckId:               deckId,
+		DeckCodeId:           deckCodeId,
+		UserId:               userId,
+		OpponentsUserId:      opponentsUserId,
+		BO3Flg:               bo3Flg,
+		GroupMatchFlg:        groupMatchFlg,
+		QualifyingRoundFlg:   qualifyingRoundFlg,
+		FinalTournamentFlg:   finalTournamentFlg,
+		DefaultVictoryFlg:    defaultVictoryFlg,
+		DefaultDefeatFlg:     defaultDefeatFlg,
+		VictoryFlg:           victoryFlg,
+		GroupMatchVictoryFlg: groupMatchVictoryFlg,
+		OpponentsDeckInfo:    opponentsDeckInfo,
+		Memo:                 memo,
+		Games:                games,
+		PokemonSprites:       pokemonSprites,
 	}
 }
 
@@ -239,11 +245,13 @@ func (u *Match) Create(
 		param.UserId,
 		param.OpponentsUserId,
 		param.BO3Flg,
+		param.GroupMatchFlg,
 		param.QualifyingRoundFlg,
 		param.FinalTournamentFlg,
 		param.DefaultVictoryFlg,
 		param.DefaultDefeatFlg,
 		param.VictoryFlg,
+		param.GroupMatchVictoryFlg,
 		param.OpponentsDeckInfo,
 		param.Memo,
 		games,
@@ -347,11 +355,13 @@ func (u *Match) Update(
 		param.UserId,
 		param.OpponentsUserId,
 		param.BO3Flg,
+		param.GroupMatchFlg,
 		param.QualifyingRoundFlg,
 		param.FinalTournamentFlg,
 		param.DefaultVictoryFlg,
 		param.DefaultDefeatFlg,
 		param.VictoryFlg,
+		param.GroupMatchVictoryFlg,
 		param.OpponentsDeckInfo,
 		param.Memo,
 		games,

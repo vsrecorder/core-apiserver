@@ -180,11 +180,13 @@ CREATE TABLE matches (
     user_id                   VARCHAR(32) NOT NULL,
     opponents_user_id         VARCHAR(32) DEFAULT NULL,
     bo3_flg                   BOOLEAN NOT NULL,
+    group_match_flg           BOOLEAN NOT NULL DEFAULT false,
     qualifying_round_flg      BOOLEAN NOT NULL,
     final_tournament_flg      BOOLEAN NOT NULL,
     default_victory_flg       BOOLEAN NOT NULL DEFAULT false,
     default_defeat_flg        BOOLEAN NOT NULL DEFAULT false,
     victory_flg               BOOLEAN NOT NULL,
+    group_match_victory_flg   BOOLEAN NOT NULL DEFAULT false,
     opponents_deck_info       VARCHAR(63) DEFAULT NULL,
     memo                      TEXT,
     FOREIGN KEY (record_id)   REFERENCES records (id)

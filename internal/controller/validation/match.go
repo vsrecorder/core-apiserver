@@ -48,6 +48,11 @@ func MatchCreateMiddleware() gin.HandlerFunc {
 			}
 		}
 
+		if ((!req.BO3Flg && !req.GroupMatchVictoryFlg) || req.BO3Flg || !req.GroupMatchFlg) && req.GroupMatchVictoryFlg {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		if req.BO3Flg {
 			// BO3なのに試合数が1つ or 3つを超えている
 			if len(req.Games) == 1 || len(req.Games) > 3 {

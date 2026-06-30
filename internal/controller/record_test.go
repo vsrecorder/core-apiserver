@@ -128,7 +128,8 @@ func test_RecordController_Get(t *testing.T) {
 
 		limit := 10
 		offset := 0
-		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
+		// 複合カーソル形式: base64("eventDate|createdAt") のゼロ値
+		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339) + "|" + time.Time{}.Format(time.RFC3339)))
 		eventType := ""
 
 		mockUsecase.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
@@ -158,15 +159,19 @@ func test_RecordController_Get(t *testing.T) {
 
 		limit := 10
 		offset := 0
-		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		cursorEventDate, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		require.NoError(t, err)
+		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 		eventType := ""
 
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursor, eventType).Return(records, nil)
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
+
+		compositeCursor := base64.StdEncoding.EncodeToString([]byte(cursorEventDate.Format(time.RFC3339) + "|" + cursorCreatedAt.Format(time.RFC3339)))
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", compositeCursor), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -178,7 +183,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(records), len(res.Records))
-		require.Equal(t, base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))), res.Cursor)
+		require.Equal(t, compositeCursor, res.Cursor)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
@@ -195,14 +200,18 @@ func test_RecordController_Get(t *testing.T) {
 	})
 
 	t.Run("異常系_#02", func(t *testing.T) {
-		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		cursorEventDate, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		require.NoError(t, err)
+		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+
+		compositeCursor := base64.StdEncoding.EncodeToString([]byte(cursorEventDate.Format(time.RFC3339) + "|" + cursorCreatedAt.Format(time.RFC3339)))
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", compositeCursor), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -356,7 +365,8 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		limit := 10
 		offset := 0
-		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
+		// 複合カーソル形式: base64("eventDate|createdAt") のゼロ値
+		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339) + "|" + time.Time{}.Format(time.RFC3339)))
 		eventType := ""
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(records, nil)
@@ -389,15 +399,19 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		limit := 10
 		offset := 0
-		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		cursorEventDate, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		require.NoError(t, err)
+		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursor, eventType).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
+
+		compositeCursor := base64.StdEncoding.EncodeToString([]byte(cursorEventDate.Format(time.RFC3339) + "|" + cursorCreatedAt.Format(time.RFC3339)))
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", compositeCursor), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -410,7 +424,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(records), len(res.Records))
 		require.Equal(t, uid, res.Records[0].Data.UserId)
-		require.Equal(t, base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))), res.Cursor)
+		require.Equal(t, compositeCursor, res.Cursor)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
@@ -431,14 +445,18 @@ func test_RecordController_GetByUserId(t *testing.T) {
 	})
 
 	t.Run("異常系_#02", func(t *testing.T) {
-		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		cursorEventDate, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		require.NoError(t, err)
+		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+
+		compositeCursor := base64.StdEncoding.EncodeToString([]byte(cursorEventDate.Format(time.RFC3339) + "|" + cursorCreatedAt.Format(time.RFC3339)))
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", compositeCursor), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)

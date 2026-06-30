@@ -23,7 +23,8 @@ type RecordInterface interface {
 	FindOnCursor(
 		ctx context.Context,
 		limit int,
-		cursor time.Time,
+		cursorEventDate time.Time,
+		cursorCreatedAt time.Time,
 		eventType string,
 	) ([]*entity.Record, error)
 
@@ -39,7 +40,8 @@ type RecordInterface interface {
 		ctx context.Context,
 		uid string,
 		limit int,
-		cursor time.Time,
+		cursorEventDate time.Time,
+		cursorCreatedAt time.Time,
 		eventType string,
 	) ([]*entity.Record, error)
 
@@ -69,7 +71,8 @@ type RecordInterface interface {
 		ctx context.Context,
 		deckId string,
 		limit int,
-		cursor time.Time,
+		cursorEventDate time.Time,
+		cursorCreatedAt time.Time,
 		eventType string,
 	) ([]*entity.Record, error)
 

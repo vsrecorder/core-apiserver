@@ -104,31 +104,47 @@ func (i *Record) Find(
 	return entities, nil
 }
 
+// buildCursorCondition は ORDER BY event_date DESC NULLS LAST, created_at DESC に対応した
+// カーソルページング用の WHERE 条件と引数を返す。
+// cursorEventDate が非ゼロ（event_date あり区間）の場合:
+//   - 同日のうち created_at が小さいレコードを含める
+//   - event_date IS NULL のレコードは常に含める（全件 dated records の後続にある）
+//
+// cursorEventDate がゼロ（event_date IS NULL 区間）の場合:
+//   - event_date IS NULL かつ created_at < cursorCreatedAt のみ返す
+func buildCursorCondition(cursorEventDate, cursorCreatedAt time.Time) (string, []interface{}) {
+	if !cursorEventDate.IsZero() {
+		return "((event_date < ? AND event_date IS NOT NULL) OR (event_date = ? AND created_at < ?) OR event_date IS NULL)",
+			[]interface{}{cursorEventDate, cursorEventDate, cursorCreatedAt}
+	}
+	return "(event_date IS NULL AND created_at < ?)", []interface{}{cursorCreatedAt}
+}
+
 func (i *Record) FindOnCursor(
 	ctx context.Context,
 	limit int,
-	cursor time.Time,
+	cursorEventDate time.Time,
+	cursorCreatedAt time.Time,
 	eventType string,
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
+	cursorCond, cursorArgs := buildCursorCondition(cursorEventDate, cursorCreatedAt)
+
+	var cond string
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND private_flg = false", cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "official_event_id != 0 AND " + cursorCond + " AND private_flg = false"
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND private_flg = false", cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "tonamel_event_id != '' AND " + cursorCond + " AND private_flg = false"
 	case "unofficial":
-		if tx := i.db.Where("unofficial_event_id != '' AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND private_flg = false", cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "unofficial_event_id != '' AND " + cursorCond + " AND private_flg = false"
 	default:
-		if tx := i.db.Where("(event_date < ? OR (event_date IS NULL AND created_at < ?)) AND private_flg = false", cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = cursorCond + " AND private_flg = false"
+	}
+
+	if tx := i.db.Where(cond, cursorArgs...).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		return nil, tx.Error
 	}
 
 	var entities []*entity.Record
@@ -209,28 +225,29 @@ func (i *Record) FindByUserIdOnCursor(
 	ctx context.Context,
 	uid string,
 	limit int,
-	cursor time.Time,
+	cursorEventDate time.Time,
+	cursorCreatedAt time.Time,
 	eventType string,
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
+	cursorCond, cursorArgs := buildCursorCondition(cursorEventDate, cursorCreatedAt)
+	uidArgs := append(cursorArgs, uid)
+
+	var cond string
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND user_id = ?", cursor, cursor, uid).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "official_event_id != 0 AND " + cursorCond + " AND user_id = ?"
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND user_id = ?", cursor, cursor, uid).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "tonamel_event_id != '' AND " + cursorCond + " AND user_id = ?"
 	case "unofficial":
-		if tx := i.db.Where("unofficial_event_id != '' AND (event_date < ? OR (event_date IS NULL AND created_at < ?)) AND user_id = ?", cursor, cursor, uid).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "unofficial_event_id != '' AND " + cursorCond + " AND user_id = ?"
 	default:
-		if tx := i.db.Where("(event_date < ? OR (event_date IS NULL AND created_at < ?)) AND user_id = ?", cursor, cursor, uid).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = cursorCond + " AND user_id = ?"
+	}
+
+	if tx := i.db.Where(cond, uidArgs...).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		return nil, tx.Error
 	}
 
 	var entities []*entity.Record
@@ -381,28 +398,29 @@ func (i *Record) FindByDeckIdOnCursor(
 	ctx context.Context,
 	deckId string,
 	limit int,
-	cursor time.Time,
+	cursorEventDate time.Time,
+	cursorCreatedAt time.Time,
 	eventType string,
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
+	cursorCond, cursorArgs := buildCursorCondition(cursorEventDate, cursorCreatedAt)
+	deckArgs := append([]interface{}{deckId}, cursorArgs...)
+
+	var cond string
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND deck_id = ? AND (event_date < ? OR (event_date IS NULL AND created_at < ?))", deckId, cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "official_event_id != 0 AND deck_id = ? AND " + cursorCond
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ? AND (event_date < ? OR (event_date IS NULL AND created_at < ?))", deckId, cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "tonamel_event_id != '' AND deck_id = ? AND " + cursorCond
 	case "unofficial":
-		if tx := i.db.Where("unofficial_event_id != '' AND deck_id = ? AND (event_date < ? OR (event_date IS NULL AND created_at < ?))", deckId, cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "unofficial_event_id != '' AND deck_id = ? AND " + cursorCond
 	default:
-		if tx := i.db.Where("deck_id = ? AND (event_date < ? OR (event_date IS NULL AND created_at < ?))", deckId, cursor, cursor).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			return nil, tx.Error
-		}
+		cond = "deck_id = ? AND " + cursorCond
+	}
+
+	if tx := i.db.Where(cond, deckArgs...).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		return nil, tx.Error
 	}
 
 	var entities []*entity.Record

@@ -8,21 +8,26 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
+// encodeCursor は event_date と created_at をコンポジットカーソル文字列に変換する。
+// フォーマット: base64("eventDate_RFC3339|createdAt_RFC3339")
+func encodeCursor(eventDate, createdAt time.Time) string {
+	return base64.StdEncoding.EncodeToString(
+		[]byte(eventDate.Format(time.RFC3339) + "|" + createdAt.Format(time.RFC3339)),
+	)
+}
+
 func NewRecordGetResponse(
 	limit int,
 	offset int,
-	cursor time.Time,
+	cursorEventDate time.Time,
+	cursorCreatedAt time.Time,
 	records []*entity.Record,
 ) *dto.RecordGetResponse {
 	ret := []*dto.RecordData{}
 
 	for _, record := range records {
-		cursorTime := record.EventDate
-		if cursorTime.IsZero() {
-			cursorTime = record.CreatedAt
-		}
 		ret = append(ret, &dto.RecordData{
-			Cursor: base64.StdEncoding.EncodeToString([]byte(cursorTime.Format(time.RFC3339))),
+			Cursor: encodeCursor(record.EventDate, record.CreatedAt),
 			Data: &dto.RecordResponse{
 				ID:                record.ID,
 				CreatedAt:         record.CreatedAt,
@@ -44,7 +49,7 @@ func NewRecordGetResponse(
 	return &dto.RecordGetResponse{
 		Limit:   limit,
 		Offset:  offset,
-		Cursor:  base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
+		Cursor:  encodeCursor(cursorEventDate, cursorCreatedAt),
 		Records: ret,
 	}
 }
@@ -74,18 +79,15 @@ func NewRecordGetByIdResponse(
 func NewRecordGetByUserIdResponse(
 	limit int,
 	offset int,
-	cursor time.Time,
+	cursorEventDate time.Time,
+	cursorCreatedAt time.Time,
 	records []*entity.Record,
 ) *dto.RecordGetByUserIdResponse {
 	ret := []*dto.RecordData{}
 
 	for _, record := range records {
-		cursorTime := record.EventDate
-		if cursorTime.IsZero() {
-			cursorTime = record.CreatedAt
-		}
 		ret = append(ret, &dto.RecordData{
-			Cursor: base64.StdEncoding.EncodeToString([]byte(cursorTime.Format(time.RFC3339))),
+			Cursor: encodeCursor(record.EventDate, record.CreatedAt),
 			Data: &dto.RecordResponse{
 				ID:                record.ID,
 				CreatedAt:         record.CreatedAt,
@@ -107,7 +109,7 @@ func NewRecordGetByUserIdResponse(
 	return &dto.RecordGetByUserIdResponse{
 		Limit:   limit,
 		Offset:  offset,
-		Cursor:  base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
+		Cursor:  encodeCursor(cursorEventDate, cursorCreatedAt),
 		Records: ret,
 	}
 }

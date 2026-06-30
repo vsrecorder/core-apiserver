@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -105,17 +104,18 @@ func (c *Record) Get(ctx *gin.Context) {
 	if uid := helper.GetUID(ctx); uid == "" {
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
-		cursor := helper.GetCursor(ctx)
+		cursorEventDate := helper.GetCursorEventDate(ctx)
+		cursorCreatedAt := helper.GetCursorCreatedAt(ctx)
 		eventType := helper.GetEventType(ctx)
 
-		if !cursor.IsZero() {
-			records, err := c.usecase.FindOnCursor(context.Background(), limit, cursor, eventType)
+		if !cursorCreatedAt.IsZero() {
+			records, err := c.usecase.FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType)
 			if err != nil {
 				apierror.ErrInternalServerError.JSON(ctx)
 				return
 			}
 
-			res := presenter.NewRecordGetResponse(limit, offset, cursor, records)
+			res := presenter.NewRecordGetResponse(limit, offset, cursorEventDate, cursorCreatedAt, records)
 
 			ctx.JSON(http.StatusOK, res)
 		} else {
@@ -125,7 +125,7 @@ func (c *Record) Get(ctx *gin.Context) {
 				return
 			}
 
-			res := presenter.NewRecordGetResponse(limit, offset, cursor, records)
+			res := presenter.NewRecordGetResponse(limit, offset, cursorEventDate, cursorCreatedAt, records)
 
 			ctx.JSON(http.StatusOK, res)
 		}
@@ -136,32 +136,32 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 	if uid := helper.GetUID(ctx); uid != "" {
 		limit := helper.GetLimit(ctx)
 		offset := helper.GetOffset(ctx)
-		cursor := helper.GetCursor(ctx)
+		cursorEventDate := helper.GetCursorEventDate(ctx)
+		cursorCreatedAt := helper.GetCursorCreatedAt(ctx)
 		eventType := helper.GetEventType(ctx)
 		deckId := helper.GetDeckId(ctx)
 
-		if !cursor.IsZero() {
+		if !cursorCreatedAt.IsZero() {
 			if deckId != "" {
-				fmt.Println("ok")
-				records, err := c.usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursor, eventType)
+				records, err := c.usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 				if err != nil {
 					apierror.ErrInternalServerError.JSON(ctx)
 					return
 				}
 
-				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursorEventDate, cursorCreatedAt, records)
 
 				ctx.JSON(http.StatusOK, res)
 			} else {
-				records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor, eventType)
+				records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 				if err != nil {
 					apierror.ErrInternalServerError.JSON(ctx)
 					return
 				}
 
-				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursorEventDate, cursorCreatedAt, records)
 
 				ctx.JSON(http.StatusOK, res)
 			}
@@ -174,7 +174,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 					return
 				}
 
-				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursorEventDate, cursorCreatedAt, records)
 
 				ctx.JSON(http.StatusOK, res)
 				return
@@ -186,7 +186,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 					return
 				}
 
-				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursor, records)
+				res := presenter.NewRecordGetByUserIdResponse(limit, offset, cursorEventDate, cursorCreatedAt, records)
 
 				ctx.JSON(http.StatusOK, res)
 			}

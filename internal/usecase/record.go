@@ -67,7 +67,8 @@ type RecordInterface interface {
 	FindOnCursor(
 		ctx context.Context,
 		limit int,
-		cursor time.Time,
+		cursorEventDate time.Time,
+		cursorCreatedAt time.Time,
 		eventType string,
 	) ([]*entity.Record, error)
 
@@ -83,7 +84,8 @@ type RecordInterface interface {
 		ctx context.Context,
 		uid string,
 		limit int,
-		cursor time.Time,
+		cursorEventDate time.Time,
+		cursorCreatedAt time.Time,
 		eventType string,
 	) ([]*entity.Record, error)
 
@@ -113,7 +115,8 @@ type RecordInterface interface {
 		ctx context.Context,
 		deckId string,
 		limit int,
-		cursor time.Time,
+		cursorEventDate time.Time,
+		cursorCreatedAt time.Time,
 		eventType string,
 	) ([]*entity.Record, error)
 
@@ -182,10 +185,11 @@ func (u *Record) Find(
 func (u *Record) FindOnCursor(
 	ctx context.Context,
 	limit int,
-	cursor time.Time,
+	cursorEventDate time.Time,
+	cursorCreatedAt time.Time,
 	eventType string,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindOnCursor(ctx, limit, cursor, eventType)
+	records, err := u.repository.FindOnCursor(ctx, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 	if err != nil {
 		return nil, err
@@ -214,10 +218,11 @@ func (u *Record) FindByUserIdOnCursor(
 	ctx context.Context,
 	uid string,
 	limit int,
-	cursor time.Time,
+	cursorEventDate time.Time,
+	cursorCreatedAt time.Time,
 	eventType string,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindByUserIdOnCursor(ctx, uid, limit, cursor, eventType)
+	records, err := u.repository.FindByUserIdOnCursor(ctx, uid, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 	if err != nil {
 		return nil, err
@@ -276,10 +281,11 @@ func (u *Record) FindByDeckIdOnCursor(
 	ctx context.Context,
 	deckId string,
 	limit int,
-	cursor time.Time,
+	cursorEventDate time.Time,
+	cursorCreatedAt time.Time,
 	eventType string,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindByDeckIdOnCursor(ctx, deckId, limit, cursor, eventType)
+	records, err := u.repository.FindByDeckIdOnCursor(ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 	if err != nil {
 		return nil, err

@@ -22,7 +22,7 @@ func RecordGetMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		cursor, err := helper.ParseQueryCursor(ctx)
+		cursorEventDate, cursorCreatedAt, err := helper.ParseQueryCursor(ctx)
 		if err != nil {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
@@ -32,7 +32,8 @@ func RecordGetMiddleware() gin.HandlerFunc {
 
 		helper.SetLimit(ctx, limit)
 		helper.SetOffset(ctx, offset)
-		helper.SetCursor(ctx, cursor)
+		helper.SetCursorEventDate(ctx, cursorEventDate)
+		helper.SetCursorCreatedAt(ctx, cursorCreatedAt)
 		helper.SetEventType(ctx, eventType)
 
 		helper.SetDeckId(ctx, helper.GetQueryDeckId(ctx))

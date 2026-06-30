@@ -158,11 +158,13 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	cursor := time.Now().Local()
+	cursorEventDate := time.Now().Local()
+	cursorCreatedAt := time.Now().Local()
 	datetime := time.Now().Local()
 	limit := 10
 	eventType := ""
 
+	// event_date あり区間のカーソル
 	{
 		rows := sqlmock.NewRows([]string{
 			"id",
@@ -195,20 +197,22 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 		)
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE ((event_date < $1 OR (event_date IS NULL AND created_at < $2)) AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT`,
+			`SELECT * FROM "records" WHERE (((event_date < $1 AND event_date IS NOT NULL) OR (event_date = $2 AND created_at < $3) OR event_date IS NULL) AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT`,
 		)).WithArgs(
-			cursor,
-			cursor,
+			cursorEventDate,
+			cursorEventDate,
+			cursorCreatedAt,
 			limit,
 		).WillReturnRows(rows)
 
-		records, err := r.FindOnCursor(context.Background(), limit, cursor, eventType)
+		records, err := r.FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, len(records))
 		require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", records[0].ID)
 	}
 
+	// event_date なし区間のカーソル（cursorEventDate がゼロ）
 	{
 		rows := sqlmock.NewRows([]string{
 			"id",
@@ -227,19 +231,17 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 		})
 
 		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "records" WHERE ((event_date < $1 OR (event_date IS NULL AND created_at < $2)) AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT`,
+			`SELECT * FROM "records" WHERE ((event_date IS NULL AND created_at < $1) AND private_flg = false) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT`,
 		)).WithArgs(
-			cursor,
-			cursor,
+			cursorCreatedAt,
 			limit,
 		).WillReturnRows(rows)
 
-		records, err := r.FindOnCursor(context.Background(), limit, cursor, eventType)
+		records, err := r.FindOnCursor(context.Background(), limit, time.Time{}, cursorCreatedAt, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, len(records))
 	}
-
 }
 
 func test_RecordInfrastructure_FindById(t *testing.T) {
@@ -349,55 +351,92 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	cursor := time.Now().Local()
+	cursorEventDate := time.Now().Local()
+	cursorCreatedAt := time.Now().Local()
 	datetime := time.Now().Local()
 	limit := 10
 	eventType := ""
 
-	rows := sqlmock.NewRows([]string{
-		"id",
-		"created_at",
-		"updated_at",
-		"deleted_at",
-		"official_event_id",
-		"tonamel_event_id",
-		"friend_id",
-		"user_id",
-		"deck_id",
-		"deck_code_id",
-		"private_flg",
-		"tcg_meister_url",
-		"memo",
-	}).AddRow(
-		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-		datetime,
-		datetime,
-		gorm.DeletedAt{},
-		236790,
-		"",
-		"",
-		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
-		"",
-		"",
-		false,
-		"",
-		"",
-	)
+	// event_date あり区間のカーソル
+	{
+		rows := sqlmock.NewRows([]string{
+			"id",
+			"created_at",
+			"updated_at",
+			"deleted_at",
+			"official_event_id",
+			"tonamel_event_id",
+			"friend_id",
+			"user_id",
+			"deck_id",
+			"deck_code_id",
+			"private_flg",
+			"tcg_meister_url",
+			"memo",
+		}).AddRow(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			datetime,
+			datetime,
+			gorm.DeletedAt{},
+			236790,
+			"",
+			"",
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			"",
+			"",
+			false,
+			"",
+			"",
+		)
 
-	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE ((event_date < $1 OR (event_date IS NULL AND created_at < $2)) AND user_id = $3) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $4`,
-	)).WithArgs(
-		cursor,
-		cursor,
-		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
-		limit,
-	).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE (((event_date < $1 AND event_date IS NOT NULL) OR (event_date = $2 AND created_at < $3) OR event_date IS NULL) AND user_id = $4) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $5`,
+		)).WithArgs(
+			cursorEventDate,
+			cursorEventDate,
+			cursorCreatedAt,
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			limit,
+		).WillReturnRows(rows)
 
-	records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, cursor, eventType)
+		records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, cursorEventDate, cursorCreatedAt, eventType)
 
-	require.NoError(t, err)
-	require.Equal(t, 1, len(records))
-	require.Equal(t, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", records[0].UserId)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(records))
+		require.Equal(t, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", records[0].UserId)
+	}
+
+	// event_date なし区間のカーソル（cursorEventDate がゼロ）
+	{
+		rows := sqlmock.NewRows([]string{
+			"id",
+			"created_at",
+			"updated_at",
+			"deleted_at",
+			"official_event_id",
+			"tonamel_event_id",
+			"friend_id",
+			"user_id",
+			"deck_id",
+			"deck_code_id",
+			"private_flg",
+			"tcg_meister_url",
+			"memo",
+		})
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "records" WHERE ((event_date IS NULL AND created_at < $1) AND user_id = $2) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $3`,
+		)).WithArgs(
+			cursorCreatedAt,
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			limit,
+		).WillReturnRows(rows)
+
+		records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, time.Time{}, cursorCreatedAt, eventType)
+
+		require.NoError(t, err)
+		require.Equal(t, 0, len(records))
+	}
 }
 
 func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {

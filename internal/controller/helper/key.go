@@ -41,6 +41,26 @@ func GetCursor(ctx *gin.Context) time.Time {
 	return cursor
 }
 
+func SetCursorEventDate(ctx *gin.Context, value time.Time) {
+	ctx.Set("cursor_event_date", value)
+}
+
+func GetCursorEventDate(ctx *gin.Context) time.Time {
+	value, _ := ctx.Get("cursor_event_date")
+	t, _ := value.(time.Time)
+	return t
+}
+
+func SetCursorCreatedAt(ctx *gin.Context, value time.Time) {
+	ctx.Set("cursor_created_at", value)
+}
+
+func GetCursorCreatedAt(ctx *gin.Context) time.Time {
+	value, _ := ctx.Get("cursor_created_at")
+	t, _ := value.(time.Time)
+	return t
+}
+
 func SetDate(ctx *gin.Context, value time.Time) {
 	ctx.Set("date", value)
 }

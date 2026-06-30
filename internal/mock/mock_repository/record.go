@@ -102,18 +102,18 @@ func (mr *MockRecordInterfaceMockRecorder) FindByDeckId(ctx, deckId, limit, offs
 }
 
 // FindByDeckIdOnCursor mocks base method.
-func (m *MockRecordInterface) FindByDeckIdOnCursor(ctx context.Context, deckId string, limit int, cursor time.Time, eventType string) ([]*entity.Record, error) {
+func (m *MockRecordInterface) FindByDeckIdOnCursor(ctx context.Context, deckId string, limit int, cursorEventDate, cursorCreatedAt time.Time, eventType string) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByDeckIdOnCursor", ctx, deckId, limit, cursor, eventType)
+	ret := m.ctrl.Call(m, "FindByDeckIdOnCursor", ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 	ret0, _ := ret[0].([]*entity.Record)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindByDeckIdOnCursor indicates an expected call of FindByDeckIdOnCursor.
-func (mr *MockRecordInterfaceMockRecorder) FindByDeckIdOnCursor(ctx, deckId, limit, cursor, eventType any) *gomock.Call {
+func (mr *MockRecordInterfaceMockRecorder) FindByDeckIdOnCursor(ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckIdOnCursor), ctx, deckId, limit, cursor, eventType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckIdOnCursor), ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 }
 
 // FindById mocks base method.
@@ -177,33 +177,33 @@ func (mr *MockRecordInterfaceMockRecorder) FindByUserId(ctx, uid, limit, offset,
 }
 
 // FindByUserIdOnCursor mocks base method.
-func (m *MockRecordInterface) FindByUserIdOnCursor(ctx context.Context, uid string, limit int, cursor time.Time, eventType string) ([]*entity.Record, error) {
+func (m *MockRecordInterface) FindByUserIdOnCursor(ctx context.Context, uid string, limit int, cursorEventDate, cursorCreatedAt time.Time, eventType string) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByUserIdOnCursor", ctx, uid, limit, cursor, eventType)
+	ret := m.ctrl.Call(m, "FindByUserIdOnCursor", ctx, uid, limit, cursorEventDate, cursorCreatedAt, eventType)
 	ret0, _ := ret[0].([]*entity.Record)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindByUserIdOnCursor indicates an expected call of FindByUserIdOnCursor.
-func (mr *MockRecordInterfaceMockRecorder) FindByUserIdOnCursor(ctx, uid, limit, cursor, eventType any) *gomock.Call {
+func (mr *MockRecordInterfaceMockRecorder) FindByUserIdOnCursor(ctx, uid, limit, cursorEventDate, cursorCreatedAt, eventType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByUserIdOnCursor), ctx, uid, limit, cursor, eventType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByUserIdOnCursor), ctx, uid, limit, cursorEventDate, cursorCreatedAt, eventType)
 }
 
 // FindOnCursor mocks base method.
-func (m *MockRecordInterface) FindOnCursor(ctx context.Context, limit int, cursor time.Time, eventType string) ([]*entity.Record, error) {
+func (m *MockRecordInterface) FindOnCursor(ctx context.Context, limit int, cursorEventDate, cursorCreatedAt time.Time, eventType string) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindOnCursor", ctx, limit, cursor, eventType)
+	ret := m.ctrl.Call(m, "FindOnCursor", ctx, limit, cursorEventDate, cursorCreatedAt, eventType)
 	ret0, _ := ret[0].([]*entity.Record)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindOnCursor indicates an expected call of FindOnCursor.
-func (mr *MockRecordInterfaceMockRecorder) FindOnCursor(ctx, limit, cursor, eventType any) *gomock.Call {
+func (mr *MockRecordInterfaceMockRecorder) FindOnCursor(ctx, limit, cursorEventDate, cursorCreatedAt, eventType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindOnCursor), ctx, limit, cursor, eventType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindOnCursor), ctx, limit, cursorEventDate, cursorCreatedAt, eventType)
 }
 
 // Save mocks base method.

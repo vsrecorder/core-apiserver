@@ -22,7 +22,7 @@ func DeckGetMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		cursor, err := helper.ParseQueryCursor(ctx)
+		cursor, err := helper.ParseQuerySingleCursor(ctx)
 		if err != nil {
 			apierror.ErrBadRequest.JSON(ctx)
 			return

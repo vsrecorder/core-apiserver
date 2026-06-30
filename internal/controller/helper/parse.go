@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +58,9 @@ func ParseQueryOffset(ctx *gin.Context) (int, error) {
 	return offset, nil
 }
 
-func ParseQueryCursor(ctx *gin.Context) (time.Time, error) {
+// ParseQuerySingleCursor は単一 time.Time カーソル（base64(RFC3339)）を解析して返す。
+// deck など event_date を持たないエンティティで使用する。
+func ParseQuerySingleCursor(ctx *gin.Context) (time.Time, error) {
 	query := GetQueryCursor(ctx)
 
 	if query == "" {
@@ -69,7 +72,45 @@ func ParseQueryCursor(ctx *gin.Context) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	return time.Parse(time.RFC3339, string(decodedQuery))
+	t, err := time.Parse(time.RFC3339, string(decodedQuery))
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return t, nil
+}
+
+// ParseQueryCursor はコンポジットカーソル（"eventDate|createdAt" の base64 エンコード）を
+// event_date カーソルと created_at カーソルに分解して返す。
+// カーソルが空の場合は両方ゼロ値を返す。
+func ParseQueryCursor(ctx *gin.Context) (time.Time, time.Time, error) {
+	query := GetQueryCursor(ctx)
+
+	if query == "" {
+		return time.Time{}, time.Time{}, nil
+	}
+
+	decodedQuery, err := base64.StdEncoding.DecodeString(query)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	parts := strings.SplitN(string(decodedQuery), "|", 2)
+	if len(parts) != 2 {
+		return time.Time{}, time.Time{}, errors.New("invalid cursor format")
+	}
+
+	cursorEventDate, err := time.Parse(time.RFC3339, parts[0])
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	cursorCreatedAt, err := time.Parse(time.RFC3339, parts[1])
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	return cursorEventDate, cursorCreatedAt, nil
 }
 
 func ParseQueryDate(ctx *gin.Context) (date time.Time, err error) {

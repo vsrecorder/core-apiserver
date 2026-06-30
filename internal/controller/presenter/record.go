@@ -2,18 +2,24 @@ package presenter
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
-// encodeCursor は event_date と created_at をコンポジットカーソル文字列に変換する。
-// フォーマット: base64("eventDate_RFC3339|createdAt_RFC3339")
+// encodeCursor は event_date と created_at をコンポジットカーソル JSON の base64 に変換する。
+// フォーマット: base64({"event_date":"RFC3339","created_at":"RFC3339"})
 func encodeCursor(eventDate, createdAt time.Time) string {
-	return base64.StdEncoding.EncodeToString(
-		[]byte(eventDate.Format(time.RFC3339) + "|" + createdAt.Format(time.RFC3339)),
-	)
+	b, _ := json.Marshal(struct {
+		EventDate string `json:"event_date"`
+		CreatedAt string `json:"created_at"`
+	}{
+		EventDate: eventDate.Format(time.RFC3339),
+		CreatedAt: createdAt.Format(time.RFC3339),
+	})
+	return base64.StdEncoding.EncodeToString(b)
 }
 
 func NewRecordGetResponse(

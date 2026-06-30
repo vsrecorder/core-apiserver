@@ -25,6 +25,17 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
+func encodeTestCursor(eventDate, createdAt time.Time) string {
+	b, _ := json.Marshal(struct {
+		EventDate string `json:"event_date"`
+		CreatedAt string `json:"created_at"`
+	}{
+		EventDate: eventDate.Format(time.RFC3339),
+		CreatedAt: createdAt.Format(time.RFC3339),
+	})
+	return base64.StdEncoding.EncodeToString(b)
+}
+
 func setupMock4TestRecordController(t *testing.T) (*mock_repository.MockRecordInterface, *mock_usecase.MockRecordInterface) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
@@ -128,8 +139,7 @@ func test_RecordController_Get(t *testing.T) {
 
 		limit := 10
 		offset := 0
-		// 複合カーソル形式: base64("eventDate|createdAt") のゼロ値
-		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339) + "|" + time.Time{}.Format(time.RFC3339)))
+		cursor := encodeTestCursor(time.Time{}, time.Time{})
 		eventType := ""
 
 		mockUsecase.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
@@ -167,7 +177,7 @@ func test_RecordController_Get(t *testing.T) {
 
 		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
 
-		compositeCursor := base64.StdEncoding.EncodeToString([]byte(cursorEventDate.Format(time.RFC3339) + "|" + cursorCreatedAt.Format(time.RFC3339)))
+		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
 
 		w := httptest.NewRecorder()
 
@@ -207,7 +217,7 @@ func test_RecordController_Get(t *testing.T) {
 
 		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
-		compositeCursor := base64.StdEncoding.EncodeToString([]byte(cursorEventDate.Format(time.RFC3339) + "|" + cursorCreatedAt.Format(time.RFC3339)))
+		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
 
 		w := httptest.NewRecorder()
 
@@ -365,8 +375,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		limit := 10
 		offset := 0
-		// 複合カーソル形式: base64("eventDate|createdAt") のゼロ値
-		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339) + "|" + time.Time{}.Format(time.RFC3339)))
+		cursor := encodeTestCursor(time.Time{}, time.Time{})
 		eventType := ""
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(records, nil)
@@ -407,7 +416,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
 
-		compositeCursor := base64.StdEncoding.EncodeToString([]byte(cursorEventDate.Format(time.RFC3339) + "|" + cursorCreatedAt.Format(time.RFC3339)))
+		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
 
 		w := httptest.NewRecorder()
 
@@ -452,7 +461,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
-		compositeCursor := base64.StdEncoding.EncodeToString([]byte(cursorEventDate.Format(time.RFC3339) + "|" + cursorCreatedAt.Format(time.RFC3339)))
+		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
 
 		w := httptest.NewRecorder()
 

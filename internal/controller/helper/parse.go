@@ -2,9 +2,9 @@ package helper
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -80,7 +80,12 @@ func ParseQuerySingleCursor(ctx *gin.Context) (time.Time, error) {
 	return t, nil
 }
 
-// ParseQueryCursor はコンポジットカーソル（"eventDate|createdAt" の base64 エンコード）を
+type cursorJSON struct {
+	EventDate string `json:"event_date"`
+	CreatedAt string `json:"created_at"`
+}
+
+// ParseQueryCursor はコンポジットカーソル（JSON の base64 エンコード）を
 // event_date カーソルと created_at カーソルに分解して返す。
 // カーソルが空の場合は両方ゼロ値を返す。
 func ParseQueryCursor(ctx *gin.Context) (time.Time, time.Time, error) {
@@ -95,17 +100,21 @@ func ParseQueryCursor(ctx *gin.Context) (time.Time, time.Time, error) {
 		return time.Time{}, time.Time{}, err
 	}
 
-	parts := strings.SplitN(string(decodedQuery), "|", 2)
-	if len(parts) != 2 {
+	var c cursorJSON
+	if err := json.Unmarshal(decodedQuery, &c); err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	if c.EventDate == "" || c.CreatedAt == "" {
 		return time.Time{}, time.Time{}, errors.New("invalid cursor format")
 	}
 
-	cursorEventDate, err := time.Parse(time.RFC3339, parts[0])
+	cursorEventDate, err := time.Parse(time.RFC3339, c.EventDate)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
 
-	cursorCreatedAt, err := time.Parse(time.RFC3339, parts[1])
+	cursorCreatedAt, err := time.Parse(time.RFC3339, c.CreatedAt)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}

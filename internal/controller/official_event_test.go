@@ -12,11 +12,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 const (
@@ -249,7 +250,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 	t.Run("異常系_#01", func(t *testing.T) {
 		id := uint(606466)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"/%d", id), nil)

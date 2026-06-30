@@ -14,14 +14,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 var l = slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -93,7 +94,7 @@ func test_UserController_GetById(t *testing.T) {
 	t.Run("異常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+id, nil)
@@ -188,7 +189,7 @@ func test_UserController_Create(t *testing.T) {
 		name := "test"
 		imageURL := "https://example.com/image.png"
 
-		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, ErrAlreadyExists)
+		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, apperror.ErrAlreadyExists)
 
 		data := dto.UserCreateRequest{
 			UserRequest: dto.UserRequest{
@@ -366,7 +367,7 @@ func test_UserController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 

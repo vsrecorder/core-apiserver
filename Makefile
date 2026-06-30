@@ -13,7 +13,7 @@ run:
 .PHONY: build
 build:
 	go mod tidy
-	go build -o bin/core-apiserver cmd/core-apiserver/main.go
+	go build -o /dev/null cmd/core-apiserver/main.go
 
 PHONY: mockgen
 mockgen:

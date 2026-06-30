@@ -7,22 +7,20 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"gorm.io/gorm"
 )
 
 const (
 	UsersPath = "/users"
-)
-
-var (
-	ErrAlreadyExists = errors.New("already exists")
 )
 
 type User struct {
@@ -99,14 +97,12 @@ func (c *User) GetById(ctx *gin.Context) {
 
 	user, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -127,14 +123,12 @@ func (c *User) Create(ctx *gin.Context) {
 
 	user, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
-		if err == ErrAlreadyExists {
-			ctx.JSON(http.StatusConflict, gin.H{"message": "already exists"})
-			ctx.Abort()
+		if errors.Is(err, apperror.ErrAlreadyExists) {
+			apierror.ErrConflict.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -154,8 +148,7 @@ func (c *User) Update(ctx *gin.Context) {
 
 	user, err := c.usecase.Update(context.Background(), id, param)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -168,14 +161,12 @@ func (c *User) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
 	if err := c.usecase.Delete(context.Background(), id); err != nil {
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrBadRequestNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 

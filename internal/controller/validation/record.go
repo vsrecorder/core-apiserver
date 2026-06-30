@@ -1,9 +1,9 @@
 package validation
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
@@ -12,22 +12,19 @@ func RecordGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		limit, err := helper.ParseQueryLimit(ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		offset, err := helper.ParseQueryOffset(ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		cursor, err := helper.ParseQueryCursor(ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
@@ -46,14 +43,12 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.RecordCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if !isValidRecordEventSource(req.RecordRequest) {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
@@ -65,14 +60,12 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.RecordUpdateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if !isValidRecordEventSource(req.RecordRequest) {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 

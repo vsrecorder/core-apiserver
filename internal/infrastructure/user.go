@@ -4,10 +4,11 @@ import (
 	"context"
 	"strings"
 
+	"gorm.io/gorm"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type User struct {
@@ -26,7 +27,7 @@ func (i *User) FindById(
 ) (*entity.User, error) {
 	var model *model.User
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	// Twitter/Googleのアイコン画像を大きくする

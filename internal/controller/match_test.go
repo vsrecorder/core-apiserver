@@ -12,14 +12,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 func setupMock4TestMatchController(t *testing.T) (*mock_repository.MockMatchInterface, *mock_repository.MockRecordInterface, *mock_usecase.MockMatchInterface) {
@@ -105,7 +106,7 @@ func test_MatchController_GetById(t *testing.T) {
 
 		id, _ := generateId()
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -189,7 +190,7 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 
 		recordId, _ := generateId()
 
-		mockUsecase.EXPECT().FindByRecordId(context.Background(), recordId).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindByRecordId(context.Background(), recordId).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -757,7 +758,7 @@ func test_MatchController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 

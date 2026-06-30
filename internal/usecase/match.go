@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"gorm.io/gorm"
 )
 
 type GameParam struct {
@@ -264,7 +264,7 @@ func (u *Match) Update(
 ) (*entity.Match, error) {
 	// 指定されたidのMatchを取得
 	ret, err := u.repository.FindById(ctx, id)
-	if err == gorm.ErrRecordNotFound {
+	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
 		return nil, err

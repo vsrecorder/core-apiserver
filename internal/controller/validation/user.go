@@ -1,9 +1,9 @@
 package validation
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
@@ -12,20 +12,17 @@ func UserCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.UserCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if req.Name == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if req.ImageURL == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
@@ -37,20 +34,17 @@ func UserUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.UserUpdateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if req.Name == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if req.ImageURL == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 

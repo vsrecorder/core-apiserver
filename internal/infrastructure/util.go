@@ -2,10 +2,14 @@ package infrastructure
 
 import (
 	"database/sql/driver"
+	"errors"
 	"math/rand"
 	"time"
 
 	ulid "github.com/oklog/ulid/v2"
+	"gorm.io/gorm"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 )
 
 var (
@@ -26,4 +30,16 @@ func generateId() (string, error) {
 	id, err := ulid.New(ms, entropy)
 
 	return id.String(), err
+}
+
+// wrapError は gorm の永続化エラーをドメインエラーへ変換する。
+// レコードが存在しない場合(gorm.ErrRecordNotFound)は apperror.ErrRecordNotFound
+// へ変換し、上位層が gorm に依存せずエラーの種類を判定できるようにする。
+// それ以外のエラーはそのまま返す。
+func wrapError(err error) error {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return apperror.ErrRecordNotFound
+	}
+
+	return err
 }

@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"slices"
 
+	"gorm.io/gorm"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type Match struct {
@@ -71,7 +73,7 @@ func (i *Match) FindById(
 	}
 
 	if len(results) == 0 {
-		return nil, gorm.ErrRecordNotFound
+		return nil, apperror.ErrRecordNotFound
 	}
 
 	var games []*entity.Game
@@ -184,7 +186,7 @@ func (i *Match) FindByRecordId(
 	}
 
 	if len(results) == 0 {
-		return nil, gorm.ErrRecordNotFound
+		return nil, apperror.ErrRecordNotFound
 	}
 
 	v := make(map[string]*entity.Match)
@@ -333,7 +335,7 @@ func (i *Match) FindByUserId(
 	}
 
 	if len(results) == 0 {
-		return nil, gorm.ErrRecordNotFound
+		return nil, apperror.ErrRecordNotFound
 	}
 
 	v := make(map[string]*entity.Match)
@@ -477,7 +479,7 @@ func (i *Match) FindLatest(
 	}
 
 	if len(results) == 0 {
-		return nil, gorm.ErrRecordNotFound
+		return nil, apperror.ErrRecordNotFound
 	}
 
 	v := make(map[string]*entity.Match)

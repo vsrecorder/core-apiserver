@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type Deck struct {
@@ -320,7 +321,7 @@ func (i *Deck) FindById(
 ) (*entity.Deck, error) {
 	// idの存在確認
 	if tx := i.db.Where("id = ?", id).First(&model.Deck{}); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	var deckJoinDeckCodes *model.DeckJoinDeckCode

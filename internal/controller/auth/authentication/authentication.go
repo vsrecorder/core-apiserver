@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
 
@@ -47,16 +49,14 @@ func RequiredAuthenticationMiddleware() gin.HandlerFunc {
 
 		token, err := parseToken(tokenString, secretKey)
 		if err != nil {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-			ctx.Abort()
+			apierror.ErrUnauthorized.JSON(ctx)
 			return
 		}
 
 		claims := token.Claims.(*VSRClaims)
 
 		if claims.UID == "" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-			ctx.Abort()
+			apierror.ErrUnauthorized.JSON(ctx)
 			return
 		}
 
@@ -80,16 +80,14 @@ func OptionalAuthenticationMiddleware() gin.HandlerFunc {
 
 		token, err := parseToken(tokenString, secretKey)
 		if err != nil {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-			ctx.Abort()
+			apierror.ErrUnauthorized.JSON(ctx)
 			return
 		}
 
 		claims := token.Claims.(*VSRClaims)
 
 		if claims.UID == "" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-			ctx.Abort()
+			apierror.ErrUnauthorized.JSON(ctx)
 			return
 		}
 

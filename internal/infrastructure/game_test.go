@@ -8,10 +8,11 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
-	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
-	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
 func setupMock4GameInfrastructure() (*gorm.DB, sqlmock.Sqlmock, error) {

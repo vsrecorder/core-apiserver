@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"gorm.io/gorm"
 )
 
 type UserStat struct {

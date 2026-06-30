@@ -459,11 +459,11 @@ func test_DeckUsecase_Update(t *testing.T, mockRepository *mock_repository.MockD
 			false,
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, gorm.ErrRecordNotFound)
+		require.Equal(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 
@@ -591,11 +591,11 @@ func test_DeckUsecase_Archive(t *testing.T, mockRepository *mock_repository.Mock
 	t.Run("異常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		ret, err := usecase.Archive(context.Background(), id)
 
-		require.Equal(t, err, gorm.ErrRecordNotFound)
+		require.Equal(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 
@@ -665,11 +665,11 @@ func test_DeckUsecase_Unarchive(t *testing.T, mockRepository *mock_repository.Mo
 	t.Run("異常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		ret, err := usecase.Unarchive(context.Background(), id)
 
-		require.Equal(t, err, gorm.ErrRecordNotFound)
+		require.Equal(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 

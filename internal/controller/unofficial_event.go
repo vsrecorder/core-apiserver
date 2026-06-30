@@ -6,12 +6,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"gorm.io/gorm"
 )
 
 const (
@@ -62,14 +64,12 @@ func (c *UnofficialEvent) GetById(ctx *gin.Context) {
 
 	unofficialEvent, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -90,8 +90,7 @@ func (c *UnofficialEvent) Create(ctx *gin.Context) {
 
 	unofficialEvent, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 

@@ -6,10 +6,11 @@ import (
 	"log/slog"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type Record struct {
@@ -31,7 +32,7 @@ func (i *Record) FindById(
 	var model model.Record
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	entity := entity.NewRecord(
@@ -497,7 +498,7 @@ func (i *Record) Delete(
 	// 先に record を取得しておく
 	var record model.Record
 	if tx := i.db.Where("id = ?", id).First(&record); tx.Error != nil {
-		return tx.Error
+		return wrapError(tx.Error)
 	}
 
 	var matches []*model.Match

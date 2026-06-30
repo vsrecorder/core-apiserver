@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"gorm.io/gorm"
 )
 
 const (
@@ -49,8 +51,7 @@ func (c *Environment) RegisterRoute(relativePath string) {
 func (c *Environment) Get(ctx *gin.Context) {
 	environments, err := c.usecase.Find(context.Background())
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -64,14 +65,12 @@ func (c *Environment) GetById(ctx *gin.Context) {
 
 	environment, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -89,14 +88,12 @@ func (c *Environment) GetByDate(ctx *gin.Context) {
 
 	environment, err := c.usecase.FindByDate(context.Background(), date)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -116,14 +113,12 @@ func (c *Environment) GetByTerm(ctx *gin.Context) {
 
 	environments, err := c.usecase.FindByTerm(context.Background(), fromDate, toDate)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 

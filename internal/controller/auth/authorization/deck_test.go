@@ -9,11 +9,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 func TestDeckAuthorizationMiddleware(t *testing.T) {
@@ -109,7 +110,7 @@ func test_DeckAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)

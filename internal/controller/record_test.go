@@ -14,14 +14,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 func setupMock4TestRecordController(t *testing.T) (*mock_repository.MockRecordInterface, *mock_usecase.MockRecordInterface) {
@@ -252,7 +253,7 @@ func test_RecordController_GetById(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", RecordsPath+"/"+id, nil)
@@ -863,7 +864,7 @@ func test_RecordController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 

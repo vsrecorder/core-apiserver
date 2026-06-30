@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/net/html"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"golang.org/x/net/html"
-	"gorm.io/gorm"
 )
 
 type TonamelEvent struct {
@@ -49,7 +50,7 @@ func (i *TonamelEvent) FindById(
 			slog.Int("status_code", res.StatusCode),
 		)
 
-		return nil, gorm.ErrRecordNotFound
+		return nil, apperror.ErrRecordNotFound
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -82,7 +83,7 @@ func (i *TonamelEvent) FindById(
 			slog.String("request_url", url),
 		)
 
-		return nil, gorm.ErrRecordNotFound
+		return nil, apperror.ErrRecordNotFound
 	}
 
 	ret := entity.NewTonamelEvent(id, ogpTitle, ogpDescription, ogpImage)

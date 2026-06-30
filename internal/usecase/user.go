@@ -2,16 +2,11 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"time"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"gorm.io/gorm"
-)
-
-var (
-	ErrAlreadyExists = errors.New("already exists")
 )
 
 type UserCreateParam struct {
@@ -108,8 +103,8 @@ func (u *User) Create(
 
 	_, err := u.repository.FindById(ctx, user.ID)
 	if err == nil {
-		return nil, ErrAlreadyExists
-	} else if err != gorm.ErrRecordNotFound {
+		return nil, apperror.ErrAlreadyExists
+	} else if err != apperror.ErrRecordNotFound {
 		return nil, err
 	}
 
@@ -126,7 +121,7 @@ func (u *User) Update(
 	param *UserUpdateParam,
 ) (*entity.User, error) {
 	ret, err := u.repository.FindById(ctx, id)
-	if err == gorm.ErrRecordNotFound {
+	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
 		return nil, err

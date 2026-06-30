@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"gorm.io/gorm"
 )
 
 type DeckCodeCreateParam struct {
@@ -160,7 +160,7 @@ func (u *DeckCode) Update(
 ) (*entity.DeckCode, error) {
 	// 指定されたidのDeckCodeが存在するか確認
 	ret, err := u.repository.FindById(ctx, id)
-	if err == gorm.ErrRecordNotFound {
+	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
 		return nil, err

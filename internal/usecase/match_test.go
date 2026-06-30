@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
-	"go.uber.org/mock/gomock"
 )
 
 func TestMatchUsecase(t *testing.T) {

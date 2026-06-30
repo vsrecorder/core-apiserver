@@ -2,12 +2,13 @@ package authorization
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"gorm.io/gorm"
 )
 
 func MatchAuthorizationMiddleware(repository repository.MatchInterface) gin.HandlerFunc {
@@ -16,26 +17,22 @@ func MatchAuthorizationMiddleware(repository repository.MatchInterface) gin.Hand
 		uid := helper.GetUID(ctx)
 
 		if uid == "" {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 
 		match, err := repository.FindById(context.Background(), id)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		if uid != match.UserId {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 	}
@@ -48,31 +45,26 @@ func MatchGetByIdAuthorizationMiddleware(matchRepository repository.MatchInterfa
 
 		match, err := matchRepository.FindById(context.Background(), id)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		record, err := recordRepository.FindById(context.Background(), match.RecordId)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		if record.PrivateFlg && uid != record.UserId {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 	}
@@ -85,19 +77,16 @@ func MatchGetByRecordIdAuthorizationMiddleware(recordRepository repository.Recor
 
 		record, err := recordRepository.FindById(context.Background(), recordId)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		if record.PrivateFlg && uid != record.UserId {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 	}

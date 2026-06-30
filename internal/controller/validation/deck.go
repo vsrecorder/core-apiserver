@@ -1,9 +1,9 @@
 package validation
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
@@ -12,29 +12,25 @@ func DeckGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		limit, err := helper.ParseQueryLimit(ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		offset, err := helper.ParseQueryOffset(ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		cursor, err := helper.ParseQueryCursor(ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		archived, err := helper.ParseQueryArchive(ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
@@ -49,14 +45,12 @@ func DeckCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.DeckCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if req.Name == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
@@ -72,14 +66,12 @@ func DeckUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.DeckUpdateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if req.Name == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 

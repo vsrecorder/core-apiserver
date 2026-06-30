@@ -10,10 +10,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
-	"go.uber.org/mock/gomock"
 )
 
 func setupMock4TestTonamelEventController(t *testing.T) *mock_usecase.MockTonamelEventInterface {

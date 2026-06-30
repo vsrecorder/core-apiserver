@@ -3,10 +3,11 @@ package infrastructure
 import (
 	"context"
 
+	"gorm.io/gorm"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type Game struct {
@@ -26,7 +27,7 @@ func (i *Game) FindById(
 	var model *model.Game
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	entity := entity.NewGame(

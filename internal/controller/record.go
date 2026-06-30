@@ -7,14 +7,16 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"gorm.io/gorm"
 )
 
 const (
@@ -109,8 +111,7 @@ func (c *Record) Get(ctx *gin.Context) {
 		if !cursor.IsZero() {
 			records, err := c.usecase.FindOnCursor(context.Background(), limit, cursor, eventType)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-				ctx.Abort()
+				apierror.ErrInternalServerError.JSON(ctx)
 				return
 			}
 
@@ -120,8 +121,7 @@ func (c *Record) Get(ctx *gin.Context) {
 		} else {
 			records, err := c.usecase.Find(context.Background(), limit, offset, eventType)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-				ctx.Abort()
+				apierror.ErrInternalServerError.JSON(ctx)
 				return
 			}
 
@@ -146,8 +146,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 				records, err := c.usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursor, eventType)
 
 				if err != nil {
-					ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-					ctx.Abort()
+					apierror.ErrInternalServerError.JSON(ctx)
 					return
 				}
 
@@ -158,8 +157,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 				records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursor, eventType)
 
 				if err != nil {
-					ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-					ctx.Abort()
+					apierror.ErrInternalServerError.JSON(ctx)
 					return
 				}
 
@@ -172,8 +170,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 				records, err := c.usecase.FindByDeckId(context.Background(), deckId, limit, offset, eventType)
 
 				if err != nil {
-					ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-					ctx.Abort()
+					apierror.ErrInternalServerError.JSON(ctx)
 					return
 				}
 
@@ -185,8 +182,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 				records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset, eventType)
 
 				if err != nil {
-					ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-					ctx.Abort()
+					apierror.ErrInternalServerError.JSON(ctx)
 					return
 				}
 
@@ -204,14 +200,12 @@ func (c *Record) GetById(ctx *gin.Context) {
 
 	record, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -240,8 +234,7 @@ func (c *Record) Create(ctx *gin.Context) {
 
 	record, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -271,8 +264,7 @@ func (c *Record) Update(ctx *gin.Context) {
 
 	record, err := c.usecase.Update(context.Background(), id, param)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -285,14 +277,12 @@ func (c *Record) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
 	if err := c.usecase.Delete(context.Background(), id); err != nil {
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrBadRequestNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 

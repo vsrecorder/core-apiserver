@@ -9,11 +9,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 func TestRecordAuthorizationMiddleware(t *testing.T) {
@@ -110,7 +111,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -288,7 +289,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		mockRepository.EXPECT().FindById(context.Background(), "").Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), "").Return(nil, apperror.ErrRecordNotFound)
 
 		middleware := RecordGetByIdAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
@@ -316,7 +317,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)

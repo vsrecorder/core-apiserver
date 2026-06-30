@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 )
 
 func TestTonamelEventInfrastructure(t *testing.T) {
@@ -43,6 +43,6 @@ func test_TonamelEventInfrastructure_FindById(t *testing.T) {
 
 		_, err := r.FindById(context.Background(), id)
 
-		require.Equal(t, err, gorm.ErrRecordNotFound)
+		require.Equal(t, err, apperror.ErrRecordNotFound)
 	})
 }

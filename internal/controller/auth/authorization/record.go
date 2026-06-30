@@ -2,12 +2,13 @@ package authorization
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"gorm.io/gorm"
 )
 
 func RecordAuthorizationMiddleware(repository repository.RecordInterface) gin.HandlerFunc {
@@ -16,26 +17,22 @@ func RecordAuthorizationMiddleware(repository repository.RecordInterface) gin.Ha
 		uid := helper.GetUID(ctx)
 
 		if uid == "" {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 
 		record, err := repository.FindById(context.Background(), id)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		if uid != record.UserId {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 	}
@@ -48,20 +45,17 @@ func RecordGetByIdAuthorizationMiddleware(repository repository.RecordInterface)
 
 		record, err := repository.FindById(context.Background(), id)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		// 非公開レコードである場合、ユーザIDが一致しないと403を返す
 		if record.PrivateFlg && uid != record.UserId {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 	}

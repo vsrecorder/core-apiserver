@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"gorm.io/gorm"
 )
 
 type RecordParam struct {
@@ -343,7 +343,7 @@ func (u *Record) Update(
 ) (*entity.Record, error) {
 	// 指定されたidのRecordが存在するか確認
 	ret, err := u.repository.FindById(ctx, id)
-	if err == gorm.ErrRecordNotFound {
+	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
 		return nil, err

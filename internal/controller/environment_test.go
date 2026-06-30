@@ -12,11 +12,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 func setupMock4TestEnvironmentController(t *testing.T) *mock_usecase.MockEnvironmentInterface {
@@ -145,7 +146,7 @@ func test_EnvironmentController_GetById(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		id := "sv11"
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -219,7 +220,7 @@ func test_EnvironmentController_GetByDate(t *testing.T) {
 	t.Run("異常系_#01", func(t *testing.T) {
 		date, _ := time.Parse(DateLayout, "2025-06-06")
 		date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
-		mockUsecase.EXPECT().FindByDate(context.Background(), date).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindByDate(context.Background(), date).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -300,7 +301,7 @@ func test_EnvironmentController_GetByTerm(t *testing.T) {
 		argToDate, _ := time.Parse(DateLayout, "2025-06-07")
 		argToDate = time.Date(argToDate.Year(), argToDate.Month(), argToDate.Day(), 0, 0, 0, 0, time.Local)
 
-		mockUsecase.EXPECT().FindByTerm(context.Background(), argFromDate, argToDate).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindByTerm(context.Background(), argFromDate, argToDate).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 

@@ -18,6 +18,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	ulid "github.com/oklog/ulid/v2"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 )
 
 var (
@@ -98,7 +100,7 @@ func uploadDeckResultHTML(deckCode string) error {
 
 			// メンテナンス中のときはアップロードしない
 			if bytes.Contains(bodyBytes, []byte("現在メンテナンスをしております")) {
-				return errors.New("deck result page is under maintenance")
+				return apperror.ErrUnderMaintenance
 			}
 
 			if _, err = s3client.PutObject(ctx, &s3.PutObjectInput{

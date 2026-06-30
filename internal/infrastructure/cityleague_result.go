@@ -4,10 +4,12 @@ import (
 	"context"
 	"time"
 
+	"gorm.io/gorm"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type CityleagueResult struct {
@@ -41,7 +43,7 @@ func (i *CityleagueResult) FindByOfficialEventId(
 	}
 
 	if len(models) == 0 {
-		return nil, gorm.ErrRecordNotFound
+		return nil, apperror.ErrRecordNotFound
 	}
 
 	ret := entity.NewCityleagueResult(

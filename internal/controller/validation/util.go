@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 )
 
 const (
@@ -28,8 +30,7 @@ func checkDeckCode(ctx *gin.Context, deckCode string) {
 	resp, err := http.PostForm("https://www.pokemon-card.com/deck/deckIDCheck.php", data)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -38,16 +39,13 @@ func checkDeckCode(ctx *gin.Context, deckCode string) {
 	if resp.StatusCode != http.StatusOK {
 		switch resp.StatusCode {
 		case http.StatusServiceUnavailable:
-			ctx.JSON(http.StatusServiceUnavailable, gin.H{"message": "service unavailable"})
-			ctx.Abort()
+			apierror.ErrServiceUnavailable.JSON(ctx)
 			return
 		case http.StatusGatewayTimeout:
-			ctx.JSON(http.StatusGatewayTimeout, gin.H{"message": "gateway timeout"})
-			ctx.Abort()
+			apierror.ErrGatewayTimeout.JSON(ctx)
 			return
 		default:
-			ctx.JSON(http.StatusBadGateway, gin.H{"message": "bad gateway", "status": resp.Status})
-			ctx.Abort()
+			apierror.ErrBadGateway.JSON(ctx)
 			return
 		}
 	}
@@ -55,21 +53,18 @@ func checkDeckCode(ctx *gin.Context, deckCode string) {
 	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
 	var res DeckIDCheckResponse
 	if err := json.Unmarshal(body, &res); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
 	if res.Existence == 0 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-		ctx.Abort()
+		apierror.ErrBadRequest.JSON(ctx)
 		return
 	}
 }

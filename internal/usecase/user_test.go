@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 func TestUserUsecase(t *testing.T) {
@@ -77,7 +78,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 			imageURL,
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
 		ret, err := usecase.Create(context.Background(), param)
@@ -112,7 +113,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, ErrAlreadyExists)
+		require.Equal(t, err, apperror.ErrAlreadyExists)
 		require.Empty(t, ret)
 	})
 
@@ -177,11 +178,11 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 			imageURL,
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, gorm.ErrRecordNotFound)
+		require.Equal(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 

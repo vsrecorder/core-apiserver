@@ -6,14 +6,16 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"gorm.io/gorm"
 )
 
 const (
@@ -138,8 +140,7 @@ func (c *Deck) Get(ctx *gin.Context) {
 		if !cursor.IsZero() {
 			decks, err := c.usecase.FindOnCursor(context.Background(), limit, cursor)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-				ctx.Abort()
+				apierror.ErrInternalServerError.JSON(ctx)
 				return
 			}
 
@@ -155,8 +156,7 @@ func (c *Deck) Get(ctx *gin.Context) {
 		} else {
 			decks, err := c.usecase.Find(context.Background(), limit, offset)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-				ctx.Abort()
+				apierror.ErrInternalServerError.JSON(ctx)
 				return
 			}
 
@@ -177,8 +177,7 @@ func (c *Deck) GetAll(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 	decks, err := c.usecase.FindAll(context.Background(), uid)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -197,8 +196,7 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 		if !cursor.IsZero() {
 			decks, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, archived, limit, cursor)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-				ctx.Abort()
+				apierror.ErrInternalServerError.JSON(ctx)
 				return
 			}
 
@@ -214,8 +212,7 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 		} else {
 			decks, err := c.usecase.FindByUserId(context.Background(), uid, archived, limit, offset)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-				ctx.Abort()
+				apierror.ErrInternalServerError.JSON(ctx)
 				return
 			}
 
@@ -237,14 +234,12 @@ func (c *Deck) GetById(ctx *gin.Context) {
 
 	deck, err := c.usecase.FindById(context.Background(), id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -277,8 +272,13 @@ func (c *Deck) Create(ctx *gin.Context) {
 
 	deck, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		// デッキコード取得元(ポケモンカード公式サイト)がメンテナンス中の場合は 503 を返す
+		if errors.Is(err, apperror.ErrUnderMaintenance) {
+			apierror.ErrServiceUnavailable.JSON(ctx)
+			return
+		}
+
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -304,8 +304,7 @@ func (c *Deck) Update(ctx *gin.Context) {
 
 	deck, err := c.usecase.Update(context.Background(), id, param)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -319,8 +318,7 @@ func (c *Deck) Archive(ctx *gin.Context) {
 
 	deck, err := c.usecase.Archive(context.Background(), id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -334,8 +332,7 @@ func (c *Deck) Unarchive(ctx *gin.Context) {
 
 	deck, err := c.usecase.Unarchive(context.Background(), id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 
@@ -348,14 +345,12 @@ func (c *Deck) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
 	if err := c.usecase.Delete(context.Background(), id); err != nil {
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrBadRequestNotFound.JSON(ctx)
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		ctx.Abort()
+		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
 

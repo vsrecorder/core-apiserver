@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type CityleagueSchedule struct {
@@ -51,7 +52,7 @@ func (i *CityleagueSchedule) FindById(
 	var model model.CityleagueSchedule
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	entity := entity.NewCityleagueSchedule(
@@ -71,7 +72,7 @@ func (i *CityleagueSchedule) FindByDate(
 	var model model.CityleagueSchedule
 
 	if tx := i.db.Where("from_date <= ? AND to_date >= ?", date, date).First(&model); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	entity := entity.NewCityleagueSchedule(

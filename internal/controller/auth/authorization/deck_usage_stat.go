@@ -1,9 +1,9 @@
 package authorization
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
 
@@ -13,14 +13,12 @@ func DeckUsageStatAuthorizationMiddleware() gin.HandlerFunc {
 		uid := helper.GetUID(ctx)
 
 		if uid == "" {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 
 		if uid != id {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 	}

@@ -1,9 +1,9 @@
 package validation
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
@@ -12,44 +12,38 @@ func MatchCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.MatchCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// RecordIdが空
 		if req.RecordId == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// DefaultVictoryFlgとDefaultDefeatFlgの両方がtrue
 		if req.DefaultVictoryFlg && req.DefaultDefeatFlg {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// DefaultVictoryFlgがtrueなのにVictoryFlgがfalse
 		if req.DefaultVictoryFlg && !req.VictoryFlg {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// DefaultDefeatFlgがtrueなのにVictoryFlgがtrue
 		if req.DefaultDefeatFlg && req.VictoryFlg {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// DefaultVictoryFlg or DefaultDefeatFlgがtrueなのにGamesが存在している
 		if req.DefaultVictoryFlg || req.DefaultDefeatFlg {
 			if len(req.Games) > 0 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
+				apierror.ErrBadRequest.JSON(ctx)
 				return
 			}
 		}
@@ -57,16 +51,14 @@ func MatchCreateMiddleware() gin.HandlerFunc {
 		if req.BO3Flg {
 			// BO3なのに試合数が1つ or 3つを超えている
 			if len(req.Games) == 1 || len(req.Games) > 3 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
+				apierror.ErrBadRequest.JSON(ctx)
 				return
 			}
 
 			if len(req.Games) == 2 {
 				// 試合数が2つの場合はそれぞれのGameのWinningFlgとMatchのVictoryFlgが同じであるべき
 				if !((req.Games[0].WinningFlg == req.VictoryFlg) && (req.Games[1].WinningFlg == req.VictoryFlg)) {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 			}
@@ -82,8 +74,7 @@ func MatchCreateMiddleware() gin.HandlerFunc {
 				// |  false  |  true  |  true  |  false |
 				//
 				if req.Games[0].WinningFlg && req.Games[1].WinningFlg {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 
@@ -97,8 +88,7 @@ func MatchCreateMiddleware() gin.HandlerFunc {
 				// |  false  |  false |  false |  false |
 				//
 				if !req.Games[0].WinningFlg && !req.Games[1].WinningFlg {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 
@@ -116,24 +106,21 @@ func MatchCreateMiddleware() gin.HandlerFunc {
 				// |  true   |  false |  true  |  false |  false |
 				//
 				if !(req.Games[0].WinningFlg != req.Games[1].WinningFlg != req.Games[2].WinningFlg != req.VictoryFlg) {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 			}
 		} else {
 			// BO1なのに試合数が1つを超えている
 			if len(req.Games) > 1 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
+				apierror.ErrBadRequest.JSON(ctx)
 				return
 			}
 
 			if !req.DefaultVictoryFlg && !req.DefaultDefeatFlg {
 				// GameのWinningFlgとMatchのVictoryFlgが異なる
 				if req.Games[0].WinningFlg != req.VictoryFlg {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 			}
@@ -147,44 +134,38 @@ func MatchUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.MatchUpdateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// RecordIdが空
 		if req.RecordId == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// DefaultVictoryFlgとDefaultDefeatFlgの両方がtrue
 		if req.DefaultVictoryFlg && req.DefaultDefeatFlg {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// DefaultVictoryFlgがtrueなのにVictoryFlgがfalse
 		if req.DefaultVictoryFlg && !req.VictoryFlg {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// DefaultDefeatFlgがtrueなのにVictoryFlgがtrue
 		if req.DefaultDefeatFlg && req.VictoryFlg {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			ctx.Abort()
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		// DefaultVictoryFlg or DefaultDefeatFlgがtrueなのにGamesが存在している
 		if req.DefaultVictoryFlg || req.DefaultDefeatFlg {
 			if len(req.Games) > 0 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
+				apierror.ErrBadRequest.JSON(ctx)
 				return
 			}
 		}
@@ -192,16 +173,14 @@ func MatchUpdateMiddleware() gin.HandlerFunc {
 		if req.BO3Flg {
 			// BO3なのに試合数が1つ or 3つを超えている
 			if len(req.Games) == 1 || len(req.Games) > 3 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
+				apierror.ErrBadRequest.JSON(ctx)
 				return
 			}
 
 			if len(req.Games) == 2 {
 				// 試合数が2つの場合はそれぞれのGameのWinningFlgとMatchのVictoryFlgが同じであるべき
 				if !((req.Games[0].WinningFlg == req.VictoryFlg) && (req.Games[1].WinningFlg == req.VictoryFlg)) {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 			}
@@ -217,8 +196,7 @@ func MatchUpdateMiddleware() gin.HandlerFunc {
 				// |  false  |  true  |  true  |  false |
 				//
 				if req.Games[0].WinningFlg && req.Games[1].WinningFlg {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 
@@ -232,8 +210,7 @@ func MatchUpdateMiddleware() gin.HandlerFunc {
 				// |  false  |  false |  false |  false |
 				//
 				if !req.Games[0].WinningFlg && !req.Games[1].WinningFlg {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 
@@ -251,24 +228,21 @@ func MatchUpdateMiddleware() gin.HandlerFunc {
 				// |  true   |  false |  true  |  false |  false |
 				//
 				if !(req.Games[0].WinningFlg != req.Games[1].WinningFlg != req.Games[2].WinningFlg != req.VictoryFlg) {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 			}
 		} else {
 			// BO1なのに試合数が1つを超えている
 			if len(req.Games) > 1 {
-				ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-				ctx.Abort()
+				apierror.ErrBadRequest.JSON(ctx)
 				return
 			}
 
 			if !req.DefaultVictoryFlg && !req.DefaultDefeatFlg {
 				// GameのWinningFlgとMatchのVictoryFlgが異なる
 				if req.Games[0].WinningFlg != req.VictoryFlg {
-					ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-					ctx.Abort()
+					apierror.ErrBadRequest.JSON(ctx)
 					return
 				}
 			}

@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
 func TestRecordUsecase(t *testing.T) {
@@ -605,11 +606,11 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, gorm.ErrRecordNotFound)
+		require.Equal(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 

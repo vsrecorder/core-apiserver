@@ -2,12 +2,13 @@ package authorization
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"gorm.io/gorm"
 )
 
 func DeckAuthorizationMiddleware(repository repository.DeckInterface) gin.HandlerFunc {
@@ -16,26 +17,22 @@ func DeckAuthorizationMiddleware(repository repository.DeckInterface) gin.Handle
 		uid := helper.GetUID(ctx)
 
 		if uid == "" {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 
 		deck, err := repository.FindById(context.Background(), id)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		if uid != deck.UserId {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 	}
@@ -48,19 +45,16 @@ func DeckGetByIdAuthorizationMiddleware(repository repository.DeckInterface) gin
 
 		deck, err := repository.FindById(context.Background(), id)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		if deck.PrivateFlg && uid != deck.UserId {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 	}
@@ -84,26 +78,22 @@ func DeckDeleteAuthorizationMiddleware(deckRepository repository.DeckInterface, 
 		uid := helper.GetUID(ctx)
 
 		if uid == "" {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 
 		deck, err := deckRepository.FindById(context.Background(), id)
 
-		if err == gorm.ErrRecordNotFound {
-			ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
-			ctx.Abort()
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
 			return
 		} else if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		if uid != deck.UserId {
-			ctx.JSON(http.StatusForbidden, gin.H{"message": "forbidden"})
-			ctx.Abort()
+			apierror.ErrForbidden.JSON(ctx)
 			return
 		}
 
@@ -112,14 +102,12 @@ func DeckDeleteAuthorizationMiddleware(deckRepository repository.DeckInterface, 
 		eventType := ""
 		records, err := recordRepository.FindByDeckId(context.Background(), id, limit, offset, eventType)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-			ctx.Abort()
+			apierror.ErrInternalServerError.JSON(ctx)
 			return
 		}
 
 		if len(records) > 0 {
-			ctx.JSON(http.StatusConflict, gin.H{"message": "cannot delete deck with records"})
-			ctx.Abort()
+			apierror.ErrDeckHasRecords.JSON(ctx)
 			return
 		}
 	}

@@ -323,7 +323,7 @@ func test_DeckController_GetById(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/decks/"+id, nil)
@@ -996,7 +996,7 @@ func test_DeckController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(gorm.ErrRecordNotFound)
+		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 

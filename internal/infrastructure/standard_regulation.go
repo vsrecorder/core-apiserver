@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type StandardRegulation struct {
@@ -50,7 +51,7 @@ func (i *StandardRegulation) FindById(
 	var model model.StandardRegulation
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	entity := entity.NewStandardRegulation(
@@ -70,7 +71,7 @@ func (i *StandardRegulation) FindByDate(
 	var model model.StandardRegulation
 
 	if tx := i.db.Where("from_date <= ? AND to_date >= ?", date, date).First(&model); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	entity := entity.NewStandardRegulation(

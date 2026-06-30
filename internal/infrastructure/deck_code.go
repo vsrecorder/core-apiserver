@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 
+	"gorm.io/gorm"
+
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
-	"gorm.io/gorm"
 )
 
 type DeckCode struct {
@@ -27,7 +28,7 @@ func (i *DeckCode) FindById(
 	var deckcode *model.DeckCode
 
 	if tx := i.db.Where("id = ?", id).First(&deckcode); tx.Error != nil {
-		return nil, tx.Error
+		return nil, wrapError(tx.Error)
 	}
 
 	entity := entity.NewDeckCode(

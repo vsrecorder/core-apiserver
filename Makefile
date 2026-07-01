@@ -12,6 +12,7 @@ run:
 
 .PHONY: build
 build:
+	git pull
 	go mod tidy
 	go build -o /dev/null cmd/core-apiserver/main.go
 

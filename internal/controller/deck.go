@@ -38,97 +38,57 @@ func NewDeck(
 	return &Deck{router, deckRepository, recordRepository, usecase}
 }
 
-func (c *Deck) RegisterRoute(relativePath string, authDisable bool) {
-	if authDisable {
-		r := c.router.Group(relativePath + DecksPath)
-		r.GET(
-			"",
-			validation.DeckGetMiddleware(),
-			c.Get,
-			c.GetByUserId,
-		)
-		r.GET(
-			"/all",
-			c.GetAll,
-		)
-		r.GET(
-			"/:id",
-			c.GetById,
-		)
-		r.POST(
-			"",
-			validation.DeckCreateMiddleware(),
-			c.Create,
-		)
-		r.PUT(
-			"/:id",
-			validation.DeckUpdateMiddleware(),
-			c.Update,
-		)
-		r.PATCH(
-			"/:id/archive",
-			c.Archive,
-		)
-		r.PATCH(
-			"/:id/unarchive",
-			c.Unarchive,
-		)
-		r.DELETE(
-			"/:id",
-			c.Delete,
-		)
-	} else {
-		r := c.router.Group(relativePath + DecksPath)
-		r.GET(
-			"",
-			authentication.OptionalAuthenticationMiddleware(),
-			validation.DeckGetMiddleware(),
-			c.Get,
-			c.GetByUserId,
-		)
-		r.GET(
-			"/all",
-			authentication.RequiredAuthenticationMiddleware(),
-			c.GetAll,
-		)
-		r.GET(
-			"/:id",
-			authentication.OptionalAuthenticationMiddleware(),
-			authorization.DeckGetByIdAuthorizationMiddleware(c.deckRepository),
-			c.GetById,
-		)
-		r.POST(
-			"",
-			authentication.RequiredAuthenticationMiddleware(),
-			validation.DeckCreateMiddleware(),
-			c.Create,
-		)
-		r.PUT(
-			"/:id",
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.DeckUpdateAuthorizationMiddleware(c.deckRepository),
-			validation.DeckUpdateMiddleware(),
-			c.Update,
-		)
-		r.PATCH(
-			"/:id/archive",
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.DeckArchiveAuthorizationMiddleware(c.deckRepository),
-			c.Archive,
-		)
-		r.PATCH(
-			"/:id/unarchive",
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.DeckUnarchiveAuthorizationMiddleware(c.deckRepository),
-			c.Unarchive,
-		)
-		r.DELETE(
-			"/:id",
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.DeckDeleteAuthorizationMiddleware(c.deckRepository, c.recordRepository),
-			c.Delete,
-		)
-	}
+func (c *Deck) RegisterRoute(relativePath string) {
+	r := c.router.Group(relativePath + DecksPath)
+	r.GET(
+		"",
+		authentication.OptionalAuthenticationMiddleware(),
+		validation.DeckGetMiddleware(),
+		c.Get,
+		c.GetByUserId,
+	)
+	r.GET(
+		"/all",
+		authentication.RequiredAuthenticationMiddleware(),
+		c.GetAll,
+	)
+	r.GET(
+		"/:id",
+		authentication.OptionalAuthenticationMiddleware(),
+		authorization.DeckGetByIdAuthorizationMiddleware(c.deckRepository),
+		c.GetById,
+	)
+	r.POST(
+		"",
+		authentication.RequiredAuthenticationMiddleware(),
+		validation.DeckCreateMiddleware(),
+		c.Create,
+	)
+	r.PUT(
+		"/:id",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.DeckUpdateAuthorizationMiddleware(c.deckRepository),
+		validation.DeckUpdateMiddleware(),
+		c.Update,
+	)
+	r.PATCH(
+		"/:id/archive",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.DeckArchiveAuthorizationMiddleware(c.deckRepository),
+		c.Archive,
+	)
+	r.PATCH(
+		"/:id/unarchive",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.DeckUnarchiveAuthorizationMiddleware(c.deckRepository),
+		c.Unarchive,
+	)
+	r.DELETE(
+		"/:id",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.DeckDeleteAuthorizationMiddleware(c.deckRepository, c.recordRepository),
+		c.Delete,
+	)
 }
 
 func (c *Deck) Get(ctx *gin.Context) {

@@ -16,16 +16,24 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
-	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
+	"github.com/vsrecorder/core-apiserver/internal/testutil"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
 var l = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+// setJWTAuthHeader はテスト用に有効なJWTを生成し、Authorizationヘッダーへ付与する。
+func setJWTAuthHeader(t *testing.T, req *http.Request, uid string, secretKey string) {
+	token, err := testutil.GenerateJWT(uid, secretKey, authentication.ExpectedIssuer)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+}
 
 func setupMock4TestUserController(t *testing.T) (*mock_repository.MockUserInterface, *mock_usecase.MockUserInterface) {
 	mockCtrl := gomock.NewController(t)
@@ -37,16 +45,15 @@ func setupMock4TestUserController(t *testing.T) (*mock_repository.MockUserInterf
 
 func setup4TestUserController(t *testing.T, l *slog.Logger, r *gin.Engine) (
 	*User,
+	*mock_repository.MockUserInterface,
 	*mock_usecase.MockUserInterface,
 ) {
-	authDisable := true
-
 	mockRepository, mockUsecase := setupMock4TestUserController(t)
 
 	c := NewUser(l, r, mockRepository, mockUsecase)
-	c.RegisterRoute("", authDisable)
+	c.RegisterRoute("")
 
-	return c, mockUsecase
+	return c, mockRepository, mockUsecase
 }
 
 func TestUserController(t *testing.T) {
@@ -67,7 +74,7 @@ func TestUserController(t *testing.T) {
 func test_UserController_GetById(t *testing.T) {
 	r := gin.Default()
 
-	c, mockUsecase := setup4TestUserController(t, l, r)
+	c, _, mockUsecase := setup4TestUserController(t, l, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
@@ -121,12 +128,12 @@ func test_UserController_Create(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
-		// 認証済みとするためにuidをセット
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, id)
-		})
+		// 認証済みとするためJWTを生成
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestUserController(t, l, r)
+		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -162,6 +169,7 @@ func test_UserController_Create(t *testing.T) {
 
 		req, err := http.NewRequest("POST", UsersPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, id, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -179,12 +187,12 @@ func test_UserController_Create(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
-		// 認証済みとするためにuidをセット
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, id)
-		})
+		// 認証済みとするためJWTを生成
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestUserController(t, l, r)
+		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -205,6 +213,7 @@ func test_UserController_Create(t *testing.T) {
 
 		req, err := http.NewRequest("POST", UsersPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, id, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -215,12 +224,12 @@ func test_UserController_Create(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
-		// 認証済みとするためにuidをセット
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, id)
-		})
+		// 認証済みとするためJWTを生成
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestUserController(t, l, r)
+		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -241,6 +250,7 @@ func test_UserController_Create(t *testing.T) {
 
 		req, err := http.NewRequest("POST", UsersPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, id, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -253,12 +263,15 @@ func test_UserController_Update(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
-		// 認証済みとするためにuidをセット
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, id)
-		})
+		// 認証済みとするためJWTを生成
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestUserController(t, l, r)
+		c, mockRepository, mockUsecase := setup4TestUserController(t, l, r)
+
+		// UserUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -293,6 +306,7 @@ func test_UserController_Update(t *testing.T) {
 
 		req, err := http.NewRequest("PUT", UsersPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, id, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -310,12 +324,15 @@ func test_UserController_Update(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
-		// 認証済みとするためにuidをセット
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, id)
-		})
+		// 認証済みとするためJWTを生成
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestUserController(t, l, r)
+		c, mockRepository, mockUsecase := setup4TestUserController(t, l, r)
+
+		// UserUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -336,6 +353,7 @@ func test_UserController_Update(t *testing.T) {
 
 		req, err := http.NewRequest("PUT", UsersPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, id, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -345,18 +363,25 @@ func test_UserController_Update(t *testing.T) {
 
 func test_UserController_Delete(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup4TestUserController(t, l, r)
+	c, mockRepository, mockUsecase := setup4TestUserController(t, l, r)
+
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		// UserDeleteAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", UsersPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, id, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -367,12 +392,14 @@ func test_UserController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", UsersPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, id, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -383,12 +410,14 @@ func test_UserController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", UsersPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, id, secretKey)
 
 		c.router.ServeHTTP(w, req)
 

@@ -33,23 +33,15 @@ func NewOpponentDeckUsageStat(
 	return &OpponentDeckUsageStat{router, usecase}
 }
 
-func (c *OpponentDeckUsageStat) RegisterRoute(relativePath string, authDisable bool) {
+func (c *OpponentDeckUsageStat) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + UsersPath)
-	if authDisable {
-		r.GET(
-			"/:id"+OpponentDeckUsageStatsPath,
-			validation.OpponentDeckUsageStatGetMiddleware(),
-			c.GetByUserId,
-		)
-	} else {
-		r.GET(
-			"/:id"+OpponentDeckUsageStatsPath,
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.OpponentDeckUsageStatAuthorizationMiddleware(),
-			validation.OpponentDeckUsageStatGetMiddleware(),
-			c.GetByUserId,
-		)
-	}
+	r.GET(
+		"/:id"+OpponentDeckUsageStatsPath,
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.OpponentDeckUsageStatAuthorizationMiddleware(),
+		validation.OpponentDeckUsageStatGetMiddleware(),
+		c.GetByUserId,
+	)
 }
 
 func (c *OpponentDeckUsageStat) GetByUserId(ctx *gin.Context) {

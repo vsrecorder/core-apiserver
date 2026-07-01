@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,11 +18,11 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
-	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
+	"github.com/vsrecorder/core-apiserver/internal/testutil"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -46,15 +47,15 @@ func setupMock4TestRecordController(t *testing.T) (*mock_repository.MockRecordIn
 
 func setup4TestRecordController(t *testing.T, r *gin.Engine) (
 	*Record,
+	*mock_repository.MockRecordInterface,
 	*mock_usecase.MockRecordInterface,
 ) {
-	authDisable := true
 	mockRepository, mockUsecase := setupMock4TestRecordController(t)
 
 	c := NewRecord(r, mockRepository, mockUsecase)
-	c.RegisterRoute("", authDisable)
+	c.RegisterRoute("")
 
-	return c, mockUsecase
+	return c, mockRepository, mockUsecase
 }
 
 func TestRecordController(t *testing.T) {
@@ -76,7 +77,7 @@ func TestRecordController(t *testing.T) {
 
 func test_RecordController_Get(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup4TestRecordController(t, r)
+	c, _, mockUsecase := setup4TestRecordController(t, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		record := entity.Record{}
@@ -232,7 +233,7 @@ func test_RecordController_Get(t *testing.T) {
 
 func test_RecordController_GetById(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup4TestRecordController(t, r)
+	c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
@@ -249,6 +250,8 @@ func test_RecordController_GetById(t *testing.T) {
 			PrivateFlg:      privateFlg,
 		}
 
+		// RecordGetByIdAuthorizationMiddlewareが参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(record, nil)
 
 		w := httptest.NewRecorder()
@@ -272,6 +275,8 @@ func test_RecordController_GetById(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		// RecordGetByIdAuthorizationMiddlewareが参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, PrivateFlg: false}, nil)
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
@@ -285,6 +290,8 @@ func test_RecordController_GetById(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		// RecordGetByIdAuthorizationMiddlewareが参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, PrivateFlg: false}, nil)
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
@@ -298,13 +305,13 @@ func test_RecordController_GetById(t *testing.T) {
 func test_RecordController_GetByUserId(t *testing.T) {
 	r := gin.Default()
 
-	// 認証済みとするためにuidをセット
+	// 認証済みとするためにJWTを生成
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-	r.Use(func(ctx *gin.Context) {
-		helper.SetUID(ctx, uid)
-	})
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-	c, mockUsecase := setup4TestRecordController(t, r)
+	c, _, mockUsecase := setup4TestRecordController(t, r)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		record := entity.Record{
@@ -325,6 +332,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -357,6 +365,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -384,6 +393,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -422,6 +432,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", compositeCursor), nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -447,6 +458,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		req, err := http.NewRequest("GET", RecordsPath, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -467,6 +479,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", compositeCursor), nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -477,84 +490,13 @@ func test_RecordController_GetByUserId(t *testing.T) {
 func test_RecordController_Create(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestRecordController(t, r)
 
-		id, err := generateId()
-		require.NoError(t, err)
-
-		createdAt := time.Now().Local()
-		officialEventId := uint(10000)
-		privateFlg := false
-
-		record := &entity.Record{
-			ID:              id,
-			CreatedAt:       createdAt,
-			OfficialEventId: officialEventId,
-			PrivateFlg:      privateFlg,
-		}
-
-		param := usecase.NewRecordParam(
-			officialEventId,
-			"",
-			"",
-			"",
-			"",
-			"",
-			"",
-			time.Time{},
-			privateFlg,
-			"",
-			"",
-		)
-
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
-
-		data := dto.RecordCreateRequest{
-			RecordRequest: dto.RecordRequest{
-				OfficialEventId:   officialEventId,
-				TonamelEventId:    "",
-				FriendId:          "",
-				UnofficialEventId: "",
-				DeckId:            "",
-				DeckCodeId:        "",
-				EventDate:         time.Time{},
-				PrivateFlg:        privateFlg,
-				TCGMeisterURL:     "",
-				Memo:              "",
-			},
-		}
-
-		dataBytes, err := json.Marshal(data)
-		require.NoError(t, err)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.RecordCreateResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusCreated, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, officialEventId, res.OfficialEventId)
-		require.Equal(t, privateFlg, res.PrivateFlg)
-		require.Equal(t, "", res.UserId)
-	})
-
-	t.Run("正常系_#02", func(t *testing.T) {
-		r := gin.Default()
-
-		// 認証済みとするためにuidをセット
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestRecordController(t, r)
+		c, _, mockUsecase := setup4TestRecordController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -609,6 +551,86 @@ func test_RecordController_Create(t *testing.T) {
 
 		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusCreated, w.Code)
+		require.Equal(t, id, res.ID)
+		//require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, officialEventId, res.OfficialEventId)
+		require.Equal(t, privateFlg, res.PrivateFlg)
+		require.Equal(t, uid, res.UserId)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		// 認証済みとするためにJWTを生成
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, mockUsecase := setup4TestRecordController(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		createdAt := time.Now().Local()
+		officialEventId := uint(10000)
+		privateFlg := false
+
+		record := &entity.Record{
+			ID:              id,
+			CreatedAt:       createdAt,
+			OfficialEventId: officialEventId,
+			UserId:          uid,
+			PrivateFlg:      privateFlg,
+		}
+
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			"",
+			uid,
+			"",
+			"",
+			time.Time{},
+			privateFlg,
+			"",
+			"",
+		)
+
+		mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId:   officialEventId,
+				TonamelEventId:    "",
+				FriendId:          "",
+				UnofficialEventId: "",
+				DeckId:            "",
+				DeckCodeId:        "",
+				EventDate:         time.Time{},
+				PrivateFlg:        privateFlg,
+				TCGMeisterURL:     "",
+				Memo:              "",
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -625,7 +647,13 @@ func test_RecordController_Create(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestRecordController(t, r)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, mockUsecase := setup4TestRecordController(t, r)
 
 		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
 
@@ -651,6 +679,7 @@ func test_RecordController_Create(t *testing.T) {
 
 		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -664,84 +693,13 @@ func test_RecordController_Create(t *testing.T) {
 func test_RecordController_Update(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestRecordController(t, r)
 
-		id, err := generateId()
-		require.NoError(t, err)
-
-		createdAt := time.Now().Local()
-		officialEventId := uint(10000)
-		privateFlg := false
-
-		record := &entity.Record{
-			ID:              id,
-			CreatedAt:       createdAt,
-			OfficialEventId: officialEventId,
-			PrivateFlg:      privateFlg,
-		}
-
-		param := usecase.NewRecordParam(
-			officialEventId,
-			"",
-			"",
-			"",
-			"",
-			"",
-			"",
-			time.Time{},
-			privateFlg,
-			"",
-			"",
-		)
-
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
-
-		data := dto.RecordCreateRequest{
-			RecordRequest: dto.RecordRequest{
-				OfficialEventId:   officialEventId,
-				TonamelEventId:    "",
-				FriendId:          "",
-				UnofficialEventId: "",
-				DeckId:            "",
-				DeckCodeId:        "",
-				EventDate:         time.Time{},
-				PrivateFlg:        privateFlg,
-				TCGMeisterURL:     "",
-				Memo:              "",
-			},
-		}
-
-		dataBytes, err := json.Marshal(data)
-		require.NoError(t, err)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.RecordCreateResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, officialEventId, res.OfficialEventId)
-		require.Equal(t, privateFlg, res.PrivateFlg)
-		require.Equal(t, "", res.UserId)
-	})
-
-	t.Run("正常系_#02", func(t *testing.T) {
-		r := gin.Default()
-
-		// 認証済みとするためにuidをセット
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestRecordController(t, r)
+		c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -757,6 +715,9 @@ func test_RecordController_Update(t *testing.T) {
 			UserId:          uid,
 			PrivateFlg:      privateFlg,
 		}
+
+		// RecordUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
 
 		param := usecase.NewRecordParam(
 			officialEventId,
@@ -796,6 +757,89 @@ func test_RecordController_Update(t *testing.T) {
 
 		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.RecordCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, id, res.ID)
+		//require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, officialEventId, res.OfficialEventId)
+		require.Equal(t, privateFlg, res.PrivateFlg)
+		require.Equal(t, uid, res.UserId)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		// 認証済みとするためにJWTを生成
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		createdAt := time.Now().Local()
+		officialEventId := uint(10000)
+		privateFlg := false
+
+		record := &entity.Record{
+			ID:              id,
+			CreatedAt:       createdAt,
+			OfficialEventId: officialEventId,
+			UserId:          uid,
+			PrivateFlg:      privateFlg,
+		}
+
+		// RecordUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
+
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			"",
+			uid,
+			"",
+			"",
+			time.Time{},
+			privateFlg,
+			"",
+			"",
+		)
+
+		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId:   officialEventId,
+				TonamelEventId:    "",
+				FriendId:          "",
+				UnofficialEventId: "",
+				DeckId:            "",
+				DeckCodeId:        "",
+				EventDate:         time.Time{},
+				PrivateFlg:        privateFlg,
+				TCGMeisterURL:     "",
+				Memo:              "",
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -812,7 +856,13 @@ func test_RecordController_Update(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestRecordController(t, r)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -820,12 +870,15 @@ func test_RecordController_Update(t *testing.T) {
 		officialEventId := uint(10000)
 		privateFlg := false
 
+		// RecordUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
+
 		param := usecase.NewRecordParam(
 			officialEventId,
 			"",
 			"",
 			"",
-			"",
+			uid,
 			"",
 			"",
 			time.Time{},
@@ -856,6 +909,7 @@ func test_RecordController_Update(t *testing.T) {
 
 		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -869,18 +923,26 @@ func test_RecordController_Update(t *testing.T) {
 
 func test_RecordController_Delete(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup4TestRecordController(t, r)
+	c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		// RecordDeleteAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", RecordsPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -891,12 +953,14 @@ func test_RecordController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", RecordsPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -907,12 +971,14 @@ func test_RecordController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", RecordsPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 

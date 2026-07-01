@@ -38,74 +38,42 @@ func NewDeckCode(
 	return &DeckCode{router, deckcodeRepository, recordRepository, usecase}
 }
 
-func (c *DeckCode) RegisterRoute(relativePath string, authDisable bool) {
-	if authDisable {
-		{
-			r := c.router.Group(relativePath + DeckCodesPath)
-			r.GET(
-				"/:id",
-				c.GetById,
-			)
-			r.POST(
-				"",
-				validation.DeckCodeCreateMiddleware(),
-				c.Create,
-			)
-			r.PUT(
-				"/:id",
-				validation.DeckCodeUpdateMiddleware(),
-				c.Update,
-			)
-			r.DELETE(
-				"/:id",
-				c.Delete,
-			)
-		}
+func (c *DeckCode) RegisterRoute(relativePath string) {
+	{
+		r := c.router.Group(relativePath + DeckCodesPath)
+		r.GET(
+			"/:id",
+			authentication.OptionalAuthenticationMiddleware(),
+			c.GetById,
+		)
+		r.POST(
+			"",
+			authentication.RequiredAuthenticationMiddleware(),
+			validation.DeckCodeCreateMiddleware(),
+			c.Create,
+		)
+		r.PUT(
+			"/:id",
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.DeckCodeUpdateAuthorizationMiddleware(c.deckcodeRepository),
+			validation.DeckCodeUpdateMiddleware(),
+			c.Update,
+		)
+		r.DELETE(
+			"/:id",
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.DeckCodeDeleteAuthorizationMiddleware(c.deckcodeRepository, c.recordRepository),
+			c.Delete,
+		)
+	}
 
-		{
-			r := c.router.Group(relativePath + DecksPath)
-			r.GET(
-				"/:id"+DeckCodesPath,
-				c.GetByDeckId,
-			)
-		}
-	} else {
-		{
-			r := c.router.Group(relativePath + DeckCodesPath)
-			r.GET(
-				"/:id",
-				authentication.OptionalAuthenticationMiddleware(),
-				c.GetById,
-			)
-			r.POST(
-				"",
-				authentication.RequiredAuthenticationMiddleware(),
-				validation.DeckCodeCreateMiddleware(),
-				c.Create,
-			)
-			r.PUT(
-				"/:id",
-				authentication.RequiredAuthenticationMiddleware(),
-				authorization.DeckCodeUpdateAuthorizationMiddleware(c.deckcodeRepository),
-				validation.DeckCodeUpdateMiddleware(),
-				c.Update,
-			)
-			r.DELETE(
-				"/:id",
-				authentication.RequiredAuthenticationMiddleware(),
-				authorization.DeckCodeDeleteAuthorizationMiddleware(c.deckcodeRepository, c.recordRepository),
-				c.Delete,
-			)
-		}
-
-		{
-			r := c.router.Group(relativePath + DecksPath)
-			r.GET(
-				"/:id"+DeckCodesPath,
-				authentication.OptionalAuthenticationMiddleware(),
-				c.GetByDeckId,
-			)
-		}
+	{
+		r := c.router.Group(relativePath + DecksPath)
+		r.GET(
+			"/:id"+DeckCodesPath,
+			authentication.OptionalAuthenticationMiddleware(),
+			c.GetByDeckId,
+		)
 	}
 }
 

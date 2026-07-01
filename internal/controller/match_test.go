@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -15,11 +16,11 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
-	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
+	"github.com/vsrecorder/core-apiserver/internal/testutil"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -34,15 +35,16 @@ func setupMock4TestMatchController(t *testing.T) (*mock_repository.MockMatchInte
 
 func setup4TestMatchController(t *testing.T, r *gin.Engine) (
 	*Match,
+	*mock_repository.MockMatchInterface,
+	*mock_repository.MockRecordInterface,
 	*mock_usecase.MockMatchInterface,
 ) {
-	authDisable := true
 	mockMatchRepository, mockRecordRepository, mockUsecase := setupMock4TestMatchController(t)
 
 	c := NewMatch(r, mockMatchRepository, mockRecordRepository, mockUsecase)
-	c.RegisterRoute("", authDisable)
+	c.RegisterRoute("")
 
-	return c, mockUsecase
+	return c, mockMatchRepository, mockRecordRepository, mockUsecase
 }
 
 func TestMatchController(t *testing.T) {
@@ -64,7 +66,7 @@ func TestMatchController(t *testing.T) {
 func test_MatchController_GetById(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
+		c, mockMatchRepository, mockRecordRepository, mockUsecase := setup4TestMatchController(t, r)
 
 		id, _ := generateId()
 		createdAt := time.Now().Local()
@@ -80,6 +82,10 @@ func test_MatchController_GetById(t *testing.T) {
 			UserId:          uid,
 			OpponentsUserId: "",
 		}
+
+		// MatchGetByIdAuthorizationMiddlewareが参照する
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(match, nil)
 
@@ -102,9 +108,21 @@ func test_MatchController_GetById(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
+		c, mockMatchRepository, mockRecordRepository, mockUsecase := setup4TestMatchController(t, r)
 
 		id, _ := generateId()
+		recordId, _ := generateId()
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		match := &entity.Match{
+			ID:       id,
+			RecordId: recordId,
+			UserId:   uid,
+		}
+
+		// MatchGetByIdAuthorizationMiddlewareが参照する
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
@@ -123,9 +141,21 @@ func test_MatchController_GetById(t *testing.T) {
 
 	t.Run("異常系_#02", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
+		c, mockMatchRepository, mockRecordRepository, mockUsecase := setup4TestMatchController(t, r)
 
 		id, _ := generateId()
+		recordId, _ := generateId()
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		match := &entity.Match{
+			ID:       id,
+			RecordId: recordId,
+			UserId:   uid,
+		}
+
+		// MatchGetByIdAuthorizationMiddlewareが参照する
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
@@ -146,7 +176,7 @@ func test_MatchController_GetById(t *testing.T) {
 func test_MatchController_GetByRecordId(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
+		c, _, mockRecordRepository, mockUsecase := setup4TestMatchController(t, r)
 
 		id, _ := generateId()
 		createdAt := time.Now().Local()
@@ -164,6 +194,9 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 				OpponentsUserId: "",
 			},
 		}
+
+		// MatchGetByRecordIdAuthorizationMiddlewareが参照する
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
 		mockUsecase.EXPECT().FindByRecordId(context.Background(), recordId).Return(matches, nil)
 
@@ -186,9 +219,13 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 
 	t.Run("正常系_#02", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
+		c, _, mockRecordRepository, mockUsecase := setup4TestMatchController(t, r)
 
 		recordId, _ := generateId()
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// MatchGetByRecordIdAuthorizationMiddlewareが参照する
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
 		mockUsecase.EXPECT().FindByRecordId(context.Background(), recordId).Return(nil, apperror.ErrRecordNotFound)
 
@@ -207,9 +244,13 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
+		c, _, mockRecordRepository, mockUsecase := setup4TestMatchController(t, r)
 
 		recordId, _ := generateId()
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// MatchGetByRecordIdAuthorizationMiddlewareが参照する
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
 		mockUsecase.EXPECT().FindByRecordId(context.Background(), recordId).Return(nil, errors.New(""))
 
@@ -230,117 +271,13 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 func test_MatchController_Create(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
 
-		id, err := generateId()
-		require.NoError(t, err)
-		recordId, _ := generateId()
-		deckId := ""
-
-		createdAt := time.Now().Local()
-
-		match := &entity.Match{
-			ID:                 id,
-			CreatedAt:          createdAt,
-			RecordId:           recordId,
-			DeckId:             deckId,
-			DeckCodeId:         "",
-			UserId:             "",
-			OpponentsUserId:    "",
-			BO3Flg:             false,
-			QualifyingRoundFlg: false,
-			FinalTournamentFlg: false,
-			DefaultVictoryFlg:  false,
-			DefaultDefeatFlg:   false,
-			VictoryFlg:         false,
-			OpponentsDeckInfo:  "",
-			Memo:               "",
-		}
-
-		var games []*usecase.GameParam
-		games = append(
-			games,
-			usecase.NewGameParam(
-				false,
-				false,
-				0,
-				0,
-				"",
-			),
-		)
-
-		var pokemonSprites []*usecase.PokemonSpriteParam
-
-		param := usecase.NewMatchParam(
-			recordId,
-			deckId,
-			"",
-			"",
-			"",
-			false,
-			false,
-			false,
-			false,
-			false,
-			false,
-			false,
-			false,
-			"",
-			"",
-			games,
-			pokemonSprites,
-		)
-
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(match, nil)
-
-		gameRequest := []*dto.GameRequest{
-			{
-				GoFirst:             false,
-				WinningFlg:          false,
-				YourPrizeCards:      0,
-				OpponentsPrizeCards: 0,
-				Memo:                "",
-			},
-		}
-
-		data := dto.MatchCreateRequest{
-			MatchRequest: dto.MatchRequest{
-				RecordId:   recordId,
-				DeckId:     deckId,
-				DeckCodeId: "",
-				Games:      gameRequest,
-			},
-		}
-
-		dataBytes, err := json.Marshal(data)
-		require.NoError(t, err)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("POST", "/matches", strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.MatchCreateResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusCreated, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, recordId, res.RecordId)
-	})
-
-	t.Run("正常系_#02", func(t *testing.T) {
-		r := gin.Default()
-
-		// 認証済みとするためにuidをセット
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestMatchController(t, r)
+		c, _, _, mockUsecase := setup4TestMatchController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -429,6 +366,118 @@ func test_MatchController_Create(t *testing.T) {
 
 		req, err := http.NewRequest("POST", "/matches", strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.MatchCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusCreated, w.Code)
+		require.Equal(t, id, res.ID)
+		//require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, recordId, res.RecordId)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		// 認証済みとするためにJWTを生成
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, _, mockUsecase := setup4TestMatchController(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+		recordId, _ := generateId()
+		deckId := ""
+
+		createdAt := time.Now().Local()
+
+		match := &entity.Match{
+			ID:                 id,
+			CreatedAt:          createdAt,
+			RecordId:           recordId,
+			DeckId:             deckId,
+			DeckCodeId:         "",
+			UserId:             uid,
+			OpponentsUserId:    "",
+			BO3Flg:             false,
+			QualifyingRoundFlg: false,
+			FinalTournamentFlg: false,
+			DefaultVictoryFlg:  false,
+			DefaultDefeatFlg:   false,
+			VictoryFlg:         false,
+			OpponentsDeckInfo:  "",
+			Memo:               "",
+		}
+
+		var games []*usecase.GameParam
+		games = append(
+			games,
+			usecase.NewGameParam(
+				false,
+				false,
+				0,
+				0,
+				"",
+			),
+		)
+
+		var pokemonSprites []*usecase.PokemonSpriteParam
+
+		param := usecase.NewMatchParam(
+			recordId,
+			deckId,
+			"",
+			uid,
+			"",
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			"",
+			"",
+			games,
+			pokemonSprites,
+		)
+
+		mockUsecase.EXPECT().Create(context.Background(), param).Return(match, nil)
+
+		gameRequest := []*dto.GameRequest{
+			{
+				GoFirst:             false,
+				WinningFlg:          false,
+				YourPrizeCards:      0,
+				OpponentsPrizeCards: 0,
+				Memo:                "",
+			},
+		}
+
+		data := dto.MatchCreateRequest{
+			MatchRequest: dto.MatchRequest{
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", "/matches", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -444,7 +493,13 @@ func test_MatchController_Create(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, _, mockUsecase := setup4TestMatchController(t, r)
 
 		recordId, _ := generateId()
 		deckId := ""
@@ -476,6 +531,7 @@ func test_MatchController_Create(t *testing.T) {
 
 		req, err := http.NewRequest("POST", "/matches", strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -486,117 +542,13 @@ func test_MatchController_Create(t *testing.T) {
 func test_MatchController_Update(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
 
-		id, err := generateId()
-		require.NoError(t, err)
-		recordId, _ := generateId()
-		deckId := ""
-
-		createdAt := time.Now().Local()
-
-		match := &entity.Match{
-			ID:                 id,
-			CreatedAt:          createdAt,
-			RecordId:           recordId,
-			DeckId:             deckId,
-			DeckCodeId:         "",
-			UserId:             "",
-			OpponentsUserId:    "",
-			BO3Flg:             false,
-			QualifyingRoundFlg: false,
-			FinalTournamentFlg: false,
-			DefaultVictoryFlg:  false,
-			DefaultDefeatFlg:   false,
-			VictoryFlg:         false,
-			OpponentsDeckInfo:  "",
-			Memo:               "",
-		}
-
-		var games []*usecase.GameParam
-		games = append(
-			games,
-			usecase.NewGameParam(
-				false,
-				false,
-				0,
-				0,
-				"",
-			),
-		)
-
-		var pokemonSprites []*usecase.PokemonSpriteParam
-
-		param := usecase.NewMatchParam(
-			recordId,
-			deckId,
-			"",
-			"",
-			"",
-			false,
-			false,
-			false,
-			false,
-			false,
-			false,
-			false,
-			false,
-			"",
-			"",
-			games,
-			pokemonSprites,
-		)
-
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(match, nil)
-
-		gameRequest := []*dto.GameRequest{
-			{
-				GoFirst:             false,
-				WinningFlg:          false,
-				YourPrizeCards:      0,
-				OpponentsPrizeCards: 0,
-				Memo:                "",
-			},
-		}
-
-		data := dto.MatchUpdateRequest{
-			MatchRequest: dto.MatchRequest{
-				RecordId:   recordId,
-				DeckId:     deckId,
-				DeckCodeId: "",
-				Games:      gameRequest,
-			},
-		}
-
-		dataBytes, err := json.Marshal(data)
-		require.NoError(t, err)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("PUT", "/matches/"+id, strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.MatchUpdateResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusCreated, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, recordId, res.RecordId)
-	})
-
-	t.Run("正常系_#02", func(t *testing.T) {
-		r := gin.Default()
-
-		// 認証済みとするためにuidをセット
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		c, mockUsecase := setup4TestMatchController(t, r)
+		c, mockMatchRepository, _, mockUsecase := setup4TestMatchController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
@@ -622,6 +574,9 @@ func test_MatchController_Update(t *testing.T) {
 			OpponentsDeckInfo:  "",
 			Memo:               "",
 		}
+
+		// MatchUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
 
 		var games []*usecase.GameParam
 		games = append(
@@ -685,6 +640,121 @@ func test_MatchController_Update(t *testing.T) {
 
 		req, err := http.NewRequest("PUT", "/matches/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.MatchUpdateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusCreated, w.Code)
+		require.Equal(t, id, res.ID)
+		//require.Equal(t, createdAt, res.CreatedAt)
+		require.Equal(t, recordId, res.RecordId)
+	})
+
+	t.Run("正常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		// 認証済みとするためにJWTを生成
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockMatchRepository, _, mockUsecase := setup4TestMatchController(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+		recordId, _ := generateId()
+		deckId := ""
+
+		createdAt := time.Now().Local()
+
+		match := &entity.Match{
+			ID:                 id,
+			CreatedAt:          createdAt,
+			RecordId:           recordId,
+			DeckId:             deckId,
+			DeckCodeId:         "",
+			UserId:             uid,
+			OpponentsUserId:    "",
+			BO3Flg:             false,
+			QualifyingRoundFlg: false,
+			FinalTournamentFlg: false,
+			DefaultVictoryFlg:  false,
+			DefaultDefeatFlg:   false,
+			VictoryFlg:         false,
+			OpponentsDeckInfo:  "",
+			Memo:               "",
+		}
+
+		// MatchUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
+
+		var games []*usecase.GameParam
+		games = append(
+			games,
+			usecase.NewGameParam(
+				false,
+				false,
+				0,
+				0,
+				"",
+			),
+		)
+
+		var pokemonSprites []*usecase.PokemonSpriteParam
+
+		param := usecase.NewMatchParam(
+			recordId,
+			deckId,
+			"",
+			uid,
+			"",
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			false,
+			"",
+			"",
+			games,
+			pokemonSprites,
+		)
+
+		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(match, nil)
+
+		gameRequest := []*dto.GameRequest{
+			{
+				GoFirst:             false,
+				WinningFlg:          false,
+				YourPrizeCards:      0,
+				OpponentsPrizeCards: 0,
+				Memo:                "",
+			},
+		}
+
+		data := dto.MatchUpdateRequest{
+			MatchRequest: dto.MatchRequest{
+				RecordId:   recordId,
+				DeckId:     deckId,
+				DeckCodeId: "",
+				Games:      gameRequest,
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", "/matches/"+id, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -700,12 +770,21 @@ func test_MatchController_Update(t *testing.T) {
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestMatchController(t, r)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockMatchRepository, _, mockUsecase := setup4TestMatchController(t, r)
 
 		id, err := generateId()
 		require.NoError(t, err)
 		recordId, _ := generateId()
 		deckId := ""
+
+		// MatchUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
 
 		gameRequest := []*dto.GameRequest{
 			{
@@ -735,6 +814,7 @@ func test_MatchController_Update(t *testing.T) {
 
 		req, err := http.NewRequest("PUT", "/matches/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -744,18 +824,26 @@ func test_MatchController_Update(t *testing.T) {
 
 func test_MatchController_Delete(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup4TestMatchController(t, r)
+	c, mockMatchRepository, _, mockUsecase := setup4TestMatchController(t, r)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		// MatchDeleteAuthorizationMiddlewareが本人確認のために参照する
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", "/matches/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -766,12 +854,14 @@ func test_MatchController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", "/matches/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -782,12 +872,14 @@ func test_MatchController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("DELETE", "/matches/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 

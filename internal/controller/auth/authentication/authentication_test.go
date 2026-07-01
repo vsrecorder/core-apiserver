@@ -1,19 +1,16 @@
 package authentication
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/testutil"
 )
 
 func generateToken(uid string, secretKey string) (string, error) {
@@ -21,27 +18,11 @@ func generateToken(uid string, secretKey string) (string, error) {
 }
 
 func generateTokenWithIssuer(uid string, secretKey string, issuer string) (string, error) {
-	claims := jwt.MapClaims{
-		"uid": uid,
-		"exp": time.Now().Add(TokenLifetimeSecond).Unix(),
-		"iss": issuer,
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(secretKey))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	return testutil.GenerateJWT(uid, secretKey, issuer)
 }
 
 func GenerateJWTSecret() (string, error) {
-	key := make([]byte, 32) // 256bit
-	if _, err := rand.Read(key); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(key), nil
+	return testutil.GenerateJWTSecret()
 }
 
 func TestAuthenticationMiddleware(t *testing.T) {

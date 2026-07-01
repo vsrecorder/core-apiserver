@@ -32,31 +32,18 @@ func NewUnofficialEvent(
 	return &UnofficialEvent{router, usecase}
 }
 
-func (c *UnofficialEvent) RegisterRoute(relativePath string, authDisable bool) {
-	if authDisable {
-		r := c.router.Group(relativePath + UnofficialEventsPath)
-		r.GET(
-			"/:id",
-			c.GetById,
-		)
-		r.POST(
-			"",
-			validation.UnofficialEventCreateMiddleware(),
-			c.Create,
-		)
-	} else {
-		r := c.router.Group(relativePath + UnofficialEventsPath)
-		r.GET(
-			"/:id",
-			c.GetById,
-		)
-		r.POST(
-			"",
-			authentication.RequiredAuthenticationMiddleware(),
-			validation.UnofficialEventCreateMiddleware(),
-			c.Create,
-		)
-	}
+func (c *UnofficialEvent) RegisterRoute(relativePath string) {
+	r := c.router.Group(relativePath + UnofficialEventsPath)
+	r.GET(
+		"/:id",
+		c.GetById,
+	)
+	r.POST(
+		"",
+		authentication.RequiredAuthenticationMiddleware(),
+		validation.UnofficialEventCreateMiddleware(),
+		c.Create,
+	)
 }
 
 func (c *UnofficialEvent) GetById(ctx *gin.Context) {

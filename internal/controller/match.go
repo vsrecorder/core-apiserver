@@ -39,94 +39,58 @@ func NewMatch(
 	return &Match{router, matchRepository, recordRepository, usecase}
 }
 
-func (c *Match) RegisterRoute(relativePath string, authDisable bool) {
-	if authDisable {
-		{
-			r := c.router.Group(relativePath + MatchesPath)
-			r.GET(
-				"",
-				c.GetLatest,
-			)
-			r.GET(
-				"/:id",
-				c.GetById,
-			)
-			r.POST(
-				"",
-				validation.MatchCreateMiddleware(),
-				c.Create,
-			)
-			r.PUT(
-				"/:id",
-				validation.MatchUpdateMiddleware(),
-				c.Update,
-			)
-			r.DELETE(
-				"/:id",
-				c.Delete,
-			)
-		}
+func (c *Match) RegisterRoute(relativePath string) {
+	{
+		r := c.router.Group(relativePath + MatchesPath)
+		r.GET(
+			"",
+			authentication.RequiredAuthenticationMiddleware(),
+			c.GetLatest,
+		)
+		r.GET(
+			"/:id",
+			authentication.OptionalAuthenticationMiddleware(),
+			authorization.MatchGetByIdAuthorizationMiddleware(c.matchRepository, c.recordRepository),
+			c.GetById,
+		)
+		r.POST(
+			"",
+			authentication.RequiredAuthenticationMiddleware(),
+			validation.MatchCreateMiddleware(),
+			c.Create,
+		)
+		r.PUT(
+			"/:id",
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.MatchUpdateAuthorizationMiddleware(c.matchRepository),
+			validation.MatchUpdateMiddleware(),
+			c.Update,
+		)
+		r.DELETE(
+			"/:id",
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.MatchDeleteAuthorizationMiddleware(c.matchRepository),
+			c.Delete,
+		)
+	}
 
-		{
-			r := c.router.Group(relativePath + RecordsPath)
-			r.GET(
-				"/:id"+MatchesPath,
-				c.GetByRecordId,
-			)
-		}
-	} else {
-		{
-			r := c.router.Group(relativePath + MatchesPath)
-			r.GET(
-				"",
-				authentication.RequiredAuthenticationMiddleware(),
-				c.GetLatest,
-			)
-			r.GET(
-				"/:id",
-				authentication.OptionalAuthenticationMiddleware(),
-				authorization.MatchGetByIdAuthorizationMiddleware(c.matchRepository, c.recordRepository),
-				c.GetById,
-			)
-			r.POST(
-				"",
-				authentication.RequiredAuthenticationMiddleware(),
-				validation.MatchCreateMiddleware(),
-				c.Create,
-			)
-			r.PUT(
-				"/:id",
-				authentication.RequiredAuthenticationMiddleware(),
-				authorization.MatchUpdateAuthorizationMiddleware(c.matchRepository),
-				validation.MatchUpdateMiddleware(),
-				c.Update,
-			)
-			r.DELETE(
-				"/:id",
-				authentication.RequiredAuthenticationMiddleware(),
-				authorization.MatchDeleteAuthorizationMiddleware(c.matchRepository),
-				c.Delete,
-			)
-		}
+	{
+		r := c.router.Group(relativePath + RecordsPath)
+		r.GET(
+			"/:id"+MatchesPath,
+			authentication.OptionalAuthenticationMiddleware(),
+			authorization.MatchGetByRecordIdAuthorizationMiddleware(c.recordRepository),
+			c.GetByRecordId,
+		)
+	}
 
-		{
-			r := c.router.Group(relativePath + RecordsPath)
-			r.GET(
-				"/:id"+MatchesPath,
-				authentication.OptionalAuthenticationMiddleware(),
-				authorization.MatchGetByRecordIdAuthorizationMiddleware(c.recordRepository),
-				c.GetByRecordId,
-			)
-		}
-
-		{
-			r := c.router.Group(relativePath + UsersPath)
-			r.GET(
-				"/:id"+MatchesPath,
-				authentication.RequiredAuthenticationMiddleware(),
-				c.GetByUserId,
-			)
-		}
+	{
+		r := c.router.Group(relativePath + UsersPath)
+		r.GET(
+			"/:id"+MatchesPath,
+			authentication.RequiredAuthenticationMiddleware(),
+			c.GetByUserId,
+		)
 	}
 }
 

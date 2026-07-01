@@ -165,7 +165,7 @@ func main() {
 		usecase.NewUser(
 			infrastructure.NewUser(db),
 		),
-	).RegisterRoute(relativePath, false)
+	).RegisterRoute(relativePath)
 
 	controller.NewTonamelEvent(
 		r,
@@ -186,7 +186,7 @@ func main() {
 		usecase.NewUnofficialEvent(
 			infrastructure.NewUnofficialEvent(db),
 		),
-	).RegisterRoute(relativePath, false)
+	).RegisterRoute(relativePath)
 
 	controller.NewDeck(
 		r,
@@ -195,7 +195,7 @@ func main() {
 		usecase.NewDeck(
 			infrastructure.NewDeck(db),
 		),
-	).RegisterRoute(relativePath, false)
+	).RegisterRoute(relativePath)
 
 	controller.NewDeckCode(
 		r,
@@ -204,7 +204,7 @@ func main() {
 		usecase.NewDeckCode(
 			infrastructure.NewDeckCode(db),
 		),
-	).RegisterRoute(relativePath, false)
+	).RegisterRoute(relativePath)
 
 	controller.NewRecord(
 		r,
@@ -212,7 +212,7 @@ func main() {
 		usecase.NewRecord(
 			infrastructure.NewRecord(db, slog.Default()),
 		),
-	).RegisterRoute(relativePath, false)
+	).RegisterRoute(relativePath)
 
 	controller.NewMatch(
 		r,
@@ -221,7 +221,7 @@ func main() {
 		usecase.NewMatch(
 			infrastructure.NewMatch(db),
 		),
-	).RegisterRoute(relativePath, false)
+	).RegisterRoute(relativePath)
 
 	controller.NewEnvironment(
 		r,
@@ -260,7 +260,7 @@ func main() {
 			infrastructure.NewDeckUsageStat(db),
 			infrastructure.NewEnvironment(db),
 		),
-	).RegisterRoute(relativePath, false)
+	).RegisterRoute(relativePath)
 
 	controller.NewOpponentDeckUsageStat(
 		r,
@@ -268,7 +268,7 @@ func main() {
 			infrastructure.NewOpponentDeckUsageStat(db),
 			infrastructure.NewEnvironment(db),
 		),
-	).RegisterRoute(relativePath, false)
+	).RegisterRoute(relativePath)
 
 	{
 		ctx, stop := signal.NotifyContext(

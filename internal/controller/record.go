@@ -36,68 +36,40 @@ func NewRecord(
 	return &Record{router, repository, usecase}
 }
 
-func (c *Record) RegisterRoute(relativePath string, authDisable bool) {
-	if authDisable {
-		r := c.router.Group(relativePath + RecordsPath)
-		r.GET(
-			"",
-			validation.RecordGetMiddleware(),
-			c.Get,
-			c.GetByUserId,
-		)
-		r.GET(
-			"/:id",
-			c.GetById,
-		)
-		r.POST(
-			"",
-			validation.RecordCreateMiddleware(),
-			c.Create,
-		)
-		r.PUT(
-			"/:id",
-			validation.RecordUpdateMiddleware(),
-			c.Update,
-		)
-		r.DELETE(
-			"/:id",
-			c.Delete,
-		)
-	} else {
-		r := c.router.Group(relativePath + RecordsPath)
-		r.GET(
-			"",
-			authentication.OptionalAuthenticationMiddleware(),
-			validation.RecordGetMiddleware(),
-			c.Get,
-			c.GetByUserId,
-		)
-		r.GET(
-			"/:id",
-			authentication.OptionalAuthenticationMiddleware(),
-			authorization.RecordGetByIdAuthorizationMiddleware(c.repository),
-			c.GetById,
-		)
-		r.POST(
-			"",
-			authentication.RequiredAuthenticationMiddleware(),
-			validation.RecordCreateMiddleware(),
-			c.Create,
-		)
-		r.PUT(
-			"/:id",
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.RecordUpdateAuthorizationMiddleware(c.repository),
-			validation.RecordUpdateMiddleware(),
-			c.Update,
-		)
-		r.DELETE(
-			"/:id",
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.RecordDeleteAuthorizationMiddleware(c.repository),
-			c.Delete,
-		)
-	}
+func (c *Record) RegisterRoute(relativePath string) {
+	r := c.router.Group(relativePath + RecordsPath)
+	r.GET(
+		"",
+		authentication.OptionalAuthenticationMiddleware(),
+		validation.RecordGetMiddleware(),
+		c.Get,
+		c.GetByUserId,
+	)
+	r.GET(
+		"/:id",
+		authentication.OptionalAuthenticationMiddleware(),
+		authorization.RecordGetByIdAuthorizationMiddleware(c.repository),
+		c.GetById,
+	)
+	r.POST(
+		"",
+		authentication.RequiredAuthenticationMiddleware(),
+		validation.RecordCreateMiddleware(),
+		c.Create,
+	)
+	r.PUT(
+		"/:id",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.RecordUpdateAuthorizationMiddleware(c.repository),
+		validation.RecordUpdateMiddleware(),
+		c.Update,
+	)
+	r.DELETE(
+		"/:id",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.RecordDeleteAuthorizationMiddleware(c.repository),
+		c.Delete,
+	)
 }
 
 func (c *Record) Get(ctx *gin.Context) {

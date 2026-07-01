@@ -39,53 +39,31 @@ func NewUser(
 	return &User{logger, router, repository, usecase}
 }
 
-func (c *User) RegisterRoute(relativePath string, authDisable bool) {
-	if authDisable {
-		r := c.router.Group(relativePath + UsersPath)
-		r.GET(
-			"/:id",
-			c.GetById,
-		)
-		r.POST(
-			"",
-			validation.UserCreateMiddleware(),
-			c.Create,
-		)
-		r.PUT(
-			"/:id",
-			validation.UserUpdateMiddleware(),
-			c.Update,
-		)
-		r.DELETE(
-			"/:id",
-			c.Delete,
-		)
-	} else {
-		r := c.router.Group(relativePath + UsersPath)
-		r.GET(
-			"/:id",
-			c.GetById,
-		)
-		r.POST(
-			"",
-			authentication.RequiredAuthenticationMiddleware(),
-			validation.UserCreateMiddleware(),
-			c.Create,
-		)
-		r.PUT(
-			"/:id",
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.UserUpdateAuthorizationMiddleware(c.repository),
-			validation.UserUpdateMiddleware(),
-			c.Update,
-		)
-		r.DELETE(
-			"/:id",
-			authentication.RequiredAuthenticationMiddleware(),
-			authorization.UserDeleteAuthorizationMiddleware(c.repository),
-			c.Delete,
-		)
-	}
+func (c *User) RegisterRoute(relativePath string) {
+	r := c.router.Group(relativePath + UsersPath)
+	r.GET(
+		"/:id",
+		c.GetById,
+	)
+	r.POST(
+		"",
+		authentication.RequiredAuthenticationMiddleware(),
+		validation.UserCreateMiddleware(),
+		c.Create,
+	)
+	r.PUT(
+		"/:id",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.UserUpdateAuthorizationMiddleware(c.repository),
+		validation.UserUpdateMiddleware(),
+		c.Update,
+	)
+	r.DELETE(
+		"/:id",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.UserDeleteAuthorizationMiddleware(c.repository),
+		c.Delete,
+	)
 }
 
 func (c *User) GetById(ctx *gin.Context) {

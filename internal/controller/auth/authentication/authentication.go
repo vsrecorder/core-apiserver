@@ -16,6 +16,7 @@ import (
 
 const (
 	TokenLifetimeSecond = time.Duration(15) * time.Second
+	ExpectedIssuer      = "vsrecorder-webapp"
 )
 
 type VSRClaims struct {
@@ -30,7 +31,7 @@ func parseToken(tokenString string, secretKey string) (*jwt.Token, error) {
 		}
 
 		return []byte(secretKey), nil
-	})
+	}, jwt.WithIssuer(ExpectedIssuer))
 	if err != nil {
 		return nil, err
 	}

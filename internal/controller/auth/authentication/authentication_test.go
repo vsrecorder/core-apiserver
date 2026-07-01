@@ -17,9 +17,14 @@ import (
 )
 
 func generateToken(uid string, secretKey string) (string, error) {
+	return generateTokenWithIssuer(uid, secretKey, ExpectedIssuer)
+}
+
+func generateTokenWithIssuer(uid string, secretKey string, issuer string) (string, error) {
 	claims := jwt.MapClaims{
 		"uid": uid,
 		"exp": time.Now().Add(TokenLifetimeSecond).Unix(),
+		"iss": issuer,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -164,6 +169,31 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, w.Code)
 		require.Equal(t, "", uid)
 	})
+
+	// JWTトークンのissuerが不正な場合のテスト
+	t.Run("異常系_#04", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("GET", "/", nil)
+		require.NoError(t, err)
+
+		token, err := generateTokenWithIssuer(userId, secretKey, "unexpected-issuer")
+		require.NoError(t, err)
+
+		req.Header.Add("Authorization", "Bearer "+token)
+
+		ginContext.Request = req
+
+		middleware := RequiredAuthenticationMiddleware()
+		middleware(ginContext)
+
+		uid := helper.GetUID(ginContext)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+		require.Equal(t, "", uid)
+	})
 }
 
 func test_OptionalAuthenticationMiddleware(t *testing.T) {
@@ -261,6 +291,31 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		token, err := generateToken("", secretKey)
+		require.NoError(t, err)
+
+		req.Header.Add("Authorization", "Bearer "+token)
+
+		ginContext.Request = req
+
+		middleware := OptionalAuthenticationMiddleware()
+		middleware(ginContext)
+
+		uid := helper.GetUID(ginContext)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+		require.Equal(t, "", uid)
+	})
+
+	// JWTトークンのissuerが不正な場合のテスト
+	t.Run("異常系_#03", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("GET", "/", nil)
+		require.NoError(t, err)
+
+		token, err := generateTokenWithIssuer(userId, secretKey, "unexpected-issuer")
 		require.NoError(t, err)
 
 		req.Header.Add("Authorization", "Bearer "+token)

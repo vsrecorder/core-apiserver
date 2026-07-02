@@ -481,6 +481,19 @@ func (i *Record) FindByDeckCodeId(
 	return entities, nil
 }
 
+func (i *Record) FindIdsByUserId(
+	ctx context.Context,
+	uid string,
+) ([]string, error) {
+	var ids []string
+
+	if tx := dbFromContext(ctx, i.db).Model(&model.Record{}).Where("user_id = ?", uid).Pluck("id", &ids); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return ids, nil
+}
+
 func (i *Record) Save(
 	ctx context.Context,
 	entity *entity.Record,
@@ -512,19 +525,21 @@ func (i *Record) Delete(
 	ctx context.Context,
 	id string,
 ) error {
+	db := dbFromContext(ctx, i.db)
+
 	// 削除対象の record が参照している自由形式イベント(unofficial_event)を把握するため、
 	// 先に record を取得しておく
 	var record model.Record
-	if tx := i.db.Where("id = ?", id).First(&record); tx.Error != nil {
+	if tx := db.Where("id = ?", id).First(&record); tx.Error != nil {
 		return wrapError(tx.Error)
 	}
 
 	var matches []*model.Match
-	if tx := i.db.Where("record_id = ?", id).Order("created_at ASC").Find(&matches); tx.Error != nil {
+	if tx := db.Where("record_id = ?", id).Order("created_at ASC").Find(&matches); tx.Error != nil {
 		return tx.Error
 	}
 
-	return i.db.Transaction(func(tx *gorm.DB) error {
+	return db.Transaction(func(tx *gorm.DB) error {
 		for _, match := range matches {
 			if tx := tx.Where("match_id = ?", match.ID).Delete(&model.Game{}); tx.Error != nil {
 				return tx.Error

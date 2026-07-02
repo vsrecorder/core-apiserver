@@ -46,6 +46,13 @@ type DeckInterface interface {
 		cursor time.Time,
 	) ([]*entity.Deck, error)
 
+	// FindIdsByUserId は退会時の連鎖削除など、ID一覧だけを軽量に取得したい場合に使う。
+	// (アーカイブ済みデッキも含めて全件を対象にする)
+	FindIdsByUserId(
+		ctx context.Context,
+		uid string,
+	) ([]string, error)
+
 	Save(
 		ctx context.Context,
 		entity *entity.Deck,

@@ -66,13 +66,21 @@ type UserInterface interface {
 }
 
 type User struct {
-	repository repository.UserInterface
+	repository         repository.UserInterface
+	recordRepository   repository.RecordInterface
+	deckRepository     repository.DeckInterface
+	deckCodeRepository repository.DeckCodeInterface
+	transactionManager repository.TransactionManager
 }
 
 func NewUser(
 	repository repository.UserInterface,
+	recordRepository repository.RecordInterface,
+	deckRepository repository.DeckInterface,
+	deckCodeRepository repository.DeckCodeInterface,
+	transactionManager repository.TransactionManager,
 ) UserInterface {
-	return &User{repository}
+	return &User{repository, recordRepository, deckRepository, deckCodeRepository, transactionManager}
 }
 
 func (u *User) FindById(
@@ -145,11 +153,48 @@ func (u *User) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	err := u.repository.Delete(ctx, id)
+	// 退会にあたり、ユーザ本体を消す前に対戦記録・デッキ・デッキコードを連鎖削除する。
+	// Record.Delete / Deck.Delete は Match・Game・そのデッキ自身のDeckCode等の
+	// 関連レコードもあわせて削除するため、ここでは ID を洗い出して順に呼び出すだけでよい。
+	// 全体を1つのDBトランザクションにまとめており、途中で失敗した場合はここまでの
+	// 削除もすべてロールバックされる。
+	return u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		recordIds, err := u.recordRepository.FindIdsByUserId(ctx, id)
+		if err != nil {
+			return err
+		}
 
-	if err != nil {
-		return err
-	}
+		for _, recordId := range recordIds {
+			if err := u.recordRepository.Delete(ctx, recordId); err != nil {
+				return err
+			}
+		}
 
-	return nil
+		deckIds, err := u.deckRepository.FindIdsByUserId(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		for _, deckId := range deckIds {
+			if err := u.deckRepository.Delete(ctx, deckId); err != nil {
+				return err
+			}
+		}
+
+		// DeckCode.DeckId は必ずしも本人が所有するデッキとは限らない(他人のデッキに
+		// 対して作成できてしまう)ため、上記のデッキ連鎖削除だけでは削除しきれない
+		// ケースがある。user_id で直接洗い出して個別に削除する。
+		deckCodeIds, err := u.deckCodeRepository.FindIdsByUserId(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		for _, deckCodeId := range deckCodeIds {
+			if err := u.deckCodeRepository.Delete(ctx, deckCodeId); err != nil {
+				return err
+			}
+		}
+
+		return u.repository.Delete(ctx, id)
+	})
 }

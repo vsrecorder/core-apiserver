@@ -191,6 +191,21 @@ func (mr *MockRecordInterfaceMockRecorder) FindByUserIdOnCursor(ctx, uid, limit,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByUserIdOnCursor), ctx, uid, limit, cursorEventDate, cursorCreatedAt, eventType)
 }
 
+// FindIdsByUserId mocks base method.
+func (m *MockRecordInterface) FindIdsByUserId(ctx context.Context, uid string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindIdsByUserId", ctx, uid)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindIdsByUserId indicates an expected call of FindIdsByUserId.
+func (mr *MockRecordInterfaceMockRecorder) FindIdsByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindIdsByUserId", reflect.TypeOf((*MockRecordInterface)(nil).FindIdsByUserId), ctx, uid)
+}
+
 // FindOnCursor mocks base method.
 func (m *MockRecordInterface) FindOnCursor(ctx context.Context, limit int, cursorEventDate, cursorCreatedAt time.Time, eventType string) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()

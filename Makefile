@@ -12,7 +12,6 @@ run:
 
 .PHONY: build
 build:
-	git pull
 	go mod tidy
 	go build -o /dev/null cmd/core-apiserver/main.go
 
@@ -42,17 +41,19 @@ mockgen:
 
 .PHONY: image
 image:
-	docker build . --no-cache -t vsrecorder/core-apiserver:local && \
-	docker push vsrecorder/core-apiserver:local
+	docker build . -t vsrecorder/core-apiserver:local
+	docker push       vsrecorder/core-apiserver:local
 
 .PHONY: deploy
 deploy:
+	git pull
 	docker compose pull
 	docker compose up -d --no-deps --wait core-apiserver
 
 .PHONY: restart
 restart:
-	docker compose down && docker compose up -d
+	docker compose down
+	docker compose up -d
 
 .PHONY: up
 up:

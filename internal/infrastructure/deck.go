@@ -713,6 +713,20 @@ func (i *Deck) FindByUserIdOnCursor(
 	return ret, nil
 }
 
+func (i *Deck) FindIdsByUserId(
+	ctx context.Context,
+	uid string,
+) ([]string, error) {
+	var ids []string
+
+	// アーカイブ済みデッキも含めて全件対象にする
+	if tx := dbFromContext(ctx, i.db).Model(&model.Deck{}).Where("user_id = ?", uid).Pluck("id", &ids); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return ids, nil
+}
+
 func (i *Deck) Save(
 	ctx context.Context,
 	entity *entity.Deck,
@@ -802,21 +816,22 @@ func (i *Deck) Delete(
 	ctx context.Context,
 	id string,
 ) error {
+	db := dbFromContext(ctx, i.db)
+
 	var deckCodes []*model.DeckCode
-	if tx := i.db.Where("deck_id = ?", id).Order("created_at ASC").Find(&deckCodes); tx.Error != nil {
+	if tx := db.Where("deck_id = ?", id).Order("created_at ASC").Find(&deckCodes); tx.Error != nil {
 		return tx.Error
 	}
 
-	return i.db.Transaction(func(tx *gorm.DB) error {
+	return db.Transaction(func(tx *gorm.DB) error {
 		for _, deckCode := range deckCodes {
 			if tx := tx.Where("id = ?", deckCode.ID).Delete(&model.DeckCode{}); tx.Error != nil {
 				return tx.Error
 			}
 		}
 
-		if tx := i.db.Where("id = ?", id).Delete(&model.Deck{}); tx.Error != nil {
+		if tx := tx.Where("id = ?", id).Delete(&model.Deck{}); tx.Error != nil {
 			return tx.Error
-
 		}
 
 		return nil

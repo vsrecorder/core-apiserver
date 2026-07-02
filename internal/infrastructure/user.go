@@ -65,7 +65,7 @@ func (i *User) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	if tx := i.db.Where("id = ?", id).Delete(&model.User{}); tx.Error != nil {
+	if tx := dbFromContext(ctx, i.db).Where("id = ?", id).Delete(&model.User{}); tx.Error != nil {
 		return tx.Error
 	}
 

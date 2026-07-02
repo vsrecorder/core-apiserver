@@ -164,6 +164,10 @@ func main() {
 		infrastructure.NewUser(db),
 		usecase.NewUser(
 			infrastructure.NewUser(db),
+			infrastructure.NewRecord(db, slog.Default()),
+			infrastructure.NewDeck(db),
+			infrastructure.NewDeckCode(db),
+			infrastructure.NewTransactionManager(db),
 		),
 	).RegisterRoute(relativePath)
 

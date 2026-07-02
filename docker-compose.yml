@@ -1,7 +1,7 @@
 services:
   core-apiserver:
     image: vsrecorder/core-apiserver:latest
-    restart: always
+    restart: unless-stopped
     ports:
       - 8914:8914
     environment:

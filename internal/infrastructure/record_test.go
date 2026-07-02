@@ -59,6 +59,7 @@ func TestRecordInfrastructure(t *testing.T) {
 		"FindByOfficialEventId": test_RecordInfrastructure_FindByOfficialEventId,
 		"FindByTonamelEventId":  test_RecordInfrastructure_FindByTonamelEventId,
 		"FindByDeckId":          test_RecordInfrastructure_FindByDeckId,
+		"FindIdsByUserId":       test_RecordInfrastructure_FindIdsByUserId,
 		"Save":                  test_RecordInfrastructure_Save,
 		"Delete":                test_RecordInfrastructure_Delete,
 	} {
@@ -599,6 +600,28 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(records))
 	require.Equal(t, "01JHAKSVXZ4XW91TDQ8EDP1N8P", records[0].DeckId)
+}
+
+func test_RecordInfrastructure_FindIdsByUserId(t *testing.T) {
+	r, mock, err := setup4RecordInfrastructure()
+	require.NoError(t, err)
+
+	rows := sqlmock.NewRows([]string{
+		"id",
+	}).AddRow(
+		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+	)
+
+	mock.ExpectQuery(regexp.QuoteMeta(
+		`SELECT "id" FROM "records" WHERE user_id = $1 AND "records"."deleted_at" IS NULL`,
+	)).WithArgs(
+		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+	).WillReturnRows(rows)
+
+	ids, err := r.FindIdsByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1")
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"01HD7Y3K8D6FDHMHTZ2GT41TN2"}, ids)
 }
 
 func test_RecordInfrastructure_Save(t *testing.T) {

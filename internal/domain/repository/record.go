@@ -83,6 +83,12 @@ type RecordInterface interface {
 		offset int,
 	) ([]*entity.Record, error)
 
+	// FindIdsByUserId は退会時の連鎖削除など、ID一覧だけを軽量に取得したい場合に使う。
+	FindIdsByUserId(
+		ctx context.Context,
+		uid string,
+	) ([]string, error)
+
 	Save(
 		ctx context.Context,
 		entity *entity.Record,

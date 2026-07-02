@@ -62,7 +62,11 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 		query = query.Where("records.event_date < ?", toDate)
 	}
 	if deckId != "" {
-		query = query.Where("matches.deck_id = ?", deckId)
+		// 「自分のデッキ」セレクタは records.deck_id を基準に選択肢を作っている（deck_usage_stat.go参照）。
+		// matches.deck_id はマッチ作成時点の値がコピーされたまま更新されないため、
+		// 記録後にデッキを変更した場合にズレて対戦相手デッキが見つからなくなる。
+		// そのため records.deck_id で絞り込み、選択肢と実データの基準を一致させる。
+		query = query.Where("records.deck_id = ?", deckId)
 	}
 
 	query = query.Order("records.event_date ASC")

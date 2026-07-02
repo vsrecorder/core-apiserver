@@ -219,12 +219,12 @@ CREATE TABLE users (
 CREATE INDEX idx_users_created_at ON users(created_at);
 CREATE INDEX idx_users_deleted_at ON users(deleted_at);
 
-CREATE TABLE player_users (
+CREATE TABLE users_players (
     created_at  TIMESTAMP NOT NULL,
     updated_at  TIMESTAMP NOT NULL,
     deleted_at  TIMESTAMP DEFAULT NULL,
-    player_id   VARCHAR(16) NOT NULL,
     user_id     VARCHAR(32) NOT NULL,
+    player_id   VARCHAR(16) NOT NULL,
 );
 
 CREATE UNIQUE INDEX unique_player_users ON player_users (player_id, user_id) WHERE deleted_at IS NULL;

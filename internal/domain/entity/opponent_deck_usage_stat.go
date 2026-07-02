@@ -5,6 +5,9 @@ type OpponentDeckUsage struct {
 	DeckInfo       string
 	Count          int
 	UsageRate      float64
+	Wins           int
+	Losses         int
+	WinRate        float64
 	PokemonSprites []*PokemonSprite
 }
 
@@ -12,12 +15,18 @@ func NewOpponentDeckUsage(
 	deckInfo string,
 	count int,
 	usageRate float64,
+	wins int,
+	losses int,
+	winRate float64,
 	pokemonSprites []*PokemonSprite,
 ) *OpponentDeckUsage {
 	return &OpponentDeckUsage{
 		DeckInfo:       deckInfo,
 		Count:          count,
 		UsageRate:      usageRate,
+		Wins:           wins,
+		Losses:         losses,
+		WinRate:        winRate,
 		PokemonSprites: pokemonSprites,
 	}
 }

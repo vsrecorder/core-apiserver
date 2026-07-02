@@ -2,6 +2,8 @@ package infrastructure
 
 import (
 	"context"
+	"sort"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -21,13 +23,17 @@ func NewOpponentDeckUsageStat(
 	return &OpponentDeckUsageStat{db}
 }
 
-type opponentDeckUsageResult struct {
-	DeckInfo string
-	Count    int
+type opponentMatchResult struct {
+	MatchId    string
+	DeckInfo   string
+	VictoryFlg bool
 }
 
-type latestMatchIdResult struct {
-	MatchId string
+type opponentDeckGroup struct {
+	deckInfo  string
+	spriteIds []string
+	count     int
+	wins      int
 }
 
 func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
@@ -35,13 +41,14 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	userId string,
 	fromDate time.Time,
 	toDate time.Time,
+	deckId string,
 ) (*entity.OpponentDeckUsageStat, error) {
-	var results []opponentDeckUsageResult
+	var rows []opponentMatchResult
 
-	// matches と records を結合し、対戦相手デッキ名ごとに集計する。
+	// matches と records を結合し、対戦相手デッキ名が記録されている対戦を全件取得する。
 	// opponents_deck_info が空の対戦（未記録）は除外する。
 	query := i.db.Table("matches").
-		Select("matches.opponents_deck_info AS deck_info, COUNT(*) AS count").
+		Select("matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg").
 		Joins("JOIN records ON matches.record_id = records.id").
 		Where(
 			"records.user_id = ? AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND matches.opponents_deck_info != ''",
@@ -54,60 +61,85 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	if !toDate.IsZero() {
 		query = query.Where("records.event_date < ?", toDate)
 	}
+	if deckId != "" {
+		query = query.Where("matches.deck_id = ?", deckId)
+	}
 
-	query = query.Group("matches.opponents_deck_info").Order("count DESC")
+	query = query.Order("records.event_date ASC")
 
-	if tx := query.Scan(&results); tx.Error != nil {
+	if tx := query.Scan(&rows); tx.Error != nil {
 		return nil, tx.Error
 	}
 
-	totalMatches := 0
-	for _, r := range results {
-		totalMatches += r.Count
+	if len(rows) == 0 {
+		return entity.NewOpponentDeckUsageStat(userId, 0, []*entity.OpponentDeckUsage{}), nil
 	}
 
-	decks := []*entity.OpponentDeckUsage{}
-	for _, r := range results {
-		// 同じ opponents_deck_info を持つ最新マッチの ID を取得してスプライトを取得する
-		var latestMatch latestMatchIdResult
-		latestQuery := i.db.Table("matches").
-			Select("matches.id AS match_id").
-			Joins("JOIN records ON matches.record_id = records.id").
-			Where(
-				"records.user_id = ? AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND matches.opponents_deck_info = ?",
-				userId, r.DeckInfo,
-			)
+	matchIds := make([]string, 0, len(rows))
+	for _, r := range rows {
+		matchIds = append(matchIds, r.MatchId)
+	}
 
-		if !fromDate.IsZero() {
-			latestQuery = latestQuery.Where("records.event_date >= ?", fromDate)
-		}
-		if !toDate.IsZero() {
-			latestQuery = latestQuery.Where("records.event_date < ?", toDate)
+	var spriteModels []*model.MatchPokemonSprite
+	if tx := i.db.Where("match_id IN ?", matchIds).Order("position ASC").Find(&spriteModels); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	spritesByMatch := make(map[string][]string, len(rows))
+	for _, s := range spriteModels {
+		spritesByMatch[s.MatchId] = append(spritesByMatch[s.MatchId], s.PokemonSpriteId)
+	}
+
+	// デッキ名が同じでも、対戦相手デッキのスプライト構成が異なれば別デッキとして扱う。
+	// そのためグループキーはデッキ名とスプライト構成の組み合わせにする。
+	groups := make(map[string]*opponentDeckGroup, len(rows))
+	order := make([]string, 0, len(rows))
+	totalMatches := 0
+
+	for _, r := range rows {
+		spriteIds := spritesByMatch[r.MatchId]
+		key := r.DeckInfo + "|" + strings.Join(spriteIds, ",")
+
+		g, ok := groups[key]
+		if !ok {
+			g = &opponentDeckGroup{deckInfo: r.DeckInfo, spriteIds: spriteIds}
+			groups[key] = g
+			order = append(order, key)
 		}
 
-		latestQuery = latestQuery.Order("records.event_date DESC").Limit(1)
-
-		if tx := latestQuery.Scan(&latestMatch); tx.Error != nil {
-			return nil, tx.Error
+		g.count++
+		if r.VictoryFlg {
+			g.wins++
 		}
+		totalMatches++
+	}
 
-		var pokemonSprites []*entity.PokemonSprite
-		if latestMatch.MatchId != "" {
-			var matchPokemonSpriteModels []*model.MatchPokemonSprite
-			if tx := i.db.Where("match_id = ?", latestMatch.MatchId).Order("position ASC").Find(&matchPokemonSpriteModels); tx.Error != nil {
-				return nil, tx.Error
-			}
-			for _, m := range matchPokemonSpriteModels {
-				pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(m.PokemonSpriteId))
-			}
-		}
+	// 出現件数の降順（同数の場合は初出順=対戦日の古い順を維持）にソートする
+	sort.SliceStable(order, func(a, b int) bool {
+		return groups[order[a]].count > groups[order[b]].count
+	})
+
+	decks := make([]*entity.OpponentDeckUsage, 0, len(order))
+	for _, key := range order {
+		g := groups[key]
 
 		var usageRate float64
 		if totalMatches > 0 {
-			usageRate = float64(r.Count) / float64(totalMatches)
+			usageRate = float64(g.count) / float64(totalMatches)
 		}
 
-		decks = append(decks, entity.NewOpponentDeckUsage(r.DeckInfo, r.Count, usageRate, pokemonSprites))
+		losses := g.count - g.wins
+		var winRate float64
+		if g.count > 0 {
+			winRate = float64(g.wins) / float64(g.count)
+		}
+
+		pokemonSprites := make([]*entity.PokemonSprite, 0, len(g.spriteIds))
+		for _, spriteId := range g.spriteIds {
+			pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(spriteId))
+		}
+
+		decks = append(decks, entity.NewOpponentDeckUsage(g.deckInfo, g.count, usageRate, g.wins, losses, winRate, pokemonSprites))
 	}
 
 	return entity.NewOpponentDeckUsageStat(userId, totalMatches, decks), nil

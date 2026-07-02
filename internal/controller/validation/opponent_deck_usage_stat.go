@@ -25,5 +25,7 @@ func OpponentDeckUsageStatGetMiddleware() gin.HandlerFunc {
 			return
 		}
 		helper.SetSeason(ctx, season)
+
+		helper.SetDeckId(ctx, helper.GetQueryDeckId(ctx))
 	}
 }

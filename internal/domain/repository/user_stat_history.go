@@ -8,5 +8,5 @@ import (
 )
 
 type UserStatHistoryInterface interface {
-	FindUserStatHistory(ctx context.Context, userId string, fromDate time.Time, toDate time.Time) ([]*entity.UserStatMonthly, error)
+	FindUserStatHistory(ctx context.Context, userId string, fromDate time.Time, toDate time.Time, deckId string) ([]*entity.UserStatMonthly, error)
 }

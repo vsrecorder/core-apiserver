@@ -10,6 +10,7 @@ func NewOpponentDeckUsageStatResponse(
 	yearMonth string,
 	environmentId string,
 	season string,
+	deckId string,
 ) *dto.OpponentDeckUsageStatResponse {
 	decks := []*dto.OpponentDeckUsageItemResponse{}
 	for _, deck := range stat.Decks {
@@ -24,6 +25,9 @@ func NewOpponentDeckUsageStatResponse(
 			DeckInfo:       deck.DeckInfo,
 			Count:          deck.Count,
 			UsageRate:      deck.UsageRate,
+			Wins:           deck.Wins,
+			Losses:         deck.Losses,
+			WinRate:        deck.WinRate,
 			PokemonSprites: pokemonSprites,
 		})
 	}
@@ -33,6 +37,7 @@ func NewOpponentDeckUsageStatResponse(
 		YearMonth:     yearMonth,
 		EnvironmentId: environmentId,
 		Season:        season,
+		DeckId:        deckId,
 		TotalMatches:  stat.TotalMatches,
 		Decks:         decks,
 	}

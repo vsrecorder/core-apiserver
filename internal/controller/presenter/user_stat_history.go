@@ -9,6 +9,7 @@ func NewUserStatHistoryResponse(
 	userId string,
 	period string,
 	season string,
+	deckId string,
 	history []*entity.UserStatMonthly,
 ) *dto.UserStatHistoryResponse {
 	items := make([]dto.UserStatHistoryItem, 0, len(history))
@@ -25,6 +26,7 @@ func NewUserStatHistoryResponse(
 		UserId:  userId,
 		Period:  period,
 		Season:  season,
+		DeckId:  deckId,
 		History: items,
 	}
 }

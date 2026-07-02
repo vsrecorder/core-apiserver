@@ -256,6 +256,10 @@ func main() {
 		usecase.NewUserStatHistory(
 			infrastructure.NewUserStatHistory(db),
 		),
+		usecase.NewUserStatRecent(
+			infrastructure.NewUserStatRecent(db),
+			infrastructure.NewEnvironment(db),
+		),
 	).RegisterRoute(relativePath)
 
 	controller.NewDeckUsageStat(

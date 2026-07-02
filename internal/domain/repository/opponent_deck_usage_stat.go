@@ -13,5 +13,6 @@ type OpponentDeckUsageStatInterface interface {
 		userId string,
 		fromDate time.Time,
 		toDate time.Time,
+		deckId string,
 	) (*entity.OpponentDeckUsageStat, error)
 }

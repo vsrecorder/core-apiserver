@@ -1,31 +1,28 @@
 package validation
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
 
-func UserStatHistoryGetMiddleware() gin.HandlerFunc {
+func UserStatRecentGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		period := helper.GetQueryPeriod(ctx)
-		switch period {
-		case "3months", "6months", "season":
+		countStr := helper.GetQueryCount(ctx)
+		var count int
+		switch countStr {
+		case "20", "30", "40", "50", "100":
+			count, _ = strconv.Atoi(countStr)
 		case "":
-			period = "3months"
+			count = 20
 		default:
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
-		helper.SetPeriod(ctx, period)
-
-		season, err := helper.ParseQuerySeason(ctx)
-		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-		helper.SetSeason(ctx, season)
+		helper.SetLimit(ctx, count)
 
 		helper.SetDeckId(ctx, helper.GetQueryDeckId(ctx))
 	}

@@ -29,10 +29,11 @@ func (i *UserStatHistory) FindUserStatHistory(
 	userId string,
 	fromDate time.Time,
 	toDate time.Time,
+	deckId string,
 ) ([]*entity.UserStatMonthly, error) {
 	var results []monthlyMatchResult
 
-	tx := i.db.Table("matches").
+	query := i.db.Table("matches").
 		Select(
 			"TO_CHAR(DATE_TRUNC('month', records.event_date), 'YYYY-MM') AS year_month, "+
 				"COUNT(*) AS total_matches, "+
@@ -40,7 +41,13 @@ func (i *UserStatHistory) FindUserStatHistory(
 		).
 		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId).
-		Where("records.event_date >= ? AND records.event_date < ?", fromDate, toDate).
+		Where("records.event_date >= ? AND records.event_date < ?", fromDate, toDate)
+
+	if deckId != "" {
+		query = query.Where("matches.deck_id = ?", deckId)
+	}
+
+	tx := query.
 		Group("DATE_TRUNC('month', records.event_date)").
 		Order("DATE_TRUNC('month', records.event_date) ASC").
 		Scan(&results)

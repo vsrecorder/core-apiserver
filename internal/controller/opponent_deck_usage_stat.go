@@ -49,8 +49,9 @@ func (c *OpponentDeckUsageStat) GetByUserId(ctx *gin.Context) {
 	yearMonth := helper.GetYearMonth(ctx)
 	environmentId := helper.GetEnvironmentId(ctx)
 	season := helper.GetSeason(ctx)
+	deckId := helper.GetDeckId(ctx)
 
-	stat, err := c.usecase.GetOpponentDeckUsageStat(context.Background(), uid, yearMonth, environmentId, season)
+	stat, err := c.usecase.GetOpponentDeckUsageStat(context.Background(), uid, yearMonth, environmentId, season, deckId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx)
@@ -61,7 +62,7 @@ func (c *OpponentDeckUsageStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewOpponentDeckUsageStatResponse(stat, yearMonth, environmentId, season)
+	res := presenter.NewOpponentDeckUsageStatResponse(stat, yearMonth, environmentId, season, deckId)
 
 	ctx.JSON(http.StatusOK, res)
 }

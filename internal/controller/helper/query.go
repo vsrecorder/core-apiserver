@@ -44,6 +44,10 @@ func GetQueryDeckId(ctx *gin.Context) string {
 	return ctx.Query("deck_id")
 }
 
+func GetQueryCount(ctx *gin.Context) string {
+	return ctx.Query("count")
+}
+
 func GetQueryTypeId(ctx *gin.Context) string {
 	return ctx.Query("type_id")
 }

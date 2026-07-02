@@ -16,6 +16,7 @@ type OpponentDeckUsageStatInterface interface {
 		yearMonth string,
 		environmentId string,
 		season string,
+		deckId string,
 	) (*entity.OpponentDeckUsageStat, error)
 }
 
@@ -40,6 +41,7 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 	yearMonth string,
 	environmentId string,
 	season string,
+	deckId string,
 ) (*entity.OpponentDeckUsageStat, error) {
 	var fromDate, toDate time.Time
 
@@ -84,5 +86,5 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 		toDate = fromDate.AddDate(0, 1, 0)
 	}
 
-	return u.opponentDeckUsageStatRepo.FindOpponentDeckUsageStat(ctx, userId, fromDate, toDate)
+	return u.opponentDeckUsageStatRepo.FindOpponentDeckUsageStat(ctx, userId, fromDate, toDate, deckId)
 }

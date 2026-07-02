@@ -27,6 +27,12 @@ type deckUsageResult struct {
 	Count  int
 }
 
+type deckWinResult struct {
+	DeckId  string
+	Matches int
+	Wins    int
+}
+
 func (i *DeckUsageStat) FindDeckUsageStat(
 	ctx context.Context,
 	userId string,
@@ -60,6 +66,33 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		totalRecords += r.Count
 	}
 
+	// デッキごとの対戦勝敗を records.deck_id 基準で集計する。
+	// matches.deck_id は記録後にデッキを変更しても更新されないため、records.deck_id を正とする
+	// （opponent_deck_usage_stat.go と同様の方針）。
+	var winResults []deckWinResult
+	winQuery := i.db.Table("matches").
+		Select("records.deck_id AS deck_id, COUNT(*) AS matches, SUM(CASE WHEN matches.victory_flg THEN 1 ELSE 0 END) AS wins").
+		Joins("JOIN records ON matches.record_id = records.id").
+		Where("records.user_id = ? AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND records.deck_id != ''", userId)
+
+	if !fromDate.IsZero() {
+		winQuery = winQuery.Where("records.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		winQuery = winQuery.Where("records.event_date < ?", toDate)
+	}
+
+	winQuery = winQuery.Group("records.deck_id")
+
+	if tx := winQuery.Scan(&winResults); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	winsByDeck := make(map[string]deckWinResult, len(winResults))
+	for _, w := range winResults {
+		winsByDeck[w.DeckId] = w
+	}
+
 	decks := []*entity.DeckUsage{}
 	for _, r := range results {
 		// デッキに設定されたポケモンスプライトを取得する
@@ -84,7 +117,16 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 			usageRate = float64(r.Count) / float64(totalRecords)
 		}
 
-		decks = append(decks, entity.NewDeckUsage(r.DeckId, name, r.Count, usageRate, pokemonSprites))
+		wins, losses, winRate := 0, 0, 0.0
+		if w, ok := winsByDeck[r.DeckId]; ok {
+			wins = w.Wins
+			losses = w.Matches - w.Wins
+			if w.Matches > 0 {
+				winRate = float64(w.Wins) / float64(w.Matches)
+			}
+		}
+
+		decks = append(decks, entity.NewDeckUsage(r.DeckId, name, r.Count, usageRate, wins, losses, winRate, pokemonSprites))
 	}
 
 	return entity.NewDeckUsageStat(userId, totalRecords, decks), nil

@@ -5,6 +5,9 @@ type DeckUsageItemResponse struct {
 	Name           string                   `json:"name"`
 	Count          int                      `json:"count"`
 	UsageRate      float64                  `json:"usage_rate"`
+	Wins           int                      `json:"wins"`
+	Losses         int                      `json:"losses"`
+	WinRate        float64                  `json:"win_rate"`
 	PokemonSprites []*PokemonSpriteResponse `json:"pokemon_sprites"`
 }
 

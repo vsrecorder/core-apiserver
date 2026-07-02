@@ -26,6 +26,9 @@ func NewDeckUsageStatResponse(
 			Name:           deck.Name,
 			Count:          deck.Count,
 			UsageRate:      deck.UsageRate,
+			Wins:           deck.Wins,
+			Losses:         deck.Losses,
+			WinRate:        deck.WinRate,
 			PokemonSprites: pokemonSprites,
 		})
 	}

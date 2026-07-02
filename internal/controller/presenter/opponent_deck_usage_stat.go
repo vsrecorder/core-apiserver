@@ -10,6 +10,7 @@ func NewOpponentDeckUsageStatResponse(
 	yearMonth string,
 	environmentId string,
 	season string,
+	regulationId string,
 	deckId string,
 ) *dto.OpponentDeckUsageStatResponse {
 	decks := []*dto.OpponentDeckUsageItemResponse{}
@@ -37,6 +38,7 @@ func NewOpponentDeckUsageStatResponse(
 		YearMonth:     yearMonth,
 		EnvironmentId: environmentId,
 		Season:        season,
+		RegulationId:  regulationId,
 		DeckId:        deckId,
 		TotalMatches:  stat.TotalMatches,
 		Decks:         decks,

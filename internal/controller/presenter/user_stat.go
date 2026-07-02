@@ -10,12 +10,14 @@ func NewUserStatResponse(
 	yearMonth string,
 	environmentId string,
 	season string,
+	regulationId string,
 ) *dto.UserStatResponse {
 	return &dto.UserStatResponse{
 		UserId:               stats.UserId,
 		YearMonth:            yearMonth,
 		EnvironmentId:        environmentId,
 		Season:               season,
+		RegulationId:         regulationId,
 		TotalRecords:         stats.TotalRecords,
 		OfficialEventCount:   stats.OfficialEventCount,
 		TonamelEventCount:    stats.TonamelEventCount,

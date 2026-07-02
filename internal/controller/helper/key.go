@@ -215,6 +215,17 @@ func GetEnvironmentId(ctx *gin.Context) string {
 	return environmentId
 }
 
+func SetRegulationId(ctx *gin.Context, value string) {
+	ctx.Set("regulation_id", value)
+}
+
+func GetRegulationId(ctx *gin.Context) string {
+	value, _ := ctx.Get("regulation_id")
+	regulationId, _ := value.(string)
+
+	return regulationId
+}
+
 func SetSeason(ctx *gin.Context, value string) {
 	ctx.Set("season", value)
 }

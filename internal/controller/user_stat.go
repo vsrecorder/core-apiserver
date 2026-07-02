@@ -59,8 +59,9 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 	yearMonth := helper.GetYearMonth(ctx)
 	environmentId := helper.GetEnvironmentId(ctx)
 	season := helper.GetSeason(ctx)
+	regulationId := helper.GetRegulationId(ctx)
 
-	stats, err := c.usecase.GetUserStat(context.Background(), uid, yearMonth, environmentId, season)
+	stats, err := c.usecase.GetUserStat(context.Background(), uid, yearMonth, environmentId, season, regulationId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx)
@@ -71,7 +72,7 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewUserStatResponse(stats, yearMonth, environmentId, season)
+	res := presenter.NewUserStatResponse(stats, yearMonth, environmentId, season, regulationId)
 
 	ctx.JSON(http.StatusOK, res)
 }

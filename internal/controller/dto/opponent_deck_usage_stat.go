@@ -15,6 +15,7 @@ type OpponentDeckUsageStatResponse struct {
 	YearMonth     string                           `json:"year_month,omitempty"`
 	EnvironmentId string                           `json:"environment_id,omitempty"`
 	Season        string                           `json:"season,omitempty"`
+	RegulationId  string                           `json:"regulation_id,omitempty"`
 	DeckId        string                           `json:"deck_id,omitempty"`
 	TotalMatches  int                              `json:"total_matches"`
 	Decks         []*OpponentDeckUsageItemResponse `json:"decks"`

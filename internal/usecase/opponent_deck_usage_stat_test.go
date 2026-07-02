@@ -15,7 +15,8 @@ func TestOpponentDeckUsageStatUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockOpponentDeckUsageStatInterface(mockCtrl)
 	mockEnvironmentRepository := mock_repository.NewMockEnvironmentInterface(mockCtrl)
-	usecase := NewOpponentDeckUsageStat(mockRepository, mockEnvironmentRepository)
+	mockStandardRegulationRepository := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
+	usecase := NewOpponentDeckUsageStat(mockRepository, mockEnvironmentRepository, mockStandardRegulationRepository)
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -36,6 +37,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		yearMonth := "2026-06"
 		environmentId := ""
 		season := ""
+		regulationId := ""
 		deckId := "deck-01"
 
 		stat := entity.NewOpponentDeckUsageStat(userId, 5, []*entity.OpponentDeckUsage{})
@@ -44,7 +46,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), gomock.Any(), deckId).
 			Return(stat, nil)
 
-		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, yearMonth, environmentId, season, deckId)
+		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, yearMonth, environmentId, season, regulationId, deckId)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -55,6 +57,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		yearMonth := "2026-06"
 		environmentId := ""
 		season := ""
+		regulationId := ""
 		deckId := ""
 
 		stat := entity.NewOpponentDeckUsageStat(userId, 0, []*entity.OpponentDeckUsage{})
@@ -63,7 +66,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), gomock.Any(), deckId).
 			Return(stat, nil)
 
-		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, yearMonth, environmentId, season, deckId)
+		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, yearMonth, environmentId, season, regulationId, deckId)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)

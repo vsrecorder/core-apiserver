@@ -5,6 +5,7 @@ type UserStatResponse struct {
 	YearMonth            string  `json:"year_month,omitempty"`
 	EnvironmentId        string  `json:"environment_id,omitempty"`
 	Season               string  `json:"season,omitempty"`
+	RegulationId         string  `json:"regulation_id,omitempty"`
 	TotalRecords         int     `json:"total_records"`
 	OfficialEventCount   int     `json:"official_event_count"`
 	TonamelEventCount    int     `json:"tonamel_event_count"`

@@ -16,21 +16,25 @@ type UserStatInterface interface {
 		yearMonth string,
 		environmentId string,
 		season string,
+		regulationId string,
 	) (*entity.UserStat, error)
 }
 
 type UserStat struct {
-	userStatRepo    repository.UserStatInterface
-	environmentRepo repository.EnvironmentInterface
+	userStatRepo           repository.UserStatInterface
+	environmentRepo        repository.EnvironmentInterface
+	standardRegulationRepo repository.StandardRegulationInterface
 }
 
 func NewUserStat(
 	userStatRepo repository.UserStatInterface,
 	environmentRepo repository.EnvironmentInterface,
+	standardRegulationRepo repository.StandardRegulationInterface,
 ) UserStatInterface {
 	return &UserStat{
-		userStatRepo:    userStatRepo,
-		environmentRepo: environmentRepo,
+		userStatRepo:           userStatRepo,
+		environmentRepo:        environmentRepo,
+		standardRegulationRepo: standardRegulationRepo,
 	}
 }
 
@@ -40,6 +44,7 @@ func (u *UserStat) GetUserStat(
 	yearMonth string,
 	environmentId string,
 	season string,
+	regulationId string,
 ) (*entity.UserStat, error) {
 	var fromDate, toDate time.Time
 
@@ -77,6 +82,25 @@ func (u *UserStat) GetUserStat(
 		}
 		if toDate.IsZero() || envTo.Before(toDate) {
 			toDate = envTo
+		}
+	}
+
+	if regulationId != "" {
+		reg, err := u.standardRegulationRepo.FindById(ctx, regulationId)
+		if err != nil {
+			return nil, err
+		}
+
+		// レギュレーションの期間（to_dateは含む日付なので翌日0時をexclusive上限とする）
+		regFrom := time.Date(reg.FromDate.Year(), reg.FromDate.Month(), reg.FromDate.Day(), 0, 0, 0, 0, time.Local)
+		regTo := time.Date(reg.ToDate.Year(), reg.ToDate.Month(), reg.ToDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+
+		// 他の条件とレギュレーションの両方が指定された場合は期間の交差を取る
+		if fromDate.IsZero() || regFrom.After(fromDate) {
+			fromDate = regFrom
+		}
+		if toDate.IsZero() || regTo.Before(toDate) {
+			toDate = regTo
 		}
 	}
 

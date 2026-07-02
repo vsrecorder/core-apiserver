@@ -25,5 +25,8 @@ func UserStatGetMiddleware() gin.HandlerFunc {
 			return
 		}
 		helper.SetSeason(ctx, season)
+
+		regulationId := helper.GetQueryRegulationId(ctx)
+		helper.SetRegulationId(ctx, regulationId)
 	}
 }

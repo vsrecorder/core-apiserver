@@ -26,6 +26,9 @@ func OpponentDeckUsageStatGetMiddleware() gin.HandlerFunc {
 		}
 		helper.SetSeason(ctx, season)
 
+		regulationId := helper.GetQueryRegulationId(ctx)
+		helper.SetRegulationId(ctx, regulationId)
+
 		helper.SetDeckId(ctx, helper.GetQueryDeckId(ctx))
 	}
 }

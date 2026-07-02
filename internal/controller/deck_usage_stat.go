@@ -49,8 +49,9 @@ func (c *DeckUsageStat) GetByUserId(ctx *gin.Context) {
 	yearMonth := helper.GetYearMonth(ctx)
 	environmentId := helper.GetEnvironmentId(ctx)
 	season := helper.GetSeason(ctx)
+	regulationId := helper.GetRegulationId(ctx)
 
-	stat, err := c.usecase.GetDeckUsageStat(context.Background(), uid, yearMonth, environmentId, season)
+	stat, err := c.usecase.GetDeckUsageStat(context.Background(), uid, yearMonth, environmentId, season, regulationId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx)
@@ -61,7 +62,7 @@ func (c *DeckUsageStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewDeckUsageStatResponse(stat, yearMonth, environmentId, season)
+	res := presenter.NewDeckUsageStatResponse(stat, yearMonth, environmentId, season, regulationId)
 
 	ctx.JSON(http.StatusOK, res)
 }

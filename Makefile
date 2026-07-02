@@ -29,6 +29,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/user_stat_history.go -destination=./internal/mock/mock_repository/user_stat_history.go
 	mockgen -source=./internal/domain/repository/user_stat_recent.go -destination=./internal/mock/mock_repository/user_stat_recent.go
 	mockgen -source=./internal/domain/repository/opponent_deck_usage_stat.go -destination=./internal/mock/mock_repository/opponent_deck_usage_stat.go
+	mockgen -source=./internal/domain/repository/standard_regulation.go -destination=./internal/mock/mock_repository/standard_regulation.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go
 	mockgen -source=./internal/usecase/user.go -destination=./internal/mock/mock_usecase/user.go
@@ -42,6 +43,7 @@ mockgen:
 	mockgen -source=./internal/usecase/user_stat_history.go -destination=./internal/mock/mock_usecase/user_stat_history.go
 	mockgen -source=./internal/usecase/user_stat_recent.go -destination=./internal/mock/mock_usecase/user_stat_recent.go
 	mockgen -source=./internal/usecase/opponent_deck_usage_stat.go -destination=./internal/mock/mock_usecase/opponent_deck_usage_stat.go
+	mockgen -source=./internal/usecase/standard_regulation.go -destination=./internal/mock/mock_usecase/standard_regulation.go
 
 .PHONY: image
 image:

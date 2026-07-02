@@ -16,6 +16,7 @@ type OpponentDeckUsageStatInterface interface {
 		yearMonth string,
 		environmentId string,
 		season string,
+		regulationId string,
 		deckId string,
 	) (*entity.OpponentDeckUsageStat, error)
 }
@@ -23,15 +24,18 @@ type OpponentDeckUsageStatInterface interface {
 type OpponentDeckUsageStat struct {
 	opponentDeckUsageStatRepo repository.OpponentDeckUsageStatInterface
 	environmentRepo           repository.EnvironmentInterface
+	standardRegulationRepo    repository.StandardRegulationInterface
 }
 
 func NewOpponentDeckUsageStat(
 	opponentDeckUsageStatRepo repository.OpponentDeckUsageStatInterface,
 	environmentRepo repository.EnvironmentInterface,
+	standardRegulationRepo repository.StandardRegulationInterface,
 ) OpponentDeckUsageStatInterface {
 	return &OpponentDeckUsageStat{
 		opponentDeckUsageStatRepo: opponentDeckUsageStatRepo,
 		environmentRepo:           environmentRepo,
+		standardRegulationRepo:    standardRegulationRepo,
 	}
 }
 
@@ -41,6 +45,7 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 	yearMonth string,
 	environmentId string,
 	season string,
+	regulationId string,
 	deckId string,
 ) (*entity.OpponentDeckUsageStat, error) {
 	var fromDate, toDate time.Time
@@ -76,6 +81,23 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 		}
 		if toDate.IsZero() || envTo.Before(toDate) {
 			toDate = envTo
+		}
+	}
+
+	if regulationId != "" {
+		reg, err := u.standardRegulationRepo.FindById(ctx, regulationId)
+		if err != nil {
+			return nil, err
+		}
+
+		regFrom := time.Date(reg.FromDate.Year(), reg.FromDate.Month(), reg.FromDate.Day(), 0, 0, 0, 0, time.Local)
+		regTo := time.Date(reg.ToDate.Year(), reg.ToDate.Month(), reg.ToDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
+
+		if fromDate.IsZero() || regFrom.After(fromDate) {
+			fromDate = regFrom
+		}
+		if toDate.IsZero() || regTo.Before(toDate) {
+			toDate = regTo
 		}
 	}
 

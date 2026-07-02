@@ -252,6 +252,7 @@ func main() {
 		usecase.NewUserStat(
 			infrastructure.NewUserStat(db),
 			infrastructure.NewEnvironment(db),
+			infrastructure.NewStandardRegulation(db),
 		),
 		usecase.NewUserStatHistory(
 			infrastructure.NewUserStatHistory(db),
@@ -267,6 +268,7 @@ func main() {
 		usecase.NewDeckUsageStat(
 			infrastructure.NewDeckUsageStat(db),
 			infrastructure.NewEnvironment(db),
+			infrastructure.NewStandardRegulation(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -275,6 +277,7 @@ func main() {
 		usecase.NewOpponentDeckUsageStat(
 			infrastructure.NewOpponentDeckUsageStat(db),
 			infrastructure.NewEnvironment(db),
+			infrastructure.NewStandardRegulation(db),
 		),
 	).RegisterRoute(relativePath)
 

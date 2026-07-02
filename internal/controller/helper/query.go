@@ -72,6 +72,10 @@ func GetQueryEnvironmentId(ctx *gin.Context) string {
 	return ctx.Query("environment_id")
 }
 
+func GetQueryRegulationId(ctx *gin.Context) string {
+	return ctx.Query("regulation_id")
+}
+
 func GetQuerySeason(ctx *gin.Context) string {
 	return ctx.Query("season")
 }

@@ -98,7 +98,12 @@ func (u *Designation) GetByUserId(
 		return nil, err
 	}
 
-	current := currentDesignation(definitions, currentValues)
+	previousCityLeagueCount, err := u.previousSeasonCityLeagueCount(ctx, userId, season)
+	if err != nil {
+		return nil, err
+	}
+
+	current := currentDesignation(definitions, currentValues, previousCityLeagueCount)
 
 	currentTier := 0
 	if current != nil {
@@ -127,9 +132,14 @@ func (u *Designation) GetByUserId(
 // (例: 見習いはジムバトル5件、一人前はジムバトル5件+リーグ記録)。
 // そのため tier 昇順(definitions の並び順)に評価し、最初に条件を満たさなかった時点で
 // 打ち切ることで、途中のティアを飛び越えて到達することを防ぐ。
+//
+// 常連(criteria_type=official_city_league_record)のみ、今シーズンの件数がcriteria_valueを
+// 満たすだけでなく、前シーズンにも同じ件数以上のシティリーグ記録があること(=「前シーズンに
+// 引き続き」の継続条件)を求める特殊なティアなので、previousCityLeagueCount で別途判定する。
 func currentDesignation(
 	definitions []*entity.Designation,
 	values map[string]int,
+	previousCityLeagueCount int,
 ) *entity.Designation {
 	var current *entity.Designation
 	for _, def := range definitions {
@@ -139,6 +149,10 @@ func currentDesignation(
 			break
 		}
 		if value < def.CriteriaValue {
+			break
+		}
+		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueRecord &&
+			previousCityLeagueCount < def.CriteriaValue {
 			break
 		}
 		current = def
@@ -176,6 +190,16 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
+	previousFromDate, previousToDate, err := previousSeasonRange(season, time.Now().Local())
+	if err != nil {
+		return nil, err
+	}
+
+	previousCityLeagueCounts, err := u.designationStatsRepo.CountCityLeagueRecordsGroupByUserId(ctx, previousFromDate, previousToDate)
+	if err != nil {
+		return nil, err
+	}
+
 	// いずれかの記録を持つユーザーのみが称号判定の対象になりうる(記録が全く無ければ
 	// 必ず tier=0 のため、集計に含める意味が無い)。
 	userIds := make(map[string]struct{})
@@ -198,7 +222,7 @@ func (u *Designation) GetRankStats(
 			DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCounts[userId],
 		}
 
-		current := currentDesignation(definitions, values)
+		current := currentDesignation(definitions, values, previousCityLeagueCounts[userId])
 		if current == nil {
 			continue
 		}
@@ -254,4 +278,20 @@ func (u *Designation) seasonValuesByCriteriaType(
 		DesignationCriteriaTypeOfficialLeagueRecord:     leagueCount,
 		DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCount,
 	}, nil
+}
+
+// previousSeasonCityLeagueCount は常連(criteria_type=official_city_league_record)の
+// 「前シーズンに引き続き」という継続条件を判定するための、対象シーズンのひとつ前の
+// シーズンにおけるシティリーグ記録件数を返す。
+func (u *Designation) previousSeasonCityLeagueCount(
+	ctx context.Context,
+	userId string,
+	season string,
+) (int, error) {
+	fromDate, toDate, err := previousSeasonRange(season, time.Now().Local())
+	if err != nil {
+		return 0, err
+	}
+
+	return u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
 }

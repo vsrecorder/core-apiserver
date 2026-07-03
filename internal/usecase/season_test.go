@@ -44,3 +44,29 @@ func TestSeasonRange(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestPreviousSeasonRange(t *testing.T) {
+	now := time.Date(2026, 1, 10, 0, 0, 0, 0, time.Local)
+
+	t.Run("season空文字なら現在のシーズンのひとつ前の期間を返す", func(t *testing.T) {
+		fromDate, toDate, err := previousSeasonRange("", now)
+
+		require.NoError(t, err)
+		require.Equal(t, time.Date(2024, 9, 1, 0, 0, 0, 0, time.Local), fromDate)
+		require.Equal(t, time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), toDate)
+	})
+
+	t.Run("season指定時はその年のひとつ前のシーズン期間を返す", func(t *testing.T) {
+		fromDate, toDate, err := previousSeasonRange("2024", now)
+
+		require.NoError(t, err)
+		require.Equal(t, time.Date(2022, 9, 1, 0, 0, 0, 0, time.Local), fromDate)
+		require.Equal(t, time.Date(2023, 9, 1, 0, 0, 0, 0, time.Local), toDate)
+	})
+
+	t.Run("不正なseasonはエラーを返す", func(t *testing.T) {
+		_, _, err := previousSeasonRange("not-a-year", now)
+
+		require.Error(t, err)
+	})
+}

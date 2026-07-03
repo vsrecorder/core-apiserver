@@ -35,3 +35,18 @@ func seasonRange(season string, now time.Time) (fromDate time.Time, toDate time.
 
 	return fromDate, toDate, nil
 }
+
+// previousSeasonRange は season(空文字なら現在のシーズン)のひとつ前のシーズンの期間を返す。
+// 「前シーズンに引き続き」といった、シーズンをまたいだ継続条件の判定に使う。
+func previousSeasonRange(season string, now time.Time) (fromDate time.Time, toDate time.Time, err error) {
+	if season == "" {
+		season = CurrentSeasonLabel(now)
+	}
+
+	year, err := strconv.Atoi(season)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	return seasonRange(strconv.Itoa(year-1), now)
+}

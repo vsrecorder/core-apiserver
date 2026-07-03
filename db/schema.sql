@@ -534,12 +534,6 @@ INSERT INTO badge_definitions (id, code, category, name, description, icon_key, 
 ('milestone-record-03', 'record_count_30', 'milestone', 'ベテランユーザー',  '記録数が30に到達した',  'medal', 'record_count', 30, now(), now()),
 ('milestone-record-04', 'record_count_50', 'milestone', 'マスターユーザー',  '記録数が50に到達した', 'medal', 'record_count', 50, now(), now());
 
-UPDATE badge_definitions SET name = '駆け出しユーザー' WHERE id = 'milestone-record-01';
-UPDATE badge_definitions SET name = '常連ユーザー'     WHERE id = 'milestone-record-02';
-UPDATE badge_definitions SET name = 'ベテランユーザー' WHERE id = 'milestone-record-03';
-UPDATE badge_definitions SET name = 'マスターユーザー' WHERE id = 'milestone-record-04';
-
-
 INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
 ('milestone-deck-01', 'deck_count_3',  'milestone', '駆け出しビルダー',  'デッキコード数が3に到達した',  'medal', 'deck_count', 3,  now(), now()),
 ('milestone-deck-02', 'deck_count_15', 'milestone', '常連ビルダー',     'デッキコード数が15に到達した', 'medal', 'deck_count', 15, now(), now()),
@@ -551,8 +545,6 @@ INSERT INTO badge_definitions (id, code, category, name, description, icon_key, 
 ('milestone-match-02', 'match_count_50',  'milestone', '常連バトラー',      '対戦数が50に到達した', 'medal', 'match_count', 50, now(), now()),
 ('milestone-match-03', 'match_count_100', 'milestone', 'ベテランバトラー',  '対戦数が100に到達した', 'medal', 'match_count', 100, now(), now()),
 ('milestone-match-04', 'match_count_150', 'milestone', 'マスターバトラー',  '対戦数が150に到達した', 'medal', 'match_count', 150, now(), now());
-
-
 
 -- badge_definitions フェーズ1シード: 週次ストリーク系(streak-xx)
 INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES

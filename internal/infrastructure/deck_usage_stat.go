@@ -77,11 +77,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 			pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(m.PokemonSpriteId))
 		}
 
-		// 削除済みなどで名称を取得できなかった場合のフォールバック
 		name := r.Name
-		if name == "" {
-			name = "不明なデッキ"
-		}
 
 		var usageRate float64
 		if totalMatches > 0 {

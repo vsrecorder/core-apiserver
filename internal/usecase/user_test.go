@@ -26,7 +26,7 @@ func TestUserUsecase(t *testing.T) {
 			return fn(ctx)
 		},
 	).AnyTimes()
-	usecase := NewUser(mockRepository, mockRecordRepository, mockDeckRepository, mockDeckCodeRepository, mockTransactionManager)
+	usecase := NewUser(mockRepository, mockRecordRepository, mockDeckRepository, mockDeckCodeRepository, mockTransactionManager, stubBadgeEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

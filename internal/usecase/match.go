@@ -133,13 +133,15 @@ type MatchInterface interface {
 }
 
 type Match struct {
-	repository repository.MatchInterface
+	repository      repository.MatchInterface
+	badgeEvaluation BadgeEvaluationInterface
 }
 
 func NewMatch(
 	repository repository.MatchInterface,
+	badgeEvaluation BadgeEvaluationInterface,
 ) MatchInterface {
-	return &Match{repository}
+	return &Match{repository, badgeEvaluation}
 }
 
 func (u *Match) FindById(
@@ -259,6 +261,10 @@ func (u *Match) Create(
 	)
 
 	if err := u.repository.Create(ctx, match); err != nil {
+		return nil, err
+	}
+
+	if _, err := u.badgeEvaluation.EvaluateOnMatchCreated(ctx, param.UserId, match); err != nil {
 		return nil, err
 	}
 

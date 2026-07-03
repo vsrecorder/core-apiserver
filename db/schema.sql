@@ -436,6 +436,150 @@ CREATE TABLE deck_pokemon_sprites (
 
 
 
+TRUNCATE TABLE user_badges, user_streaks, badge_definitions, designations, user_designations;
+
+
+
+
+
+-- 施策D: 記録ストリーク・実績バッジ (MOTIVATION.md 施策D / BADGE_STREAK_PLAN.md)
+--
+-- badge_definitions.id の採番ルール:
+--   フォーマットは "{category}-{カテゴリ内2桁連番}" (例: onboarding-01, milestone-01, streak-01)。
+--   連番は「カテゴリ内で採番した順」であり表示順ではない。表示順は created_at で決める。
+--   一度発番したidは変更・使い回ししない。バッジを廃止する場合も削除せず available_to に
+--   終了日を設定して無効化する(user_badges.badge_definition_id のFK切れを防ぐため)。
+--   新しいカテゴリを追加する際は、そのカテゴリ用のプレフィックスを新設して 01 から採番する。
+CREATE TABLE badge_definitions (
+    id             VARCHAR(26) PRIMARY KEY,
+    code           VARCHAR(64) NOT NULL,
+    category       VARCHAR(32) NOT NULL,
+    name           VARCHAR(64) NOT NULL,
+    description    VARCHAR(256) NOT NULL,
+    icon_key       VARCHAR(64) DEFAULT NULL,
+    criteria_type  VARCHAR(32) NOT NULL,
+    criteria_value INT NOT NULL DEFAULT 0,
+    available_from DATE DEFAULT NULL,
+    available_to   DATE DEFAULT NULL,
+    created_at     TIMESTAMP NOT NULL,
+    updated_at     TIMESTAMP NOT NULL
+);
+CREATE UNIQUE INDEX idx_badge_definitions_code ON badge_definitions(code);
+
+
+CREATE TABLE user_badges (
+    id                    VARCHAR(26) PRIMARY KEY,
+    created_at            TIMESTAMP NOT NULL,
+    user_id               VARCHAR(32) NOT NULL,
+    badge_definition_id   VARCHAR(26) NOT NULL,
+    record_id             VARCHAR(26) DEFAULT NULL,
+    achieved_at           TIMESTAMP NOT NULL,
+    FOREIGN KEY (badge_definition_id) REFERENCES badge_definitions (id)
+);
+CREATE UNIQUE INDEX idx_user_badges_user_id_badge_definition_id ON user_badges(user_id, badge_definition_id);
+CREATE INDEX idx_user_badges_user_id ON user_badges(user_id);
+
+
+CREATE TABLE user_streaks (
+    user_id             VARCHAR(32) PRIMARY KEY,
+    current_weeks       INT NOT NULL DEFAULT 0,
+    longest_weeks       INT NOT NULL DEFAULT 0,
+    freeze_used_count   INT NOT NULL DEFAULT 0,
+    last_recorded_week  DATE NOT NULL,
+    updated_at          TIMESTAMP NOT NULL
+);
+
+
+-- 称号(designation): ユーザーの通算成長を表す一本道のランク。バッジと異なり、
+-- 現在の最高到達ティアのみを user_designations に保持する(過去のティアは自動的に内包される)。
+-- criteria_type = 'unimplemented' のティアはまだ判定ロジックが無いため、実装が追加されるまで
+-- 絶対に達成されない(=「準備中」)。
+CREATE TABLE designations (
+    id             VARCHAR(26) PRIMARY KEY,
+    tier           INT NOT NULL,
+    code           VARCHAR(64) NOT NULL,
+    emoji          VARCHAR(8) NOT NULL,
+    name           VARCHAR(64) NOT NULL,
+    description    VARCHAR(256) NOT NULL,
+    criteria_type  VARCHAR(32) NOT NULL,
+    criteria_value INT NOT NULL DEFAULT 0,
+    created_at     TIMESTAMP NOT NULL,
+    updated_at     TIMESTAMP NOT NULL
+);
+CREATE UNIQUE INDEX idx_designations_tier ON designations(tier);
+CREATE UNIQUE INDEX idx_designations_code ON designations(code);
+
+
+CREATE TABLE user_designations (
+    user_id        VARCHAR(32) PRIMARY KEY,
+    designation_id VARCHAR(26) NOT NULL REFERENCES designations(id),
+    achieved_at    TIMESTAMP NOT NULL,
+    updated_at     TIMESTAMP NOT NULL
+);
+
+
+
+
+TRUNCATE TABLE user_badges, user_streaks, badge_definitions, designations, user_designations;
+
+
+
+
+-- badge_definitions フェーズ1シード: オンボーディング系(onboarding-xx)
+-- onboarding-00 はデッキ登録等より前に達成される起点のため、連番の先頭として 00 を割り当てる
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('onboarding-00', 'signup',          'onboarding', 'ユーザ登録', 'バトレコのユーザになった',     'user',   'signup',       1, now(), now()),
+('onboarding-01', 'first_deck',       'onboarding', '初デッキ', '初めてデッキを登録した',       'deck',   'deck_count',   1, now(), now()),
+('onboarding-02', 'first_record',     'onboarding', '初記録',   '初めて記録を作成した',         'record', 'record_count', 1, now(), now()),
+('onboarding-03', 'first_match',      'onboarding', '初対戦',   '初めて対戦結果を追加した',     'trophy', 'match_count',  1, now(), now());
+
+-- badge_definitions フェーズ1シード: マイルストーン系(milestone-〇〇-xx)
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('milestone-record-01', 'record_count_3',  'milestone', '駆け出しレコーダー',  '記録数が3に到達した',  'medal', 'record_count', 3, now(), now()),
+('milestone-record-02', 'record_count_15', 'milestone', '常連レコーダー',     '記録数が15に到達した',  'medal', 'record_count', 15, now(), now()),
+('milestone-record-03', 'record_count_30', 'milestone', 'ベテランレコーダー',  '記録数が30に到達した',  'medal', 'record_count', 30, now(), now()),
+('milestone-record-04', 'record_count_50', 'milestone', 'マスターレコーダー',  '記録数が50に到達した', 'medal', 'record_count', 50, now(), now());
+
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('milestone-deck-01', 'deck_count_3',  'milestone', '駆け出しビルダー',  'デッキコード数が3に到達した',  'medal', 'deck_count', 3,  now(), now()),
+('milestone-deck-02', 'deck_count_15', 'milestone', '常連ビルダー',     'デッキコード数が15に到達した', 'medal', 'deck_count', 15, now(), now()),
+('milestone-deck-03', 'deck_count_30', 'milestone', 'ベテランビルダー',  'デッキコード数が30に到達した', 'medal', 'deck_count', 30, now(), now()),
+('milestone-deck-04', 'deck_count_50', 'milestone', 'マスタービルダー',  'デッキコード数が50に到達した', 'medal', 'deck_count', 50, now(), now());
+
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('milestone-match-01', 'match_count_10',  'milestone', '駆け出しバトラー',  '対戦数が10に到達した',  'medal', 'match_count', 10,  now(), now()),
+('milestone-match-02', 'match_count_50',  'milestone', '常連バトラー',      '対戦数が50に到達した', 'medal', 'match_count', 50, now(), now()),
+('milestone-match-03', 'match_count_100', 'milestone', 'ベテランバトラー',  '対戦数が100に到達した', 'medal', 'match_count', 100, now(), now()),
+('milestone-match-04', 'match_count_150', 'milestone', 'マスターバトラー',  '対戦数が150に到達した', 'medal', 'match_count', 150, now(), now());
+
+
+
+-- badge_definitions フェーズ1シード: 週次ストリーク系(streak-xx)
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('streak-01', 'streak_week_3',  'streak', '週次記録3週連続',  '3週連続で対戦を記録した',  'flame', 'streak_weeks', 3,  now(), now()),
+('streak-02', 'streak_week_7',  'streak', '週次記録7週連続',  '7週連続で対戦を記録した',  'flame', 'streak_weeks', 7,  now(), now()),
+('streak-03', 'streak_week_15', 'streak', '週次記録15週連続', '15週連続で対戦を記録した', 'flame', 'streak_weeks', 15, now(), now()),
+('streak-04', 'streak_week_30', 'streak', '週次記録30週連続', '30週連続で対戦を記録した', 'flame', 'streak_weeks', 30, now(), now());
+
+
+
+INSERT INTO designations (id, tier, code, emoji, name, description, criteria_type, criteria_value, created_at, updated_at) VALUES
+('designation-01', 1,  'beginner',     '🌱', '駆け出し',   'ジムバトルの記録を作成した', 'official_gym_battle_record', 1, now(), now()),
+('designation-02', 2,  'novice',       '🔰', '見習い',     '称号：【🌱 駆け出し】を持っており、ジムバトルの記録を5つ以上作成した', 'official_gym_battle_record', 5, now(), now()),
+('designation-03', 3,  'independent',  '👍', '一人前',     '称号：【🔰 見習い】を持っており、過去、トレーナーズリーグかシティリーグの記録を作成している', 'official_league_record', 1, now(), now()),
+('designation-04', 4,  'regular',      '🎫', '常連',       '称号：【👍 一人前】を持っており、過去、シティリーグの記録を4つ以上作成している', 'official_city_league_record', 4, now(), now()),
+('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '（準備中）称号：【🎫 常連】を持っており、過去、シティリーグで入賞経験がある', 'unimplemented', 0, now(), now()),
+('designation-06', 6,  'expert',       '🎖️', '熟練者',     '（準備中）称号：【💪 ベテラン】を持っており、過去、シティリーグで決勝トーナメント進出経験がある', 'unimplemented', 0, now(), now()),
+('designation-07', 7,  'master',       '🏆', '達人',       '準備中', 'unimplemented', 0, now(), now()),
+('designation-08', 8,  'grandmaster',  '👑', '名人',       '準備中', 'unimplemented', 0, now(), now()),
+('designation-09', 9,  'legend',       '💎', 'レジェンド', '準備中', 'unimplemented', 0, now(), now()),
+('designation-10', 10, 'hall_of_fame', '🏛️', '殿堂入り',   '準備中', 'unimplemented', 0, now(), now());
+
+
+
+
+
+
 
 GRANT SELECT ON cards                 TO grafana;
 GRANT SELECT ON cityleague_schedules  TO grafana;
@@ -454,6 +598,15 @@ GRANT SELECT ON records               TO grafana;
 GRANT SELECT ON shops                 TO grafana;
 GRANT SELECT ON standard_regulations  TO grafana;
 GRANT SELECT ON users                 TO grafana;
+GRANT SELECT ON badge_definitions     TO grafana;
+GRANT SELECT ON user_badges           TO grafana;
+GRANT SELECT ON user_streaks          TO grafana;
+GRANT SELECT ON designations          TO grafana;
+GRANT SELECT ON user_designations     TO grafana;
+
+
+
+
 
 
 GRANT SELECT ON <table_name> TO grafana;

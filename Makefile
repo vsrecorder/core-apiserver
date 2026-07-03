@@ -30,6 +30,12 @@ mockgen:
 	mockgen -source=./internal/domain/repository/user_stat_recent.go -destination=./internal/mock/mock_repository/user_stat_recent.go
 	mockgen -source=./internal/domain/repository/opponent_deck_usage_stat.go -destination=./internal/mock/mock_repository/opponent_deck_usage_stat.go
 	mockgen -source=./internal/domain/repository/standard_regulation.go -destination=./internal/mock/mock_repository/standard_regulation.go
+	mockgen -source=./internal/domain/repository/badge_definition.go -destination=./internal/mock/mock_repository/badge_definition.go
+	mockgen -source=./internal/domain/repository/user_badge.go -destination=./internal/mock/mock_repository/user_badge.go
+	mockgen -source=./internal/domain/repository/user_streak.go -destination=./internal/mock/mock_repository/user_streak.go
+	mockgen -source=./internal/domain/repository/badge_stats.go -destination=./internal/mock/mock_repository/badge_stats.go
+	mockgen -source=./internal/domain/repository/designation.go -destination=./internal/mock/mock_repository/designation.go
+	mockgen -source=./internal/domain/repository/designation_stats.go -destination=./internal/mock/mock_repository/designation_stats.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go
 	mockgen -source=./internal/usecase/user.go -destination=./internal/mock/mock_usecase/user.go
@@ -44,6 +50,10 @@ mockgen:
 	mockgen -source=./internal/usecase/user_stat_recent.go -destination=./internal/mock/mock_usecase/user_stat_recent.go
 	mockgen -source=./internal/usecase/opponent_deck_usage_stat.go -destination=./internal/mock/mock_usecase/opponent_deck_usage_stat.go
 	mockgen -source=./internal/usecase/standard_regulation.go -destination=./internal/mock/mock_usecase/standard_regulation.go
+	mockgen -source=./internal/usecase/badge.go -destination=./internal/mock/mock_usecase/badge.go
+	mockgen -source=./internal/usecase/streak.go -destination=./internal/mock/mock_usecase/streak.go
+	mockgen -source=./internal/usecase/badge_evaluation.go -destination=./internal/mock/mock_usecase/badge_evaluation.go
+	mockgen -source=./internal/usecase/designation.go -destination=./internal/mock/mock_usecase/designation.go
 
 .PHONY: image
 image:

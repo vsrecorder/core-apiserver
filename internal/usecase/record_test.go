@@ -14,10 +14,53 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
 
+// stubBadgeEvaluation は usecase パッケージ自身のテストで使う BadgeEvaluationInterface のスタブ。
+// mock_usecase は usecase パッケージに依存しており、usecase パッケージ内のテストから
+// 直接 import すると import cycle になるため、gomock ではなくこの手書きスタブを使う。
+type stubBadgeEvaluation struct{}
+
+func (stubBadgeEvaluation) EvaluateOnRecordCreated(
+	ctx context.Context,
+	userId string,
+	record *entity.Record,
+) ([]*entity.UserBadge, error) {
+	return nil, nil
+}
+
+func (stubBadgeEvaluation) EvaluateOnMatchCreated(
+	ctx context.Context,
+	userId string,
+	match *entity.Match,
+) ([]*entity.UserBadge, error) {
+	return nil, nil
+}
+
+func (stubBadgeEvaluation) EvaluateOnDeckCreated(
+	ctx context.Context,
+	userId string,
+	deck *entity.Deck,
+) ([]*entity.UserBadge, error) {
+	return nil, nil
+}
+
+func (stubBadgeEvaluation) EvaluateOnUserCreated(
+	ctx context.Context,
+	userId string,
+) ([]*entity.UserBadge, error) {
+	return nil, nil
+}
+
+func (stubBadgeEvaluation) EvaluateOnRecordDeleted(
+	ctx context.Context,
+	userId string,
+) error {
+	return nil
+}
+
 func TestRecordUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewRecord(mockRepository)
+	usecase := NewRecord(mockRepository, stubBadgeEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -670,6 +713,23 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 
+		record := entity.NewRecord(
+			id,
+			time.Now().Local(),
+			0,
+			"",
+			"",
+			"",
+			"user-1",
+			"",
+			"",
+			time.Time{},
+			false,
+			"",
+			"",
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		err := usecase.Delete(context.Background(), id)
@@ -677,9 +737,36 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 		require.NoError(t, err)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_#01_FindByIdが失敗する場合", func(t *testing.T) {
 		id, _ := generateId()
 
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+
+		err := usecase.Delete(context.Background(), id)
+
+		require.Equal(t, err, apperror.ErrRecordNotFound)
+	})
+
+	t.Run("異常系_#02_Deleteが失敗する場合", func(t *testing.T) {
+		id, _ := generateId()
+
+		record := entity.NewRecord(
+			id,
+			time.Now().Local(),
+			0,
+			"",
+			"",
+			"",
+			"user-1",
+			"",
+			"",
+			time.Time{},
+			false,
+			"",
+			"",
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		err := usecase.Delete(context.Background(), id)

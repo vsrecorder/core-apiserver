@@ -158,6 +158,13 @@ func main() {
 		MaxAge:           1 * time.Hour,
 	}))
 
+	badgeEvaluation := usecase.NewBadgeEvaluation(
+		infrastructure.NewBadgeDefinition(db),
+		infrastructure.NewUserBadge(db),
+		infrastructure.NewUserStreak(db),
+		infrastructure.NewBadgeStats(db),
+	)
+
 	controller.NewUser(
 		logger,
 		r,
@@ -168,6 +175,7 @@ func main() {
 			infrastructure.NewDeck(db),
 			infrastructure.NewDeckCode(db),
 			infrastructure.NewTransactionManager(db),
+			badgeEvaluation,
 		),
 	).RegisterRoute(relativePath)
 
@@ -198,6 +206,7 @@ func main() {
 		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewDeck(
 			infrastructure.NewDeck(db),
+			badgeEvaluation,
 		),
 	).RegisterRoute(relativePath)
 
@@ -215,6 +224,7 @@ func main() {
 		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewRecord(
 			infrastructure.NewRecord(db, slog.Default()),
+			badgeEvaluation,
 		),
 	).RegisterRoute(relativePath)
 
@@ -224,6 +234,31 @@ func main() {
 		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewMatch(
 			infrastructure.NewMatch(db),
+			badgeEvaluation,
+		),
+	).RegisterRoute(relativePath)
+
+	controller.NewBadge(
+		r,
+		usecase.NewBadge(
+			infrastructure.NewBadgeDefinition(db),
+			infrastructure.NewUserBadge(db),
+			infrastructure.NewBadgeStats(db),
+		),
+	).RegisterRoute(relativePath)
+
+	controller.NewStreak(
+		r,
+		usecase.NewStreak(
+			infrastructure.NewUserStreak(db),
+		),
+	).RegisterRoute(relativePath)
+
+	controller.NewDesignation(
+		r,
+		usecase.NewDesignation(
+			infrastructure.NewDesignation(db),
+			infrastructure.NewDesignationStats(db),
 		),
 	).RegisterRoute(relativePath)
 

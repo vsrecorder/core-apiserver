@@ -16,7 +16,7 @@ import (
 func TestMatchUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
-	usecase := NewMatch(mockRepository)
+	usecase := NewMatch(mockRepository, stubBadgeEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

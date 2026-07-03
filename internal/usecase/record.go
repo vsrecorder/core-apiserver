@@ -145,13 +145,15 @@ type RecordInterface interface {
 }
 
 type Record struct {
-	repository repository.RecordInterface
+	repository      repository.RecordInterface
+	badgeEvaluation BadgeEvaluationInterface
 }
 
 func NewRecord(
 	repository repository.RecordInterface,
+	badgeEvaluation BadgeEvaluationInterface,
 ) RecordInterface {
-	return &Record{repository}
+	return &Record{repository, badgeEvaluation}
 }
 
 func (u *Record) FindById(
@@ -339,6 +341,10 @@ func (u *Record) Create(
 		return nil, err
 	}
 
+	if _, err := u.badgeEvaluation.EvaluateOnRecordCreated(ctx, param.userId, record); err != nil {
+		return nil, err
+	}
+
 	return record, nil
 }
 
@@ -382,9 +388,16 @@ func (u *Record) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	err := u.repository.Delete(ctx, id)
-
+	record, err := u.repository.FindById(ctx, id)
 	if err != nil {
+		return err
+	}
+
+	if err := u.repository.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	if err := u.badgeEvaluation.EvaluateOnRecordDeleted(ctx, record.UserId); err != nil {
 		return err
 	}
 

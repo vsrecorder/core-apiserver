@@ -71,6 +71,7 @@ type User struct {
 	deckRepository     repository.DeckInterface
 	deckCodeRepository repository.DeckCodeInterface
 	transactionManager repository.TransactionManager
+	badgeEvaluation    BadgeEvaluationInterface
 }
 
 func NewUser(
@@ -79,8 +80,9 @@ func NewUser(
 	deckRepository repository.DeckInterface,
 	deckCodeRepository repository.DeckCodeInterface,
 	transactionManager repository.TransactionManager,
+	badgeEvaluation BadgeEvaluationInterface,
 ) UserInterface {
-	return &User{repository, recordRepository, deckRepository, deckCodeRepository, transactionManager}
+	return &User{repository, recordRepository, deckRepository, deckCodeRepository, transactionManager, badgeEvaluation}
 }
 
 func (u *User) FindById(
@@ -117,6 +119,10 @@ func (u *User) Create(
 	}
 
 	if err := u.repository.Save(ctx, user); err != nil {
+		return nil, err
+	}
+
+	if _, err := u.badgeEvaluation.EvaluateOnUserCreated(ctx, user.ID); err != nil {
 		return nil, err
 	}
 

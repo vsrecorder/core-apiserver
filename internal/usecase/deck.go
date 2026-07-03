@@ -121,13 +121,15 @@ type DeckInterface interface {
 }
 
 type Deck struct {
-	repository repository.DeckInterface
+	repository      repository.DeckInterface
+	badgeEvaluation BadgeEvaluationInterface
 }
 
 func NewDeck(
 	repository repository.DeckInterface,
+	badgeEvaluation BadgeEvaluationInterface,
 ) DeckInterface {
-	return &Deck{repository}
+	return &Deck{repository, badgeEvaluation}
 }
 
 func (u *Deck) Find(
@@ -274,6 +276,10 @@ func (u *Deck) Create(
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {
+		return nil, err
+	}
+
+	if _, err := u.badgeEvaluation.EvaluateOnDeckCreated(ctx, param.UserId, deck); err != nil {
 		return nil, err
 	}
 

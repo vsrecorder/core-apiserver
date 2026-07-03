@@ -58,3 +58,22 @@ func NewUserDesignationResponse(
 		Ladder:  ladder,
 	}
 }
+
+func NewDesignationRankStatsResponse(
+	season string,
+	view *usecase.DesignationRankStatsView,
+) *dto.DesignationRankStatsResponse {
+	tiers := make([]*dto.DesignationTierStatResponse, 0, len(view.Tiers))
+	for _, t := range view.Tiers {
+		tiers = append(tiers, &dto.DesignationTierStatResponse{
+			Tier:      t.Tier,
+			UserCount: t.UserCount,
+		})
+	}
+
+	return &dto.DesignationRankStatsResponse{
+		Season:     resolvedSeason(season),
+		TotalUsers: view.TotalUsers,
+		Tiers:      tiers,
+	}
+}

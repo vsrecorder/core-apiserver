@@ -71,3 +71,18 @@ func (mr *MockDesignationInterfaceMockRecorder) GetByUserId(ctx, userId, season 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUserId", reflect.TypeOf((*MockDesignationInterface)(nil).GetByUserId), ctx, userId, season)
 }
+
+// GetRankStats mocks base method.
+func (m *MockDesignationInterface) GetRankStats(ctx context.Context, season string) (*usecase.DesignationRankStatsView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRankStats", ctx, season)
+	ret0, _ := ret[0].(*usecase.DesignationRankStatsView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRankStats indicates an expected call of GetRankStats.
+func (mr *MockDesignationInterfaceMockRecorder) GetRankStats(ctx, season any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRankStats", reflect.TypeOf((*MockDesignationInterface)(nil).GetRankStats), ctx, season)
+}

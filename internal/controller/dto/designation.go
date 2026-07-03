@@ -31,3 +31,19 @@ type UserDesignationResponse struct {
 	Current *DesignationResponse             `json:"current"`
 	Ladder  []*DesignationLadderItemResponse `json:"ladder"`
 }
+
+type DesignationTierStatResponse struct {
+	Tier int `json:"tier"`
+	// UserCount は対象シーズンで、ちょうどこの tier を現在の称号として持つユーザー数。
+	UserCount int `json:"user_count"`
+}
+
+type DesignationRankStatsResponse struct {
+	// Season は集計に使った対象シーズン(終了年、例:"2026")。リクエストで season 未指定の
+	// 場合は現在のシーズンが入る。
+	Season string `json:"season"`
+	// TotalUsers はいずれかの tier に到達した(=称号未達成を除く)ユーザーの合計数。
+	// 称号ランク一覧モーダルでの「モンスターボール級以上」の分母にあたる。
+	TotalUsers int                            `json:"total_users"`
+	Tiers      []*DesignationTierStatResponse `json:"tiers"`
+}

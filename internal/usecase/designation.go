@@ -28,6 +28,20 @@ type UserDesignationView struct {
 	Ladder  []*DesignationLadderItem
 }
 
+// DesignationTierStat は指定シーズンにおける称号ティア1つあたりの到達ユーザー数。
+type DesignationTierStat struct {
+	Tier      int
+	UserCount int
+}
+
+// DesignationRankStatsView は指定シーズンにおける称号ティア別のユーザー数分布を表す。
+// TotalUsers は tier=0(称号未達成)のユーザーを含まない、いずれかのティアに到達した
+// ユーザーの合計数(=称号ランク一覧モーダルでの「モンスターボール級以上」の分母)。
+type DesignationRankStatsView struct {
+	TotalUsers int
+	Tiers      []*DesignationTierStat
+}
+
 type DesignationInterface interface {
 	GetAllDefinitions(
 		ctx context.Context,
@@ -42,6 +56,13 @@ type DesignationInterface interface {
 		userId string,
 		season string,
 	) (*UserDesignationView, error)
+
+	// GetRankStats は指定シーズンにおける称号ティア別のユーザー数分布を返す。
+	// season の意味は GetByUserId と同じ。
+	GetRankStats(
+		ctx context.Context,
+		season string,
+	) (*DesignationRankStatsView, error)
 }
 
 type Designation struct {
@@ -77,23 +98,7 @@ func (u *Designation) GetByUserId(
 		return nil, err
 	}
 
-	// 称号は一本道のランクであり、各ティアの説明文が示す通り「ひとつ前のティアの条件を
-	// 満たした上で、さらに固有の条件を満たす」という累積構造になっている
-	// (例: 見習いはジムバトル5件、一人前はジムバトル5件+リーグ記録)。
-	// そのため tier 昇順(designationRepo.FindAll の並び順)に評価し、最初に条件を
-	// 満たさなかった時点で打ち切ることで、途中のティアを飛び越えて到達することを防ぐ。
-	var current *entity.Designation
-	for _, def := range definitions {
-		value, ok := currentValues[def.CriteriaType]
-		if !ok {
-			// 判定ロジックが未実装(=「準備中」)のティアに到達したら打ち切る
-			break
-		}
-		if value < def.CriteriaValue {
-			break
-		}
-		current = def
-	}
+	current := currentDesignation(definitions, currentValues)
 
 	currentTier := 0
 	if current != nil {
@@ -113,6 +118,106 @@ func (u *Designation) GetByUserId(
 	return &UserDesignationView{
 		Current: current,
 		Ladder:  ladder,
+	}, nil
+}
+
+// currentDesignation は集計値(criteria_type別)から、到達している最高ティアの称号を返す。
+// 称号は一本道のランクであり、各ティアの説明文が示す通り「ひとつ前のティアの条件を
+// 満たした上で、さらに固有の条件を満たす」という累積構造になっている
+// (例: 見習いはジムバトル5件、一人前はジムバトル5件+リーグ記録)。
+// そのため tier 昇順(definitions の並び順)に評価し、最初に条件を満たさなかった時点で
+// 打ち切ることで、途中のティアを飛び越えて到達することを防ぐ。
+func currentDesignation(
+	definitions []*entity.Designation,
+	values map[string]int,
+) *entity.Designation {
+	var current *entity.Designation
+	for _, def := range definitions {
+		value, ok := values[def.CriteriaType]
+		if !ok {
+			// 判定ロジックが未実装(=「準備中」)のティアに到達したら打ち切る
+			break
+		}
+		if value < def.CriteriaValue {
+			break
+		}
+		current = def
+	}
+
+	return current
+}
+
+func (u *Designation) GetRankStats(
+	ctx context.Context,
+	season string,
+) (*DesignationRankStatsView, error) {
+	definitions, err := u.designationRepo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	fromDate, toDate, err := seasonRange(season, time.Now().Local())
+	if err != nil {
+		return nil, err
+	}
+
+	gymBattleCounts, err := u.designationStatsRepo.CountGymBattleRecordsGroupByUserId(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	leagueCounts, err := u.designationStatsRepo.CountLeagueRecordsGroupByUserId(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	cityLeagueCounts, err := u.designationStatsRepo.CountCityLeagueRecordsGroupByUserId(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// いずれかの記録を持つユーザーのみが称号判定の対象になりうる(記録が全く無ければ
+	// 必ず tier=0 のため、集計に含める意味が無い)。
+	userIds := make(map[string]struct{})
+	for userId := range gymBattleCounts {
+		userIds[userId] = struct{}{}
+	}
+	for userId := range leagueCounts {
+		userIds[userId] = struct{}{}
+	}
+	for userId := range cityLeagueCounts {
+		userIds[userId] = struct{}{}
+	}
+
+	tierCounts := make(map[int]int)
+	totalUsers := 0
+	for userId := range userIds {
+		values := map[string]int{
+			DesignationCriteriaTypeOfficialGymBattleRecord:  gymBattleCounts[userId],
+			DesignationCriteriaTypeOfficialLeagueRecord:     leagueCounts[userId],
+			DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCounts[userId],
+		}
+
+		current := currentDesignation(definitions, values)
+		if current == nil {
+			continue
+		}
+
+		tierCounts[current.Tier]++
+		totalUsers++
+	}
+
+	tiers := make([]*DesignationTierStat, 0, len(definitions))
+	for _, def := range definitions {
+		tiers = append(tiers, &DesignationTierStat{
+			Tier:      def.Tier,
+			UserCount: tierCounts[def.Tier],
+		})
+	}
+
+	return &DesignationRankStatsView{
+		TotalUsers: totalUsers,
+		Tiers:      tiers,
 	}, nil
 }
 

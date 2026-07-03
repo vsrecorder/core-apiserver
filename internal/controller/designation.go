@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	DesignationsPath = "/designations"
-	DesignationPath  = "/designation"
+	DesignationsPath     = "/designations"
+	DesignationPath      = "/designation"
+	DesignationStatsPath = "/stats"
 )
 
 type Designation struct {
@@ -33,6 +34,11 @@ func (c *Designation) RegisterRoute(relativePath string) {
 	c.router.GET(
 		relativePath+DesignationsPath,
 		c.GetAllDefinitions,
+	)
+
+	c.router.GET(
+		relativePath+DesignationsPath+DesignationStatsPath,
+		c.GetRankStats,
 	)
 
 	r := c.router.Group(relativePath + UsersPath)
@@ -70,6 +76,24 @@ func (c *Designation) GetByUserId(ctx *gin.Context) {
 	}
 
 	res := presenter.NewUserDesignationResponse(uid, season, view)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *Designation) GetRankStats(ctx *gin.Context) {
+	season, err := helper.ParseQuerySeason(ctx)
+	if err != nil {
+		apierror.ErrBadRequest.JSON(ctx)
+		return
+	}
+
+	view, err := c.usecase.GetRankStats(context.Background(), season)
+	if err != nil {
+		apierror.ErrInternalServerError.JSON(ctx)
+		return
+	}
+
+	res := presenter.NewDesignationRankStatsResponse(season, view)
 
 	ctx.JSON(http.StatusOK, res)
 }

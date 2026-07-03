@@ -56,6 +56,21 @@ func (mr *MockDesignationStatsInterfaceMockRecorder) CountCityLeagueRecordsByUse
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountCityLeagueRecordsByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountCityLeagueRecordsByUserId), ctx, userId, fromDate, toDate)
 }
 
+// CountCityLeagueRecordsGroupByUserId mocks base method.
+func (m *MockDesignationStatsInterface) CountCityLeagueRecordsGroupByUserId(ctx context.Context, fromDate, toDate time.Time) (map[string]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountCityLeagueRecordsGroupByUserId", ctx, fromDate, toDate)
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountCityLeagueRecordsGroupByUserId indicates an expected call of CountCityLeagueRecordsGroupByUserId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) CountCityLeagueRecordsGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountCityLeagueRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountCityLeagueRecordsGroupByUserId), ctx, fromDate, toDate)
+}
+
 // CountGymBattleRecordsByUserId mocks base method.
 func (m *MockDesignationStatsInterface) CountGymBattleRecordsByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) (int, error) {
 	m.ctrl.T.Helper()
@@ -71,6 +86,21 @@ func (mr *MockDesignationStatsInterfaceMockRecorder) CountGymBattleRecordsByUser
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountGymBattleRecordsByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountGymBattleRecordsByUserId), ctx, userId, fromDate, toDate)
 }
 
+// CountGymBattleRecordsGroupByUserId mocks base method.
+func (m *MockDesignationStatsInterface) CountGymBattleRecordsGroupByUserId(ctx context.Context, fromDate, toDate time.Time) (map[string]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountGymBattleRecordsGroupByUserId", ctx, fromDate, toDate)
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountGymBattleRecordsGroupByUserId indicates an expected call of CountGymBattleRecordsGroupByUserId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) CountGymBattleRecordsGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountGymBattleRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountGymBattleRecordsGroupByUserId), ctx, fromDate, toDate)
+}
+
 // CountLeagueRecordsByUserId mocks base method.
 func (m *MockDesignationStatsInterface) CountLeagueRecordsByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) (int, error) {
 	m.ctrl.T.Helper()
@@ -84,4 +114,19 @@ func (m *MockDesignationStatsInterface) CountLeagueRecordsByUserId(ctx context.C
 func (mr *MockDesignationStatsInterfaceMockRecorder) CountLeagueRecordsByUserId(ctx, userId, fromDate, toDate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountLeagueRecordsByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountLeagueRecordsByUserId), ctx, userId, fromDate, toDate)
+}
+
+// CountLeagueRecordsGroupByUserId mocks base method.
+func (m *MockDesignationStatsInterface) CountLeagueRecordsGroupByUserId(ctx context.Context, fromDate, toDate time.Time) (map[string]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountLeagueRecordsGroupByUserId", ctx, fromDate, toDate)
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountLeagueRecordsGroupByUserId indicates an expected call of CountLeagueRecordsGroupByUserId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) CountLeagueRecordsGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountLeagueRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountLeagueRecordsGroupByUserId), ctx, fromDate, toDate)
 }

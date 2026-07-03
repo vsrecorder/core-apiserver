@@ -37,4 +37,27 @@ type DesignationStatsInterface interface {
 		fromDate time.Time,
 		toDate time.Time,
 	) (int, error)
+
+	// CountGymBattleRecordsGroupByUserId は CountGymBattleRecordsByUserId のユーザー横断版。
+	// 指定期間内にジムバトル記録を1件以上持つユーザーごとの件数を user_id をキーに返す
+	// (該当記録が0件のユーザーはキーに含まれない)。
+	CountGymBattleRecordsGroupByUserId(
+		ctx context.Context,
+		fromDate time.Time,
+		toDate time.Time,
+	) (map[string]int, error)
+
+	// CountLeagueRecordsGroupByUserId は CountLeagueRecordsByUserId のユーザー横断版。
+	CountLeagueRecordsGroupByUserId(
+		ctx context.Context,
+		fromDate time.Time,
+		toDate time.Time,
+	) (map[string]int, error)
+
+	// CountCityLeagueRecordsGroupByUserId は CountCityLeagueRecordsByUserId のユーザー横断版。
+	CountCityLeagueRecordsGroupByUserId(
+		ctx context.Context,
+		fromDate time.Time,
+		toDate time.Time,
+	) (map[string]int, error)
 }

@@ -158,6 +158,41 @@ func TestDesignation_GetByUserId(t *testing.T) {
 	})
 }
 
+func TestDesignation_GetRankStats(t *testing.T) {
+	t.Run("ティアごとの到達ユーザー数と、いずれかのティアに到達した合計ユーザー数を返す", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo := newDesignationTestUsecase(mockCtrl)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
+
+		// user-1: ジムバトル5件・リーグ0件・シティリーグ0件 -> tier2(見習い)
+		// user-2: ジムバトル5件・リーグ1件・シティリーグ4件 -> tier4(常連)
+		// user-3: リーグ記録のみ1件(ジムバトル0件) -> 一つ目の条件(ジムバトル1件)すら
+		//         満たさないため tier0(称号なし、集計対象外)
+		designationStatsRepo.EXPECT().CountGymBattleRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-1": 5, "user-2": 5}, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 1, "user-3": 1}, nil)
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 4}, nil)
+
+		view, err := u.GetRankStats(t.Context(), "")
+
+		require.NoError(t, err)
+		require.Equal(t, 2, view.TotalUsers)
+
+		tierCounts := make(map[int]int)
+		for _, t := range view.Tiers {
+			tierCounts[t.Tier] = t.UserCount
+		}
+		require.Equal(t, 0, tierCounts[1])
+		require.Equal(t, 1, tierCounts[2])
+		require.Equal(t, 0, tierCounts[3])
+		require.Equal(t, 1, tierCounts[4])
+	})
+}
+
 func findDesignationLadderItem(ladder []*DesignationLadderItem, id string) *DesignationLadderItem {
 	for _, item := range ladder {
 		if item.Designation.ID == id {

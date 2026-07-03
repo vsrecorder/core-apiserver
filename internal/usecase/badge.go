@@ -186,9 +186,9 @@ func (u *Badge) seasonValuesByCriteriaType(
 }
 
 // seasonStreakWeeks は日付の集合(重複・順不同可)から、シーズン内で直近まで継続している
-// 週次記録の連続週数を求める。computeStreakState(badge_evaluation.go)と同じロジックを
+// 週次記録の連続週数を求める。ComputeStreakState(badge_evaluation.go)と同じロジックを
 // 共有し、シーズン内の期間に絞った dates を渡して連続週数だけを取り出す。
 func seasonStreakWeeks(dates []time.Time) int {
-	currentWeeks, _, _, _ := computeStreakState(dates)
+	currentWeeks, _, _, _ := ComputeStreakState(dates)
 	return currentWeeks
 }

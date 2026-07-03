@@ -177,11 +177,13 @@ func (u *BadgeEvaluation) updateStreak(
 	return streak, nil
 }
 
-// computeStreakState は記録日の集合(重複・順不同可)から、週次ストリークの状態
+// ComputeStreakState は記録日の集合(重複・順不同可)から、週次ストリークの状態
 // (連続週数・最長連続週数・現在のストリークで使用済みのフリーズ回数・最終記録週)を
 // ゼロから計算する。updateStreak のような加算方式の差分更新と違い、渡された dates
 // だけから毎回作り直すため、記録削除等で過去の記録が減っても正しい状態に戻せる。
-func computeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, freezeUsedCount int, lastRecordedWeek time.Time) {
+// cmd/repair-streaks のような、既存の user_streaks を全件再計算するツールから
+// 再利用できるようexportしている。
+func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, freezeUsedCount int, lastRecordedWeek time.Time) {
 	if len(dates) == 0 {
 		return 0, 0, 0, time.Time{}
 	}
@@ -335,7 +337,7 @@ func (u *BadgeEvaluation) EvaluateOnRecordDeleted(
 		return err
 	}
 
-	currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := computeStreakState(dates)
+	currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := ComputeStreakState(dates)
 
 	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek, time.Now().Local())
 	return u.userStreakRepo.Save(ctx, streak)

@@ -519,12 +519,6 @@ CREATE TABLE user_designations (
 
 
 
-
-TRUNCATE TABLE user_badges, user_streaks, badge_definitions, designations, user_designations;
-
-
-
-
 -- badge_definitions フェーズ1シード: オンボーディング系(onboarding-xx)
 -- onboarding-00 はデッキ登録等より前に達成される起点のため、連番の先頭として 00 を割り当てる
 INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
@@ -535,10 +529,16 @@ INSERT INTO badge_definitions (id, code, category, name, description, icon_key, 
 
 -- badge_definitions フェーズ1シード: マイルストーン系(milestone-〇〇-xx)
 INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
-('milestone-record-01', 'record_count_3',  'milestone', '駆け出しレコーダー',  '記録数が3に到達した',  'medal', 'record_count', 3, now(), now()),
-('milestone-record-02', 'record_count_15', 'milestone', '常連レコーダー',     '記録数が15に到達した',  'medal', 'record_count', 15, now(), now()),
-('milestone-record-03', 'record_count_30', 'milestone', 'ベテランレコーダー',  '記録数が30に到達した',  'medal', 'record_count', 30, now(), now()),
-('milestone-record-04', 'record_count_50', 'milestone', 'マスターレコーダー',  '記録数が50に到達した', 'medal', 'record_count', 50, now(), now());
+('milestone-record-01', 'record_count_3',  'milestone', '駆け出しユーザー',  '記録数が3に到達した',  'medal', 'record_count', 3, now(), now()),
+('milestone-record-02', 'record_count_15', 'milestone', '常連ユーザー',     '記録数が15に到達した',  'medal', 'record_count', 15, now(), now()),
+('milestone-record-03', 'record_count_30', 'milestone', 'ベテランユーザー',  '記録数が30に到達した',  'medal', 'record_count', 30, now(), now()),
+('milestone-record-04', 'record_count_50', 'milestone', 'マスターユーザー',  '記録数が50に到達した', 'medal', 'record_count', 50, now(), now());
+
+UPDATE badge_definitions SET name = '駆け出しユーザー' WHERE id = 'milestone-record-01';
+UPDATE badge_definitions SET name = '常連ユーザー'     WHERE id = 'milestone-record-02';
+UPDATE badge_definitions SET name = 'ベテランユーザー' WHERE id = 'milestone-record-03';
+UPDATE badge_definitions SET name = 'マスターユーザー' WHERE id = 'milestone-record-04';
+
 
 INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
 ('milestone-deck-01', 'deck_count_3',  'milestone', '駆け出しビルダー',  'デッキコード数が3に到達した',  'medal', 'deck_count', 3,  now(), now()),
@@ -598,6 +598,7 @@ GRANT SELECT ON records               TO grafana;
 GRANT SELECT ON shops                 TO grafana;
 GRANT SELECT ON standard_regulations  TO grafana;
 GRANT SELECT ON users                 TO grafana;
+
 GRANT SELECT ON badge_definitions     TO grafana;
 GRANT SELECT ON user_badges           TO grafana;
 GRANT SELECT ON user_streaks          TO grafana;

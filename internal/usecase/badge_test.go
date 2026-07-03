@@ -76,7 +76,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
-			entity.NewBadgeDefinition("def-record-10", "record_count_10", BadgeCategoryMilestone, "駆け出しレコーダー", "", "", BadgeCriteriaTypeRecordCount, 10, time.Time{}, time.Time{}, now, now),
+			entity.NewBadgeDefinition("def-record-10", "record_count_10", BadgeCategoryMilestone, "駆け出しユーザー", "", "", BadgeCriteriaTypeRecordCount, 10, time.Time{}, time.Time{}, now, now),
 		}
 
 		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
@@ -142,7 +142,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
-			entity.NewBadgeDefinition("def-record-10", "record_count_10", BadgeCategoryMilestone, "駆け出しレコーダー", "", "", BadgeCriteriaTypeRecordCount, 10, time.Time{}, time.Time{}, now, now),
+			entity.NewBadgeDefinition("def-record-10", "record_count_10", BadgeCategoryMilestone, "駆け出しユーザー", "", "", BadgeCriteriaTypeRecordCount, 10, time.Time{}, time.Time{}, now, now),
 		}
 		wantFrom := time.Date(2023, 9, 1, 0, 0, 0, 0, time.Local)
 		wantTo := time.Date(2024, 9, 1, 0, 0, 0, 0, time.Local)

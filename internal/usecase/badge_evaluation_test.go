@@ -440,7 +440,7 @@ func TestBadgeEvaluation_EvaluateOnRecordDeleted(t *testing.T) {
 
 func TestComputeStreakState(t *testing.T) {
 	t.Run("記録が無ければ全てゼロ値", func(t *testing.T) {
-		currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := computeStreakState(nil)
+		currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := ComputeStreakState(nil)
 		require.Equal(t, 0, currentWeeks)
 		require.Equal(t, 0, longestWeeks)
 		require.Equal(t, 0, freezeUsedCount)
@@ -453,7 +453,7 @@ func TestComputeStreakState(t *testing.T) {
 			time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local),
 			time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local),
 		}
-		currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := computeStreakState(dates)
+		currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := ComputeStreakState(dates)
 		require.Equal(t, 3, currentWeeks)
 		require.Equal(t, 3, longestWeeks)
 		require.Equal(t, 0, freezeUsedCount)
@@ -468,7 +468,7 @@ func TestComputeStreakState(t *testing.T) {
 			// フリーズ枠を超えて大きく空白 → リセット
 			time.Date(2026, 7, 6, 0, 0, 0, 0, time.Local),
 		}
-		currentWeeks, longestWeeks, _, _ := computeStreakState(dates)
+		currentWeeks, longestWeeks, _, _ := ComputeStreakState(dates)
 		require.Equal(t, 1, currentWeeks)
 		require.Equal(t, 3, longestWeeks)
 	})

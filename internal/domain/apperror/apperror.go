@@ -22,4 +22,8 @@ var (
 	// ErrUnderMaintenance は依存する外部サイトがメンテナンス中で、
 	// 処理を継続できない場合に返す。HTTP では 503 Service Unavailable に対応する。
 	ErrUnderMaintenance = errors.New("under maintenance")
+
+	// ErrLocked は一定期間内の再変更が禁止されている場合に返す。
+	// HTTP では 409 Conflict に対応する。
+	ErrLocked = errors.New("locked")
 )

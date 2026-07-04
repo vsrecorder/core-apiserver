@@ -77,6 +77,19 @@ var (
 	// ErrDeckCodeHasRecords は紐づく Record があり DeckCode を削除できない場合(409)。
 	ErrDeckCodeHasRecords = New(http.StatusConflict, errors.New("cannot delete deckcode with records"))
 
+	// ErrUserPlayerLocked は紐付けから1ヶ月経過しておらず変更できない場合(409)。
+	ErrUserPlayerLocked = New(http.StatusConflict, errors.New("cannot change player_id within 1 month of linking"))
+
+	// ErrPlayerIdAlreadyLinked は指定された player_id が既に別のユーザーに紐付けられている場合(409)。
+	ErrPlayerIdAlreadyLinked = New(http.StatusConflict, errors.New("this player_id is already linked to another account"))
+
+	// ErrTooManyRequests は短時間に試行が集中し、レート制限に達した場合(429)。
+	ErrTooManyRequests = New(http.StatusTooManyRequests, errors.New("too many requests"))
+
+	// ErrUserPlayerLinkingDisabled はプレイヤーID連携機能が運用者によって
+	// 一時的に無効化されている場合(503)。
+	ErrUserPlayerLinkingDisabled = New(http.StatusServiceUnavailable, errors.New("player id linking is currently disabled"))
+
 	// ErrInternalServerError はサーバ内部エラー(500)。
 	ErrInternalServerError = New(http.StatusInternalServerError, errors.New("internal server error"))
 

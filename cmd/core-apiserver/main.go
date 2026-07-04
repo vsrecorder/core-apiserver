@@ -174,6 +174,7 @@ func main() {
 			infrastructure.NewRecord(db, slog.Default()),
 			infrastructure.NewDeck(db),
 			infrastructure.NewDeckCode(db),
+			infrastructure.NewUserPlayer(db),
 			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
 		),
@@ -217,6 +218,16 @@ func main() {
 		usecase.NewDeckCode(
 			infrastructure.NewDeckCode(db),
 		),
+	).RegisterRoute(relativePath)
+
+	controller.NewUserPlayer(
+		logger,
+		r,
+		usecase.NewUserPlayer(
+			infrastructure.NewUserPlayer(db),
+			infrastructure.NewTransactionManager(db),
+		),
+		os.Getenv("USERS_PLAYERS_LINKING_ENABLED") != "false",
 	).RegisterRoute(relativePath)
 
 	controller.NewRecord(

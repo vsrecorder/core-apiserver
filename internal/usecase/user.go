@@ -66,12 +66,13 @@ type UserInterface interface {
 }
 
 type User struct {
-	repository         repository.UserInterface
-	recordRepository   repository.RecordInterface
-	deckRepository     repository.DeckInterface
-	deckCodeRepository repository.DeckCodeInterface
-	transactionManager repository.TransactionManager
-	badgeEvaluation    BadgeEvaluationInterface
+	repository           repository.UserInterface
+	recordRepository     repository.RecordInterface
+	deckRepository       repository.DeckInterface
+	deckCodeRepository   repository.DeckCodeInterface
+	userPlayerRepository repository.UserPlayerInterface
+	transactionManager   repository.TransactionManager
+	badgeEvaluation      BadgeEvaluationInterface
 }
 
 func NewUser(
@@ -79,10 +80,11 @@ func NewUser(
 	recordRepository repository.RecordInterface,
 	deckRepository repository.DeckInterface,
 	deckCodeRepository repository.DeckCodeInterface,
+	userPlayerRepository repository.UserPlayerInterface,
 	transactionManager repository.TransactionManager,
 	badgeEvaluation BadgeEvaluationInterface,
 ) UserInterface {
-	return &User{repository, recordRepository, deckRepository, deckCodeRepository, transactionManager, badgeEvaluation}
+	return &User{repository, recordRepository, deckRepository, deckCodeRepository, userPlayerRepository, transactionManager, badgeEvaluation}
 }
 
 func (u *User) FindById(
@@ -197,6 +199,18 @@ func (u *User) Delete(
 
 		for _, deckCodeId := range deckCodeIds {
 			if err := u.deckCodeRepository.Delete(ctx, deckCodeId); err != nil {
+				return err
+			}
+		}
+
+		// プレイヤーIDの紐付けは1ユーザーにつき有効な行が最大1件のため、
+		// 存在すればそのまま削除する(無ければ ErrRecordNotFound なので無視する)。
+		userPlayer, err := u.userPlayerRepository.FindByUserId(ctx, id)
+		if err != nil && err != apperror.ErrRecordNotFound {
+			return err
+		}
+		if userPlayer != nil {
+			if err := u.userPlayerRepository.Delete(ctx, userPlayer.ID); err != nil {
 				return err
 			}
 		}

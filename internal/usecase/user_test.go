@@ -20,13 +20,14 @@ func TestUserUsecase(t *testing.T) {
 	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 	mockDeckRepository := mock_repository.NewMockDeckInterface(mockCtrl)
 	mockDeckCodeRepository := mock_repository.NewMockDeckCodeInterface(mockCtrl)
+	mockUserPlayerRepository := mock_repository.NewMockUserPlayerInterface(mockCtrl)
 	mockTransactionManager := mock_repository.NewMockTransactionManager(mockCtrl)
 	mockTransactionManager.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, fn func(context.Context) error) error {
 			return fn(ctx)
 		},
 	).AnyTimes()
-	usecase := NewUser(mockRepository, mockRecordRepository, mockDeckRepository, mockDeckCodeRepository, mockTransactionManager, stubBadgeEvaluation{})
+	usecase := NewUser(mockRepository, mockRecordRepository, mockDeckRepository, mockDeckCodeRepository, mockUserPlayerRepository, mockTransactionManager, stubBadgeEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -34,6 +35,7 @@ func TestUserUsecase(t *testing.T) {
 		mockRecordRepository *mock_repository.MockRecordInterface,
 		mockDeckRepository *mock_repository.MockDeckInterface,
 		mockDeckCodeRepository *mock_repository.MockDeckCodeInterface,
+		mockUserPlayerRepository *mock_repository.MockUserPlayerInterface,
 		usecase UserInterface,
 	){
 		"FindById": test_UserUsecase_FindById,
@@ -42,12 +44,12 @@ func TestUserUsecase(t *testing.T) {
 		"Delete":   test_UserUsecase_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
-			fn(t, mockRepository, mockRecordRepository, mockDeckRepository, mockDeckCodeRepository, usecase)
+			fn(t, mockRepository, mockRecordRepository, mockDeckRepository, mockDeckCodeRepository, mockUserPlayerRepository, usecase)
 		})
 	}
 }
 
-func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, usecase UserInterface) {
+func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -77,7 +79,7 @@ func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 	})
 }
 
-func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, usecase UserInterface) {
+func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
@@ -149,7 +151,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 	})
 }
 
-func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, usecase UserInterface) {
+func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
@@ -217,12 +219,14 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 	})
 }
 
-func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockUserInterface, mockRecordRepository *mock_repository.MockRecordInterface, mockDeckRepository *mock_repository.MockDeckInterface, mockDeckCodeRepository *mock_repository.MockDeckCodeInterface, usecase UserInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockUserInterface, mockRecordRepository *mock_repository.MockRecordInterface, mockDeckRepository *mock_repository.MockDeckInterface, mockDeckCodeRepository *mock_repository.MockDeckCodeInterface, mockUserPlayerRepository *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
+	t.Run("正常系_#01_プレイヤーIDの紐付けがある場合", func(t *testing.T) {
 		id, _ := generateId()
 		recordId, _ := generateId()
 		deckId, _ := generateId()
 		deckCodeId, _ := generateId()
+		userPlayerId, _ := generateId()
+		userPlayer := entity.NewUserPlayer(userPlayerId, time.Now().Local(), id, "1234567890123456")
 
 		mockRecordRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{recordId}, nil)
 		mockRecordRepository.EXPECT().Delete(context.Background(), recordId).Return(nil)
@@ -230,6 +234,22 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 		mockDeckRepository.EXPECT().Delete(context.Background(), deckId).Return(nil)
 		mockDeckCodeRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{deckCodeId}, nil)
 		mockDeckCodeRepository.EXPECT().Delete(context.Background(), deckCodeId).Return(nil)
+		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(userPlayer, nil)
+		mockUserPlayerRepository.EXPECT().Delete(context.Background(), userPlayerId).Return(nil)
+		mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
+
+		err := usecase.Delete(context.Background(), id)
+
+		require.NoError(t, err)
+	})
+
+	t.Run("正常系_#02_プレイヤーIDの紐付けがない場合", func(t *testing.T) {
+		id, _ := generateId()
+
+		mockRecordRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockDeckRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockDeckCodeRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		err := usecase.Delete(context.Background(), id)
@@ -298,12 +318,42 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 		require.Equal(t, err, errors.New(""))
 	})
 
+	t.Run("異常系_プレイヤーIDのID取得に失敗", func(t *testing.T) {
+		id, _ := generateId()
+
+		mockRecordRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockDeckRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockDeckCodeRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(nil, errors.New(""))
+
+		err := usecase.Delete(context.Background(), id)
+
+		require.Equal(t, err, errors.New(""))
+	})
+
+	t.Run("異常系_プレイヤーIDの削除に失敗", func(t *testing.T) {
+		id, _ := generateId()
+		userPlayerId, _ := generateId()
+		userPlayer := entity.NewUserPlayer(userPlayerId, time.Now().Local(), id, "1234567890123456")
+
+		mockRecordRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockDeckRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockDeckCodeRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(userPlayer, nil)
+		mockUserPlayerRepository.EXPECT().Delete(context.Background(), userPlayerId).Return(errors.New(""))
+
+		err := usecase.Delete(context.Background(), id)
+
+		require.Equal(t, err, errors.New(""))
+	})
+
 	t.Run("異常系_ユーザ本体の削除に失敗", func(t *testing.T) {
 		id, _ := generateId()
 
 		mockRecordRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
 		mockDeckRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
 		mockDeckCodeRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)
+		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		err := usecase.Delete(context.Background(), id)

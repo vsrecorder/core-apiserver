@@ -368,3 +368,25 @@ func GetUserUpdateRequest(ctx *gin.Context) dto.UserUpdateRequest {
 
 	return userRequest
 }
+
+func SetUserPlayerCreateRequest(ctx *gin.Context, value dto.UserPlayerCreateRequest) {
+	ctx.Set("user_player_create_request", value)
+}
+
+func GetUserPlayerCreateRequest(ctx *gin.Context) dto.UserPlayerCreateRequest {
+	value, _ := ctx.Get("user_player_create_request")
+	ret, _ := value.(dto.UserPlayerCreateRequest)
+
+	return ret
+}
+
+func SetUserPlayerVerifyRequest(ctx *gin.Context, value dto.UserPlayerVerifyRequest) {
+	ctx.Set("user_player_verify_request", value)
+}
+
+func GetUserPlayerVerifyRequest(ctx *gin.Context) dto.UserPlayerVerifyRequest {
+	value, _ := ctx.Get("user_player_verify_request")
+	ret, _ := value.(dto.UserPlayerVerifyRequest)
+
+	return ret
+}

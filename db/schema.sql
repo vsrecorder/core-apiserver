@@ -219,15 +219,28 @@ CREATE TABLE users (
 CREATE INDEX idx_users_created_at ON users(created_at);
 CREATE INDEX idx_users_deleted_at ON users(deleted_at);
 
+
+
+
+
 CREATE TABLE users_players (
+    id          VARCHAR(26) PRIMARY KEY,
     created_at  TIMESTAMP NOT NULL,
     updated_at  TIMESTAMP NOT NULL,
     deleted_at  TIMESTAMP DEFAULT NULL,
     user_id     VARCHAR(32) NOT NULL,
-    player_id   VARCHAR(16) NOT NULL,
+    player_id   VARCHAR(16) NOT NULL
 );
 
-CREATE UNIQUE INDEX unique_player_users ON player_users (player_id, user_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_users_players_created_at ON users_players(created_at);
+CREATE INDEX idx_users_players_deleted_at ON users_players(deleted_at);
+
+-- 有効な紐付け(deleted_at IS NULL)は user_id / player_id それぞれについて1件のみ
+CREATE UNIQUE INDEX unique_users_players_user_id   ON users_players (user_id)   WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX unique_users_players_player_id ON users_players (player_id) WHERE deleted_at IS NULL;
+
+
+
 
 
 CREATE TABLE environments (
@@ -236,8 +249,6 @@ CREATE TABLE environments (
     from_date  DATE NOT NULL,
     to_date    DATE NOT NULL
 );
-
-update environments set to_date = '2026-09-' where id = 'm6';
 
 INSERT INTO environments VALUES ('m6','ストームエメラルダ','2026-07-31','2026-09-15');
 INSERT INTO environments VALUES ('m5','アビスアイ','2026-05-22','2026-07-30');
@@ -270,6 +281,24 @@ INSERT INTO environments VALUES ('sv1','スカーレットex/バイオレットe
 INSERT INTO environments VALUES ('s12a', 'VSTARユニバース','2022-12-02','2023-01-19');
 INSERT INTO environments VALUES ('s12', 'パラダイムトリガー','2022-10-21','2022-12-01');
 INSERT INTO environments VALUES ('s11a', '白熱のアルカナ','2022-09-02','2022-10-20');
+
+
+
+
+
+CREATE TABLE championship_series (
+    id          VARCHAR(11) PRIMARY KEY,
+    title       VARCHAR(255) NOT NULL,
+    from_date   DATE NOT NULL,
+    to_date     DATE NOT NULL
+);
+
+INSERT INTO championship_series VALUES ('series_2027','チャンピオンシップシリーズ2027','2026-09-01','2027-08-31');
+INSERT INTO championship_series VALUES ('series_2026','チャンピオンシップシリーズ2026','2025-09-01','2026-08-31');
+INSERT INTO championship_series VALUES ('series_2025','チャンピオンシップシリーズ2025','2024-09-01','2025-08-31');
+INSERT INTO championship_series VALUES ('series_2024','チャンピオンシップシリーズ2024','2023-09-01','2024-08-31');
+INSERT INTO championship_series VALUES ('series_2023','チャンピオンシップシリーズ2023','2022-09-01','2023-08-31');
+
 
 
 
@@ -378,6 +407,8 @@ INSERT INTO standard_regulations VALUES ('HIJ', 'H・I・J', '2026-01-23','2027-
 
 
 
+
+
 CREATE TABLE cards (
     id                  INT NOT NULL PRIMARY KEY,
     collection_code     VARCHAR(255) NOT NULL,
@@ -399,6 +430,8 @@ CREATE TABLE cards (
     regulation_mark     VARCHAR(32) NOT NULL
 );
 
+
+
 CREATE TABLE pokemon_cards (
     id                  INT NOT NULL PRIMARY KEY,
     card_name           VARCHAR(512) NOT NULL,
@@ -413,6 +446,8 @@ CREATE TABLE pokemon_sprites (
     name    VARCHAR(256) NOT NULL
 );
 
+
+
 CREATE TABLE match_pokemon_sprites (
     match_id VARCHAR(26) NOT NULL,
     position SMALLINT NOT NULL CHECK (position > 0),
@@ -423,6 +458,7 @@ CREATE TABLE match_pokemon_sprites (
 );
 
 
+
 CREATE TABLE deck_pokemon_sprites (
     deck_id  VARCHAR(26) NOT NULL,
     position SMALLINT NOT NULL CHECK (position > 0),
@@ -431,6 +467,13 @@ CREATE TABLE deck_pokemon_sprites (
     FOREIGN KEY (deck_id)           REFERENCES decks(id),
     FOREIGN KEY (pokemon_sprite_id) REFERENCES pokemon_sprites(id)
 );
+
+
+
+
+
+
+
 
 
 
@@ -617,6 +660,7 @@ GRANT SELECT ON records               TO grafana;
 GRANT SELECT ON shops                 TO grafana;
 GRANT SELECT ON standard_regulations  TO grafana;
 GRANT SELECT ON users                 TO grafana;
+GRANT SELECT ON users_players         TO grafana;
 
 GRANT SELECT ON badge_definitions     TO grafana;
 GRANT SELECT ON user_badges           TO grafana;
@@ -626,10 +670,10 @@ GRANT SELECT ON user_designations     TO grafana;
 
 
 
-
-
-
 GRANT SELECT ON <table_name> TO grafana;
+
+
+
 
 DROP INDEX <index_name>;
 DROP TABLE <table_name>;

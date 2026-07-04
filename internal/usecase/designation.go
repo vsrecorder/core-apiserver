@@ -14,6 +14,12 @@ const (
 	DesignationCriteriaTypeRecord                   = "record"
 	DesignationCriteriaTypeOfficialLeagueRecord     = "official_league_record"
 	DesignationCriteriaTypeOfficialCityLeagueRecord = "official_city_league_record"
+
+	// designationCityLeagueStandaloneThreshold はレギュラー(criteria_type=
+	// official_city_league_record)の「前シーズンに引き続き」という継続条件を
+	// 満たさなくても、今シーズン単独でこの件数以上シティリーグ記録があれば
+	// 達成とみなす閾値。criteria_value(継続条件側の閾値)とは独立した固定値。
+	designationCityLeagueStandaloneThreshold = 2
 )
 
 // DesignationLadderItem は称号のロードマップ表示用に、称号定義へ
@@ -147,9 +153,12 @@ func (u *Designation) GetByUserId(
 // そのため tier 昇順(definitions の並び順)に評価し、最初に条件を満たさなかった時点で
 // 打ち切ることで、途中のティアを飛び越えて到達することを防ぐ。
 //
-// 常連(criteria_type=official_city_league_record)のみ、今シーズンの件数がcriteria_valueを
-// 満たすだけでなく、前シーズンにも同じ件数以上のシティリーグ記録があること(=「前シーズンに
-// 引き続き」の継続条件)を求める特殊なティアなので、previousCityLeagueCount で別途判定する。
+// レギュラー(criteria_type=official_city_league_record)のみ、次のいずれかを満たす
+// 特殊なティアなので、previousCityLeagueCount を使って別途判定する。
+//   - 今シーズン・前シーズンともにcriteria_value以上のシティリーグ記録がある
+//     (=「前シーズンに引き続き」の継続条件)
+//   - 前シーズンの実績を問わず、今シーズン単独でdesignationCityLeagueStandaloneThreshold
+//     件以上のシティリーグ記録がある
 func currentDesignation(
 	definitions []*entity.Designation,
 	values map[string]int,
@@ -162,11 +171,18 @@ func currentDesignation(
 			// 判定ロジックが未実装(=「準備中」)のティアに到達したら打ち切る
 			break
 		}
-		if value < def.CriteriaValue {
-			break
+
+		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueRecord {
+			continuedFromPreviousSeason := value >= def.CriteriaValue && previousCityLeagueCount >= def.CriteriaValue
+			achievedAloneThisSeason := value >= designationCityLeagueStandaloneThreshold
+			if !continuedFromPreviousSeason && !achievedAloneThisSeason {
+				break
+			}
+			current = def
+			continue
 		}
-		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueRecord &&
-			previousCityLeagueCount < def.CriteriaValue {
+
+		if value < def.CriteriaValue {
 			break
 		}
 		current = def

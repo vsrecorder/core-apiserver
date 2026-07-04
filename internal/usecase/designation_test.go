@@ -55,12 +55,13 @@ func threeTierDefinitions(now time.Time) []*entity.Designation {
 	}
 }
 
-// fourTierDefinitions は threeTierDefinitions に、常連(tier4, シティリーグ記録4件。
-// 「前シーズンに引き続き」の継続条件つき=前シーズンも4件以上必要)を加えた4ティア。
+// fourTierDefinitions は threeTierDefinitions に、レギュラー(tier4, シティリーグ記録1件。
+// 「前シーズンに引き続き」の継続条件つき=前シーズンも1件以上必要。ただし今シーズン単独で
+// designationCityLeagueStandaloneThreshold(2)件以上あれば継続条件なしでも達成扱い)を加えた4ティア。
 func fourTierDefinitions(now time.Time) []*entity.Designation {
 	return append(
 		threeTierDefinitions(now),
-		entity.NewDesignation("designation-04", 4, "regular", "🎫", "常連", "", DesignationCriteriaTypeOfficialCityLeagueRecord, 4, now, now),
+		entity.NewDesignation("designation-04", 4, "regular", "🎫", "レギュラー", "", DesignationCriteriaTypeOfficialCityLeagueRecord, 1, now, now),
 	)
 }
 
@@ -138,7 +139,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.Nil(t, view.Current)
 	})
 
-	t.Run("シティリーグ記録数が条件を満たし前シーズンも継続していると常連(tier4)まで到達する", func(t *testing.T) {
+	t.Run("シティリーグ記録数が条件を満たし前シーズンも継続しているとレギュラー(tier4)まで到達する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -147,8 +148,8 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
-		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil) // 今シーズン
-		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil) // 前シーズンも継続
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil) // 今シーズン
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil) // 前シーズンも継続
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -159,11 +160,11 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		item04 := findDesignationLadderItem(view.Ladder, "designation-04")
 		require.NotNil(t, item04)
 		require.True(t, item04.Achieved)
-		require.Equal(t, 4, item04.CurrentValue)
-		require.Equal(t, 4, item04.PreviousValue)
+		require.Equal(t, 1, item04.CurrentValue)
+		require.Equal(t, 1, item04.PreviousValue)
 	})
 
-	t.Run("シティリーグ記録数が不足していると常連(tier4)には到達しない", func(t *testing.T) {
+	t.Run("前シーズンの実績が無くても今シーズン単独でシティリーグ記録が2件以上あればレギュラー(tier4)に到達する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -172,8 +173,32 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
-		// トレーナーズリーグの記録はあるが、シティリーグ単独では3件しかない
-		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(3, nil).Times(2)
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(2, nil) // 今シーズン単独で2件
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil) // 前シーズンは無記録
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-04", view.Current.ID)
+
+		item04 := findDesignationLadderItem(view.Ladder, "designation-04")
+		require.NotNil(t, item04)
+		require.True(t, item04.Achieved)
+		require.Equal(t, 2, item04.CurrentValue)
+		require.Equal(t, 0, item04.PreviousValue)
+	})
+
+	t.Run("シティリーグ記録が無いとレギュラー(tier4)には到達しない", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -184,11 +209,11 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		item04 := findDesignationLadderItem(view.Ladder, "designation-04")
 		require.NotNil(t, item04)
 		require.False(t, item04.Achieved)
-		require.Equal(t, 3, item04.CurrentValue)
-		require.Equal(t, 3, item04.PreviousValue)
+		require.Equal(t, 0, item04.CurrentValue)
+		require.Equal(t, 0, item04.PreviousValue)
 	})
 
-	t.Run("今シーズンの記録数は十分でも前シーズンに記録が無ければ常連(tier4)には到達しない(継続条件)", func(t *testing.T) {
+	t.Run("今シーズンの記録が1件のみで前シーズンに記録が無ければレギュラー(tier4)には到達しない(継続条件も単独条件も未達)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -197,7 +222,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
-		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil) // 今シーズンは十分
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil) // 今シーズンは1件のみ
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil) // 前シーズンは無記録
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
@@ -210,7 +235,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item04)
 		require.False(t, item04.Achieved)
 		// CurrentValue は今シーズンの実際の集計値であり、継続条件の成否とは独立して表示される
-		require.Equal(t, 4, item04.CurrentValue)
+		require.Equal(t, 1, item04.CurrentValue)
 		require.Equal(t, 0, item04.PreviousValue)
 	})
 }

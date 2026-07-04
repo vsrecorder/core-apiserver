@@ -360,12 +360,20 @@ CREATE TABLE championsleague_schedules (
     to_date     DATE NOT NULL
 );
 
-INSERT INTO championsleague_schedules VALUES ('pjcs2026','ポケモンジャパンチャンピオンシップス2026','2026-06-06','2026-06-07');
-INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_may','チャンピオンズリーグ2026 愛知 May','2026-05-09','2026-05-10');
-INSERT INTO championsleague_schedules VALUES ('cl2026_osaka','チャンピオンズリーグ2026 大阪','2026-03-28','2026-03-29');
-INSERT INTO championsleague_schedules VALUES ('cl2026_fukuoka','チャンピオンズリーグ2026 福岡','2026-02-21','2026-02-22');
-INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_dec','チャンピオンズリーグ2026 愛知 Dec.','2025-12-06','2025-12-07');
-INSERT INTO championsleague_schedules VALUES ('cl2026_yokohama','チャンピオンズリーグ2026 横浜','2025-09-20','2025-09-21');
+INSERT INTO championsleague_schedules VALUES ('pjcs2026',        'ポケモンジャパンチャンピオンシップス2026','2026-06-06','2026-06-07');
+INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_may','チャンピオンズリーグ2026 愛知 May',     '2026-05-09','2026-05-10');
+INSERT INTO championsleague_schedules VALUES ('cl2026_osaka',    'チャンピオンズリーグ2026 大阪',         '2026-03-28','2026-03-29');
+INSERT INTO championsleague_schedules VALUES ('cl2026_fukuoka',  'チャンピオンズリーグ2026 福岡',         '2026-02-21','2026-02-22');
+INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_dec','チャンピオンズリーグ2026 愛知 Dec.',    '2025-12-06','2025-12-07');
+INSERT INTO championsleague_schedules VALUES ('cl2026_yokohama', 'チャンピオンズリーグ2026 横浜',         '2025-09-20','2025-09-21');
+
+
+INSERT INTO championsleague_schedules VALUES ('pjcs2025',      'ポケモンジャパンチャンピオンシップス2025','2025-06-21','2025-06-22');
+INSERT INTO championsleague_schedules VALUES ('cl2025_aichi',  'チャンピオンズリーグ2025 愛知 ',        '2025-05-03','2025-05-04');
+INSERT INTO championsleague_schedules VALUES ('cl2025_miyagi', 'チャンピオンズリーグ2025 宮城',         '2025-04-05','2025-04-06');
+INSERT INTO championsleague_schedules VALUES ('cl2025_fukuoka','チャンピオンズリーグ2025 福岡',         '2025-02-15','2025-02-16');
+INSERT INTO championsleague_schedules VALUES ('cl2025_osaka',  'チャンピオンズリーグ2025 大阪',         '2024-12-21','2024-12-22');
+INSERT INTO championsleague_schedules VALUES ('cl2025_tokyo',  'チャンピオンズリーグ2025 東京',         '2024-09-22','2024-09-23');
 
 
 
@@ -608,8 +616,8 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 ('designation-01', 1,  'beginner',     '🌱', '駆け出し',   '公式イベント/Tonamel/記入形式、いずれかの記録を作成した', 'record', 1, now(), now()),
 ('designation-02', 2,  'novice',       '🔰', '見習い',     '称号：【🌱 駆け出し】を持っており、公式イベント/Tonamel/記入形式、いずれかの記録を5つ以上作成した', 'record', 5, now(), now()),
 ('designation-03', 3,  'independent',  '👍', '一人前',     '称号：【🔰 見習い】を持っており、トレーナーズリーグかシティリーグの記録を作成した', 'official_league_record', 1, now(), now()),
-('designation-04', 4,  'regular',      '🎫', 'レギュラー',  '称号：【👍 一人前】を持っており、前シーズンに引き続き、今シーズンでもシティリーグの記録を作成した', 'official_city_league_record', 1, now(), now()),
-('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '（準備中）称号：【🎫 常連】を持っており、今シーズン1回以上、シティリーグで入賞した', 'unimplemented', 0, now(), now()),
+('designation-04', 4,  'regular',      '🎫', 'レギュラー',  '称号：【👍 一人前】を持っており、前シーズンに引き続き今シーズンでもシティリーグの記録をしているか、今シーズンでシティリーグの記録を2つ以上作成した', 'official_city_league_record', 1, now(), now()),
+('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '（準備中）称号：【🎫 レギュラー】を持っており、今シーズン1回以上、シティリーグで入賞した', 'unimplemented', 0, now(), now()),
 ('designation-06', 6,  'expert',       '🎖️', '熟練者',     '（準備中）称号：【💪 ベテラン】を持っており、今シーズン1回以上、シティリーグで決勝トーナメントに進出した', 'unimplemented', 0, now(), now()),
 ('designation-07', 7,  'master',       '🏆', '達人',       '準備中', 'unimplemented', 0, now(), now()),
 ('designation-08', 8,  'grandmaster',  '👑', '名人',       '準備中', 'unimplemented', 0, now(), now()),
@@ -628,7 +636,7 @@ UPDATE designations SET description = '称号：【🌱 駆け出し】を持っ
 
 UPDATE designations SET description = '称号：【🔰 見習い】を持っており、トレーナーズリーグかシティリーグの記録を作成した'                     WHERE id = 'designation-03';
 UPDATE designations SET description = '称号：【👍 一人前】を持っており、前シーズンに引き続き、今シーズンでもシティリーグの記録を作成した'        WHERE id = 'designation-04';
-UPDATE designations SET description = '（準備中）称号：【🎫 常連】を持っており、今シーズン1回以上、シティリーグで入賞した'                    WHERE id = 'designation-05';
+UPDATE designations SET description = '（準備中）称号：【🎫 レギュラー】を持っており、今シーズン1回以上、シティリーグで入賞した'               WHERE id = 'designation-05';
 UPDATE designations SET description = '（準備中）称号：【💪 ベテラン】を持っており、今シーズン1回以上、シティリーグで決勝トーナメントに進出した'  WHERE id = 'designation-06';
 
 UPDATE designations SET name = 'レギュラー' WHERE id = 'designation-04';
@@ -641,6 +649,10 @@ UPDATE designations SET criteria_value = 1 WHERE id = 'designation-03';
 UPDATE designations SET criteria_value = 1 WHERE id = 'designation-04';
 UPDATE designations SET criteria_value = 0 WHERE id = 'designation-05';
 UPDATE designations SET criteria_value = 0 WHERE id = 'designation-06';
+
+-- レギュラーの達成条件に「前シーズンからの継続」に加え「今シーズン単独でシティリーグ記録2つ以上」の
+-- 代替条件を追加(判定ロジックは internal/usecase/designation.go の currentDesignation で実装)。
+UPDATE designations SET description = '称号：【👍 一人前】を持っており、前シーズンに引き続き今シーズンでもシティリーグの記録をしているか、今シーズンでシティリーグの記録を2つ以上作成した' WHERE id = 'designation-04';
 
 
 

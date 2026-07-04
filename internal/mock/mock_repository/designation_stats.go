@@ -71,36 +71,6 @@ func (mr *MockDesignationStatsInterfaceMockRecorder) CountCityLeagueRecordsGroup
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountCityLeagueRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountCityLeagueRecordsGroupByUserId), ctx, fromDate, toDate)
 }
 
-// CountGymBattleRecordsByUserId mocks base method.
-func (m *MockDesignationStatsInterface) CountGymBattleRecordsByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) (int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountGymBattleRecordsByUserId", ctx, userId, fromDate, toDate)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CountGymBattleRecordsByUserId indicates an expected call of CountGymBattleRecordsByUserId.
-func (mr *MockDesignationStatsInterfaceMockRecorder) CountGymBattleRecordsByUserId(ctx, userId, fromDate, toDate any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountGymBattleRecordsByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountGymBattleRecordsByUserId), ctx, userId, fromDate, toDate)
-}
-
-// CountGymBattleRecordsGroupByUserId mocks base method.
-func (m *MockDesignationStatsInterface) CountGymBattleRecordsGroupByUserId(ctx context.Context, fromDate, toDate time.Time) (map[string]int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountGymBattleRecordsGroupByUserId", ctx, fromDate, toDate)
-	ret0, _ := ret[0].(map[string]int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CountGymBattleRecordsGroupByUserId indicates an expected call of CountGymBattleRecordsGroupByUserId.
-func (mr *MockDesignationStatsInterfaceMockRecorder) CountGymBattleRecordsGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountGymBattleRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountGymBattleRecordsGroupByUserId), ctx, fromDate, toDate)
-}
-
 // CountLeagueRecordsByUserId mocks base method.
 func (m *MockDesignationStatsInterface) CountLeagueRecordsByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) (int, error) {
 	m.ctrl.T.Helper()
@@ -129,4 +99,34 @@ func (m *MockDesignationStatsInterface) CountLeagueRecordsGroupByUserId(ctx cont
 func (mr *MockDesignationStatsInterfaceMockRecorder) CountLeagueRecordsGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountLeagueRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountLeagueRecordsGroupByUserId), ctx, fromDate, toDate)
+}
+
+// CountRecordsByUserId mocks base method.
+func (m *MockDesignationStatsInterface) CountRecordsByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountRecordsByUserId", ctx, userId, fromDate, toDate)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountRecordsByUserId indicates an expected call of CountRecordsByUserId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) CountRecordsByUserId(ctx, userId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountRecordsByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountRecordsByUserId), ctx, userId, fromDate, toDate)
+}
+
+// CountRecordsGroupByUserId mocks base method.
+func (m *MockDesignationStatsInterface) CountRecordsGroupByUserId(ctx context.Context, fromDate, toDate time.Time) (map[string]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountRecordsGroupByUserId", ctx, fromDate, toDate)
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountRecordsGroupByUserId indicates an expected call of CountRecordsGroupByUserId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) CountRecordsGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountRecordsGroupByUserId), ctx, fromDate, toDate)
 }

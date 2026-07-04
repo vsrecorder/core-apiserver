@@ -9,7 +9,9 @@ import (
 )
 
 const (
-	DesignationCriteriaTypeOfficialGymBattleRecord  = "official_gym_battle_record"
+	// DesignationCriteriaTypeRecord は、公式イベント・Tonamelイベント・記入形式のいずれで
+	// あるかを問わない、記録全体の件数を条件とするティア(駆け出し・見習い)に使う。
+	DesignationCriteriaTypeRecord                   = "record"
 	DesignationCriteriaTypeOfficialLeagueRecord     = "official_league_record"
 	DesignationCriteriaTypeOfficialCityLeagueRecord = "official_city_league_record"
 )
@@ -139,7 +141,7 @@ func (u *Designation) GetByUserId(
 // currentDesignation は集計値(criteria_type別)から、到達している最高ティアの称号を返す。
 // 称号は一本道のランクであり、各ティアの説明文が示す通り「ひとつ前のティアの条件を
 // 満たした上で、さらに固有の条件を満たす」という累積構造になっている
-// (例: 見習いはジムバトル5件、一人前はジムバトル5件+リーグ記録)。
+// (例: 見習いは記録3件、一人前は記録3件+リーグ記録)。
 // そのため tier 昇順(definitions の並び順)に評価し、最初に条件を満たさなかった時点で
 // 打ち切ることで、途中のティアを飛び越えて到達することを防ぐ。
 //
@@ -185,7 +187,7 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
-	gymBattleCounts, err := u.designationStatsRepo.CountGymBattleRecordsGroupByUserId(ctx, fromDate, toDate)
+	recordCounts, err := u.designationStatsRepo.CountRecordsGroupByUserId(ctx, fromDate, toDate)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +215,7 @@ func (u *Designation) GetRankStats(
 	// いずれかの記録を持つユーザーのみが称号判定の対象になりうる(記録が全く無ければ
 	// 必ず tier=0 のため、集計に含める意味が無い)。
 	userIds := make(map[string]struct{})
-	for userId := range gymBattleCounts {
+	for userId := range recordCounts {
 		userIds[userId] = struct{}{}
 	}
 	for userId := range leagueCounts {
@@ -227,7 +229,7 @@ func (u *Designation) GetRankStats(
 	totalUsers := 0
 	for userId := range userIds {
 		values := map[string]int{
-			DesignationCriteriaTypeOfficialGymBattleRecord:  gymBattleCounts[userId],
+			DesignationCriteriaTypeRecord:                   recordCounts[userId],
 			DesignationCriteriaTypeOfficialLeagueRecord:     leagueCounts[userId],
 			DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCounts[userId],
 		}
@@ -268,7 +270,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 		return nil, err
 	}
 
-	gymBattleCount, err := u.designationStatsRepo.CountGymBattleRecordsByUserId(ctx, userId, fromDate, toDate)
+	recordCount, err := u.designationStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +286,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 	}
 
 	return map[string]int{
-		DesignationCriteriaTypeOfficialGymBattleRecord:  gymBattleCount,
+		DesignationCriteriaTypeRecord:                   recordCount,
 		DesignationCriteriaTypeOfficialLeagueRecord:     leagueCount,
 		DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCount,
 	}, nil

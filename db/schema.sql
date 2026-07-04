@@ -561,16 +561,24 @@ INSERT INTO badge_definitions (id, code, category, name, description, icon_key, 
 
 
 INSERT INTO designations (id, tier, code, emoji, name, description, criteria_type, criteria_value, created_at, updated_at) VALUES
-('designation-01', 1,  'beginner',     '🌱', '駆け出し',   'ジムバトルの記録を作成した', 'official_gym_battle_record', 1, now(), now()),
-('designation-02', 2,  'novice',       '🔰', '見習い',     '称号：【🌱 駆け出し】を持っており、ジムバトルの記録を3つ以上作成した', 'official_gym_battle_record', 3, now(), now()),
+('designation-01', 1,  'beginner',     '🌱', '駆け出し',   '公式イベント/Tonamel/記入形式、いずれかの記録を作成した', 'record', 1, now(), now()),
+('designation-02', 2,  'novice',       '🔰', '見習い',     '称号：【🌱 駆け出し】を持っており、公式イベント/Tonamel/記入形式、いずれかの記録を5つ以上作成した', 'record', 5, now(), now()),
 ('designation-03', 3,  'independent',  '👍', '一人前',     '称号：【🔰 見習い】を持っており、トレーナーズリーグかシティリーグの記録を作成した', 'official_league_record', 1, now(), now()),
-('designation-04', 4,  'regular',      '🎫', 'レギュラー',       '称号：【👍 一人前】を持っており、前シーズンに引き続き、今シーズンでもシティリーグの記録を作成した', 'official_city_league_record', 1, now(), now()),
+('designation-04', 4,  'regular',      '🎫', 'レギュラー',  '称号：【👍 一人前】を持っており、前シーズンに引き続き、今シーズンでもシティリーグの記録を作成した', 'official_city_league_record', 1, now(), now()),
 ('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '（準備中）称号：【🎫 常連】を持っており、今シーズン1回以上、シティリーグで入賞した', 'unimplemented', 0, now(), now()),
 ('designation-06', 6,  'expert',       '🎖️', '熟練者',     '（準備中）称号：【💪 ベテラン】を持っており、今シーズン1回以上、シティリーグで決勝トーナメントに進出した', 'unimplemented', 0, now(), now()),
 ('designation-07', 7,  'master',       '🏆', '達人',       '準備中', 'unimplemented', 0, now(), now()),
 ('designation-08', 8,  'grandmaster',  '👑', '名人',       '準備中', 'unimplemented', 0, now(), now()),
 ('designation-09', 9,  'legend',       '💎', 'レジェンド', '準備中', 'unimplemented', 0, now(), now()),
 ('designation-10', 10, 'hall_of_fame', '🏛️', '殿堂入り',   '準備中', 'unimplemented', 0, now(), now());
+
+
+
+
+UPDATE designations SET description = '公式イベント/Tonamel/記入形式、いずれかの記録を作成した',                                     criteria_type = 'record'                    WHERE id = 'designation-01';
+UPDATE designations SET description = '称号：【🌱 駆け出し】を持っており、公式イベント/Tonamel/記入形式、いずれかの記録を5つ以上作成した', criteria_type = 'record', criteria_value = 5 WHERE id = 'designation-02';
+
+
 
 
 

@@ -153,6 +153,9 @@ func extractOGP(r io.Reader) (title, description, image string, err error) {
 		}
 	}
 
+	// タイトル末尾の " - Tonamel" を除去する
+	title = strings.TrimSuffix(title, " - Tonamel")
+
 	// フォールバック: og:description → twitter:description → name=description
 	if description == "" {
 		if twitterDescription != "" {

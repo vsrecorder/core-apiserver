@@ -9,11 +9,6 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
-// gymBattleTypeId は official_events.type_id のうち「ジムバトル」を含む区分。
-// type_id=4 は他の区分(MEGAウインターリーグ等)も混在するため、title に「ジムバトル」を
-// 含むかどうかも合わせて判定する。webapp側の officialEventHelpers.ts と同じ判定条件。
-const gymBattleTypeId = 4
-
 // cityLeagueTypeId・trainersLeagueTypeId は official_events.type_id のうち
 // シティリーグ・トレーナーズリーグを表す区分(webapp側の officialEventHelpers.ts と同じ判定条件)。
 const (
@@ -31,7 +26,7 @@ func NewDesignationStats(
 	return &DesignationStats{db}
 }
 
-func (i *DesignationStats) CountGymBattleRecordsByUserId(
+func (i *DesignationStats) CountRecordsByUserId(
 	ctx context.Context,
 	userId string,
 	fromDate time.Time,
@@ -39,17 +34,12 @@ func (i *DesignationStats) CountGymBattleRecordsByUserId(
 ) (int, error) {
 	var count int64
 
-	query := i.db.Table("records").
-		Joins("JOIN official_events ON official_events.id = records.official_event_id").
-		Where(
-			"records.user_id = ? AND records.deleted_at IS NULL AND official_events.type_id = ? AND official_events.title LIKE ?",
-			userId, gymBattleTypeId, "%ジムバトル%",
-		)
+	query := i.db.Table("records").Where("user_id = ? AND deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
-		query = query.Where("records.event_date >= ?", fromDate)
+		query = query.Where("event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("records.event_date < ?", toDate)
+		query = query.Where("event_date < ?", toDate)
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
@@ -136,25 +126,21 @@ func scanUserRecordCounts(query *gorm.DB) (map[string]int, error) {
 	return counts, nil
 }
 
-func (i *DesignationStats) CountGymBattleRecordsGroupByUserId(
+func (i *DesignationStats) CountRecordsGroupByUserId(
 	ctx context.Context,
 	fromDate time.Time,
 	toDate time.Time,
 ) (map[string]int, error) {
 	query := i.db.Table("records").
-		Select("records.user_id AS user_id, COUNT(*) AS count").
-		Joins("JOIN official_events ON official_events.id = records.official_event_id").
-		Where(
-			"records.deleted_at IS NULL AND official_events.type_id = ? AND official_events.title LIKE ?",
-			gymBattleTypeId, "%ジムバトル%",
-		)
+		Select("user_id AS user_id, COUNT(*) AS count").
+		Where("deleted_at IS NULL")
 	if !fromDate.IsZero() {
-		query = query.Where("records.event_date >= ?", fromDate)
+		query = query.Where("event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("records.event_date < ?", toDate)
+		query = query.Where("event_date < ?", toDate)
 	}
-	query = query.Group("records.user_id")
+	query = query.Group("user_id")
 
 	return scanUserRecordCounts(query)
 }

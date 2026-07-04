@@ -28,7 +28,7 @@ func test_TonamelEventInfrastructure_FindById(t *testing.T) {
 	t.Run("正常系_#01", func(t *testing.T) {
 
 		id := "OakZc"
-		title := "第23回 ACEカップ～FINAL～ - Tonamel"
+		title := "第23回 ACEカップ～FINAL～"
 
 		res, err := r.FindById(context.Background(), id)
 

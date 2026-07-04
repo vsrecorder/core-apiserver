@@ -24,12 +24,12 @@ func newDesignationTestUsecase(mockCtrl *gomock.Controller) (
 	return u, designationRepo, designationStatsRepo
 }
 
-// threeTierDefinitions は 駆け出し(tier1, ジムバトル1件)・見習い(tier2, ジムバトル5件)・
+// threeTierDefinitions は 駆け出し(tier1, 記録1件)・見習い(tier2, 記録5件)・
 // 一人前(tier3, 見習いの条件+リーグ記録)という累積構造を再現した3ティア。
 func threeTierDefinitions(now time.Time) []*entity.Designation {
 	return []*entity.Designation{
-		entity.NewDesignation("designation-01", 1, "beginner", "🌱", "駆け出し", "", DesignationCriteriaTypeOfficialGymBattleRecord, 1, now, now),
-		entity.NewDesignation("designation-02", 2, "novice", "🔰", "見習い", "", DesignationCriteriaTypeOfficialGymBattleRecord, 5, now, now),
+		entity.NewDesignation("designation-01", 1, "beginner", "🌱", "駆け出し", "", DesignationCriteriaTypeRecord, 1, now, now),
+		entity.NewDesignation("designation-02", 2, "novice", "🔰", "見習い", "", DesignationCriteriaTypeRecord, 5, now, now),
 		entity.NewDesignation("designation-03", 3, "independent", "👍", "一人前", "", DesignationCriteriaTypeOfficialLeagueRecord, 1, now, now),
 	}
 }
@@ -50,7 +50,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
-		designationStatsRepo.EXPECT().CountGymBattleRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil) // 今シーズン
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil) // 前シーズン(常連の継続条件判定用)
@@ -81,7 +81,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
 		// 新シーズンでまだ何も記録していない
-		designationStatsRepo.EXPECT().CountGymBattleRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil) // 今シーズン
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil) // 前シーズン
@@ -104,7 +104,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 			entity.NewDesignation("designation-04", 4, "regular", "🎫", "常連", "", "unimplemented", 0, now, now),
 		}
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		designationStatsRepo.EXPECT().CountGymBattleRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(999, nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(999, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(999, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(999, nil).Times(2)
 
@@ -120,7 +120,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
-		designationStatsRepo.EXPECT().CountGymBattleRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil) // 今シーズン
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil) // 前シーズンも継続
@@ -144,7 +144,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
-		designationStatsRepo.EXPECT().CountGymBattleRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		// トレーナーズリーグの記録はあるが、シティリーグ単独では3件しかない
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(3, nil).Times(2)
@@ -168,7 +168,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
-		designationStatsRepo.EXPECT().CountGymBattleRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil) // 今シーズンは十分
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil) // 前シーズンは無記録
@@ -196,11 +196,11 @@ func TestDesignation_GetRankStats(t *testing.T) {
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
 
-		// user-1: ジムバトル5件・リーグ0件・シティリーグ0件 -> tier2(見習い)
-		// user-2: ジムバトル5件・リーグ1件・シティリーグ4件(前シーズンも4件で継続) -> tier4(常連)
-		// user-3: リーグ記録のみ1件(ジムバトル0件) -> 一つ目の条件(ジムバトル1件)すら
+		// user-1: 記録5件・リーグ0件・シティリーグ0件 -> tier2(見習い)
+		// user-2: 記録5件・リーグ1件・シティリーグ4件(前シーズンも4件で継続) -> tier4(常連)
+		// user-3: リーグ記録のみ1件(記録0件) -> 一つ目の条件(記録1件)すら
 		//         満たさないため tier0(称号なし、集計対象外)
-		designationStatsRepo.EXPECT().CountGymBattleRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+		designationStatsRepo.EXPECT().CountRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(map[string]int{"user-1": 5, "user-2": 5}, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(map[string]int{"user-2": 1, "user-3": 1}, nil)

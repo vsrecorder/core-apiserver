@@ -253,6 +253,37 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, awarded)
 	})
+
+	t.Run("backfill等で過去日のrecordを再生した場合、achieved_atはevent_dateになり実行時刻にならない", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+
+		now := time.Now()
+		pastEventDate := time.Date(2020, 1, 15, 0, 0, 0, 0, time.Local)
+		definitions := []*entity.BadgeDefinition{
+			entity.NewBadgeDefinition("def-first-record", "first_record", "onboarding", "初記録", "", "", BadgeCriteriaTypeRecordCount, 1, time.Time{}, time.Time{}, now, now),
+		}
+
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
+		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+
+		userBadgeRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, ub *entity.UserBadge) error {
+				require.True(t, ub.AchievedAt.Equal(pastEventDate))
+				return nil
+			},
+		).Times(1)
+
+		// created_at は「今backfillを実行した時刻」相当だが、achieved_atは実際の対戦日(event_date)を採用すべき
+		record := entity.NewRecord("record-1", now, 0, "", "", "", "user-1", "", "", pastEventDate, false, "", "")
+
+		_, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
+		require.NoError(t, err)
+	})
 }
 
 func TestBadgeEvaluation_EvaluateOnMatchCreated(t *testing.T) {
@@ -358,7 +389,7 @@ func TestBadgeEvaluation_EvaluateOnUserCreated(t *testing.T) {
 			},
 		).Times(1)
 
-		awarded, err := u.EvaluateOnUserCreated(context.Background(), "user-1")
+		awarded, err := u.EvaluateOnUserCreated(context.Background(), "user-1", now)
 
 		require.NoError(t, err)
 		require.Len(t, awarded, 1)
@@ -382,7 +413,7 @@ func TestBadgeEvaluation_EvaluateOnUserCreated(t *testing.T) {
 		)
 		// 既に獲得済みなので userBadgeRepo.Save は呼ばれない
 
-		awarded, err := u.EvaluateOnUserCreated(context.Background(), "user-1")
+		awarded, err := u.EvaluateOnUserCreated(context.Background(), "user-1", now)
 
 		require.NoError(t, err)
 		require.Empty(t, awarded)

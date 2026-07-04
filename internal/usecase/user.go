@@ -122,7 +122,7 @@ func (u *User) Create(
 		return nil, err
 	}
 
-	if _, err := u.badgeEvaluation.EvaluateOnUserCreated(ctx, user.ID); err != nil {
+	if _, err := u.badgeEvaluation.EvaluateOnUserCreated(ctx, user.ID, user.CreatedAt); err != nil {
 		return nil, err
 	}
 

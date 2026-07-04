@@ -12,6 +12,7 @@ package mock_usecase
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	gomock "go.uber.org/mock/gomock"
@@ -101,16 +102,16 @@ func (mr *MockBadgeEvaluationInterfaceMockRecorder) EvaluateOnRecordDeleted(ctx,
 }
 
 // EvaluateOnUserCreated mocks base method.
-func (m *MockBadgeEvaluationInterface) EvaluateOnUserCreated(ctx context.Context, userId string) ([]*entity.UserBadge, error) {
+func (m *MockBadgeEvaluationInterface) EvaluateOnUserCreated(ctx context.Context, userId string, createdAt time.Time) ([]*entity.UserBadge, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EvaluateOnUserCreated", ctx, userId)
+	ret := m.ctrl.Call(m, "EvaluateOnUserCreated", ctx, userId, createdAt)
 	ret0, _ := ret[0].([]*entity.UserBadge)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EvaluateOnUserCreated indicates an expected call of EvaluateOnUserCreated.
-func (mr *MockBadgeEvaluationInterfaceMockRecorder) EvaluateOnUserCreated(ctx, userId any) *gomock.Call {
+func (mr *MockBadgeEvaluationInterfaceMockRecorder) EvaluateOnUserCreated(ctx, userId, createdAt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnUserCreated", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).EvaluateOnUserCreated), ctx, userId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnUserCreated", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).EvaluateOnUserCreated), ctx, userId, createdAt)
 }

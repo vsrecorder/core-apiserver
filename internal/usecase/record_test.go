@@ -46,6 +46,7 @@ func (stubBadgeEvaluation) EvaluateOnDeckCreated(
 func (stubBadgeEvaluation) EvaluateOnUserCreated(
 	ctx context.Context,
 	userId string,
+	createdAt time.Time,
 ) ([]*entity.UserBadge, error) {
 	return nil, nil
 }

@@ -9,9 +9,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
@@ -118,15 +120,34 @@ func backfillUser(
 	badgeEvaluation usecase.BadgeEvaluationInterface,
 	userId string,
 ) error {
-	if _, err := badgeEvaluation.EvaluateOnUserCreated(ctx, userId); err != nil {
-		return err
-	}
-
 	var deckModels []*model.Deck
 	if tx := db.Where("user_id = ? AND deleted_at IS NULL", userId).
 		Order("created_at ASC").
 		Find(&deckModels); tx.Error != nil {
 		return tx.Error
+	}
+
+	var recordModels []*model.Record
+	if tx := db.Where("user_id = ? AND deleted_at IS NULL", userId).
+		Order("event_date ASC NULLS FIRST, created_at ASC").
+		Find(&recordModels); tx.Error != nil {
+		return tx.Error
+	}
+
+	var matchModels []*model.Match
+	if tx := db.Where("user_id = ? AND deleted_at IS NULL", userId).
+		Order("created_at ASC").
+		Find(&matchModels); tx.Error != nil {
+		return tx.Error
+	}
+
+	userCreatedAt, err := userCreatedAtForBackfill(db, userId, deckModels, recordModels, matchModels)
+	if err != nil {
+		return err
+	}
+
+	if _, err := badgeEvaluation.EvaluateOnUserCreated(ctx, userId, userCreatedAt); err != nil {
+		return err
 	}
 
 	for _, m := range deckModels {
@@ -144,13 +165,6 @@ func backfillUser(
 		if _, err := badgeEvaluation.EvaluateOnDeckCreated(ctx, userId, deck); err != nil {
 			return err
 		}
-	}
-
-	var recordModels []*model.Record
-	if tx := db.Where("user_id = ? AND deleted_at IS NULL", userId).
-		Order("event_date ASC NULLS FIRST, created_at ASC").
-		Find(&recordModels); tx.Error != nil {
-		return tx.Error
 	}
 
 	for _, m := range recordModels {
@@ -173,13 +187,6 @@ func backfillUser(
 		if _, err := badgeEvaluation.EvaluateOnRecordCreated(ctx, userId, record); err != nil {
 			return err
 		}
-	}
-
-	var matchModels []*model.Match
-	if tx := db.Where("user_id = ? AND deleted_at IS NULL", userId).
-		Order("created_at ASC").
-		Find(&matchModels); tx.Error != nil {
-		return tx.Error
 	}
 
 	for _, m := range matchModels {
@@ -213,4 +220,45 @@ func backfillUser(
 	slog.Default().Info("backfilled user", "user_id", userId, "decks", len(deckModels), "records", len(recordModels), "matches", len(matchModels))
 
 	return nil
+}
+
+// userCreatedAtForBackfill はユーザーの「ユーザ登録」バッジの達成日として使う実際の登録日時を返す。
+// users テーブルに行が無い場合(削除済み等)は、決め手として残っているdecks/records/matchesの
+// うち最も古い作成日時で代用する。それも無ければ現在時刻にフォールバックする。
+func userCreatedAtForBackfill(
+	db *gorm.DB,
+	userId string,
+	deckModels []*model.Deck,
+	recordModels []*model.Record,
+	matchModels []*model.Match,
+) (time.Time, error) {
+	var userModel model.User
+	tx := db.Where("id = ?", userId).First(&userModel)
+	if tx.Error == nil {
+		return userModel.CreatedAt, nil
+	}
+	if !errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+		return time.Time{}, tx.Error
+	}
+
+	earliest := time.Time{}
+	consider := func(t time.Time) {
+		if earliest.IsZero() || t.Before(earliest) {
+			earliest = t
+		}
+	}
+	if len(deckModels) > 0 {
+		consider(deckModels[0].CreatedAt)
+	}
+	if len(recordModels) > 0 {
+		consider(recordModels[0].CreatedAt)
+	}
+	if len(matchModels) > 0 {
+		consider(matchModels[0].CreatedAt)
+	}
+	if earliest.IsZero() {
+		earliest = time.Now().Local()
+	}
+
+	return earliest, nil
 }

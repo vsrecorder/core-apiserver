@@ -60,9 +60,12 @@ type BadgeEvaluationInterface interface {
 	) ([]*entity.UserBadge, error)
 
 	// EvaluateOnUserCreated はユーザー登録時、サインアップ系バッジを判定する。
+	// createdAt はユーザーの実際の登録日時(遡及バックフィル時は過去日、通常登録時は現在時刻)で、
+	// 「達成日」として user_badges.achieved_at に記録される。
 	EvaluateOnUserCreated(
 		ctx context.Context,
 		userId string,
+		createdAt time.Time,
 	) ([]*entity.UserBadge, error)
 
 	// EvaluateOnRecordDeleted は記録削除時、残っている記録の日付から
@@ -105,19 +108,23 @@ func mondayOf(t time.Time) time.Time {
 	return t.AddDate(0, 0, -(weekday - 1))
 }
 
-// updateStreak はイベント発生週を基準にストリーク状態を更新する。
+// recordBasisTime は record の日時判定の基準となる時刻を返す。
 // event_date が未入力の場合は記録作成日時を代わりに使う。
+func recordBasisTime(eventDate time.Time, createdAt time.Time) time.Time {
+	if eventDate.IsZero() {
+		return createdAt
+	}
+	return eventDate
+}
+
+// updateStreak はイベント発生週を基準にストリーク状態を更新する。
 func (u *BadgeEvaluation) updateStreak(
 	ctx context.Context,
 	userId string,
 	eventDate time.Time,
 	createdAt time.Time,
 ) (*entity.UserStreak, error) {
-	basis := eventDate
-	if basis.IsZero() {
-		basis = createdAt
-	}
-	week := mondayOf(basis)
+	week := mondayOf(recordBasisTime(eventDate, createdAt))
 
 	current, err := u.userStreakRepo.FindByUserId(ctx, userId)
 	if err != nil {
@@ -258,6 +265,9 @@ func onboardingDefinitions(definitions []*entity.BadgeDefinition) []*entity.Badg
 
 // award は criteriaType に該当する未獲得のバッジ定義のうち、
 // currentValue が閾値に達したものを新規付与する。
+// achievedAt には条件を満たした実際の日時(record/deck/matchの作成日時等)を渡す。
+// 通常のリアルタイム評価では概ね現在時刻と一致するが、backfill-badges による
+// 遡及計算では過去日になるため、achieved_at を time.Now() 固定にしてはならない。
 func (u *BadgeEvaluation) award(
 	ctx context.Context,
 	userId string,
@@ -266,6 +276,7 @@ func (u *BadgeEvaluation) award(
 	criteriaType string,
 	currentValue int,
 	achieved map[string]bool,
+	achievedAt time.Time,
 ) ([]*entity.UserBadge, error) {
 	var awarded []*entity.UserBadge
 
@@ -285,8 +296,7 @@ func (u *BadgeEvaluation) award(
 			return nil, err
 		}
 
-		now := time.Now().Local()
-		userBadge := entity.NewUserBadge(id, now, userId, def.ID, recordId, now)
+		userBadge := entity.NewUserBadge(id, time.Now().Local(), userId, def.ID, recordId, achievedAt)
 
 		if err := u.userBadgeRepo.Save(ctx, userBadge); err != nil {
 			return nil, err
@@ -325,7 +335,8 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 		return nil, err
 	}
 
-	return u.award(ctx, userId, record.ID, onboardingDefinitions(definitions), BadgeCriteriaTypeRecordCount, recordCount, achieved)
+	achievedAt := recordBasisTime(record.EventDate, record.CreatedAt)
+	return u.award(ctx, userId, record.ID, onboardingDefinitions(definitions), BadgeCriteriaTypeRecordCount, recordCount, achieved, achievedAt)
 }
 
 func (u *BadgeEvaluation) EvaluateOnRecordDeleted(
@@ -363,7 +374,7 @@ func (u *BadgeEvaluation) EvaluateOnMatchCreated(
 		return nil, err
 	}
 
-	return u.award(ctx, userId, match.RecordId, onboardingDefinitions(definitions), BadgeCriteriaTypeMatchCount, matchCount, achieved)
+	return u.award(ctx, userId, match.RecordId, onboardingDefinitions(definitions), BadgeCriteriaTypeMatchCount, matchCount, achieved, match.CreatedAt)
 }
 
 func (u *BadgeEvaluation) EvaluateOnDeckCreated(
@@ -387,12 +398,13 @@ func (u *BadgeEvaluation) EvaluateOnDeckCreated(
 	}
 
 	// デッキ起点のバッジ獲得のため、紐づく record は存在しない
-	return u.award(ctx, userId, "", onboardingDefinitions(definitions), BadgeCriteriaTypeDeckCount, deckCount, achieved)
+	return u.award(ctx, userId, "", onboardingDefinitions(definitions), BadgeCriteriaTypeDeckCount, deckCount, achieved, deck.CreatedAt)
 }
 
 func (u *BadgeEvaluation) EvaluateOnUserCreated(
 	ctx context.Context,
 	userId string,
+	createdAt time.Time,
 ) ([]*entity.UserBadge, error) {
 	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
 	if err != nil {
@@ -405,5 +417,5 @@ func (u *BadgeEvaluation) EvaluateOnUserCreated(
 	}
 
 	// ユーザー登録自体が条件のため、集計クエリを挟まずその場で「1」を満たしたものとして評価する
-	return u.award(ctx, userId, "", onboardingDefinitions(definitions), BadgeCriteriaTypeSignup, 1, achieved)
+	return u.award(ctx, userId, "", onboardingDefinitions(definitions), BadgeCriteriaTypeSignup, 1, achieved, createdAt)
 }

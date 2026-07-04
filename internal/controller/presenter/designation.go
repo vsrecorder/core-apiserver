@@ -48,6 +48,7 @@ func NewUserDesignationResponse(
 			DesignationResponse: *newDesignationResponse(item.Designation),
 			Achieved:            item.Achieved,
 			CurrentValue:        item.CurrentValue,
+			PreviousValue:       item.PreviousValue,
 		})
 	}
 

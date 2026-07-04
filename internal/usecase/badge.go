@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -85,7 +86,12 @@ func (u *Badge) GetByUserId(
 		return nil, err
 	}
 
-	seasonValues, err := u.seasonValuesByCriteriaType(ctx, userId, season)
+	fromDate, toDate, err := seasonRange(season, time.Now().Local())
+	if err != nil {
+		return nil, err
+	}
+
+	seasonAggregate, err := u.seasonAggregateByCriteriaType(ctx, userId, fromDate, toDate)
 	if err != nil {
 		return nil, err
 	}
@@ -107,12 +113,16 @@ func (u *Badge) GetByUserId(
 
 		// マイルストーン系・週次ストリーク系: 現在のシーズンの集計値だけで判定する
 		// (永続化された過去の獲得記録は参照しない=シーズンが変わればライブに未達成へ戻る)。
-		currentValue := seasonValues[def.CriteriaType]
-		views = append(views, &UserBadgeView{
+		currentValue := seasonAggregate.values[def.CriteriaType]
+		view := &UserBadgeView{
 			Definition:   def,
 			Achieved:     currentValue >= def.CriteriaValue,
 			CurrentValue: currentValue,
-		})
+		}
+		if at, ok := seasonAggregate.achievedAt(def.CriteriaType, def.CriteriaValue); ok {
+			view.AchievedAt = at
+		}
+		views = append(views, view)
 	}
 
 	return views, nil
@@ -145,18 +155,52 @@ func (u *Badge) allTimeValuesByCriteriaType(
 	}, nil
 }
 
-// seasonValuesByCriteriaType はマイルストーン系・週次ストリーク系バッジの判定に使う、
-// 指定シーズン(9月始まり。season空文字なら現在のシーズン)内の集計値。
-func (u *Badge) seasonValuesByCriteriaType(
-	ctx context.Context,
-	userId string,
-	season string,
-) (map[string]int, error) {
-	fromDate, toDate, err := seasonRange(season, time.Now().Local())
-	if err != nil {
-		return nil, err
+// seasonAggregate はマイルストーン系・週次ストリーク系バッジの判定に使う、指定シーズン
+// 内の集計値と、criteria_value 番目の条件を満たした実際の日時(初回到達日)を求めるための
+// 生データを保持する。
+type seasonAggregate struct {
+	values      map[string]int
+	recordDates []time.Time
+	deckDates   []time.Time
+	matchDates  []time.Time
+	streakDates map[int]time.Time
+}
+
+// achievedAt は criteriaType の criteriaValue 番目の条件を、シーズン内で最初に満たした
+// 実際の日時を返す。まだ criteriaValue に届いていない(=シーズン内で未達成)場合は
+// ok=false を返す。
+func (a *seasonAggregate) achievedAt(criteriaType string, criteriaValue int) (time.Time, bool) {
+	nthDate := func(dates []time.Time, n int) (time.Time, bool) {
+		if n <= 0 || n > len(dates) {
+			return time.Time{}, false
+		}
+		return dates[n-1], true
 	}
 
+	switch criteriaType {
+	case BadgeCriteriaTypeRecordCount:
+		return nthDate(a.recordDates, criteriaValue)
+	case BadgeCriteriaTypeDeckCount:
+		return nthDate(a.deckDates, criteriaValue)
+	case BadgeCriteriaTypeMatchCount:
+		return nthDate(a.matchDates, criteriaValue)
+	case BadgeCriteriaTypeStreakWeeks:
+		at, ok := a.streakDates[criteriaValue]
+		return at, ok
+	default:
+		return time.Time{}, false
+	}
+}
+
+// seasonAggregateByCriteriaType は指定シーズン(9月始まり。season空文字なら現在のシーズン)
+// 内の集計値、および各criteria_typeの「シーズン内で何番目の条件達成が閾値に到達したか」を
+// 求めるための日付一覧を取得する。
+func (u *Badge) seasonAggregateByCriteriaType(
+	ctx context.Context,
+	userId string,
+	fromDate time.Time,
+	toDate time.Time,
+) (*seasonAggregate, error) {
 	recordCount, err := u.badgeStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
 		return nil, err
@@ -172,16 +216,35 @@ func (u *Badge) seasonValuesByCriteriaType(
 		return nil, err
 	}
 
-	dates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, fromDate, toDate)
+	recordDates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
 		return nil, err
 	}
+	sort.Slice(recordDates, func(i, j int) bool { return recordDates[i].Before(recordDates[j]) })
 
-	return map[string]int{
-		BadgeCriteriaTypeRecordCount: recordCount,
-		BadgeCriteriaTypeMatchCount:  matchCount,
-		BadgeCriteriaTypeDeckCount:   deckCount,
-		BadgeCriteriaTypeStreakWeeks: seasonStreakWeeks(dates),
+	deckDates, err := u.badgeStatsRepo.FindDeckDatesByUserId(ctx, userId, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(deckDates, func(i, j int) bool { return deckDates[i].Before(deckDates[j]) })
+
+	matchDates, err := u.badgeStatsRepo.FindMatchDatesByUserId(ctx, userId, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(matchDates, func(i, j int) bool { return matchDates[i].Before(matchDates[j]) })
+
+	return &seasonAggregate{
+		values: map[string]int{
+			BadgeCriteriaTypeRecordCount: recordCount,
+			BadgeCriteriaTypeMatchCount:  matchCount,
+			BadgeCriteriaTypeDeckCount:   deckCount,
+			BadgeCriteriaTypeStreakWeeks: seasonStreakWeeks(recordDates),
+		},
+		recordDates: recordDates,
+		deckDates:   deckDates,
+		matchDates:  matchDates,
+		streakDates: ComputeStreakMilestoneDates(recordDates),
 	}, nil
 }
 

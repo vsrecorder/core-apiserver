@@ -127,3 +127,51 @@ func (i *BadgeStats) FindRecordDatesByUserId(
 
 	return dates, nil
 }
+
+func (i *BadgeStats) FindDeckDatesByUserId(
+	ctx context.Context,
+	userId string,
+	fromDate time.Time,
+	toDate time.Time,
+) ([]time.Time, error) {
+	var dates []time.Time
+
+	query := i.db.Table("decks").Where("user_id = ? AND deleted_at IS NULL", userId)
+	if !fromDate.IsZero() {
+		query = query.Where("created_at >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("created_at < ?", toDate)
+	}
+
+	if tx := query.Order("created_at ASC").Pluck("created_at", &dates); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return dates, nil
+}
+
+func (i *BadgeStats) FindMatchDatesByUserId(
+	ctx context.Context,
+	userId string,
+	fromDate time.Time,
+	toDate time.Time,
+) ([]time.Time, error) {
+	var dates []time.Time
+
+	query := i.db.Table("matches").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
+		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
+	if !fromDate.IsZero() {
+		query = query.Where("records.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("records.event_date < ?", toDate)
+	}
+
+	if tx := query.Order("matches.created_at ASC").Pluck("matches.created_at", &dates); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return dates, nil
+}

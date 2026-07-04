@@ -22,9 +22,11 @@ type BadgeDefinitionsResponse struct {
 type UserBadgeResponse struct {
 	BadgeDefinitionResponse
 	Achieved bool `json:"achieved"`
-	// AchievedAt はオンボーディング系(永続化された獲得記録を持つ)のみ設定される。
-	// マイルストーン系・週次ストリーク系はシーズンの集計値からその場でライブ判定するため
-	// 実際の獲得日時を持たず、nil(JSON上は省略)になる。
+	// AchievedAt はオンボーディング系では永続化された獲得記録の日時、マイルストーン系・
+	// 週次ストリーク系では対象シーズン内で criteria_value 番目の条件を初めて満たした日時
+	// (ライブ集計)を返す。シーズン内でまだ閾値に届いていない場合は nil(JSON上は省略)。
+	// 週次ストリークはシーズン中に途切れて Achieved が false に戻ることがあるが、その場合も
+	// シーズン内で最初に到達した日時は保持され続ける。
 	AchievedAt   *time.Time `json:"achieved_at,omitempty"`
 	CurrentValue int        `json:"current_value"`
 }

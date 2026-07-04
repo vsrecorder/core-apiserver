@@ -42,4 +42,25 @@ type BadgeStatsInterface interface {
 		fromDate time.Time,
 		toDate time.Time,
 	) ([]time.Time, error)
+
+	// FindDeckDatesByUserId は指定期間内のデッキ登録日時(created_at)を昇順で返す。
+	// マイルストーン系バッジ(deck_count)の「シーズン内で何番目のデッキ登録が閾値に
+	// 到達したか」を求めるために使う。
+	FindDeckDatesByUserId(
+		ctx context.Context,
+		userId string,
+		fromDate time.Time,
+		toDate time.Time,
+	) ([]time.Time, error)
+
+	// FindMatchDatesByUserId は指定期間内の対戦の作成日時(created_at)を昇順で返す。
+	// 期間の絞り込みは紐づく record の event_date で行う(CountMatchesByUserId と同じ基準)。
+	// マイルストーン系バッジ(match_count)の「シーズン内で何番目の対戦が閾値に到達したか」
+	// を求めるために使う。
+	FindMatchDatesByUserId(
+		ctx context.Context,
+		userId string,
+		fromDate time.Time,
+		toDate time.Time,
+	) ([]time.Time, error)
 }

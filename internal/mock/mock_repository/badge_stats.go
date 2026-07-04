@@ -86,6 +86,36 @@ func (mr *MockBadgeStatsInterfaceMockRecorder) CountRecordsByUserId(ctx, userId,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountRecordsByUserId", reflect.TypeOf((*MockBadgeStatsInterface)(nil).CountRecordsByUserId), ctx, userId, fromDate, toDate)
 }
 
+// FindDeckDatesByUserId mocks base method.
+func (m *MockBadgeStatsInterface) FindDeckDatesByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) ([]time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindDeckDatesByUserId", ctx, userId, fromDate, toDate)
+	ret0, _ := ret[0].([]time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindDeckDatesByUserId indicates an expected call of FindDeckDatesByUserId.
+func (mr *MockBadgeStatsInterfaceMockRecorder) FindDeckDatesByUserId(ctx, userId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDeckDatesByUserId", reflect.TypeOf((*MockBadgeStatsInterface)(nil).FindDeckDatesByUserId), ctx, userId, fromDate, toDate)
+}
+
+// FindMatchDatesByUserId mocks base method.
+func (m *MockBadgeStatsInterface) FindMatchDatesByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) ([]time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindMatchDatesByUserId", ctx, userId, fromDate, toDate)
+	ret0, _ := ret[0].([]time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindMatchDatesByUserId indicates an expected call of FindMatchDatesByUserId.
+func (mr *MockBadgeStatsInterfaceMockRecorder) FindMatchDatesByUserId(ctx, userId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindMatchDatesByUserId", reflect.TypeOf((*MockBadgeStatsInterface)(nil).FindMatchDatesByUserId), ctx, userId, fromDate, toDate)
+}
+
 // FindRecordDatesByUserId mocks base method.
 func (m *MockBadgeStatsInterface) FindRecordDatesByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) ([]time.Time, error) {
 	m.ctrl.T.Helper()

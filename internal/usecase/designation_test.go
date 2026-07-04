@@ -135,6 +135,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item04)
 		require.True(t, item04.Achieved)
 		require.Equal(t, 4, item04.CurrentValue)
+		require.Equal(t, 4, item04.PreviousValue)
 	})
 
 	t.Run("シティリーグ記録数が不足していると常連(tier4)には到達しない", func(t *testing.T) {
@@ -158,6 +159,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item04)
 		require.False(t, item04.Achieved)
 		require.Equal(t, 3, item04.CurrentValue)
+		require.Equal(t, 3, item04.PreviousValue)
 	})
 
 	t.Run("今シーズンの記録数は十分でも前シーズンに記録が無ければ常連(tier4)には到達しない(継続条件)", func(t *testing.T) {
@@ -182,6 +184,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.False(t, item04.Achieved)
 		// CurrentValue は今シーズンの実際の集計値であり、継続条件の成否とは独立して表示される
 		require.Equal(t, 4, item04.CurrentValue)
+		require.Equal(t, 0, item04.PreviousValue)
 	})
 }
 

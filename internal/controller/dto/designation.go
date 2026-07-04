@@ -21,6 +21,9 @@ type DesignationLadderItemResponse struct {
 	// CurrentValue は CriteriaType に対応する、対象シーズンでの現在の集計値。
 	// CriteriaType が "unimplemented" の場合は常に0。
 	CurrentValue int `json:"current_value"`
+	// PreviousValue は CriteriaType が "official_city_league_record"(常連の継続条件)の
+	// 場合のみ、前シーズンの集計値。それ以外は常に0。
+	PreviousValue int `json:"previous_value"`
 }
 
 type UserDesignationResponse struct {

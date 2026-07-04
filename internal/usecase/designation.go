@@ -20,6 +20,10 @@ type DesignationLadderItem struct {
 	Designation  *entity.Designation
 	Achieved     bool
 	CurrentValue int
+	// PreviousValue は常連(criteria_type=official_city_league_record)の「前シーズンに
+	// 引き続き」という継続条件を表示するための、前シーズンの集計値。
+	// それ以外の criteria_type では常に0(継続条件が無いため意味を持たない)。
+	PreviousValue int
 }
 
 // UserDesignationView はユーザーの現在の称号と、称号ロードマップ全体を表す。
@@ -112,11 +116,17 @@ func (u *Designation) GetByUserId(
 
 	ladder := make([]*DesignationLadderItem, 0, len(definitions))
 	for _, def := range definitions {
+		previousValue := 0
+		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueRecord {
+			previousValue = previousCityLeagueCount
+		}
+
 		ladder = append(ladder, &DesignationLadderItem{
 			Designation: def,
 			Achieved:    def.Tier <= currentTier,
 			// currentValues に該当 criteria_type が無い(=unimplemented)場合はゼロ値のまま
-			CurrentValue: currentValues[def.CriteriaType],
+			CurrentValue:  currentValues[def.CriteriaType],
+			PreviousValue: previousValue,
 		})
 	}
 

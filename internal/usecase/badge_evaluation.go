@@ -232,6 +232,61 @@ func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, 
 	return
 }
 
+// ComputeStreakMilestoneDates は記録日の集合(重複・順不同可)から、連続週数が
+// 1,2,3...と各段階に初めて到達した実際の日付(その週内で最も早い記録日)を求める。
+// ComputeStreakState と異なりストリークの最終状態ではなく到達履歴を追うため、
+// 一度ストリークが途切れて同じ週数に再到達しても、シーズン内で最初に到達した
+// 日付を保持する(週次ストリーク系バッジの「初回到達日」表示用)。
+func ComputeStreakMilestoneDates(dates []time.Time) map[int]time.Time {
+	if len(dates) == 0 {
+		return nil
+	}
+
+	earliestDateInWeek := make(map[time.Time]time.Time, len(dates))
+	for _, d := range dates {
+		week := mondayOf(d)
+		if existing, ok := earliestDateInWeek[week]; !ok || d.Before(existing) {
+			earliestDateInWeek[week] = d
+		}
+	}
+
+	weeks := make([]time.Time, 0, len(earliestDateInWeek))
+	for w := range earliestDateInWeek {
+		weeks = append(weeks, w)
+	}
+	sort.Slice(weeks, func(i, j int) bool { return weeks[i].Before(weeks[j]) })
+
+	milestoneDates := make(map[int]time.Time)
+	recordIfNew := func(n int, date time.Time) {
+		if _, ok := milestoneDates[n]; !ok {
+			milestoneDates[n] = date
+		}
+	}
+
+	currentWeeks := 1
+	freezeUsedCount := 0
+	recordIfNew(currentWeeks, earliestDateInWeek[weeks[0]])
+
+	for i := 1; i < len(weeks); i++ {
+		diffWeeks := int(weeks[i].Sub(weeks[i-1]).Hours()/24) / 7
+
+		switch {
+		case diffWeeks == 1:
+			currentWeeks++
+		case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
+			currentWeeks++
+			freezeUsedCount++
+		default:
+			currentWeeks = 1
+			freezeUsedCount = 0
+		}
+
+		recordIfNew(currentWeeks, earliestDateInWeek[weeks[i]])
+	}
+
+	return milestoneDates
+}
+
 func (u *BadgeEvaluation) achievedBadgeDefinitionIds(
 	ctx context.Context,
 	userId string,

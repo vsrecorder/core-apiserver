@@ -3,12 +3,14 @@ package controller
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -17,15 +19,17 @@ const (
 )
 
 type Badge struct {
-	router  *gin.Engine
-	usecase usecase.BadgeInterface
+	router                 *gin.Engine
+	usecase                usecase.BadgeInterface
+	championshipSeriesRepo repository.ChampionshipSeriesInterface
 }
 
 func NewBadge(
 	router *gin.Engine,
 	usecase usecase.BadgeInterface,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 ) *Badge {
-	return &Badge{router, usecase}
+	return &Badge{router, usecase, championshipSeriesRepo}
 }
 
 func (c *Badge) RegisterRoute(relativePath string) {
@@ -60,6 +64,14 @@ func (c *Badge) GetByUserId(ctx *gin.Context) {
 	if err != nil {
 		apierror.ErrBadRequest.JSON(ctx)
 		return
+	}
+
+	if season == "" {
+		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, time.Now().Local())
+		if err != nil {
+			apierror.ErrInternalServerError.JSON(ctx)
+			return
+		}
 	}
 
 	views, err := c.usecase.GetByUserId(context.Background(), uid, season)

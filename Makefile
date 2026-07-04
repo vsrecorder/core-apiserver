@@ -36,6 +36,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/badge_stats.go -destination=./internal/mock/mock_repository/badge_stats.go
 	mockgen -source=./internal/domain/repository/designation.go -destination=./internal/mock/mock_repository/designation.go
 	mockgen -source=./internal/domain/repository/designation_stats.go -destination=./internal/mock/mock_repository/designation_stats.go
+	mockgen -source=./internal/domain/repository/championship_series.go -destination=./internal/mock/mock_repository/championship_series.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go
 	mockgen -source=./internal/usecase/user.go -destination=./internal/mock/mock_usecase/user.go

@@ -14,7 +14,8 @@ import (
 func TestUserStatHistoryUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockUserStatHistoryInterface(mockCtrl)
-	usecase := NewUserStatHistory(mockRepository)
+	mockChampionshipSeriesRepository := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
+	usecase := NewUserStatHistory(mockRepository, mockChampionshipSeriesRepository)
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

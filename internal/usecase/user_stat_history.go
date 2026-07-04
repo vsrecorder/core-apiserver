@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -20,11 +19,15 @@ type UserStatHistoryInterface interface {
 }
 
 type UserStatHistory struct {
-	repo repository.UserStatHistoryInterface
+	repo                   repository.UserStatHistoryInterface
+	championshipSeriesRepo repository.ChampionshipSeriesInterface
 }
 
-func NewUserStatHistory(repo repository.UserStatHistoryInterface) UserStatHistoryInterface {
-	return &UserStatHistory{repo}
+func NewUserStatHistory(
+	repo repository.UserStatHistoryInterface,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+) UserStatHistoryInterface {
+	return &UserStatHistory{repo, championshipSeriesRepo}
 }
 
 func (u *UserStatHistory) GetUserStatHistory(
@@ -39,6 +42,7 @@ func (u *UserStatHistory) GetUserStatHistory(
 	nextMonth := thisMonth.AddDate(0, 1, 0)
 
 	var fromDate, toDate time.Time
+	var err error
 
 	switch period {
 	case "3months":
@@ -48,22 +52,10 @@ func (u *UserStatHistory) GetUserStatHistory(
 		fromDate = thisMonth.AddDate(0, -5, 0)
 		toDate = nextMonth
 	default: // "season"
-		var seasonYear int
-		if season != "" {
-			var err error
-			seasonYear, err = strconv.Atoi(season)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			if now.Month() >= time.September {
-				seasonYear = now.Year() + 1
-			} else {
-				seasonYear = now.Year()
-			}
+		fromDate, toDate, err = seasonRange(ctx, u.championshipSeriesRepo, season, now)
+		if err != nil {
+			return nil, err
 		}
-		fromDate = time.Date(seasonYear-1, time.September, 1, 0, 0, 0, 0, time.Local)
-		toDate = time.Date(seasonYear, time.August, 31, 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
 	}
 
 	return u.repo.FindUserStatHistory(ctx, userId, fromDate, toDate, deckId)

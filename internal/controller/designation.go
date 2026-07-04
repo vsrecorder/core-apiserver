@@ -3,12 +3,14 @@ package controller
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -19,15 +21,17 @@ const (
 )
 
 type Designation struct {
-	router  *gin.Engine
-	usecase usecase.DesignationInterface
+	router                 *gin.Engine
+	usecase                usecase.DesignationInterface
+	championshipSeriesRepo repository.ChampionshipSeriesInterface
 }
 
 func NewDesignation(
 	router *gin.Engine,
 	usecase usecase.DesignationInterface,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 ) *Designation {
-	return &Designation{router, usecase}
+	return &Designation{router, usecase, championshipSeriesRepo}
 }
 
 func (c *Designation) RegisterRoute(relativePath string) {
@@ -69,6 +73,14 @@ func (c *Designation) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
+	if season == "" {
+		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, time.Now().Local())
+		if err != nil {
+			apierror.ErrInternalServerError.JSON(ctx)
+			return
+		}
+	}
+
 	view, err := c.usecase.GetByUserId(context.Background(), uid, season)
 	if err != nil {
 		apierror.ErrInternalServerError.JSON(ctx)
@@ -85,6 +97,14 @@ func (c *Designation) GetRankStats(ctx *gin.Context) {
 	if err != nil {
 		apierror.ErrBadRequest.JSON(ctx)
 		return
+	}
+
+	if season == "" {
+		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, time.Now().Local())
+		if err != nil {
+			apierror.ErrInternalServerError.JSON(ctx)
+			return
+		}
 	}
 
 	view, err := c.usecase.GetRankStats(context.Background(), season)

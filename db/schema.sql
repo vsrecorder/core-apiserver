@@ -360,6 +360,7 @@ CREATE TABLE championsleague_schedules (
     to_date     DATE NOT NULL
 );
 
+INSERT INTO championsleague_schedules VALUES ('pjcs2026','ポケモンジャパンチャンピオンシップス2026','2026-06-06','2026-06-07');
 INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_may','チャンピオンズリーグ2026 愛知 May','2026-05-09','2026-05-10');
 INSERT INTO championsleague_schedules VALUES ('cl2026_osaka','チャンピオンズリーグ2026 大阪','2026-03-28','2026-03-29');
 INSERT INTO championsleague_schedules VALUES ('cl2026_fukuoka','チャンピオンズリーグ2026 福岡','2026-02-21','2026-02-22');
@@ -643,30 +644,45 @@ UPDATE designations SET criteria_value = 0 WHERE id = 'designation-06';
 
 
 
-GRANT SELECT ON cards                 TO grafana;
-GRANT SELECT ON cityleague_schedules  TO grafana;
-GRANT SELECT ON cityleague_results    TO grafana;
-GRANT SELECT ON deck_codes            TO grafana;
-GRANT SELECT ON deck_pokemon_sprites  TO grafana;
-GRANT SELECT ON decks                 TO grafana;
-GRANT SELECT ON environments          TO grafana;
-GRANT SELECT ON games                 TO grafana;
-GRANT SELECT ON match_pokemon_sprites TO grafana;
-GRANT SELECT ON matches               TO grafana;
-GRANT SELECT ON official_events       TO grafana;
-GRANT SELECT ON pokemon_cards         TO grafana;
-GRANT SELECT ON pokemon_sprites       TO grafana;
-GRANT SELECT ON records               TO grafana;
+
+
 GRANT SELECT ON shops                 TO grafana;
-GRANT SELECT ON standard_regulations  TO grafana;
+GRANT SELECT ON official_events       TO grafana;
+GRANT SELECT ON unofficial_events     TO grafana;
+
+GRANT SELECT ON pokemon_sprites       TO grafana;
+
 GRANT SELECT ON users                 TO grafana;
 GRANT SELECT ON users_players         TO grafana;
+
+GRANT SELECT ON records               TO grafana;
+GRANT SELECT ON matches               TO grafana;
+GRANT SELECT ON match_pokemon_sprites TO grafana;
+GRANT SELECT ON games                 TO grafana;
+
+GRANT SELECT ON decks                 TO grafana;
+GRANT SELECT ON deck_codes            TO grafana;
+GRANT SELECT ON deck_pokemon_sprites  TO grafana;
+
+GRANT SELECT ON championship_series   TO grafana;
+GRANT SELECT ON standard_regulations  TO grafana;
+GRANT SELECT ON environments          TO grafana;
+
+GRANT SELECT ON cityleague_schedules TO grafana;
+GRANT SELECT ON cityleague_results   TO grafana;
+
+GRANT SELECT ON cards                 TO grafana;
+GRANT SELECT ON pokemon_cards         TO grafana;
 
 GRANT SELECT ON badge_definitions     TO grafana;
 GRANT SELECT ON user_badges           TO grafana;
 GRANT SELECT ON user_streaks          TO grafana;
+
 GRANT SELECT ON designations          TO grafana;
 GRANT SELECT ON user_designations     TO grafana;
+
+
+
 
 
 

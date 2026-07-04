@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -25,17 +24,20 @@ type OpponentDeckUsageStat struct {
 	opponentDeckUsageStatRepo repository.OpponentDeckUsageStatInterface
 	environmentRepo           repository.EnvironmentInterface
 	standardRegulationRepo    repository.StandardRegulationInterface
+	championshipSeriesRepo    repository.ChampionshipSeriesInterface
 }
 
 func NewOpponentDeckUsageStat(
 	opponentDeckUsageStatRepo repository.OpponentDeckUsageStatInterface,
 	environmentRepo repository.EnvironmentInterface,
 	standardRegulationRepo repository.StandardRegulationInterface,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 ) OpponentDeckUsageStatInterface {
 	return &OpponentDeckUsageStat{
 		opponentDeckUsageStatRepo: opponentDeckUsageStatRepo,
 		environmentRepo:           environmentRepo,
 		standardRegulationRepo:    standardRegulationRepo,
+		championshipSeriesRepo:    championshipSeriesRepo,
 	}
 }
 
@@ -58,13 +60,11 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 		fromDate = time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.Local)
 		toDate = fromDate.AddDate(0, 1, 0)
 	} else if season != "" {
-		// シーズンは9月始まり・翌年8月終わり（例: season=2026 → 2025-09-01 〜 2026-08-31）
-		year, err := strconv.Atoi(season)
+		var err error
+		fromDate, toDate, err = seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 		if err != nil {
 			return nil, err
 		}
-		fromDate = time.Date(year-1, time.September, 1, 0, 0, 0, 0, time.Local)
-		toDate = time.Date(year, time.August, 31, 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
 	}
 
 	if environmentId != "" {

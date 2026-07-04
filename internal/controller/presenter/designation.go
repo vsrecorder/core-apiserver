@@ -54,7 +54,7 @@ func NewUserDesignationResponse(
 
 	return &dto.UserDesignationResponse{
 		UserId:  userId,
-		Season:  resolvedSeason(season),
+		Season:  season,
 		Current: current,
 		Ladder:  ladder,
 	}
@@ -73,7 +73,7 @@ func NewDesignationRankStatsResponse(
 	}
 
 	return &dto.DesignationRankStatsResponse{
-		Season:     resolvedSeason(season),
+		Season:     season,
 		TotalUsers: view.TotalUsers,
 		Tiers:      tiers,
 	}

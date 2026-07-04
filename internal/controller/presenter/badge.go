@@ -8,14 +8,6 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
-// resolvedSeason は season が空文字(未指定)の場合、現在のシーズンを解決して返す。
-func resolvedSeason(season string) string {
-	if season != "" {
-		return season
-	}
-	return usecase.CurrentSeasonLabel(time.Now().Local())
-}
-
 func newBadgeDefinitionResponse(def *entity.BadgeDefinition) *dto.BadgeDefinitionResponse {
 	return &dto.BadgeDefinitionResponse{
 		ID:            def.ID,
@@ -64,7 +56,7 @@ func NewUserBadgesResponse(
 
 	return &dto.UserBadgesResponse{
 		UserId: userId,
-		Season: resolvedSeason(season),
+		Season: season,
 		Badges: badges,
 	}
 }

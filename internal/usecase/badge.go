@@ -38,20 +38,23 @@ type BadgeInterface interface {
 }
 
 type Badge struct {
-	badgeDefinitionRepo repository.BadgeDefinitionInterface
-	userBadgeRepo       repository.UserBadgeInterface
-	badgeStatsRepo      repository.BadgeStatsInterface
+	badgeDefinitionRepo    repository.BadgeDefinitionInterface
+	userBadgeRepo          repository.UserBadgeInterface
+	badgeStatsRepo         repository.BadgeStatsInterface
+	championshipSeriesRepo repository.ChampionshipSeriesInterface
 }
 
 func NewBadge(
 	badgeDefinitionRepo repository.BadgeDefinitionInterface,
 	userBadgeRepo repository.UserBadgeInterface,
 	badgeStatsRepo repository.BadgeStatsInterface,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 ) BadgeInterface {
 	return &Badge{
-		badgeDefinitionRepo: badgeDefinitionRepo,
-		userBadgeRepo:       userBadgeRepo,
-		badgeStatsRepo:      badgeStatsRepo,
+		badgeDefinitionRepo:    badgeDefinitionRepo,
+		userBadgeRepo:          userBadgeRepo,
+		badgeStatsRepo:         badgeStatsRepo,
+		championshipSeriesRepo: championshipSeriesRepo,
 	}
 }
 
@@ -86,7 +89,7 @@ func (u *Badge) GetByUserId(
 		return nil, err
 	}
 
-	fromDate, toDate, err := seasonRange(season, time.Now().Local())
+	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
 		return nil, err
 	}

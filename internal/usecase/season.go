@@ -1,52 +1,87 @@
 package usecase
 
 import (
-	"strconv"
+	"context"
+	"strings"
 	"time"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
-// CurrentSeasonLabel は「9月1日〜翌年8月31日」を1シーズンとしたとき、now が属する
-// シーズンの識別子(終了年、例: 2026年8月まで続くシーズンなら"2026")を返す。
-// UserStat の season 絞り込み(usecase/user_stat.go)と同じシーズン定義に揃えている。
-// controller層が season 未指定時のレスポンスに実際の値を埋めるために公開している。
-func CurrentSeasonLabel(now time.Time) string {
-	year := now.Year()
-	if now.Month() >= time.September {
-		year++
+// championshipSeriesIdPrefix は championship_series.id の接頭辞。season 識別子
+// (championship_series.id から接頭辞を除いた文字列。例:"2026")との相互変換に使う。
+const championshipSeriesIdPrefix = "series_"
+
+// CurrentSeasonLabel は championship_series テーブルを参照し、now が属するシーズンの
+// 識別子(championship_series.id から championshipSeriesIdPrefix を除いた文字列、
+// 例:"2026")を返す。該当するシーズンが championship_series に存在しない場合はエラーを返す。
+func CurrentSeasonLabel(
+	ctx context.Context,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+	now time.Time,
+) (string, error) {
+	cs, err := championshipSeriesRepo.FindByDate(ctx, now)
+	if err != nil {
+		return "", err
 	}
 
-	return strconv.Itoa(year)
+	return strings.TrimPrefix(cs.ID, championshipSeriesIdPrefix), nil
 }
 
-// seasonRange は season(シーズン識別子の文字列。空文字なら now が属する現在のシーズン)を
-// 「9月1日〜翌年8月31日」の期間に変換する(toDate は翌日0時のexclusive上限)。
-func seasonRange(season string, now time.Time) (fromDate time.Time, toDate time.Time, err error) {
-	if season == "" {
-		season = CurrentSeasonLabel(now)
-	}
+// seasonRange は season(championship_series.id から championshipSeriesIdPrefix を除いた
+// 識別子。空文字なら now が属する現在のシーズン)を、championship_series テーブルの
+// from_date〜to_date の期間に変換する(toDate は翌日0時のexclusive上限)。
+func seasonRange(
+	ctx context.Context,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+	season string,
+	now time.Time,
+) (fromDate time.Time, toDate time.Time, err error) {
+	var cs *entity.ChampionshipSeries
 
-	year, err := strconv.Atoi(season)
+	if season == "" {
+		cs, err = championshipSeriesRepo.FindByDate(ctx, now)
+	} else {
+		cs, err = championshipSeriesRepo.FindById(ctx, championshipSeriesIdPrefix+season)
+	}
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
 
-	fromDate = time.Date(year-1, time.September, 1, 0, 0, 0, 0, now.Location())
-	toDate = time.Date(year, time.August, 31, 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1)
+	return championshipSeriesDateRange(cs, now.Location())
+}
+
+// previousSeasonRange は season(空文字なら現在のシーズン)のひとつ前(championship_series上で
+// from_dateが直前に終わる)シーズンの期間を返す。「前シーズンに引き続き」といった、シーズンを
+// またいだ継続条件の判定に使う。
+func previousSeasonRange(
+	ctx context.Context,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+	season string,
+	now time.Time,
+) (fromDate time.Time, toDate time.Time, err error) {
+	currentFromDate, _, err := seasonRange(ctx, championshipSeriesRepo, season, now)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	cs, err := championshipSeriesRepo.FindByDate(ctx, currentFromDate.AddDate(0, 0, -1))
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	return championshipSeriesDateRange(cs, now.Location())
+}
+
+// championshipSeriesDateRange は championship_series の1行を、from_date(0時始まり)〜
+// to_date翌日0時(exclusive上限)の期間に変換する。
+func championshipSeriesDateRange(
+	cs *entity.ChampionshipSeries,
+	loc *time.Location,
+) (fromDate time.Time, toDate time.Time, err error) {
+	fromDate = time.Date(cs.FromDate.Year(), cs.FromDate.Month(), cs.FromDate.Day(), 0, 0, 0, 0, loc)
+	toDate = time.Date(cs.ToDate.Year(), cs.ToDate.Month(), cs.ToDate.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, 1)
 
 	return fromDate, toDate, nil
-}
-
-// previousSeasonRange は season(空文字なら現在のシーズン)のひとつ前のシーズンの期間を返す。
-// 「前シーズンに引き続き」といった、シーズンをまたいだ継続条件の判定に使う。
-func previousSeasonRange(season string, now time.Time) (fromDate time.Time, toDate time.Time, err error) {
-	if season == "" {
-		season = CurrentSeasonLabel(now)
-	}
-
-	year, err := strconv.Atoi(season)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-
-	return seasonRange(strconv.Itoa(year-1), now)
 }

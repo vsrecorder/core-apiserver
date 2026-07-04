@@ -72,15 +72,17 @@ type DesignationInterface interface {
 }
 
 type Designation struct {
-	designationRepo      repository.DesignationInterface
-	designationStatsRepo repository.DesignationStatsInterface
+	designationRepo        repository.DesignationInterface
+	designationStatsRepo   repository.DesignationStatsInterface
+	championshipSeriesRepo repository.ChampionshipSeriesInterface
 }
 
 func NewDesignation(
 	designationRepo repository.DesignationInterface,
 	designationStatsRepo repository.DesignationStatsInterface,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 ) DesignationInterface {
-	return &Designation{designationRepo, designationStatsRepo}
+	return &Designation{designationRepo, designationStatsRepo, championshipSeriesRepo}
 }
 
 func (u *Designation) GetAllDefinitions(
@@ -182,7 +184,7 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
-	fromDate, toDate, err := seasonRange(season, time.Now().Local())
+	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +204,7 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
-	previousFromDate, previousToDate, err := previousSeasonRange(season, time.Now().Local())
+	previousFromDate, previousToDate, err := previousSeasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +267,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 	userId string,
 	season string,
 ) (map[string]int, error) {
-	fromDate, toDate, err := seasonRange(season, time.Now().Local())
+	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +302,7 @@ func (u *Designation) previousSeasonCityLeagueCount(
 	userId string,
 	season string,
 ) (int, error) {
-	fromDate, toDate, err := previousSeasonRange(season, time.Now().Local())
+	fromDate, toDate, err := previousSeasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
 		return 0, err
 	}

@@ -16,18 +16,31 @@ func newBadgeTestUsecase(mockCtrl *gomock.Controller) (
 	*mock_repository.MockBadgeDefinitionInterface,
 	*mock_repository.MockUserBadgeInterface,
 	*mock_repository.MockBadgeStatsInterface,
+	*mock_repository.MockChampionshipSeriesInterface,
 ) {
 	badgeDefinitionRepo := mock_repository.NewMockBadgeDefinitionInterface(mockCtrl)
 	userBadgeRepo := mock_repository.NewMockUserBadgeInterface(mockCtrl)
 	badgeStatsRepo := mock_repository.NewMockBadgeStatsInterface(mockCtrl)
+	championshipSeriesRepo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
 	u := &Badge{
-		badgeDefinitionRepo: badgeDefinitionRepo,
-		userBadgeRepo:       userBadgeRepo,
-		badgeStatsRepo:      badgeStatsRepo,
+		badgeDefinitionRepo:    badgeDefinitionRepo,
+		userBadgeRepo:          userBadgeRepo,
+		badgeStatsRepo:         badgeStatsRepo,
+		championshipSeriesRepo: championshipSeriesRepo,
 	}
 
-	return u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo
+	return u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo
+}
+
+// currentChampionshipSeries はテスト用の「現在のシーズン」を返す(具体的な期間の値は
+// season空文字時のテストでは検証対象ではないため、固定の1シーズン分を使い回す)。
+func currentChampionshipSeries() *entity.ChampionshipSeries {
+	return entity.NewChampionshipSeries(
+		"series_2026", "チャンピオンシップシリーズ2026",
+		time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local),
+		time.Date(2026, 8, 31, 0, 0, 0, 0, time.Local),
+	)
 }
 
 func findView(views []*UserBadgeView, id string) *UserBadgeView {
@@ -42,7 +55,7 @@ func findView(views []*UserBadgeView, id string) *UserBadgeView {
 func TestBadge_GetByUserId(t *testing.T) {
 	t.Run("オンボーディング系は永続化された獲得記録をそのまま参照する(シーズン集計値は使わない)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo := newBadgeTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
@@ -50,6 +63,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		}
 
 		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil)
 		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(
 			[]*entity.UserBadge{
 				entity.NewUserBadge("ub-1", now, "user-1", "def-first-record", "record-1", now),
@@ -74,7 +88,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 
 	t.Run("マイルストーン系は今シーズンの集計値のみでライブ判定する(過去の獲得記録は見ない)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo := newBadgeTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
@@ -82,6 +96,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		}
 
 		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil)
 		// user_badges には何も無い(永続化していない)が、今シーズンの記録数が10件あるので達成扱いになる
 		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
 
@@ -112,7 +127,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 
 	t.Run("マイルストーン系は今シーズン内でcriteria_value番目に到達した日付をachieved_atとして返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo := newBadgeTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
@@ -122,6 +137,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		}
 
 		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil)
 		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
 
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(3, nil).Times(2)
@@ -166,7 +182,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 
 	t.Run("週次ストリーク系は今シーズンの記録日から連続週数を計算して判定する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo := newBadgeTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
@@ -174,6 +190,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		}
 
 		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil)
 		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
 
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
@@ -201,7 +218,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 
 	t.Run("週次ストリーク系はストリークが途切れても、シーズン内で最初に到達した日付を保持する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo := newBadgeTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
@@ -209,6 +226,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		}
 
 		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil)
 		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
 
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
@@ -237,7 +255,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 
 	t.Run("season指定時はそのシーズンの期間で集計する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo := newBadgeTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
@@ -247,6 +265,10 @@ func TestBadge_GetByUserId(t *testing.T) {
 		wantTo := time.Date(2024, 9, 1, 0, 0, 0, 0, time.Local)
 
 		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		championshipSeriesRepo.EXPECT().FindById(gomock.Any(), "series_2024").Return(
+			entity.NewChampionshipSeries("series_2024", "チャンピオンシップシリーズ2024", wantFrom, time.Date(2024, 8, 31, 0, 0, 0, 0, time.Local)),
+			nil,
+		)
 		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
 
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", time.Time{}, time.Time{}).Return(0, nil)

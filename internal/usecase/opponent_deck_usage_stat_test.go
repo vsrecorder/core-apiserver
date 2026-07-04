@@ -16,7 +16,8 @@ func TestOpponentDeckUsageStatUsecase(t *testing.T) {
 	mockRepository := mock_repository.NewMockOpponentDeckUsageStatInterface(mockCtrl)
 	mockEnvironmentRepository := mock_repository.NewMockEnvironmentInterface(mockCtrl)
 	mockStandardRegulationRepository := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
-	usecase := NewOpponentDeckUsageStat(mockRepository, mockEnvironmentRepository, mockStandardRegulationRepository)
+	mockChampionshipSeriesRepository := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
+	usecase := NewOpponentDeckUsageStat(mockRepository, mockEnvironmentRepository, mockStandardRegulationRepository, mockChampionshipSeriesRepository)
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

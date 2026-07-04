@@ -255,7 +255,9 @@ func main() {
 			infrastructure.NewBadgeDefinition(db),
 			infrastructure.NewUserBadge(db),
 			infrastructure.NewBadgeStats(db),
+			infrastructure.NewChampionshipSeries(db),
 		),
+		infrastructure.NewChampionshipSeries(db),
 	).RegisterRoute(relativePath)
 
 	controller.NewStreak(
@@ -270,7 +272,9 @@ func main() {
 		usecase.NewDesignation(
 			infrastructure.NewDesignation(db),
 			infrastructure.NewDesignationStats(db),
+			infrastructure.NewChampionshipSeries(db),
 		),
+		infrastructure.NewChampionshipSeries(db),
 	).RegisterRoute(relativePath)
 
 	controller.NewEnvironment(
@@ -293,15 +297,22 @@ func main() {
 		infrastructure.NewStandardRegulation(db),
 	).RegisterRoute(relativePath)
 
+	controller.NewChampionshipSeries(
+		r,
+		infrastructure.NewChampionshipSeries(db),
+	).RegisterRoute(relativePath)
+
 	controller.NewUserStat(
 		r,
 		usecase.NewUserStat(
 			infrastructure.NewUserStat(db),
 			infrastructure.NewEnvironment(db),
 			infrastructure.NewStandardRegulation(db),
+			infrastructure.NewChampionshipSeries(db),
 		),
 		usecase.NewUserStatHistory(
 			infrastructure.NewUserStatHistory(db),
+			infrastructure.NewChampionshipSeries(db),
 		),
 		usecase.NewUserStatRecent(
 			infrastructure.NewUserStatRecent(db),
@@ -315,6 +326,7 @@ func main() {
 			infrastructure.NewDeckUsageStat(db),
 			infrastructure.NewEnvironment(db),
 			infrastructure.NewStandardRegulation(db),
+			infrastructure.NewChampionshipSeries(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -324,6 +336,7 @@ func main() {
 			infrastructure.NewOpponentDeckUsageStat(db),
 			infrastructure.NewEnvironment(db),
 			infrastructure.NewStandardRegulation(db),
+			infrastructure.NewChampionshipSeries(db),
 		),
 	).RegisterRoute(relativePath)
 

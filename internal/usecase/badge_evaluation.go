@@ -108,9 +108,9 @@ func mondayOf(t time.Time) time.Time {
 	return t.AddDate(0, 0, -(weekday - 1))
 }
 
-// recordBasisTime は record の日時判定の基準となる時刻を返す。
+// RecordBasisTime は record の日時判定の基準となる時刻を返す。
 // event_date が未入力の場合は記録作成日時を代わりに使う。
-func recordBasisTime(eventDate time.Time, createdAt time.Time) time.Time {
+func RecordBasisTime(eventDate time.Time, createdAt time.Time) time.Time {
 	if eventDate.IsZero() {
 		return createdAt
 	}
@@ -124,7 +124,7 @@ func (u *BadgeEvaluation) updateStreak(
 	eventDate time.Time,
 	createdAt time.Time,
 ) (*entity.UserStreak, error) {
-	week := mondayOf(recordBasisTime(eventDate, createdAt))
+	week := mondayOf(RecordBasisTime(eventDate, createdAt))
 
 	current, err := u.userStreakRepo.FindByUserId(ctx, userId)
 	if err != nil {
@@ -335,7 +335,7 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 		return nil, err
 	}
 
-	achievedAt := recordBasisTime(record.EventDate, record.CreatedAt)
+	achievedAt := RecordBasisTime(record.EventDate, record.CreatedAt)
 	return u.award(ctx, userId, record.ID, onboardingDefinitions(definitions), BadgeCriteriaTypeRecordCount, recordCount, achieved, achievedAt)
 }
 

@@ -559,7 +559,7 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 ('designation-01', 1,  'beginner',     '🌱', '駆け出し',   'ジムバトルの記録を作成した', 'official_gym_battle_record', 1, now(), now()),
 ('designation-02', 2,  'novice',       '🔰', '見習い',     '称号：【🌱 駆け出し】を持っており、ジムバトルの記録を3つ以上作成した', 'official_gym_battle_record', 3, now(), now()),
 ('designation-03', 3,  'independent',  '👍', '一人前',     '称号：【🔰 見習い】を持っており、トレーナーズリーグかシティリーグの記録を作成した', 'official_league_record', 1, now(), now()),
-('designation-04', 4,  'regular',      '🎫', '常連',       '称号：【👍 一人前】を持っており、前シーズンに引き続き、今シーズンでもシティリーグの記録を作成した', 'official_city_league_record', 1, now(), now()),
+('designation-04', 4,  'regular',      '🎫', 'レギュラー',       '称号：【👍 一人前】を持っており、前シーズンに引き続き、今シーズンでもシティリーグの記録を作成した', 'official_city_league_record', 1, now(), now()),
 ('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '（準備中）称号：【🎫 常連】を持っており、今シーズン1回以上、シティリーグで入賞した', 'unimplemented', 0, now(), now()),
 ('designation-06', 6,  'expert',       '🎖️', '熟練者',     '（準備中）称号：【💪 ベテラン】を持っており、今シーズン1回以上、シティリーグで決勝トーナメントに進出した', 'unimplemented', 0, now(), now()),
 ('designation-07', 7,  'master',       '🏆', '達人',       '準備中', 'unimplemented', 0, now(), now()),
@@ -574,6 +574,7 @@ UPDATE designations SET description = '称号：【👍 一人前】を持って
 UPDATE designations SET description = '（準備中）称号：【🎫 常連】を持っており、今シーズン1回以上、シティリーグで入賞した'                    WHERE id = 'designation-05';
 UPDATE designations SET description = '（準備中）称号：【💪 ベテラン】を持っており、今シーズン1回以上、シティリーグで決勝トーナメントに進出した'  WHERE id = 'designation-06';
 
+UPDATE designations SET name = 'レギュラー' WHERE id = 'designation-04';
 
 UPDATE designations SET description = '称号：【🌱 駆け出し】を持っており、ジムバトルの記録を3つ以上作成した' WHERE id = 'designation-02';
 UPDATE designations SET criteria_value = 3 WHERE id = 'designation-02';

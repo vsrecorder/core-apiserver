@@ -11,18 +11,28 @@ import (
 )
 
 type UserPlayerCreateParam struct {
-	UserId   string
-	PlayerId string
+	UserId         string
+	PlayerId       string
+	ChallengeToken string
 }
 
 func NewUserPlayerCreateParam(
 	userId string,
 	playerId string,
+	challengeToken string,
 ) *UserPlayerCreateParam {
 	return &UserPlayerCreateParam{
-		UserId:   userId,
-		PlayerId: playerId,
+		UserId:         userId,
+		PlayerId:       playerId,
+		ChallengeToken: challengeToken,
 	}
+}
+
+// UserPlayerVerification は player_id の実在確認結果と、所有権確認チャレンジを
+// あわせて持つ。Verify のレスポンスとしてコントローラ層に渡される。
+type UserPlayerVerification struct {
+	Account   *PlayerAccount
+	Challenge *OwnershipChallenge
 }
 
 type UserPlayerInterface interface {
@@ -38,20 +48,23 @@ type UserPlayerInterface interface {
 
 	Verify(
 		ctx context.Context,
+		uid string,
 		playerId string,
-	) (*PlayerAccount, error)
+	) (*UserPlayerVerification, error)
 }
 
 type UserPlayer struct {
 	repository         repository.UserPlayerInterface
+	avatarRepository   repository.PokemonAvatarInterface
 	transactionManager repository.TransactionManager
 }
 
 func NewUserPlayer(
 	repository repository.UserPlayerInterface,
+	avatarRepository repository.PokemonAvatarInterface,
 	transactionManager repository.TransactionManager,
 ) UserPlayerInterface {
-	return &UserPlayer{repository, transactionManager}
+	return &UserPlayer{repository, avatarRepository, transactionManager}
 }
 
 func (u *UserPlayer) FindByUserId(
@@ -67,17 +80,64 @@ func (u *UserPlayer) FindByUserId(
 	return userPlayer, nil
 }
 
+// Verify は player_id の実在を確認し、あわせて所有権確認チャレンジ
+// (現在と異なるアバターへの変更依頼)を発行する。
 func (u *UserPlayer) Verify(
 	ctx context.Context,
+	uid string,
 	playerId string,
-) (*PlayerAccount, error) {
-	return fetchPlayerAccount(playerId)
+) (*UserPlayerVerification, error) {
+	account, err := fetchPlayerAccount(playerId)
+	if err != nil {
+		return nil, err
+	}
+
+	avatar, err := u.avatarRepository.FindRandomExcludingImageURL(ctx, account.AvatarImage)
+	if err != nil {
+		return nil, err
+	}
+
+	token, expiresAt, err := signUserPlayerChallenge(uid, playerId, avatar.ImageURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UserPlayerVerification{
+		Account: account,
+		Challenge: &OwnershipChallenge{
+			Token:                   token,
+			ChallengeAvatarID:       avatar.ID,
+			ChallengeAvatarTitle:    avatar.Title,
+			ChallengeAvatarImageURL: avatar.ImageURL,
+			ChallengeAvatarDetail:   avatar.Detail,
+			ExpiresAt:               expiresAt,
+		},
+	}, nil
 }
 
 func (u *UserPlayer) Create(
 	ctx context.Context,
 	param *UserPlayerCreateParam,
 ) (*entity.UserPlayer, error) {
+	claims, err := parseUserPlayerChallenge(param.ChallengeToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// チャレンジは発行時と同じユーザー・同じ player_id に対してのみ有効
+	if claims.UID != param.UserId || claims.PlayerId != param.PlayerId {
+		return nil, apperror.ErrInvalidChallenge
+	}
+
+	// 現在のアバターがチャレンジで指定した画像に変更されているか再確認する
+	account, err := fetchPlayerAccount(param.PlayerId)
+	if err != nil {
+		return nil, err
+	}
+	if account.AvatarImage != claims.ChallengeAvatarImageURL {
+		return nil, apperror.ErrOwnershipNotVerified
+	}
+
 	existing, err := u.repository.FindByUserId(ctx, param.UserId)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
 		return nil, err

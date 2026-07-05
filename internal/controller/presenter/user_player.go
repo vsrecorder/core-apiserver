@@ -35,13 +35,21 @@ func NewUserPlayerCreateResponse(
 }
 
 func NewUserPlayerVerifyResponse(
-	account *usecase.PlayerAccount,
+	verification *usecase.UserPlayerVerification,
 ) *dto.UserPlayerVerifyResponse {
 	return &dto.UserPlayerVerifyResponse{
-		PlayerId:      account.PlayerId,
-		Nickname:      account.Nickname,
-		AvatarImage:   account.AvatarImage,
-		CurrentLeague: account.CurrentLeague,
-		Prefecture:    account.Prefecture,
+		PlayerId:      verification.Account.PlayerId,
+		Nickname:      verification.Account.Nickname,
+		AvatarImage:   verification.Account.AvatarImage,
+		CurrentLeague: verification.Account.CurrentLeague,
+		Prefecture:    verification.Account.Prefecture,
+		Challenge: dto.UserPlayerOwnershipChallengeResponse{
+			Token:          verification.Challenge.Token,
+			AvatarId:       verification.Challenge.ChallengeAvatarID,
+			AvatarTitle:    verification.Challenge.ChallengeAvatarTitle,
+			AvatarImageURL: verification.Challenge.ChallengeAvatarImageURL,
+			AvatarDetail:   verification.Challenge.ChallengeAvatarDetail,
+			ExpiresAt:      verification.Challenge.ExpiresAt,
+		},
 	}
 }

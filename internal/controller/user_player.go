@@ -99,6 +99,7 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 	param := usecase.NewUserPlayerCreateParam(
 		uid,
 		req.PlayerId,
+		req.ChallengeToken,
 	)
 
 	userPlayer, err := c.usecase.Create(context.Background(), param)
@@ -110,6 +111,21 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 
 		if errors.Is(err, apperror.ErrAlreadyExists) {
 			apierror.ErrPlayerIdAlreadyLinked.JSON(ctx)
+			return
+		}
+
+		if errors.Is(err, apperror.ErrInvalidChallenge) {
+			apierror.ErrUserPlayerInvalidChallenge.JSON(ctx)
+			return
+		}
+
+		if errors.Is(err, apperror.ErrOwnershipNotVerified) {
+			apierror.ErrUserPlayerOwnershipNotVerified.JSON(ctx)
+			return
+		}
+
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
@@ -130,8 +146,9 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 
 func (c *UserPlayer) Verify(ctx *gin.Context) {
 	req := helper.GetUserPlayerVerifyRequest(ctx)
+	uid := helper.GetUID(ctx)
 
-	account, err := c.usecase.Verify(context.Background(), req.PlayerId)
+	verification, err := c.usecase.Verify(context.Background(), uid, req.PlayerId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrBadRequest.JSON(ctx)
@@ -139,6 +156,7 @@ func (c *UserPlayer) Verify(ctx *gin.Context) {
 		}
 
 		c.logger.Error("controller_user_player_verify_failed",
+			slog.String("uid", uid),
 			slog.String("player_id", req.PlayerId),
 			slog.String("error_message", err.Error()),
 		)
@@ -147,7 +165,7 @@ func (c *UserPlayer) Verify(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewUserPlayerVerifyResponse(account)
+	res := presenter.NewUserPlayerVerifyResponse(verification)
 
 	ctx.JSON(http.StatusOK, res)
 }

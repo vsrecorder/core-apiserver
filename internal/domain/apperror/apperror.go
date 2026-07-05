@@ -26,4 +26,13 @@ var (
 	// ErrLocked は一定期間内の再変更が禁止されている場合に返す。
 	// HTTP では 409 Conflict に対応する。
 	ErrLocked = errors.New("locked")
+
+	// ErrInvalidChallenge は所有権確認用のチャレンジトークンが不正・期限切れ、
+	// または発行時と異なるユーザー/対象に対して使われた場合に返す。
+	// HTTP では 400 Bad Request に対応する。
+	ErrInvalidChallenge = errors.New("invalid challenge")
+
+	// ErrOwnershipNotVerified は所有権確認チャレンジ(アバター変更)がまだ
+	// 完了していない場合に返す。HTTP では 403 Forbidden に対応する。
+	ErrOwnershipNotVerified = errors.New("ownership not verified")
 )

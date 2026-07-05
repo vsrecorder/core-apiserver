@@ -83,6 +83,14 @@ var (
 	// ErrPlayerIdAlreadyLinked は指定された player_id が既に別のユーザーに紐付けられている場合(409)。
 	ErrPlayerIdAlreadyLinked = New(http.StatusConflict, errors.New("this player_id is already linked to another account"))
 
+	// ErrUserPlayerInvalidChallenge は所有権確認チャレンジのトークンが不正・
+	// 期限切れ、または発行時と異なるユーザー/player_idに対して使われた場合(400)。
+	ErrUserPlayerInvalidChallenge = New(http.StatusBadRequest, errors.New("invalid or expired ownership challenge, please try again from the beginning"))
+
+	// ErrUserPlayerOwnershipNotVerified はアバター画像がチャレンジで指定した
+	// ものに変更されていることを確認できなかった場合(403)。
+	ErrUserPlayerOwnershipNotVerified = New(http.StatusForbidden, errors.New("could not verify that the avatar image has been changed as requested"))
+
 	// ErrTooManyRequests は短時間に試行が集中し、レート制限に達した場合(429)。
 	ErrTooManyRequests = New(http.StatusTooManyRequests, errors.New("too many requests"))
 

@@ -48,15 +48,17 @@ func UserPlayerCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if req.ChallengeToken == "" {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		if !allowUserPlayerAttempt(ctx, req.PlayerId) {
 			return
 		}
 
-		checkPlayerId(ctx, req.PlayerId)
-		if ctx.IsAborted() {
-			return
-		}
-
+		// player_id の実在確認と所有権(アバター変更チャレンジ)の検証は
+		// usecase.Create 内で challenge_token をもとに行うため、ここでは行わない。
 		helper.SetUserPlayerCreateRequest(ctx, req)
 	}
 }

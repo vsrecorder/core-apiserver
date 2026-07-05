@@ -662,11 +662,28 @@ WHERE id = 'designation-06';
 
 
 
+-- 公式サイト(プレイヤーズクラブ)のアバター一覧(avatar_search API)を
+-- cmd/sync-avatars バッチで定期的に同期して保持するマスタテーブル。
+-- id は公式サイトの avatar_id をそのまま使う。
+CREATE TABLE pokemon_avatars (
+    id         INT NOT NULL PRIMARY KEY,
+    title      VARCHAR(255) NOT NULL,
+    image_url  VARCHAR(255) NOT NULL,
+    detail     VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+
+
+
+
 GRANT SELECT ON shops                 TO grafana;
 GRANT SELECT ON official_events       TO grafana;
 GRANT SELECT ON unofficial_events     TO grafana;
 
 GRANT SELECT ON pokemon_sprites       TO grafana;
+GRANT SELECT ON pokemon_avatars       TO grafana;
 
 GRANT SELECT ON users                 TO grafana;
 GRANT SELECT ON users_players         TO grafana;
@@ -684,8 +701,8 @@ GRANT SELECT ON championship_series   TO grafana;
 GRANT SELECT ON standard_regulations  TO grafana;
 GRANT SELECT ON environments          TO grafana;
 
-GRANT SELECT ON cityleague_schedules TO grafana;
-GRANT SELECT ON cityleague_results   TO grafana;
+GRANT SELECT ON cityleague_schedules  TO grafana;
+GRANT SELECT ON cityleague_results    TO grafana;
 
 GRANT SELECT ON cards                 TO grafana;
 GRANT SELECT ON pokemon_cards         TO grafana;
@@ -698,19 +715,6 @@ GRANT SELECT ON designations          TO grafana;
 GRANT SELECT ON user_designations     TO grafana;
 
 
-
-
--- 公式サイト(プレイヤーズクラブ)のアバター一覧(avatar_search API)を
--- cmd/sync-pokemon-avatars バッチで定期的に同期して保持するマスタテーブル。
--- id は公式サイトの avatar_id をそのまま使う。
-CREATE TABLE pokemon_avatars (
-    id         INT NOT NULL PRIMARY KEY,
-    title      VARCHAR(255) NOT NULL,
-    image_url  VARCHAR(255) NOT NULL,
-    detail     VARCHAR(255) DEFAULT NULL,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
-);
 
 
 

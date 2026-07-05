@@ -83,13 +83,13 @@ type DesignationStatsInterface interface {
 	) (map[string]int, error)
 
 	// ExistsCityLeagueFinalTournamentResultByPlayerId は ExistsCityLeagueResultByPlayerId と
-	// 同様だが、cityleague_results.rank が minRank 以上のレコード(決勝トーナメント進出と
+	// 同様だが、cityleague_results.rank が maxRank 以下のレコード(決勝トーナメント進出と
 	// みなす)に限定して存在有無を返す。しきい値の意味(usecase.DesignationCityLeagueFinal
-	// TournamentMinRank)は usecase 層が持ち、ここでは受け取った値でそのまま絞り込む。
+	// TournamentMaxRank)は usecase 層が持ち、ここでは受け取った値でそのまま絞り込む。
 	ExistsCityLeagueFinalTournamentResultByPlayerId(
 		ctx context.Context,
 		playerId string,
-		minRank int,
+		maxRank int,
 		fromDate time.Time,
 		toDate time.Time,
 	) (bool, error)
@@ -98,7 +98,7 @@ type DesignationStatsInterface interface {
 	// ExistsCityLeagueFinalTournamentResultByPlayerId のユーザー横断版。
 	ExistsCityLeagueFinalTournamentResultGroupByUserId(
 		ctx context.Context,
-		minRank int,
+		maxRank int,
 		fromDate time.Time,
 		toDate time.Time,
 	) (map[string]int, error)

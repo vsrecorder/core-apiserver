@@ -25,14 +25,14 @@ const (
 	DesignationCriteriaTypeOfficialCityLeaguePlacement = "official_city_league_placement"
 
 	// DesignationCriteriaTypeOfficialCityLeagueFinalTournament は、プレイヤーズクラブ連携済みの
-	// プレイヤーIDで、公式サイトの結果(cityleague_results)にそのプレイヤーIDかつ rank が5以上の
+	// プレイヤーIDで、公式サイトの結果(cityleague_results)にそのプレイヤーIDかつ rank が5以下の
 	// レコードが選択中のシーズン内に1件以上あることを条件とするティア(熟練者)に使う。
 	DesignationCriteriaTypeOfficialCityLeagueFinalTournament = "official_city_league_playoff"
 
-	// DesignationCityLeagueFinalTournamentMinRank は熟練者(criteria_type=
+	// DesignationCityLeagueFinalTournamentMaxRank は熟練者(criteria_type=
 	// official_city_league_playoff)の判定に使う、決勝トーナメント進出とみなす
-	// cityleague_results.rank の下限値。
-	DesignationCityLeagueFinalTournamentMinRank = 5
+	// cityleague_results.rank の上限値。
+	DesignationCityLeagueFinalTournamentMaxRank = 5
 
 	// DesignationCityLeagueStandaloneThreshold はレギュラー(criteria_type=
 	// official_city_league_record)の「前シーズンに引き続き」という継続条件を
@@ -257,7 +257,7 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
-	cityLeagueFinalTournaments, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, DesignationCityLeagueFinalTournamentMinRank, fromDate, toDate)
+	cityLeagueFinalTournaments, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +352,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 			cityLeaguePlacement = 1
 		}
 
-		existsFinalTournament, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMinRank, fromDate, toDate)
+		existsFinalTournament, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
 		if err != nil {
 			return nil, err
 		}

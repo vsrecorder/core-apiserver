@@ -214,13 +214,13 @@ func (i *DesignationStats) ExistsCityLeagueResultGroupByUserId(
 func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultByPlayerId(
 	ctx context.Context,
 	playerId string,
-	minRank int,
+	maxRank int,
 	fromDate time.Time,
 	toDate time.Time,
 ) (bool, error) {
 	var count int64
 
-	query := i.db.Table("cityleague_results").Where("player_id = ? AND rank >= ?", playerId, minRank)
+	query := i.db.Table("cityleague_results").Where("player_id = ? AND rank <= ?", playerId, maxRank)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}
@@ -237,7 +237,7 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultByPlayerId(
 
 func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultGroupByUserId(
 	ctx context.Context,
-	minRank int,
+	maxRank int,
 	fromDate time.Time,
 	toDate time.Time,
 ) (map[string]int, error) {
@@ -246,7 +246,7 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultGroupByUserId(
 		Joins(
 			"JOIN users_players ON users_players.player_id = cityleague_results.player_id AND users_players.deleted_at IS NULL",
 		).
-		Where("cityleague_results.rank >= ?", minRank)
+		Where("cityleague_results.rank <= ?", maxRank)
 	if !fromDate.IsZero() {
 		query = query.Where("cityleague_results.event_date >= ?", fromDate)
 	}

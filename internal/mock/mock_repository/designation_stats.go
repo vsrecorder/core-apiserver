@@ -132,33 +132,33 @@ func (mr *MockDesignationStatsInterfaceMockRecorder) CountRecordsGroupByUserId(c
 }
 
 // ExistsCityLeagueFinalTournamentResultByPlayerId mocks base method.
-func (m *MockDesignationStatsInterface) ExistsCityLeagueFinalTournamentResultByPlayerId(ctx context.Context, playerId string, minRank int, fromDate, toDate time.Time) (bool, error) {
+func (m *MockDesignationStatsInterface) ExistsCityLeagueFinalTournamentResultByPlayerId(ctx context.Context, playerId string, maxRank int, fromDate, toDate time.Time) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExistsCityLeagueFinalTournamentResultByPlayerId", ctx, playerId, minRank, fromDate, toDate)
+	ret := m.ctrl.Call(m, "ExistsCityLeagueFinalTournamentResultByPlayerId", ctx, playerId, maxRank, fromDate, toDate)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ExistsCityLeagueFinalTournamentResultByPlayerId indicates an expected call of ExistsCityLeagueFinalTournamentResultByPlayerId.
-func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, playerId, minRank, fromDate, toDate any) *gomock.Call {
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, playerId, maxRank, fromDate, toDate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueFinalTournamentResultByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueFinalTournamentResultByPlayerId), ctx, playerId, minRank, fromDate, toDate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueFinalTournamentResultByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueFinalTournamentResultByPlayerId), ctx, playerId, maxRank, fromDate, toDate)
 }
 
 // ExistsCityLeagueFinalTournamentResultGroupByUserId mocks base method.
-func (m *MockDesignationStatsInterface) ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx context.Context, minRank int, fromDate, toDate time.Time) (map[string]int, error) {
+func (m *MockDesignationStatsInterface) ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx context.Context, maxRank int, fromDate, toDate time.Time) (map[string]int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExistsCityLeagueFinalTournamentResultGroupByUserId", ctx, minRank, fromDate, toDate)
+	ret := m.ctrl.Call(m, "ExistsCityLeagueFinalTournamentResultGroupByUserId", ctx, maxRank, fromDate, toDate)
 	ret0, _ := ret[0].(map[string]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ExistsCityLeagueFinalTournamentResultGroupByUserId indicates an expected call of ExistsCityLeagueFinalTournamentResultGroupByUserId.
-func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, minRank, fromDate, toDate any) *gomock.Call {
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, maxRank, fromDate, toDate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueFinalTournamentResultGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueFinalTournamentResultGroupByUserId), ctx, minRank, fromDate, toDate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueFinalTournamentResultGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueFinalTournamentResultGroupByUserId), ctx, maxRank, fromDate, toDate)
 }
 
 // ExistsCityLeagueResultByPlayerId mocks base method.

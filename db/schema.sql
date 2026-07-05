@@ -361,6 +361,13 @@ CREATE TABLE championsleague_schedules (
     to_date     DATE NOT NULL
 );
 
+INSERT INTO championsleague_schedules VALUES ('cl2027_aichi',    'チャンピオンズリーグ2027 愛知','2027-05-07','2027-05-09');
+INSERT INTO championsleague_schedules VALUES ('cl2027_osaka',    'チャンピオンズリーグ2027 大阪','2027-04-02','2027-04-04');
+INSERT INTO championsleague_schedules VALUES ('cl2027_miyagi',   'チャンピオンズリーグ2027 宮城','2027-02-12','2027-02-14');
+INSERT INTO championsleague_schedules VALUES ('cl2027_chiba',    'チャンピオンズリーグ2027 千葉','2026-11-22','2026-11-23');
+INSERT INTO championsleague_schedules VALUES ('cl2027_yokohama', 'チャンピオンズリーグ2027 横浜','2026-09-20','2026-09-22');
+
+INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_may','チャンピオンズリーグ2026 愛知 May',     '2026-05-09','2026-05-10');
 INSERT INTO championsleague_schedules VALUES ('pjcs2026',        'ポケモンジャパンチャンピオンシップス2026','2026-06-06','2026-06-07');
 INSERT INTO championsleague_schedules VALUES ('cl2026_aichi_may','チャンピオンズリーグ2026 愛知 May',     '2026-05-09','2026-05-10');
 INSERT INTO championsleague_schedules VALUES ('cl2026_osaka',    'チャンピオンズリーグ2026 大阪',         '2026-03-28','2026-03-29');

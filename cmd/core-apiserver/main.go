@@ -342,6 +342,14 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	// プラットフォーム全体の週次デッキ使用率（公開・非会員閲覧可）。
+	controller.NewWeeklyDeckUsageStat(
+		r,
+		usecase.NewWeeklyDeckUsageStat(
+			infrastructure.NewWeeklyDeckUsageStat(db),
+		),
+	).RegisterRoute(relativePath)
+
 	{
 		ctx, stop := signal.NotifyContext(
 			context.Background(),

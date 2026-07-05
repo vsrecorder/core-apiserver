@@ -237,6 +237,17 @@ func GetSeason(ctx *gin.Context) string {
 	return season
 }
 
+func SetWeek(ctx *gin.Context, value string) {
+	ctx.Set("week", value)
+}
+
+func GetWeek(ctx *gin.Context) string {
+	value, _ := ctx.Get("week")
+	week, _ := value.(string)
+
+	return week
+}
+
 func SetPeriod(ctx *gin.Context, value string) {
 	ctx.Set("period", value)
 }

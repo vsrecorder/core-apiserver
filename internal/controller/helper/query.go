@@ -83,3 +83,7 @@ func GetQuerySeason(ctx *gin.Context) string {
 func GetQueryPeriod(ctx *gin.Context) string {
 	return ctx.Query("period")
 }
+
+func GetQueryWeek(ctx *gin.Context) string {
+	return ctx.Query("week")
+}

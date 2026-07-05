@@ -700,6 +700,22 @@ GRANT SELECT ON user_designations     TO grafana;
 
 
 
+-- 公式サイト(プレイヤーズクラブ)のアバター一覧(avatar_search API)を
+-- cmd/sync-pokemon-avatars バッチで定期的に同期して保持するマスタテーブル。
+-- id は公式サイトの avatar_id をそのまま使う。
+CREATE TABLE pokemon_avatars (
+    id         INT NOT NULL PRIMARY KEY,
+    title      VARCHAR(255) NOT NULL,
+    image_url  VARCHAR(255) NOT NULL,
+    detail     VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+
+
+
+
 
 
 GRANT SELECT ON <table_name> TO grafana;

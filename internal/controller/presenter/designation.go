@@ -7,15 +7,21 @@ import (
 )
 
 func newDesignationResponse(def *entity.Designation) *dto.DesignationResponse {
+	standaloneThreshold := 0
+	if def.CriteriaType == usecase.DesignationCriteriaTypeOfficialCityLeagueRecord {
+		standaloneThreshold = usecase.DesignationCityLeagueStandaloneThreshold
+	}
+
 	return &dto.DesignationResponse{
-		ID:            def.ID,
-		Tier:          def.Tier,
-		Code:          def.Code,
-		Emoji:         def.Emoji,
-		Name:          def.Name,
-		Description:   def.Description,
-		CriteriaType:  def.CriteriaType,
-		CriteriaValue: def.CriteriaValue,
+		ID:                  def.ID,
+		Tier:                def.Tier,
+		Code:                def.Code,
+		Emoji:               def.Emoji,
+		Name:                def.Name,
+		Description:         def.Description,
+		CriteriaType:        def.CriteriaType,
+		CriteriaValue:       def.CriteriaValue,
+		StandaloneThreshold: standaloneThreshold,
 	}
 }
 

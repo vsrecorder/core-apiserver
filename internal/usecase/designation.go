@@ -2,8 +2,10 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
@@ -15,11 +17,29 @@ const (
 	DesignationCriteriaTypeOfficialLeagueRecord     = "official_league_record"
 	DesignationCriteriaTypeOfficialCityLeagueRecord = "official_city_league_record"
 
-	// designationCityLeagueStandaloneThreshold はレギュラー(criteria_type=
+	// DesignationCriteriaTypeOfficialCityLeaguePlacement は、プレイヤーズクラブ連携済みの
+	// プレイヤーIDで、公式サイトの結果(cityleague_results)にそのプレイヤーIDのレコードが
+	// 選択中のシーズン内に1件以上あることを条件とするティア(ベテラン)に使う。
+	// records テーブル(バトレコ上でユーザー自身が作成した記録)を集計する他の criteria_type
+	// と異なり、公式サイトからスクレイピングした cityleague_results を直接参照する。
+	DesignationCriteriaTypeOfficialCityLeaguePlacement = "official_city_league_placement"
+
+	// DesignationCriteriaTypeOfficialCityLeagueFinalTournament は、プレイヤーズクラブ連携済みの
+	// プレイヤーIDで、公式サイトの結果(cityleague_results)にそのプレイヤーIDかつ rank が5以上の
+	// レコードが選択中のシーズン内に1件以上あることを条件とするティア(熟練者)に使う。
+	DesignationCriteriaTypeOfficialCityLeagueFinalTournament = "official_city_league_playoff"
+
+	// DesignationCityLeagueFinalTournamentMinRank は熟練者(criteria_type=
+	// official_city_league_playoff)の判定に使う、決勝トーナメント進出とみなす
+	// cityleague_results.rank の下限値。
+	DesignationCityLeagueFinalTournamentMinRank = 5
+
+	// DesignationCityLeagueStandaloneThreshold はレギュラー(criteria_type=
 	// official_city_league_record)の「前シーズンに引き続き」という継続条件を
 	// 満たさなくても、今シーズン単独でこの件数以上シティリーグ記録があれば
-	// 達成とみなす閾値。criteria_value(継続条件側の閾値)とは独立した固定値。
-	designationCityLeagueStandaloneThreshold = 2
+	// 達成とみなす閾値。criteria_value(継続条件側の閾値)とは独立した固定値で、
+	// presenter層がAPIレスポンス(standalone_threshold)経由でフロントエンドへ渡す。
+	DesignationCityLeagueStandaloneThreshold = 2
 )
 
 // DesignationLadderItem は称号のロードマップ表示用に、称号定義へ
@@ -81,14 +101,16 @@ type Designation struct {
 	designationRepo        repository.DesignationInterface
 	designationStatsRepo   repository.DesignationStatsInterface
 	championshipSeriesRepo repository.ChampionshipSeriesInterface
+	userPlayerRepo         repository.UserPlayerInterface
 }
 
 func NewDesignation(
 	designationRepo repository.DesignationInterface,
 	designationStatsRepo repository.DesignationStatsInterface,
 	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+	userPlayerRepo repository.UserPlayerInterface,
 ) DesignationInterface {
-	return &Designation{designationRepo, designationStatsRepo, championshipSeriesRepo}
+	return &Designation{designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo}
 }
 
 func (u *Designation) GetAllDefinitions(
@@ -157,7 +179,7 @@ func (u *Designation) GetByUserId(
 // 特殊なティアなので、previousCityLeagueCount を使って別途判定する。
 //   - 今シーズン・前シーズンともにcriteria_value以上のシティリーグ記録がある
 //     (=「前シーズンに引き続き」の継続条件)
-//   - 前シーズンの実績を問わず、今シーズン単独でdesignationCityLeagueStandaloneThreshold
+//   - 前シーズンの実績を問わず、今シーズン単独でDesignationCityLeagueStandaloneThreshold
 //     件以上のシティリーグ記録がある
 func currentDesignation(
 	definitions []*entity.Designation,
@@ -174,7 +196,7 @@ func currentDesignation(
 
 		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueRecord {
 			continuedFromPreviousSeason := value >= def.CriteriaValue && previousCityLeagueCount >= def.CriteriaValue
-			achievedAloneThisSeason := value >= designationCityLeagueStandaloneThreshold
+			achievedAloneThisSeason := value >= DesignationCityLeagueStandaloneThreshold
 			if !continuedFromPreviousSeason && !achievedAloneThisSeason {
 				break
 			}
@@ -230,6 +252,16 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
+	cityLeaguePlacements, err := u.designationStatsRepo.ExistsCityLeagueResultGroupByUserId(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	cityLeagueFinalTournaments, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, DesignationCityLeagueFinalTournamentMinRank, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
 	// いずれかの記録を持つユーザーのみが称号判定の対象になりうる(記録が全く無ければ
 	// 必ず tier=0 のため、集計に含める意味が無い)。
 	userIds := make(map[string]struct{})
@@ -247,9 +279,11 @@ func (u *Designation) GetRankStats(
 	totalUsers := 0
 	for userId := range userIds {
 		values := map[string]int{
-			DesignationCriteriaTypeRecord:                   recordCounts[userId],
-			DesignationCriteriaTypeOfficialLeagueRecord:     leagueCounts[userId],
-			DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCounts[userId],
+			DesignationCriteriaTypeRecord:                            recordCounts[userId],
+			DesignationCriteriaTypeOfficialLeagueRecord:              leagueCounts[userId],
+			DesignationCriteriaTypeOfficialCityLeagueRecord:          cityLeagueCounts[userId],
+			DesignationCriteriaTypeOfficialCityLeaguePlacement:       cityLeaguePlacements[userId],
+			DesignationCriteriaTypeOfficialCityLeagueFinalTournament: cityLeagueFinalTournaments[userId],
 		}
 
 		current := currentDesignation(definitions, values, previousCityLeagueCounts[userId])
@@ -303,10 +337,36 @@ func (u *Designation) seasonValuesByCriteriaType(
 		return nil, err
 	}
 
+	cityLeaguePlacement := 0
+	cityLeagueFinalTournament := 0
+	userPlayer, err := u.userPlayerRepo.FindByUserId(ctx, userId)
+	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
+		return nil, err
+	}
+	if userPlayer != nil {
+		exists, err := u.designationStatsRepo.ExistsCityLeagueResultByPlayerId(ctx, userPlayer.PlayerId, fromDate, toDate)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			cityLeaguePlacement = 1
+		}
+
+		existsFinalTournament, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMinRank, fromDate, toDate)
+		if err != nil {
+			return nil, err
+		}
+		if existsFinalTournament {
+			cityLeagueFinalTournament = 1
+		}
+	}
+
 	return map[string]int{
-		DesignationCriteriaTypeRecord:                   recordCount,
-		DesignationCriteriaTypeOfficialLeagueRecord:     leagueCount,
-		DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCount,
+		DesignationCriteriaTypeRecord:                            recordCount,
+		DesignationCriteriaTypeOfficialLeagueRecord:              leagueCount,
+		DesignationCriteriaTypeOfficialCityLeagueRecord:          cityLeagueCount,
+		DesignationCriteriaTypeOfficialCityLeaguePlacement:       cityLeaguePlacement,
+		DesignationCriteriaTypeOfficialCityLeagueFinalTournament: cityLeagueFinalTournament,
 	}, nil
 }
 

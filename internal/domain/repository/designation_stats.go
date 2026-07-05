@@ -59,4 +59,47 @@ type DesignationStatsInterface interface {
 		fromDate time.Time,
 		toDate time.Time,
 	) (map[string]int, error)
+
+	// ExistsCityLeagueResultByPlayerId は、公式サイトの結果(cityleague_results)に
+	// 指定プレイヤーIDのレコードが、指定期間内に1件以上存在するかを返す。
+	// records/official_events ではなく、公式サイトからスクレイピングした
+	// cityleague_results を直接参照する点が他メソッドと異なる。
+	ExistsCityLeagueResultByPlayerId(
+		ctx context.Context,
+		playerId string,
+		fromDate time.Time,
+		toDate time.Time,
+	) (bool, error)
+
+	// ExistsCityLeagueResultGroupByUserId は ExistsCityLeagueResultByPlayerId のユーザー横断版。
+	// users_players(プレイヤーズクラブ連携。deleted_at IS NULL のもののみ)を介して
+	// cityleague_results.player_id をバトレコの user_id に変換した上で、指定期間内に
+	// 1件以上該当レコードがあるユーザーを user_id をキーに返す(該当なしのユーザーは
+	// キーに含まれない。値は常に1)。
+	ExistsCityLeagueResultGroupByUserId(
+		ctx context.Context,
+		fromDate time.Time,
+		toDate time.Time,
+	) (map[string]int, error)
+
+	// ExistsCityLeagueFinalTournamentResultByPlayerId は ExistsCityLeagueResultByPlayerId と
+	// 同様だが、cityleague_results.rank が minRank 以上のレコード(決勝トーナメント進出と
+	// みなす)に限定して存在有無を返す。しきい値の意味(usecase.DesignationCityLeagueFinal
+	// TournamentMinRank)は usecase 層が持ち、ここでは受け取った値でそのまま絞り込む。
+	ExistsCityLeagueFinalTournamentResultByPlayerId(
+		ctx context.Context,
+		playerId string,
+		minRank int,
+		fromDate time.Time,
+		toDate time.Time,
+	) (bool, error)
+
+	// ExistsCityLeagueFinalTournamentResultGroupByUserId は
+	// ExistsCityLeagueFinalTournamentResultByPlayerId のユーザー横断版。
+	ExistsCityLeagueFinalTournamentResultGroupByUserId(
+		ctx context.Context,
+		minRank int,
+		fromDate time.Time,
+		toDate time.Time,
+	) (map[string]int, error)
 }

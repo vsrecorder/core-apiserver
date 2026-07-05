@@ -168,6 +168,95 @@ func (i *DesignationStats) CountCityLeagueRecordsGroupByUserId(
 	return scanUserRecordCounts(query)
 }
 
+func (i *DesignationStats) ExistsCityLeagueResultByPlayerId(
+	ctx context.Context,
+	playerId string,
+	fromDate time.Time,
+	toDate time.Time,
+) (bool, error) {
+	var count int64
+
+	query := i.db.Table("cityleague_results").Where("player_id = ?", playerId)
+	if !fromDate.IsZero() {
+		query = query.Where("event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("event_date < ?", toDate)
+	}
+
+	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}
+
+func (i *DesignationStats) ExistsCityLeagueResultGroupByUserId(
+	ctx context.Context,
+	fromDate time.Time,
+	toDate time.Time,
+) (map[string]int, error) {
+	query := i.db.Table("cityleague_results").
+		Select("DISTINCT users_players.user_id AS user_id, 1 AS count").
+		Joins(
+			"JOIN users_players ON users_players.player_id = cityleague_results.player_id AND users_players.deleted_at IS NULL",
+		)
+	if !fromDate.IsZero() {
+		query = query.Where("cityleague_results.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("cityleague_results.event_date < ?", toDate)
+	}
+
+	return scanUserRecordCounts(query)
+}
+
+func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultByPlayerId(
+	ctx context.Context,
+	playerId string,
+	minRank int,
+	fromDate time.Time,
+	toDate time.Time,
+) (bool, error) {
+	var count int64
+
+	query := i.db.Table("cityleague_results").Where("player_id = ? AND rank >= ?", playerId, minRank)
+	if !fromDate.IsZero() {
+		query = query.Where("event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("event_date < ?", toDate)
+	}
+
+	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}
+
+func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultGroupByUserId(
+	ctx context.Context,
+	minRank int,
+	fromDate time.Time,
+	toDate time.Time,
+) (map[string]int, error) {
+	query := i.db.Table("cityleague_results").
+		Select("DISTINCT users_players.user_id AS user_id, 1 AS count").
+		Joins(
+			"JOIN users_players ON users_players.player_id = cityleague_results.player_id AND users_players.deleted_at IS NULL",
+		).
+		Where("cityleague_results.rank >= ?", minRank)
+	if !fromDate.IsZero() {
+		query = query.Where("cityleague_results.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("cityleague_results.event_date < ?", toDate)
+	}
+
+	return scanUserRecordCounts(query)
+}
+
 func (i *DesignationStats) CountLeagueRecordsGroupByUserId(
 	ctx context.Context,
 	fromDate time.Time,

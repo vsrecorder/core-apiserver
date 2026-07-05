@@ -9,6 +9,10 @@ type DesignationResponse struct {
 	Description   string `json:"description"`
 	CriteriaType  string `json:"criteria_type"`
 	CriteriaValue int    `json:"criteria_value"`
+	// StandaloneThreshold は CriteriaType が "official_city_league_record"(レギュラーの
+	// 継続条件)の場合のみ、前シーズンの実績を問わず今シーズン単独で達成とみなす閾値。
+	// それ以外は常に0。
+	StandaloneThreshold int `json:"standalone_threshold"`
 }
 
 type DesignationsResponse struct {
@@ -21,7 +25,7 @@ type DesignationLadderItemResponse struct {
 	// CurrentValue は CriteriaType に対応する、対象シーズンでの現在の集計値。
 	// CriteriaType が "unimplemented" の場合は常に0。
 	CurrentValue int `json:"current_value"`
-	// PreviousValue は CriteriaType が "official_city_league_record"(常連の継続条件)の
+	// PreviousValue は CriteriaType が "official_city_league_record"(レギュラーの継続条件)の
 	// 場合のみ、前シーズンの集計値。それ以外は常に0。
 	PreviousValue int `json:"previous_value"`
 }

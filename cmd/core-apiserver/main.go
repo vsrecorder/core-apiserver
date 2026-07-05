@@ -273,6 +273,7 @@ func main() {
 			infrastructure.NewDesignation(db),
 			infrastructure.NewDesignationStats(db),
 			infrastructure.NewChampionshipSeries(db),
+			infrastructure.NewUserPlayer(db),
 		),
 		infrastructure.NewChampionshipSeries(db),
 	).RegisterRoute(relativePath)

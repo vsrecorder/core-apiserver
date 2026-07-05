@@ -130,3 +130,63 @@ func (mr *MockDesignationStatsInterfaceMockRecorder) CountRecordsGroupByUserId(c
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountRecordsGroupByUserId), ctx, fromDate, toDate)
 }
+
+// ExistsCityLeagueFinalTournamentResultByPlayerId mocks base method.
+func (m *MockDesignationStatsInterface) ExistsCityLeagueFinalTournamentResultByPlayerId(ctx context.Context, playerId string, minRank int, fromDate, toDate time.Time) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsCityLeagueFinalTournamentResultByPlayerId", ctx, playerId, minRank, fromDate, toDate)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsCityLeagueFinalTournamentResultByPlayerId indicates an expected call of ExistsCityLeagueFinalTournamentResultByPlayerId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, playerId, minRank, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueFinalTournamentResultByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueFinalTournamentResultByPlayerId), ctx, playerId, minRank, fromDate, toDate)
+}
+
+// ExistsCityLeagueFinalTournamentResultGroupByUserId mocks base method.
+func (m *MockDesignationStatsInterface) ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx context.Context, minRank int, fromDate, toDate time.Time) (map[string]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsCityLeagueFinalTournamentResultGroupByUserId", ctx, minRank, fromDate, toDate)
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsCityLeagueFinalTournamentResultGroupByUserId indicates an expected call of ExistsCityLeagueFinalTournamentResultGroupByUserId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, minRank, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueFinalTournamentResultGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueFinalTournamentResultGroupByUserId), ctx, minRank, fromDate, toDate)
+}
+
+// ExistsCityLeagueResultByPlayerId mocks base method.
+func (m *MockDesignationStatsInterface) ExistsCityLeagueResultByPlayerId(ctx context.Context, playerId string, fromDate, toDate time.Time) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsCityLeagueResultByPlayerId", ctx, playerId, fromDate, toDate)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsCityLeagueResultByPlayerId indicates an expected call of ExistsCityLeagueResultByPlayerId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueResultByPlayerId(ctx, playerId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueResultByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueResultByPlayerId), ctx, playerId, fromDate, toDate)
+}
+
+// ExistsCityLeagueResultGroupByUserId mocks base method.
+func (m *MockDesignationStatsInterface) ExistsCityLeagueResultGroupByUserId(ctx context.Context, fromDate, toDate time.Time) (map[string]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsCityLeagueResultGroupByUserId", ctx, fromDate, toDate)
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsCityLeagueResultGroupByUserId indicates an expected call of ExistsCityLeagueResultGroupByUserId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueResultGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueResultGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueResultGroupByUserId), ctx, fromDate, toDate)
+}

@@ -31,23 +31,27 @@ func NewWeeklyDeckUsageStat(
 }
 
 // weeklyMatchRow は集計対象週の1マッチ分の情報。
+// デッキ名・対戦相手デッキ名（フリーテキスト）は集計に使わないため保持しない。
 type weeklyMatchRow struct {
 	MatchId    string
 	UserId     string
 	DeckId     string
-	DeckName   string
-	DeckInfo   string
 	VictoryFlg bool
 }
 
 // variantGroup は正規化済みスプライト指紋ごとの集計状態。
 type variantGroup struct {
 	key     string
-	primary string
 	sprites []string // 正規化済みの表示用スプライト列
 	count   int
 	wins    int
-	labels  map[string]int // 補助ラベル候補（デッキ名テキスト → 出現数）
+}
+
+func (g *variantGroup) winRate() float64 {
+	if g.count == 0 {
+		return 0
+	}
+	return float64(g.wins) / float64(g.count)
 }
 
 func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
@@ -61,18 +65,15 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	// - 期間フィルタは既存の集計に合わせ records.event_date の半開区間 [from, to)。
 	// - 論理削除は deleted_at IS NULL で除外。
 	// - private_flg は現状すべて true の予約フラグのため、フィルタ条件には入れない。
-	// - デッキ名は自分側の票の補助ラベルに使うため LEFT JOIN で取得する。
+	// - デッキ名・対戦相手デッキ名（フリーテキスト）は集計に使わないため取得しない。
 	query := i.db.Table("matches").
 		Select(
 			"matches.id AS match_id, " +
 				"records.user_id AS user_id, " +
 				"records.deck_id AS deck_id, " +
-				"COALESCE(decks.name, '') AS deck_name, " +
-				"matches.opponents_deck_info AS deck_info, " +
 				"matches.victory_flg AS victory_flg",
 		).
 		Joins("JOIN records ON matches.record_id = records.id").
-		Joins("LEFT JOIN decks ON records.deck_id = decks.id").
 		Where("records.deleted_at IS NULL AND matches.deleted_at IS NULL")
 
 	if !fromDate.IsZero() {
@@ -102,7 +103,8 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		}
 	}
 
-	// 相手デッキの指紋（match_pokemon_sprites）を position 順に取得する。
+	// 相手デッキの指紋（match_pokemon_sprites）を取得する。順番は集計に使わないため
+	// position でのソートは不要だが、既存の取得パターンに合わせて指定しておく。
 	spritesByMatch := make(map[string][]string, len(matchIds))
 	{
 		var spriteModels []*model.MatchPokemonSprite
@@ -114,7 +116,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		}
 	}
 
-	// 自分デッキの指紋（deck_pokemon_sprites）を position 順に取得する。
+	// 自分デッキの指紋（deck_pokemon_sprites）を取得する。
 	spritesByDeck := make(map[string][]string, len(deckIdSet))
 	if len(deckIdSet) > 0 {
 		deckIds := make([]string, 0, len(deckIdSet))
@@ -138,8 +140,8 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 
 	// addVote は1票を該当する指紋グループへ加算する。
 	// won はその指紋（デッキ）が勝ったかどうか。
-	addVote := func(spriteIds []string, won bool, label string, userId string) {
-		key, primary, normalized := NormalizeFingerprint(spriteIds)
+	addVote := func(spriteIds []string, won bool, userId string) {
+		key, normalized := NormalizeFingerprint(spriteIds)
 		if key == "" {
 			// スプライト未付与は集計不能として除外する。
 			return
@@ -149,9 +151,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		if !ok {
 			g = &variantGroup{
 				key:     key,
-				primary: primary,
 				sprites: normalized,
-				labels:  make(map[string]int),
 			}
 			groups[key] = g
 			order = append(order, key)
@@ -161,9 +161,6 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		if won {
 			g.wins++
 		}
-		if label != "" {
-			g.labels[label]++
-		}
 
 		contributors[userId] = struct{}{}
 		totalVotes++
@@ -171,11 +168,11 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 
 	for _, r := range rows {
 		// 相手側の票: その指紋が勝った = 記録者が負けた（victory_flg=false）。
-		addVote(spritesByMatch[r.MatchId], !r.VictoryFlg, r.DeckInfo, r.UserId)
+		addVote(spritesByMatch[r.MatchId], !r.VictoryFlg, r.UserId)
 
 		// 自分側の票: マッチ単位。記録者が勝てばその指紋の勝ち。
 		if r.DeckId != "" {
-			addVote(spritesByDeck[r.DeckId], r.VictoryFlg, r.DeckName, r.UserId)
+			addVote(spritesByDeck[r.DeckId], r.VictoryFlg, r.UserId)
 		}
 	}
 
@@ -183,9 +180,13 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		return entity.NewWeeklyDeckUsageStat(fromDate, 0, len(contributors), []*entity.DeckUsageVariant{}), nil
 	}
 
-	// 出現件数の降順（同数は初出順を維持）にソートする。
+	// 使用率（count）の降順。使用率が同じ場合は勝率の降順で順位を決める。
 	sort.SliceStable(order, func(a, b int) bool {
-		return groups[order[a]].count > groups[order[b]].count
+		ga, gb := groups[order[a]], groups[order[b]]
+		if ga.count != gb.count {
+			return ga.count > gb.count
+		}
+		return ga.winRate() > gb.winRate()
 	})
 
 	decks := make([]*entity.DeckUsageVariant, 0, len(order))
@@ -209,7 +210,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		usageRate := float64(otherCount) / float64(totalVotes)
 		winRate := float64(otherWins) / float64(otherCount)
 		decks = append(decks, entity.NewDeckUsageVariant(
-			"", otherVariantLabel, "", otherCount, usageRate, otherWins, otherCount-otherWins, winRate, []*entity.PokemonSprite{},
+			"", otherCount, usageRate, otherWins, otherCount-otherWins, winRate, []*entity.PokemonSprite{},
 		))
 	}
 
@@ -219,12 +220,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 // newVariantEntity は集計済みの variantGroup を entity へ変換する。
 func newVariantEntity(g *variantGroup, totalVotes int) *entity.DeckUsageVariant {
 	usageRate := float64(g.count) / float64(totalVotes)
-
 	losses := g.count - g.wins
-	var winRate float64
-	if g.count > 0 {
-		winRate = float64(g.wins) / float64(g.count)
-	}
 
 	pokemonSprites := make([]*entity.PokemonSprite, 0, len(g.sprites))
 	for _, spriteId := range g.sprites {
@@ -232,19 +228,6 @@ func newVariantEntity(g *variantGroup, totalVotes int) *entity.DeckUsageVariant 
 	}
 
 	return entity.NewDeckUsageVariant(
-		g.key, mostFrequentLabel(g.labels), g.primary, g.count, usageRate, g.wins, losses, winRate, pokemonSprites,
+		g.key, g.count, usageRate, g.wins, losses, g.winRate(), pokemonSprites,
 	)
-}
-
-// mostFrequentLabel は補助ラベル候補のうち最頻出のものを返す。同数の場合は辞書順で安定させる。
-func mostFrequentLabel(labels map[string]int) string {
-	best := ""
-	bestCount := 0
-	for label, count := range labels {
-		if count > bestCount || (count == bestCount && (best == "" || label < best)) {
-			best = label
-			bestCount = count
-		}
-	}
-	return best
 }

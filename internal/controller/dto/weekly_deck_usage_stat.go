@@ -1,15 +1,13 @@
 package dto
 
 type WeeklyDeckUsageItemResponse struct {
-	Fingerprint     string                   `json:"fingerprint"`
-	Label           string                   `json:"label"`
-	PrimarySpriteId string                   `json:"primary_sprite_id"`
-	Count           int                      `json:"count"`
-	UsageRate       float64                  `json:"usage_rate"`
-	Wins            int                      `json:"wins"`
-	Losses          int                      `json:"losses"`
-	WinRate         float64                  `json:"win_rate"`
-	PokemonSprites  []*PokemonSpriteResponse `json:"pokemon_sprites"`
+	Fingerprint    string                   `json:"fingerprint"`
+	Count          int                      `json:"count"`
+	UsageRate      float64                  `json:"usage_rate"`
+	Wins           int                      `json:"wins"`
+	Losses         int                      `json:"losses"`
+	WinRate        float64                  `json:"win_rate"`
+	PokemonSprites []*PokemonSpriteResponse `json:"pokemon_sprites"`
 }
 
 type WeeklyDeckUsageStatResponse struct {

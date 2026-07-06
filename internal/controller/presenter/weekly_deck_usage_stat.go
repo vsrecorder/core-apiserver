@@ -21,15 +21,13 @@ func NewWeeklyDeckUsageStatResponse(
 		}
 
 		decks = append(decks, &dto.WeeklyDeckUsageItemResponse{
-			Fingerprint:     deck.Fingerprint,
-			Label:           deck.Label,
-			PrimarySpriteId: deck.PrimarySpriteId,
-			Count:           deck.Count,
-			UsageRate:       deck.UsageRate,
-			Wins:            deck.Wins,
-			Losses:          deck.Losses,
-			WinRate:         deck.WinRate,
-			PokemonSprites:  pokemonSprites,
+			Fingerprint:    deck.Fingerprint,
+			Count:          deck.Count,
+			UsageRate:      deck.UsageRate,
+			Wins:           deck.Wins,
+			Losses:         deck.Losses,
+			WinRate:        deck.WinRate,
+			PokemonSprites: pokemonSprites,
 		})
 	}
 

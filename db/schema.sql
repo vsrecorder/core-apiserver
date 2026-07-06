@@ -700,6 +700,24 @@ CREATE TABLE pokemon_avatars (
 
 
 
+CREATE TABLE player_rankings (
+    ranking_date        DATE NOT NULL,
+    league_id           INT NOT NULL,
+    player_id           VARCHAR(10) NOT NULL,
+    nickname            VARCHAR(255) NOT NULL,
+    current_ranking     INT NOT NULL,
+    prefecture_name     VARCHAR(255) NOT NULL,
+    champion_ship_point INT NOT NULL,
+    public_flg          BOOLEAN NOT NULL,
+    champion_flg        BOOLEAN NOT NULL,
+    avatar_image        VARCHAR(255) NOT NULL,
+    PRIMARY KEY (ranking_date, league_id, player_id)
+);
+
+
+
+
+
 GRANT SELECT ON shops                 TO grafana;
 GRANT SELECT ON official_events       TO grafana;
 GRANT SELECT ON unofficial_events     TO grafana;
@@ -909,19 +927,6 @@ DROP TABLE old_matches;
 DROP TABLE old_records;
 
 COMMIT;
-
-
-
-
-BEGIN;
-
-GRANT SELECT ON records TO grafana;
-GRANT SELECT ON matches TO grafana;
-GRANT SELECT ON games TO grafana;
-
-COMMIT;
-
-
 
 
 

@@ -5,46 +5,35 @@ import (
 	"strings"
 )
 
-// NormalizeFingerprint は position 順のスプライトID列を正規化し、集計キー・代表スプライト・
-// 表示用スプライト列に変換する（DATA_STRATEGY.md B1「スプライト指紋の正規化」）。
+// NormalizeFingerprint はスプライトID列を正規化し、集計キーと表示用スプライト列に変換する
+// （DATA_STRATEGY.md B1「スプライト指紋の正規化」）。
 //
 // 正規化ルール:
-//   - 先頭(Position1)＝代表ポケモン(大分類)としてアンカーに残す（2階層モデル 3-4節）
-//   - 残りは重複排除してソートし、並び順・重複のゆらぎを吸収する
-//   - フリーテキスト(OpponentsDeckInfo)はキーに含めない（補助ラベルは呼び出し側で扱う）
+//   - 重複を排除する
+//   - 並び順は考慮しない（全体をソートし、入力順序の違いによる分裂を防ぐ）
 //
-// これにより「同一デッキが並び順や重複、テキスト表記の違いで別グループに割れる」現象を解消する。
+// フリーテキスト（デッキ名等）は受け取らず、スプライトの集合のみで指紋を決定する。
 // スプライト未付与（空スライス）の場合は集計不能として空文字を返し、呼び出し側で除外する。
 //
 // 戻り値:
-//   - key: 集計キー（primary と正規化済みの残りを "|" で連結した文字列）
-//   - primary: 先頭スプライトID（大分類。空指紋なら ""）
-//   - normalized: 表示用スプライト列（primary を先頭に、残りを重複排除・ソートしたもの）
-func NormalizeFingerprint(spriteIds []string) (key string, primary string, normalized []string) {
+//   - key: 集計キー（正規化済みスプライトIDをカンマ区切りで連結した文字列）
+//   - normalized: 表示用スプライト列（重複排除・ソート済み）
+func NormalizeFingerprint(spriteIds []string) (key string, normalized []string) {
 	if len(spriteIds) == 0 {
-		return "", "", nil
+		return "", nil
 	}
 
-	primary = spriteIds[0]
-
-	// 先頭以外を重複排除する。primary と同一のものも冗長なので除く。
-	seen := map[string]struct{}{primary: {}}
-	rest := make([]string, 0, len(spriteIds)-1)
-	for _, id := range spriteIds[1:] {
+	seen := make(map[string]struct{}, len(spriteIds))
+	unique := make([]string, 0, len(spriteIds))
+	for _, id := range spriteIds {
 		if _, ok := seen[id]; ok {
 			continue
 		}
 		seen[id] = struct{}{}
-		rest = append(rest, id)
+		unique = append(unique, id)
 	}
 
-	sort.Strings(rest)
+	sort.Strings(unique)
 
-	normalized = make([]string, 0, len(rest)+1)
-	normalized = append(normalized, primary)
-	normalized = append(normalized, rest...)
-
-	key = primary + "|" + strings.Join(rest, ",")
-
-	return key, primary, normalized
+	return strings.Join(unique, ","), unique
 }

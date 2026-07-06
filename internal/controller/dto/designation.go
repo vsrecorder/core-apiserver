@@ -28,6 +28,16 @@ type DesignationLadderItemResponse struct {
 	// PreviousValue は CriteriaType が "official_city_league_record"(レギュラーの継続条件)の
 	// 場合のみ、前シーズンの集計値。それ以外は常に0。
 	PreviousValue int `json:"previous_value"`
+	// MissingOfficialEventRecord は CriteriaType が "official_city_league_placement"(ベテラン)
+	// または "official_city_league_playoff"(熟練者)かつ Achieved が false の場合のみ、
+	// 未達成の原因が「公式サイトの結果はあるが、対応する大会の記録をまだ作成していないこと」
+	// であるかを表す。それ以外は常にfalse。
+	MissingOfficialEventRecord bool `json:"missing_official_event_record"`
+	// CityLeagueRecordWithoutPlayerLink は CriteriaType が "official_city_league_placement"
+	// (ベテラン)または "official_city_league_playoff"(熟練者)の場合のみ、プレイヤーズ
+	// クラブ未連携であるにもかかわらず、対象シーズン内にシティリーグの記録を既に作成済み
+	// であるかを表す。それ以外、またはプレイヤーズクラブ連携済みの場合は常にfalse。
+	CityLeagueRecordWithoutPlayerLink bool `json:"city_league_record_without_player_link"`
 }
 
 type UserDesignationResponse struct {

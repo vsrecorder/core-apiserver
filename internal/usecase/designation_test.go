@@ -285,6 +285,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fiveTierDefinitions(now), nil)
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		// シティリーグの記録(records)が既にあるにもかかわらず未連携、という状況を表す
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
@@ -297,6 +298,31 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item05)
 		require.False(t, item05.Achieved)
 		require.Equal(t, 0, item05.CurrentValue)
+		require.True(t, item05.CityLeagueRecordWithoutPlayerLink)
+	})
+
+	t.Run("プレイヤーズクラブ未連携かつシティリーグの記録も無ければベテラン(tier5)の連携済み案内のヒントは立たない", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+		expectUserPlayerNotLinked(userPlayerRepo, "user-1")
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fiveTierDefinitions(now), nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-03", view.Current.ID)
+
+		item05 := findDesignationLadderItem(view.Ladder, "designation-05")
+		require.NotNil(t, item05)
+		require.False(t, item05.Achieved)
+		require.False(t, item05.CityLeagueRecordWithoutPlayerLink)
 	})
 
 	t.Run("プレイヤーズクラブ連携済みでもcityleague_resultsに一致するレコードが無ければベテラン(tier5)には到達しない", func(t *testing.T) {
@@ -312,8 +338,10 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
-		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
-		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -325,6 +353,37 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item05)
 		require.False(t, item05.Achieved)
 		require.Equal(t, 0, item05.CurrentValue)
+		require.False(t, item05.MissingOfficialEventRecord)
+	})
+
+	t.Run("プレイヤーズクラブ連携済みでcityleague_resultsに存在するがofficial_event_idが一致するrecordsが無ければベテラン(tier5)には到達せず、記録不足のヒントが立つ", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		userPlayer := entity.NewUserPlayer("user-player-1", now, "user-1", "player-1")
+		userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
+
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fiveTierDefinitions(now), nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-04", view.Current.ID)
+
+		item05 := findDesignationLadderItem(view.Ladder, "designation-05")
+		require.NotNil(t, item05)
+		require.False(t, item05.Achieved)
+		require.True(t, item05.MissingOfficialEventRecord)
 	})
 
 	t.Run("プレイヤーズクラブ連携済みでcityleague_resultsに一致するレコードがあればベテラン(tier5)まで到達する", func(t *testing.T) {
@@ -340,8 +399,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
-		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
-		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -353,6 +413,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item05)
 		require.True(t, item05.Achieved)
 		require.Equal(t, 1, item05.CurrentValue)
+		require.False(t, item05.MissingOfficialEventRecord)
 	})
 
 	t.Run("プレイヤーズクラブ未連携だとベテランの条件を満たしていても熟練者(tier6)には到達しない", func(t *testing.T) {
@@ -377,6 +438,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item06)
 		require.False(t, item06.Achieved)
 		require.Equal(t, 0, item06.CurrentValue)
+		require.True(t, item06.CityLeagueRecordWithoutPlayerLink)
 	})
 
 	t.Run("プレイヤーズクラブ連携済みでもcityleague_resultsにrank5以下の一致するレコードが無ければ熟練者(tier6)には到達しない", func(t *testing.T) {
@@ -392,8 +454,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
-		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
-		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -405,6 +468,36 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item06)
 		require.False(t, item06.Achieved)
 		require.Equal(t, 0, item06.CurrentValue)
+		require.False(t, item06.MissingOfficialEventRecord)
+	})
+
+	t.Run("プレイヤーズクラブ連携済みでcityleague_resultsにplayer_idは一致するがofficial_event_idが一致するrecordsが無ければ熟練者(tier6)には到達せず、記録不足のヒントが立つ", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		userPlayer := entity.NewUserPlayer("user-player-1", now, "user-1", "player-1")
+		userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
+
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(sixTierDefinitions(now), nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-05", view.Current.ID)
+
+		item06 := findDesignationLadderItem(view.Ladder, "designation-06")
+		require.NotNil(t, item06)
+		require.False(t, item06.Achieved)
+		require.True(t, item06.MissingOfficialEventRecord)
 	})
 
 	t.Run("プレイヤーズクラブ連携済みでcityleague_resultsにrank5以下の一致するレコードがあれば熟練者(tier6)まで到達する", func(t *testing.T) {
@@ -420,8 +513,8 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
-		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
-		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -453,11 +546,11 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
-		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "player-1", seasonFromDate, seasonToDate).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", seasonFromDate, seasonToDate).Return(true, nil)
 		// 選択中シーズンの期間(fromDate/toDate)がそのまま渡っていることを検証する
 		// (season の期間を無視して全期間を対象にしてしまう不具合の再発防止)。
 		designationStatsRepo.EXPECT().
-			ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "player-1", DesignationCityLeagueFinalTournamentMaxRank, seasonFromDate, seasonToDate).
+			ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, seasonFromDate, seasonToDate).
 			Return(true, nil)
 
 		_, err := u.GetByUserId(t.Context(), "user-1", "")

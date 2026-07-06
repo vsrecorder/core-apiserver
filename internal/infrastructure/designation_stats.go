@@ -168,15 +168,26 @@ func (i *DesignationStats) CountCityLeagueRecordsGroupByUserId(
 	return scanUserRecordCounts(query)
 }
 
+// existsRecordWithSameOfficialEventIdCondition は、cityleague_results.official_event_id と
+// 同じ official_event_id を持つ userId 自身の records が存在することを求める、内部限定の
+// 追加条件(ユーザーへ提示する説明文には含めない)。
+const existsRecordWithSameOfficialEventIdCondition = "EXISTS (" +
+	"SELECT 1 FROM records WHERE records.official_event_id = cityleague_results.official_event_id " +
+	"AND records.user_id = ? AND records.deleted_at IS NULL" +
+	")"
+
 func (i *DesignationStats) ExistsCityLeagueResultByPlayerId(
 	ctx context.Context,
+	userId string,
 	playerId string,
 	fromDate time.Time,
 	toDate time.Time,
 ) (bool, error) {
 	var count int64
 
-	query := i.db.Table("cityleague_results").Where("player_id = ?", playerId)
+	query := i.db.Table("cityleague_results").
+		Where("player_id = ?", playerId).
+		Where(existsRecordWithSameOfficialEventIdCondition, userId)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}
@@ -200,6 +211,10 @@ func (i *DesignationStats) ExistsCityLeagueResultGroupByUserId(
 		Select("DISTINCT users_players.user_id AS user_id, 1 AS count").
 		Joins(
 			"JOIN users_players ON users_players.player_id = cityleague_results.player_id AND users_players.deleted_at IS NULL",
+		).
+		Joins(
+			"JOIN records ON records.official_event_id = cityleague_results.official_event_id " +
+				"AND records.user_id = users_players.user_id AND records.deleted_at IS NULL",
 		)
 	if !fromDate.IsZero() {
 		query = query.Where("cityleague_results.event_date >= ?", fromDate)
@@ -213,6 +228,7 @@ func (i *DesignationStats) ExistsCityLeagueResultGroupByUserId(
 
 func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultByPlayerId(
 	ctx context.Context,
+	userId string,
 	playerId string,
 	maxRank int,
 	fromDate time.Time,
@@ -220,7 +236,9 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultByPlayerId(
 ) (bool, error) {
 	var count int64
 
-	query := i.db.Table("cityleague_results").Where("player_id = ? AND rank <= ?", playerId, maxRank)
+	query := i.db.Table("cityleague_results").
+		Where("player_id = ? AND rank <= ?", playerId, maxRank).
+		Where(existsRecordWithSameOfficialEventIdCondition, userId)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}
@@ -246,6 +264,10 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultGroupByUserId(
 		Joins(
 			"JOIN users_players ON users_players.player_id = cityleague_results.player_id AND users_players.deleted_at IS NULL",
 		).
+		Joins(
+			"JOIN records ON records.official_event_id = cityleague_results.official_event_id "+
+				"AND records.user_id = users_players.user_id AND records.deleted_at IS NULL",
+		).
 		Where("cityleague_results.rank <= ?", maxRank)
 	if !fromDate.IsZero() {
 		query = query.Where("cityleague_results.event_date >= ?", fromDate)
@@ -255,6 +277,59 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultGroupByUserId(
 	}
 
 	return scanUserRecordCounts(query)
+}
+
+func (i *DesignationStats) ExistsCityLeagueResultWithoutMatchingRecordByPlayerId(
+	ctx context.Context,
+	userId string,
+	playerId string,
+	fromDate time.Time,
+	toDate time.Time,
+) (bool, error) {
+	var count int64
+
+	query := i.db.Table("cityleague_results").
+		Where("player_id = ?", playerId).
+		Where("NOT "+existsRecordWithSameOfficialEventIdCondition, userId)
+	if !fromDate.IsZero() {
+		query = query.Where("event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("event_date < ?", toDate)
+	}
+
+	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}
+
+func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(
+	ctx context.Context,
+	userId string,
+	playerId string,
+	maxRank int,
+	fromDate time.Time,
+	toDate time.Time,
+) (bool, error) {
+	var count int64
+
+	query := i.db.Table("cityleague_results").
+		Where("player_id = ? AND rank <= ?", playerId, maxRank).
+		Where("NOT "+existsRecordWithSameOfficialEventIdCondition, userId)
+	if !fromDate.IsZero() {
+		query = query.Where("event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("event_date < ?", toDate)
+	}
+
+	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
 }
 
 func (i *DesignationStats) CountLeagueRecordsGroupByUserId(

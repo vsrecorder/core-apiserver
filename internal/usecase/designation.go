@@ -22,6 +22,9 @@ const (
 	// 選択中のシーズン内に1件以上あることを条件とするティア(ベテラン)に使う。
 	// records テーブル(バトレコ上でユーザー自身が作成した記録)を集計する他の criteria_type
 	// と異なり、公式サイトからスクレイピングした cityleague_results を直接参照する。
+	// 加えて、その cityleague_results と同じ official_event_id を持つ records が本人に
+	// 存在することも内部的な条件とする(公式サイト側の結果だけでバトレコ側に記録が無い
+	// 状態での到達を防ぐためのもので、ユーザーへ提示する説明文には含めない)。
 	DesignationCriteriaTypeOfficialCityLeaguePlacement = "official_city_league_placement"
 
 	// DesignationCriteriaTypeOfficialCityLeagueFinalTournament は、プレイヤーズクラブ連携済みの
@@ -52,6 +55,20 @@ type DesignationLadderItem struct {
 	// 引き続き」という継続条件を表示するための、前シーズンの集計値。
 	// それ以外の criteria_type では常に0(継続条件が無いため意味を持たない)。
 	PreviousValue int
+	// MissingOfficialEventRecord は、ベテラン(official_city_league_placement)・
+	// 熟練者(official_city_league_playoff)が未達成の場合に限り、その原因が
+	// 「公式サイトの結果(cityleague_results)は連携済みプレイヤーIDで存在するが、
+	// 対応する official_event_id の記録(records)をユーザー自身がまだ作成していないこと」
+	// であるかを表す。称号詳細モーダルで「対象の大会の記録を作成してください」という
+	// 案内を出し分けるためのヒント用途であり、それ以外の criteria_type では常にfalse。
+	MissingOfficialEventRecord bool
+	// CityLeagueRecordWithoutPlayerLink は、ベテラン(official_city_league_placement)・
+	// 熟練者(official_city_league_playoff)についてのみ、プレイヤーズクラブ未連携で
+	// あるにもかかわらず、対象シーズン内にシティリーグの記録(records)を既に
+	// 作成済みであるかを表す。称号詳細モーダルで「連携すれば達成できる可能性がある」
+	// という、より具体的な案内を出し分けるためのヒント用途であり、それ以外の
+	// criteria_type や、プレイヤーズクラブ連携済みの場合は常にfalse。
+	CityLeagueRecordWithoutPlayerLink bool
 }
 
 // UserDesignationView はユーザーの現在の称号と、称号ロードマップ全体を表す。
@@ -129,7 +146,7 @@ func (u *Designation) GetByUserId(
 		return nil, err
 	}
 
-	currentValues, err := u.seasonValuesByCriteriaType(ctx, userId, season)
+	currentValues, hints, err := u.seasonValuesByCriteriaType(ctx, userId, season)
 	if err != nil {
 		return nil, err
 	}
@@ -153,12 +170,20 @@ func (u *Designation) GetByUserId(
 			previousValue = previousCityLeagueCount
 		}
 
+		cityLeagueRecordWithoutPlayerLink := false
+		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeaguePlacement ||
+			def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueFinalTournament {
+			cityLeagueRecordWithoutPlayerLink = hints.CityLeagueRecordWithoutPlayerLink
+		}
+
 		ladder = append(ladder, &DesignationLadderItem{
 			Designation: def,
 			Achieved:    def.Tier <= currentTier,
 			// currentValues に該当 criteria_type が無い(=unimplemented)場合はゼロ値のまま
-			CurrentValue:  currentValues[def.CriteriaType],
-			PreviousValue: previousValue,
+			CurrentValue:                      currentValues[def.CriteriaType],
+			PreviousValue:                     previousValue,
+			MissingOfficialEventRecord:        hints.MissingOfficialEventRecord[def.CriteriaType],
+			CityLeagueRecordWithoutPlayerLink: cityLeagueRecordWithoutPlayerLink,
 		})
 	}
 
@@ -309,65 +334,100 @@ func (u *Designation) GetRankStats(
 	}, nil
 }
 
+// designationSeasonHints は seasonValuesByCriteriaType が集計値とあわせて返す、称号詳細
+// モーダルの案内メッセージの出し分けにのみ使う補助情報(達成条件の判定そのものには使わない)。
+type designationSeasonHints struct {
+	// MissingOfficialEventRecord は DesignationLadderItem.MissingOfficialEventRecord と同じ
+	// 意味を持つ値を criteria_type(ベテラン・熟練者)をキーに保持する。
+	MissingOfficialEventRecord map[string]bool
+	// CityLeagueRecordWithoutPlayerLink は DesignationLadderItem.CityLeagueRecordWithoutPlayerLink
+	// と同じ意味を持つ値。プレイヤーズクラブの連携有無は criteria_type によらずユーザー単位で
+	// 決まるため、ベテラン・熟練者の両方で共通の値をそのまま使う。
+	CityLeagueRecordWithoutPlayerLink bool
+}
+
 // seasonValuesByCriteriaType は判定ロジックが実装済みの criteria_type についてのみ、
 // 指定シーズン(9月始まり。season空文字なら現在のシーズン)の集計値を返す。
 // ここに無い criteria_type(例: "unimplemented")は「準備中」として常に未達成のまま扱われる。
+// あわせて designationSeasonHints(ベテラン・熟練者の案内メッセージ出し分け用の補助情報)も返す。
 func (u *Designation) seasonValuesByCriteriaType(
 	ctx context.Context,
 	userId string,
 	season string,
-) (map[string]int, error) {
+) (map[string]int, *designationSeasonHints, error) {
 	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	recordCount, err := u.designationStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	leagueCount, err := u.designationStatsRepo.CountLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	cityLeagueCount, err := u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	cityLeaguePlacement := 0
 	cityLeagueFinalTournament := 0
+	hints := &designationSeasonHints{
+		MissingOfficialEventRecord: make(map[string]bool, 2),
+	}
 	userPlayer, err := u.userPlayerRepo.FindByUserId(ctx, userId)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
-		return nil, err
+		return nil, nil, err
 	}
+
+	// プレイヤーズクラブ未連携でも、既にシティリーグの記録(records)があるなら
+	// 「連携すれば達成できる可能性がある」という案内を出すためのヒント。
+	hints.CityLeagueRecordWithoutPlayerLink = userPlayer == nil && cityLeagueCount > 0
+
 	if userPlayer != nil {
-		exists, err := u.designationStatsRepo.ExistsCityLeagueResultByPlayerId(ctx, userPlayer.PlayerId, fromDate, toDate)
+		exists, err := u.designationStatsRepo.ExistsCityLeagueResultByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if exists {
 			cityLeaguePlacement = 1
+		} else {
+			missingRecord, err := u.designationStatsRepo.ExistsCityLeagueResultWithoutMatchingRecordByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+			if err != nil {
+				return nil, nil, err
+			}
+			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeaguePlacement] = missingRecord
 		}
 
-		existsFinalTournament, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
+		existsFinalTournament, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if existsFinalTournament {
 			cityLeagueFinalTournament = 1
+		} else {
+			missingRecord, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
+			if err != nil {
+				return nil, nil, err
+			}
+			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeagueFinalTournament] = missingRecord
 		}
 	}
 
-	return map[string]int{
+	values := map[string]int{
 		DesignationCriteriaTypeRecord:                            recordCount,
 		DesignationCriteriaTypeOfficialLeagueRecord:              leagueCount,
 		DesignationCriteriaTypeOfficialCityLeagueRecord:          cityLeagueCount,
 		DesignationCriteriaTypeOfficialCityLeaguePlacement:       cityLeaguePlacement,
 		DesignationCriteriaTypeOfficialCityLeagueFinalTournament: cityLeagueFinalTournament,
-	}, nil
+	}
+
+	return values, hints, nil
 }
 
 // previousSeasonCityLeagueCount は常連(criteria_type=official_city_league_record)の

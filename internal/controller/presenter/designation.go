@@ -51,10 +51,12 @@ func NewUserDesignationResponse(
 	ladder := make([]*dto.DesignationLadderItemResponse, 0, len(view.Ladder))
 	for _, item := range view.Ladder {
 		ladder = append(ladder, &dto.DesignationLadderItemResponse{
-			DesignationResponse: *newDesignationResponse(item.Designation),
-			Achieved:            item.Achieved,
-			CurrentValue:        item.CurrentValue,
-			PreviousValue:       item.PreviousValue,
+			DesignationResponse:               *newDesignationResponse(item.Designation),
+			Achieved:                          item.Achieved,
+			CurrentValue:                      item.CurrentValue,
+			PreviousValue:                     item.PreviousValue,
+			MissingOfficialEventRecord:        item.MissingOfficialEventRecord,
+			CityLeagueRecordWithoutPlayerLink: item.CityLeagueRecordWithoutPlayerLink,
 		})
 	}
 

@@ -728,6 +728,7 @@ GRANT SELECT ON pokemon_avatars       TO grafana;
 
 GRANT SELECT ON users                 TO grafana;
 GRANT SELECT ON users_players         TO grafana;
+GRANT SELECT ON player_rankings       TO grafana;
 
 GRANT SELECT ON records               TO grafana;
 GRANT SELECT ON matches               TO grafana;
@@ -754,8 +755,6 @@ GRANT SELECT ON user_streaks          TO grafana;
 
 GRANT SELECT ON designations          TO grafana;
 GRANT SELECT ON user_designations     TO grafana;
-
-
 
 
 

@@ -42,7 +42,7 @@ type weeklyMatchRow struct {
 // variantGroup は正規化済みスプライト指紋ごとの集計状態。
 type variantGroup struct {
 	key     string
-	sprites []string // 正規化済みの表示用スプライト列
+	sprites []string // 表示用スプライト列（重複排除のみ。並び順は元データのまま）
 	count   int
 	wins    int
 }
@@ -141,7 +141,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	// addVote は1票を該当する指紋グループへ加算する。
 	// won はその指紋（デッキ）が勝ったかどうか。
 	addVote := func(spriteIds []string, won bool, userId string) {
-		key, normalized := NormalizeFingerprint(spriteIds)
+		key, ordered := NormalizeFingerprint(spriteIds)
 		if key == "" {
 			// スプライト未付与は集計不能として除外する。
 			return
@@ -151,7 +151,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		if !ok {
 			g = &variantGroup{
 				key:     key,
-				sprites: normalized,
+				sprites: ordered,
 			}
 			groups[key] = g
 			order = append(order, key)

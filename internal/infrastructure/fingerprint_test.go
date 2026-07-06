@@ -10,8 +10,9 @@ func TestNormalizeFingerprint(t *testing.T) {
 	for scenario, fn := range map[string]func(t *testing.T){
 		"EmptyReturnsEmpty":                test_NormalizeFingerprint_EmptyReturnsEmpty,
 		"SingleSprite":                     test_NormalizeFingerprint_SingleSprite,
-		"OrderIsFullyNormalized":           test_NormalizeFingerprint_OrderIsFullyNormalized,
-		"DuplicatesAreRemoved":             test_NormalizeFingerprint_DuplicatesAreRemoved,
+		"KeyIsOrderIndependent":            test_NormalizeFingerprint_KeyIsOrderIndependent,
+		"OrderedPreservesOriginalOrder":    test_NormalizeFingerprint_OrderedPreservesOriginalOrder,
+		"DuplicatesAreRemovedFromOrdered":  test_NormalizeFingerprint_DuplicatesAreRemovedFromOrdered,
 		"SameSetProducesSameKeyRegardless": test_NormalizeFingerprint_SameSetProducesSameKeyRegardlessOfOrder,
 		"DifferentSetProducesDifferentKey": test_NormalizeFingerprint_DifferentSetProducesDifferentKey,
 	} {
@@ -22,39 +23,46 @@ func TestNormalizeFingerprint(t *testing.T) {
 }
 
 func test_NormalizeFingerprint_EmptyReturnsEmpty(t *testing.T) {
-	key, normalized := NormalizeFingerprint([]string{})
+	key, ordered := NormalizeFingerprint([]string{})
 	require.Equal(t, "", key)
-	require.Nil(t, normalized)
+	require.Nil(t, ordered)
 }
 
 func test_NormalizeFingerprint_SingleSprite(t *testing.T) {
-	key, normalized := NormalizeFingerprint([]string{"0006"})
+	key, ordered := NormalizeFingerprint([]string{"0006"})
 	require.Equal(t, "0006", key)
-	require.Equal(t, []string{"0006"}, normalized)
+	require.Equal(t, []string{"0006"}, ordered)
 }
 
-// 先頭を含め、どの並び順でも同一キーに正規化されることを検証する（順番は考慮しない）。
-func test_NormalizeFingerprint_OrderIsFullyNormalized(t *testing.T) {
-	keyA, normA := NormalizeFingerprint([]string{"0359", "0006", "0018"})
-	keyB, normB := NormalizeFingerprint([]string{"0006", "0018", "0359"})
-	keyC, normC := NormalizeFingerprint([]string{"0018", "0359", "0006"})
+// 集計キーはどの並び順でも同一になることを検証する（グルーピングは順番を考慮しない）。
+func test_NormalizeFingerprint_KeyIsOrderIndependent(t *testing.T) {
+	keyA, _ := NormalizeFingerprint([]string{"0359", "0006", "0018"})
+	keyB, _ := NormalizeFingerprint([]string{"0006", "0018", "0359"})
+	keyC, _ := NormalizeFingerprint([]string{"0018", "0359", "0006"})
 
 	require.Equal(t, keyA, keyB)
 	require.Equal(t, keyA, keyC)
-	require.Equal(t, []string{"0006", "0018", "0359"}, normA)
-	require.Equal(t, normA, normB)
-	require.Equal(t, normA, normC)
 }
 
-// 重複スプライトが（先頭も含めて）除去されることを検証する。
-func test_NormalizeFingerprint_DuplicatesAreRemoved(t *testing.T) {
-	key, normalized := NormalizeFingerprint([]string{"0018", "0006", "0018", "0006"})
-	require.Equal(t, []string{"0006", "0018"}, normalized)
+// 表示用スプライト列（ordered）はソートされず、元データの並び順をそのまま保つことを検証する。
+func test_NormalizeFingerprint_OrderedPreservesOriginalOrder(t *testing.T) {
+	_, orderedA := NormalizeFingerprint([]string{"0359", "0006", "0018"})
+	_, orderedB := NormalizeFingerprint([]string{"0006", "0018", "0359"})
+
+	require.Equal(t, []string{"0359", "0006", "0018"}, orderedA)
+	require.Equal(t, []string{"0006", "0018", "0359"}, orderedB)
+}
+
+// 表示用スプライト列は重複排除だけ行い、最初に出現した位置の順序を保つことを検証する。
+func test_NormalizeFingerprint_DuplicatesAreRemovedFromOrdered(t *testing.T) {
+	key, ordered := NormalizeFingerprint([]string{"0018", "0006", "0018", "0006"})
+	require.Equal(t, []string{"0018", "0006"}, ordered)
+	// キーは重複排除・ソート済みなので並びに依存しない
 	require.Equal(t, "0006,0018", key)
 }
 
 // 先頭が異なっていても、スプライトの集合が同じであれば同一キーになることを検証する
-// （順番を考慮しないため、旧仕様の「先頭=大分類アンカー」は撤廃されている）。
+// （集計キーは順番を考慮しないため）。
 func test_NormalizeFingerprint_SameSetProducesSameKeyRegardlessOfOrder(t *testing.T) {
 	keyA, _ := NormalizeFingerprint([]string{"0006", "0018"})
 	keyB, _ := NormalizeFingerprint([]string{"0018", "0006"})

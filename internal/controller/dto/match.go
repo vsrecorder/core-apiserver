@@ -66,3 +66,13 @@ type MatchCreateResponse struct {
 type MatchUpdateResponse struct {
 	MatchResponse
 }
+
+type MatchOrderItem struct {
+	Id                 string `json:"id"`
+	QualifyingRoundFlg bool   `json:"qualifying_round_flg"`
+	FinalTournamentFlg bool   `json:"final_tournament_flg"`
+}
+
+type MatchReorderRequest struct {
+	Matches []*MatchOrderItem `json:"matches"`
+}

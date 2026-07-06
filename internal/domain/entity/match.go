@@ -24,6 +24,16 @@ type Match struct {
 	Memo                 string
 	Games                []*Game
 	PokemonSprites       []*PokemonSprite
+	// Position は record 内での表示順序。Reorder によってのみ更新されるため、
+	// NewMatch のコンストラクタ引数には含めず、必要な箇所で個別に設定する。
+	Position int
+}
+
+// MatchOrder は Reorder で1件の match に適用する並び順とセクション分類を表す。
+type MatchOrder struct {
+	ID                 string
+	QualifyingRoundFlg bool
+	FinalTournamentFlg bool
 }
 
 func NewMatch(

@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"context"
 	"database/sql"
-	"slices"
 
 	"gorm.io/gorm"
 
@@ -51,6 +50,7 @@ func (i *Match) FindById(
 		matches.group_match_victory_flg AS match_group_match_victory_flg,
 		matches.opponents_deck_info AS match_opponents_deck_info,
 		matches.memo AS match_memo,
+		matches.position AS match_position,
 		games.id AS game_id,
 		games.created_at AS game_created_at,
 		games.updated_at AS game_updated_at,
@@ -132,6 +132,7 @@ func (i *Match) FindById(
 		games,
 		pokemonSprites,
 	)
+	match.Position = results[0].MatchPosition
 
 	return match, nil
 }
@@ -164,6 +165,7 @@ func (i *Match) FindByRecordId(
 		matches.group_match_flg AS match_group_match_flg,
 		matches.opponents_deck_info AS match_opponents_deck_info,
 		matches.memo AS match_memo,
+		matches.position AS match_position,
 		games.id AS game_id,
 		games.created_at AS game_created_at,
 		games.updated_at AS game_updated_at,
@@ -176,15 +178,15 @@ func (i *Match) FindByRecordId(
 		games.opponents_prize_cards AS game_opponents_prize_cards,
 		games.memo AS game_memo`,
 	).Joins(`
-		INNER JOIN matches 
+		INNER JOIN matches
 		ON records.id = matches.record_id
-		LEFT JOIN games 
+		LEFT JOIN games
 		ON matches.id = games.match_id`,
 	).Where(
 		"records.id = ? AND records.deleted_at IS NULL AND matches.deleted_at IS NULL",
 		recordId,
 	).Order(
-		"matches.created_at ASC, games.created_at ASC",
+		"matches.position ASC, games.created_at ASC",
 	).Scan(&results)
 
 	if tx.Error != nil {
@@ -253,6 +255,7 @@ func (i *Match) FindByRecordId(
 				games,
 				pokemonSprites,
 			)
+			match.Position = result.MatchPosition
 
 			v[result.MatchID] = match
 			keys = append(keys, result.MatchID)
@@ -276,8 +279,7 @@ func (i *Match) FindByRecordId(
 		}
 	}
 
-	slices.Sort(keys)
-
+	// keys は position ASC のクエリ順で先着順に積まれているため、そのまま順序として使う
 	var matches []*entity.Match
 	for _, key := range keys {
 		matches = append(matches, v[key])
@@ -321,6 +323,7 @@ func (i *Match) FindByUserId(
 		matches.group_match_victory_flg AS match_group_match_victory_flg,
 		matches.opponents_deck_info AS match_opponents_deck_info,
 		matches.memo AS match_memo,
+		matches.position AS match_position,
 		games.id AS game_id,
 		games.created_at AS game_created_at,
 		games.updated_at AS game_updated_at,
@@ -404,6 +407,7 @@ func (i *Match) FindByUserId(
 				games,
 				pokemonSprites,
 			)
+			match.Position = result.MatchPosition
 
 			v[result.MatchID] = match
 			keys = append(keys, result.MatchID)
@@ -469,6 +473,7 @@ func (i *Match) FindLatest(
 		matches.group_match_victory_flg AS match_group_match_victory_flg,
 		matches.opponents_deck_info AS match_opponents_deck_info,
 		matches.memo AS match_memo,
+		matches.position AS match_position,
 		games.id AS game_id,
 		games.created_at AS game_created_at,
 		games.updated_at AS game_updated_at,
@@ -552,6 +557,7 @@ func (i *Match) FindLatest(
 				games,
 				pokemonSprites,
 			)
+			match.Position = result.MatchPosition
 
 			v[result.MatchID] = match
 			keys = append(keys, result.MatchID)
@@ -604,6 +610,15 @@ func (i *Match) Create(
 		entity.OpponentsDeckInfo,
 		entity.Memo,
 	)
+
+	// 同一 record 内で末尾に追加されるよう、現在の最大 position の次を採番する
+	var maxPosition sql.NullInt64
+	if tx := i.db.Model(&model.Match{}).
+		Where("record_id = ? AND deleted_at IS NULL", entity.RecordId).
+		Select("MAX(position)").Scan(&maxPosition); tx.Error != nil {
+		return tx.Error
+	}
+	matchModel.Position = int(maxPosition.Int64) + 1
 
 	var gameModels []*model.Game
 	for _, game := range entity.Games {
@@ -678,6 +693,8 @@ func (i *Match) Update(
 		entity.OpponentsDeckInfo,
 		entity.Memo,
 	)
+	// position は通常の更新では変更せず、Reorder でのみ変更する
+	matchModel.Position = entity.Position
 
 	var matchPokemonSpriteModals []*model.MatchPokemonSprite
 	for i, pokemonSprite := range entity.PokemonSprites {
@@ -777,6 +794,46 @@ func (i *Match) Delete(
 
 		if tx := tx.Where("id = ?", id).Delete(&model.Match{}); tx.Error != nil {
 			return tx.Error
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
+}
+
+func (i *Match) Reorder(
+	ctx context.Context,
+	recordId string,
+	orders []*entity.MatchOrder,
+) error {
+	return i.db.Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if tx := tx.Model(&model.Match{}).
+			Where("record_id = ? AND deleted_at IS NULL", recordId).
+			Count(&count); tx.Error != nil {
+			return tx.Error
+		}
+
+		// リクエストに含まれるIDが現在のrecordの未削除match集合と過不足なく一致するか検証
+		if int(count) != len(orders) {
+			return apperror.ErrInvalidMatchOrder
+		}
+
+		for position, order := range orders {
+			result := tx.Model(&model.Match{}).
+				Where("id = ? AND record_id = ? AND deleted_at IS NULL", order.ID, recordId).
+				Updates(map[string]interface{}{
+					"position":             position,
+					"qualifying_round_flg": order.QualifyingRoundFlg,
+					"final_tournament_flg": order.FinalTournamentFlg,
+				})
+
+			if result.Error != nil {
+				return result.Error
+			}
+
+			if result.RowsAffected == 0 {
+				return apperror.ErrInvalidMatchOrder
+			}
 		}
 
 		return nil

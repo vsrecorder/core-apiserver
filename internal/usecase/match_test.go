@@ -28,6 +28,7 @@ func TestMatchUsecase(t *testing.T) {
 		"Create":        test_MatchUsecase_Create,
 		"Update":        test_MatchUsecase_Update,
 		"Delete":        test_MatchUsecase_Delete,
+		"Reorder":       test_MatchUsecase_Reorder,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t, mockRepository, usecase)
@@ -827,6 +828,36 @@ func test_MatchUsecase_Delete(t *testing.T, mockRepository *mock_repository.Mock
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		err := usecase.Delete(context.Background(), id)
+
+		require.Equal(t, err, errors.New(""))
+	})
+}
+
+func test_MatchUsecase_Reorder(t *testing.T, mockRepository *mock_repository.MockMatchInterface, usecase MatchInterface) {
+	t.Run("正常系_#01", func(t *testing.T) {
+		recordId, _ := generateId()
+		id1, _ := generateId()
+		id2, _ := generateId()
+
+		orders := []*entity.MatchOrder{
+			{ID: id1, QualifyingRoundFlg: false, FinalTournamentFlg: true},
+			{ID: id2, QualifyingRoundFlg: true, FinalTournamentFlg: false},
+		}
+
+		mockRepository.EXPECT().Reorder(context.Background(), recordId, orders).Return(nil)
+
+		err := usecase.Reorder(context.Background(), recordId, orders)
+
+		require.NoError(t, err)
+	})
+
+	t.Run("異常系_#01", func(t *testing.T) {
+		recordId, _ := generateId()
+		orders := []*entity.MatchOrder{}
+
+		mockRepository.EXPECT().Reorder(context.Background(), recordId, orders).Return(errors.New(""))
+
+		err := usecase.Reorder(context.Background(), recordId, orders)
 
 		require.Equal(t, err, errors.New(""))
 	})

@@ -129,6 +129,20 @@ func (mr *MockMatchInterfaceMockRecorder) FindLatest(ctx, limit any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLatest", reflect.TypeOf((*MockMatchInterface)(nil).FindLatest), ctx, limit)
 }
 
+// Reorder mocks base method.
+func (m *MockMatchInterface) Reorder(ctx context.Context, recordId string, orders []*entity.MatchOrder) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Reorder", ctx, recordId, orders)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Reorder indicates an expected call of Reorder.
+func (mr *MockMatchInterfaceMockRecorder) Reorder(ctx, recordId, orders any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reorder", reflect.TypeOf((*MockMatchInterface)(nil).Reorder), ctx, recordId, orders)
+}
+
 // Update mocks base method.
 func (m *MockMatchInterface) Update(ctx context.Context, entity *entity.Match) error {
 	m.ctrl.T.Helper()

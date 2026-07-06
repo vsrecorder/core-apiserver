@@ -256,3 +256,29 @@ func MatchUpdateMiddleware() gin.HandlerFunc {
 		helper.SetMatchUpdateRequest(ctx, req)
 	}
 }
+
+func MatchReorderMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		req := dto.MatchReorderRequest{}
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		// matchesが空
+		if len(req.Matches) == 0 {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		// idが空の要素が含まれている
+		for _, m := range req.Matches {
+			if m.Id == "" {
+				apierror.ErrBadRequest.JSON(ctx)
+				return
+			}
+		}
+
+		helper.SetMatchReorderRequest(ctx, req)
+	}
+}

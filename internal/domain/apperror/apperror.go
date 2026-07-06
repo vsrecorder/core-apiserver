@@ -35,4 +35,9 @@ var (
 	// ErrOwnershipNotVerified は所有権確認チャレンジ(アバター変更)がまだ
 	// 完了していない場合に返す。HTTP では 403 Forbidden に対応する。
 	ErrOwnershipNotVerified = errors.New("ownership not verified")
+
+	// ErrInvalidMatchOrder は match の並び替えリクエストに含まれるIDが、
+	// 対象record内の未削除match集合と過不足なく一致しない場合に返す。
+	// HTTP では 400 Bad Request に対応する。
+	ErrInvalidMatchOrder = errors.New("invalid match order")
 )

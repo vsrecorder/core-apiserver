@@ -99,3 +99,27 @@ func MatchUpdateAuthorizationMiddleware(repository repository.MatchInterface) gi
 func MatchDeleteAuthorizationMiddleware(repository repository.MatchInterface) gin.HandlerFunc {
 	return MatchAuthorizationMiddleware(repository)
 }
+
+// MatchReorderAuthorizationMiddleware は record 単位の並び替え(書き込み操作)を
+// 対象とするため、private_flg に関わらず record の所有者以外は常に Forbidden とする。
+func MatchReorderAuthorizationMiddleware(recordRepository repository.RecordInterface) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		recordId := helper.GetId(ctx)
+		uid := helper.GetUID(ctx)
+
+		record, err := recordRepository.FindById(context.Background(), recordId)
+
+		if err == apperror.ErrRecordNotFound {
+			apierror.ErrNotFound.JSON(ctx)
+			return
+		} else if err != nil {
+			apierror.ErrInternalServerError.JSON(ctx)
+			return
+		}
+
+		if uid != record.UserId {
+			apierror.ErrForbidden.JSON(ctx)
+			return
+		}
+	}
+}

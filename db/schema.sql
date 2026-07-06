@@ -189,6 +189,7 @@ CREATE TABLE matches (
     group_match_victory_flg   BOOLEAN NOT NULL DEFAULT false,
     opponents_deck_info       VARCHAR(63) DEFAULT NULL,
     memo                      TEXT,
+    position                  INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (record_id)   REFERENCES records (id)
 );
 
@@ -941,5 +942,23 @@ ALTER TABLE old_games RENAME TO games;
 ALTER TABLE old_matches RENAME TO matches;
 ALTER TABLE old_records RENAME TO records;
 */
+
+
+
+-- 対戦結果の表示順序を任意に変更できるようにするため position カラムを追加
+BEGIN;
+
+ALTER TABLE matches ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+
+-- 既存データは created_at 昇順で record_id ごとに採番してバックフィル
+UPDATE matches m
+SET position = sub.rn
+FROM (
+    SELECT id, ROW_NUMBER() OVER (PARTITION BY record_id ORDER BY created_at ASC) AS rn
+    FROM matches
+) sub
+WHERE m.id = sub.id;
+
+COMMIT;
 
 

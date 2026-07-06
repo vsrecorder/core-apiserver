@@ -15,6 +15,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
@@ -81,6 +82,13 @@ func (c *Match) RegisterRoute(relativePath string) {
 			authentication.OptionalAuthenticationMiddleware(),
 			authorization.MatchGetByRecordIdAuthorizationMiddleware(c.recordRepository),
 			c.GetByRecordId,
+		)
+		r.PUT(
+			"/:id"+MatchesPath+"/order",
+			authentication.RequiredAuthenticationMiddleware(),
+			authorization.MatchReorderAuthorizationMiddleware(c.recordRepository),
+			validation.MatchReorderMiddleware(),
+			c.Reorder,
 		)
 	}
 
@@ -301,6 +309,32 @@ func (c *Match) Delete(ctx *gin.Context) {
 	if err := c.usecase.Delete(context.Background(), id); err != nil {
 		if err == apperror.ErrRecordNotFound {
 			apierror.ErrBadRequestNotFound.JSON(ctx)
+			return
+		}
+
+		apierror.ErrInternalServerError.JSON(ctx)
+		return
+	}
+
+	ctx.JSON(http.StatusNoContent, gin.H{})
+}
+
+func (c *Match) Reorder(ctx *gin.Context) {
+	recordId := helper.GetId(ctx)
+	req := helper.GetMatchReorderRequest(ctx)
+
+	var orders []*entity.MatchOrder
+	for _, m := range req.Matches {
+		orders = append(orders, &entity.MatchOrder{
+			ID:                 m.Id,
+			QualifyingRoundFlg: m.QualifyingRoundFlg,
+			FinalTournamentFlg: m.FinalTournamentFlg,
+		})
+	}
+
+	if err := c.usecase.Reorder(context.Background(), recordId, orders); err != nil {
+		if err == apperror.ErrInvalidMatchOrder {
+			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 

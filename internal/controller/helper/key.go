@@ -358,6 +358,17 @@ func GetMatchUpdateRequest(ctx *gin.Context) dto.MatchUpdateRequest {
 	return matchRequest
 }
 
+func SetMatchReorderRequest(ctx *gin.Context, value dto.MatchReorderRequest) {
+	ctx.Set("match_reorder_request", value)
+}
+
+func GetMatchReorderRequest(ctx *gin.Context) dto.MatchReorderRequest {
+	value, _ := ctx.Get("match_reorder_request")
+	matchReorderRequest, _ := value.(dto.MatchReorderRequest)
+
+	return matchReorderRequest
+}
+
 func SetUserCreateRequest(ctx *gin.Context, value dto.UserCreateRequest) {
 	ctx.Set("user_create_request", value)
 }

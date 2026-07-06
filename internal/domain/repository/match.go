@@ -42,4 +42,10 @@ type MatchInterface interface {
 		ctx context.Context,
 		id string,
 	) error
+
+	Reorder(
+		ctx context.Context,
+		recordId string,
+		orders []*entity.MatchOrder,
+	) error
 }

@@ -26,6 +26,7 @@ type Match struct {
 	GroupMatchVictoryFlg bool
 	OpponentsDeckInfo    string
 	Memo                 string
+	Position             int
 }
 
 type MatchJoinGame struct {
@@ -48,6 +49,7 @@ type MatchJoinGame struct {
 	MatchGroupMatchVictoryFlg bool
 	MatchOpponentsDeckInfo    string
 	MatchMemo                 string
+	MatchPosition             int
 	GameID                    string
 	GameCreatedAt             time.Time
 	GameUpdatedAt             time.Time

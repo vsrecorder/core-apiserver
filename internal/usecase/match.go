@@ -130,6 +130,12 @@ type MatchInterface interface {
 		ctx context.Context,
 		id string,
 	) error
+
+	Reorder(
+		ctx context.Context,
+		recordId string,
+		orders []*entity.MatchOrder,
+	) error
 }
 
 type Match struct {
@@ -373,6 +379,8 @@ func (u *Match) Update(
 		games,
 		pokemonSprites,
 	)
+	// position は通常の更新では変更しないため、既存値を引き継ぐ
+	match.Position = ret.Position
 
 	if err := u.repository.Update(ctx, match); err != nil {
 		return nil, err
@@ -392,4 +400,12 @@ func (u *Match) Delete(
 	}
 
 	return nil
+}
+
+func (u *Match) Reorder(
+	ctx context.Context,
+	recordId string,
+	orders []*entity.MatchOrder,
+) error {
+	return u.repository.Reorder(ctx, recordId, orders)
 }

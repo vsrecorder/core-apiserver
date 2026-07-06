@@ -56,6 +56,7 @@ func TestMatchController(t *testing.T) {
 		"Create":        test_MatchController_Create,
 		"Update":        test_MatchController_Update,
 		"Delete":        test_MatchController_Delete,
+		"Reorder":       test_MatchController_Reorder,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -884,5 +885,128 @@ func test_MatchController_Delete(t *testing.T) {
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+func test_MatchController_Reorder(t *testing.T) {
+	r := gin.Default()
+	c, _, mockRecordRepository, mockUsecase := setup4TestMatchController(t, r)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+	t.Run("正常系_#01", func(t *testing.T) {
+		recordId, _ := generateId()
+		id1, _ := generateId()
+		id2, _ := generateId()
+
+		// MatchReorderAuthorizationMiddlewareが本人確認のために参照する
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
+
+		orders := []*entity.MatchOrder{
+			{ID: id1, QualifyingRoundFlg: false, FinalTournamentFlg: true},
+			{ID: id2, QualifyingRoundFlg: true, FinalTournamentFlg: false},
+		}
+		mockUsecase.EXPECT().Reorder(context.Background(), recordId, orders).Return(nil)
+
+		data := dto.MatchReorderRequest{
+			Matches: []*dto.MatchOrderItem{
+				{Id: id1, QualifyingRoundFlg: false, FinalTournamentFlg: true},
+				{Id: id2, QualifyingRoundFlg: true, FinalTournamentFlg: false},
+			},
+		}
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", "/records/"+recordId+"/matches/order", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNoContent, w.Code)
+	})
+
+	t.Run("異常系_#01_他人のrecord", func(t *testing.T) {
+		recordId, _ := generateId()
+		id1, _ := generateId()
+
+		// record所有者が別のユーザー
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: "other-user"}, nil)
+
+		data := dto.MatchReorderRequest{
+			Matches: []*dto.MatchOrderItem{
+				{Id: id1, QualifyingRoundFlg: false, FinalTournamentFlg: false},
+			},
+		}
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", "/records/"+recordId+"/matches/order", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("異常系_#02_matchesが空", func(t *testing.T) {
+		recordId, _ := generateId()
+
+		// MatchReorderAuthorizationMiddlewareが本人確認のために参照する
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
+
+		data := dto.MatchReorderRequest{
+			Matches: []*dto.MatchOrderItem{},
+		}
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", "/records/"+recordId+"/matches/order", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_#03_usecaseがErrInvalidMatchOrderを返す", func(t *testing.T) {
+		recordId, _ := generateId()
+		id1, _ := generateId()
+
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
+
+		orders := []*entity.MatchOrder{
+			{ID: id1, QualifyingRoundFlg: false, FinalTournamentFlg: false},
+		}
+		mockUsecase.EXPECT().Reorder(context.Background(), recordId, orders).Return(apperror.ErrInvalidMatchOrder)
+
+		data := dto.MatchReorderRequest{
+			Matches: []*dto.MatchOrderItem{
+				{Id: id1, QualifyingRoundFlg: false, FinalTournamentFlg: false},
+			},
+		}
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", "/records/"+recordId+"/matches/order", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

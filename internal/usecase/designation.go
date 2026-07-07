@@ -29,10 +29,10 @@ const (
 
 	// DesignationCriteriaTypeOfficialCityLeagueFinalTournament は、プレイヤーズクラブ連携済みの
 	// プレイヤーIDで、公式サイトの結果(cityleague_results)にそのプレイヤーIDかつ rank が5以下の
-	// レコードが選択中のシーズン内に1件以上あることを条件とするティア(熟練者)に使う。
+	// レコードが選択中のシーズン内に1件以上あることを条件とするティア(熟練)に使う。
 	DesignationCriteriaTypeOfficialCityLeagueFinalTournament = "official_city_league_playoff"
 
-	// DesignationCityLeagueFinalTournamentMaxRank は熟練者(criteria_type=
+	// DesignationCityLeagueFinalTournamentMaxRank は熟練(criteria_type=
 	// official_city_league_playoff)の判定に使う、決勝トーナメント進出とみなす
 	// cityleague_results.rank の上限値。
 	DesignationCityLeagueFinalTournamentMaxRank = 5
@@ -56,14 +56,14 @@ type DesignationLadderItem struct {
 	// それ以外の criteria_type では常に0(継続条件が無いため意味を持たない)。
 	PreviousValue int
 	// MissingOfficialEventRecord は、ベテラン(official_city_league_placement)・
-	// 熟練者(official_city_league_playoff)が未達成の場合に限り、その原因が
+	// 熟練(official_city_league_playoff)が未達成の場合に限り、その原因が
 	// 「公式サイトの結果(cityleague_results)は連携済みプレイヤーIDで存在するが、
 	// 対応する official_event_id の記録(records)をユーザー自身がまだ作成していないこと」
 	// であるかを表す。称号詳細モーダルで「対象の大会の記録を作成してください」という
 	// 案内を出し分けるためのヒント用途であり、それ以外の criteria_type では常にfalse。
 	MissingOfficialEventRecord bool
 	// CityLeagueRecordWithoutPlayerLink は、ベテラン(official_city_league_placement)・
-	// 熟練者(official_city_league_playoff)についてのみ、プレイヤーズクラブ未連携で
+	// 熟練(official_city_league_playoff)についてのみ、プレイヤーズクラブ未連携で
 	// あるにもかかわらず、対象シーズン内にシティリーグの記録(records)を既に
 	// 作成済みであるかを表す。称号詳細モーダルで「連携すれば達成できる可能性がある」
 	// という、より具体的な案内を出し分けるためのヒント用途であり、それ以外の
@@ -338,18 +338,18 @@ func (u *Designation) GetRankStats(
 // モーダルの案内メッセージの出し分けにのみ使う補助情報(達成条件の判定そのものには使わない)。
 type designationSeasonHints struct {
 	// MissingOfficialEventRecord は DesignationLadderItem.MissingOfficialEventRecord と同じ
-	// 意味を持つ値を criteria_type(ベテラン・熟練者)をキーに保持する。
+	// 意味を持つ値を criteria_type(ベテラン・熟練)をキーに保持する。
 	MissingOfficialEventRecord map[string]bool
 	// CityLeagueRecordWithoutPlayerLink は DesignationLadderItem.CityLeagueRecordWithoutPlayerLink
 	// と同じ意味を持つ値。プレイヤーズクラブの連携有無は criteria_type によらずユーザー単位で
-	// 決まるため、ベテラン・熟練者の両方で共通の値をそのまま使う。
+	// 決まるため、ベテラン・熟練の両方で共通の値をそのまま使う。
 	CityLeagueRecordWithoutPlayerLink bool
 }
 
 // seasonValuesByCriteriaType は判定ロジックが実装済みの criteria_type についてのみ、
 // 指定シーズン(9月始まり。season空文字なら現在のシーズン)の集計値を返す。
 // ここに無い criteria_type(例: "unimplemented")は「準備中」として常に未達成のまま扱われる。
-// あわせて designationSeasonHints(ベテラン・熟練者の案内メッセージ出し分け用の補助情報)も返す。
+// あわせて designationSeasonHints(ベテラン・熟練の案内メッセージ出し分け用の補助情報)も返す。
 func (u *Designation) seasonValuesByCriteriaType(
 	ctx context.Context,
 	userId string,

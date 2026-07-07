@@ -38,6 +38,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/designation.go -destination=./internal/mock/mock_repository/designation.go
 	mockgen -source=./internal/domain/repository/designation_stats.go -destination=./internal/mock/mock_repository/designation_stats.go
 	mockgen -source=./internal/domain/repository/championship_series.go -destination=./internal/mock/mock_repository/championship_series.go
+	mockgen -source=./internal/domain/repository/player_ranking.go -destination=./internal/mock/mock_repository/player_ranking.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go
 	mockgen -source=./internal/usecase/user.go -destination=./internal/mock/mock_usecase/user.go

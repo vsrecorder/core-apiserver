@@ -41,6 +41,14 @@ type UserPlayerInterface interface {
 		userId string,
 	) (*entity.UserPlayer, error)
 
+	// FindLatestPlayerRanking はプレイヤーズクラブの player_id に紐づく
+	// 最新のランキング情報(チャンピオンシップポイント等)を返す。
+	// ランキング履歴が存在しない場合は apperror.ErrRecordNotFound。
+	FindLatestPlayerRanking(
+		ctx context.Context,
+		playerId string,
+	) (*entity.PlayerRanking, error)
+
 	Create(
 		ctx context.Context,
 		param *UserPlayerCreateParam,
@@ -54,17 +62,19 @@ type UserPlayerInterface interface {
 }
 
 type UserPlayer struct {
-	repository         repository.UserPlayerInterface
-	avatarRepository   repository.PokemonAvatarInterface
-	transactionManager repository.TransactionManager
+	repository              repository.UserPlayerInterface
+	avatarRepository        repository.PokemonAvatarInterface
+	playerRankingRepository repository.PlayerRankingInterface
+	transactionManager      repository.TransactionManager
 }
 
 func NewUserPlayer(
 	repository repository.UserPlayerInterface,
 	avatarRepository repository.PokemonAvatarInterface,
+	playerRankingRepository repository.PlayerRankingInterface,
 	transactionManager repository.TransactionManager,
 ) UserPlayerInterface {
-	return &UserPlayer{repository, avatarRepository, transactionManager}
+	return &UserPlayer{repository, avatarRepository, playerRankingRepository, transactionManager}
 }
 
 func (u *UserPlayer) FindByUserId(
@@ -78,6 +88,13 @@ func (u *UserPlayer) FindByUserId(
 	}
 
 	return userPlayer, nil
+}
+
+func (u *UserPlayer) FindLatestPlayerRanking(
+	ctx context.Context,
+	playerId string,
+) (*entity.PlayerRanking, error) {
+	return u.playerRankingRepository.FindLatestByPlayerId(ctx, playerId)
 }
 
 // Verify は player_id の実在を確認し、あわせて所有権確認チャレンジ

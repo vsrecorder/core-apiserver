@@ -87,7 +87,15 @@ func (c *UserPlayer) GetByUID(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewUserPlayerGetResponse(userPlayer)
+	// ランキング履歴がまだ存在しない(連携直後等)場合は ErrRecordNotFound を
+	// 許容し、championship_point 等を含まないレスポンスとして返す。
+	ranking, err := c.usecase.FindLatestPlayerRanking(context.Background(), userPlayer.PlayerId)
+	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
+		apierror.ErrInternalServerError.JSON(ctx)
+		return
+	}
+
+	res := presenter.NewUserPlayerGetResponse(userPlayer, ranking)
 
 	ctx.JSON(http.StatusOK, res)
 }

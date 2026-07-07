@@ -17,6 +17,10 @@ type UserPlayerResponse struct {
 
 type UserPlayerGetResponse struct {
 	UserPlayerResponse
+	// ChampionShipPoint / RankingDate はプレイヤーズクラブのランキング履歴が
+	// 未登録の場合 nil になる(連携直後でまだ集計対象になっていない等)。
+	ChampionShipPoint *int       `json:"champion_ship_point,omitempty"`
+	RankingDate       *time.Time `json:"ranking_date,omitempty"`
 }
 
 type UserPlayerCreateResponse struct {

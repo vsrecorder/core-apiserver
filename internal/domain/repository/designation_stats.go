@@ -127,7 +127,7 @@ type DesignationStatsInterface interface {
 	) (bool, error)
 
 	// ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId は
-	// ExistsCityLeagueResultWithoutMatchingRecordByPlayerId と同様だが、熟練者判定用に
+	// ExistsCityLeagueResultWithoutMatchingRecordByPlayerId と同様だが、熟練判定用に
 	// rank が maxRank 以下のレコードに限定する。
 	ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(
 		ctx context.Context,

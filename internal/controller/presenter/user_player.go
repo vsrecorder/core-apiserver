@@ -8,8 +8,9 @@ import (
 
 func NewUserPlayerGetResponse(
 	userPlayer *entity.UserPlayer,
+	ranking *entity.PlayerRanking,
 ) *dto.UserPlayerGetResponse {
-	return &dto.UserPlayerGetResponse{
+	res := &dto.UserPlayerGetResponse{
 		UserPlayerResponse: dto.UserPlayerResponse{
 			ID:          userPlayer.ID,
 			CreatedAt:   userPlayer.CreatedAt,
@@ -18,6 +19,13 @@ func NewUserPlayerGetResponse(
 			LockedUntil: userPlayer.LockedUntil(),
 		},
 	}
+
+	if ranking != nil {
+		res.ChampionShipPoint = &ranking.ChampionShipPoint
+		res.RankingDate = &ranking.RankingDate
+	}
+
+	return res
 }
 
 func NewUserPlayerCreateResponse(

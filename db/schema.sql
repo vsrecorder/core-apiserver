@@ -642,7 +642,7 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 ('designation-03', 3,  'independent',  '👍', '一人前',     '称号：【🔰 見習い】を持っており、トレーナーズリーグかシティリーグの記録を作成した', 'official_league_record', 1, now(), now()),
 ('designation-04', 4,  'regular',      '🎫', 'レギュラー',  '称号：【👍 一人前】を持っており、前シーズンに引き続き今シーズンでもシティリーグの記録をしているか、今シーズンでシティリーグの記録を2つ以上作成した', 'official_city_league_record', 1, now(), now()),
 ('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '称号:【🎫 レギュラー】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで入賞した', 'official_city_league_placement', 1, now(), now()),
-('designation-06', 6,  'expert',       '🎖️', '熟練者',     '称号:【💪 ベテラン】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで決勝トーナメントに進出した', 'official_city_league_playoff', 1, now(), now()),
+('designation-06', 6,  'expert',       '🎖️', '熟練',     '称号:【💪 ベテラン】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで決勝トーナメントに進出した', 'official_city_league_playoff', 1, now(), now()),
 ('designation-07', 7,  'master',       '🏆', '達人',       '準備中', 'unimplemented', 0, now(), now()),
 ('designation-08', 8,  'grandmaster',  '👑', '名人',       '準備中', 'unimplemented', 0, now(), now()),
 ('designation-09', 9,  'legend',       '💎', 'レジェンド', '準備中', 'unimplemented', 0, now(), now()),
@@ -671,7 +671,7 @@ UPDATE designations SET
 WHERE id = 'designation-05';
 
 
--- 熟練者の達成条件を実装。プレイヤーズクラブ連携済みのプレイヤーIDで、選択中のシーズン内に
+-- 熟練の達成条件を実装。プレイヤーズクラブ連携済みのプレイヤーIDで、選択中のシーズン内に
 -- 公式サイトの結果(cityleague_results)にそのプレイヤーIDかつrankが5以下のレコードが
 -- 1件以上あれば達成(判定ロジックは internal/usecase/designation.go の
 -- seasonValuesByCriteriaType で実装)。
@@ -682,6 +682,7 @@ UPDATE designations SET
 WHERE id = 'designation-06';
 
 
+UPDATE designations SET name = '熟練' WHERE id = 'designation-06';
 
 
 

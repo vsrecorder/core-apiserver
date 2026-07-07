@@ -637,7 +637,7 @@ INSERT INTO badge_definitions (id, code, category, name, description, icon_key, 
 
 
 INSERT INTO designations (id, tier, code, emoji, name, description, criteria_type, criteria_value, created_at, updated_at) VALUES
-('designation-01', 1,  'beginner',     '🌱', '駆け出し',   '公式イベント/Tonamel/記入形式、いずれかの記録を作成した', 'record', 1, now(), now()),
+('designation-01', 1,  'beginner',     '🌱', '駆け出し',   '公式イベント/Tonamel/記入形式、いずれかの記録を作成し、対戦結果を追加した', 'record', 1, now(), now()),
 ('designation-02', 2,  'novice',       '🔰', '見習い',     '称号：【🌱 駆け出し】を持っており、公式イベント/Tonamel/記入形式、いずれかの記録を3つ以上作成した', 'record', 3, now(), now()),
 ('designation-03', 3,  'independent',  '👍', '一人前',     '称号：【🔰 見習い】を持っており、トレーナーズリーグかシティリーグの記録を作成した', 'official_league_record', 1, now(), now()),
 ('designation-04', 4,  'regular',      '🎫', 'レギュラー',  '称号：【👍 一人前】を持っており、前シーズンに引き続き今シーズンでもシティリーグの記録をしているか、今シーズンでシティリーグの記録を2つ以上作成した', 'official_city_league_record', 1, now(), now()),
@@ -647,6 +647,19 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 ('designation-08', 8,  'grandmaster',  '👑', '名人',       '準備中', 'unimplemented', 0, now(), now()),
 ('designation-09', 9,  'legend',       '💎', 'レジェンド', '準備中', 'unimplemented', 0, now(), now()),
 ('designation-10', 10, 'hall_of_fame', '🏛️', '殿堂入り',   '準備中', 'unimplemented', 0, now(), now());
+
+
+
+
+
+-- 駆け出しの達成条件に「対戦結果(matches)を1件以上追加していること」を追加。
+-- criteria_type='record' の集計対象は records の存在有無ではなく、matches が1件以上
+-- 紐づく records の件数に変更(判定ロジックは internal/infrastructure/designation_stats.go の
+-- CountRecordsByUserId 系で実装。同じ criteria_type を使う見習い(designation-02)にも
+-- この変更は連動する)。
+UPDATE designations SET description = '公式イベント/Tonamel/記入形式、いずれかの記録を作成し、対戦結果を追加した' WHERE id = 'designation-01';
+
+
 
 
 
@@ -718,6 +731,23 @@ CREATE TABLE player_rankings (
 
 
 
+-- 通知(バッジ獲得等をユーザーに知らせるアプリ内通知)
+CREATE TABLE notifications (
+    id          VARCHAR(26) PRIMARY KEY,
+    created_at  TIMESTAMP NOT NULL,
+    user_id     VARCHAR(32) NOT NULL,
+    category    VARCHAR(32) NOT NULL,   -- 'badge' / 'streak' (webappのNotificationCategoryと一致)
+    title       VARCHAR(128) NOT NULL,
+    body        VARCHAR(256) NOT NULL,
+    link_url    VARCHAR(256) NOT NULL DEFAULT '',
+    is_read     BOOLEAN NOT NULL DEFAULT FALSE,
+    read_at     TIMESTAMP DEFAULT NULL
+);
+
+CREATE INDEX idx_notifications_user_id_created_at ON notifications (user_id, created_at DESC);
+
+
+
 
 
 GRANT SELECT ON shops                 TO grafana;
@@ -756,6 +786,11 @@ GRANT SELECT ON user_streaks          TO grafana;
 
 GRANT SELECT ON designations          TO grafana;
 GRANT SELECT ON user_designations     TO grafana;
+
+GRANT SELECT ON notifications         TO grafana;
+
+
+
 
 
 
@@ -960,5 +995,4 @@ FROM (
 WHERE m.id = sub.id;
 
 COMMIT;
-
 

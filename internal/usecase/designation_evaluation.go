@@ -1,0 +1,427 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
+)
+
+// 通知(entity.Notification)のカテゴリ。webappのNotificationCategoryと一致させる。
+const (
+	NotificationCategoryDesignation = "designation"
+	NotificationCategoryRank        = "rank"
+)
+
+// notificationLinkUrlForDesignation は称号/ランク通知のリンク先(称号ロードマップがある
+// プロフィールページ)。バッジ通知と同じ遷移先を使う。
+const notificationLinkUrlForDesignation = "/users"
+
+// rankRange はwebapp/src/app/utils/designationRank.tsのRANKSと同じ、称号tierを
+// まとめた「ランク」のグルーピング。ランク自体は独自の永続データを持たず現在のtierから
+// 都度導出する設計のため、バックエンド側にも同じテーブルを複製する。
+type rankRange struct {
+	minTier int
+	maxTier int
+	name    string
+}
+
+var rankRanges = []rankRange{
+	{1, 2, "モンスターボール級"},
+	{3, 4, "スーパーボール級"},
+	{5, 5, "ハイパーボール級"},
+	{6, 8, "マスターボール級"},
+	{9, 10, "ウルトラボール級"},
+}
+
+// RankNameForTier はtierが属するランク名を返す(該当なし=称号未達成なら空文字)。
+func RankNameForTier(tier int) string {
+	for _, r := range rankRanges {
+		if tier >= r.minTier && tier <= r.maxTier {
+			return r.name
+		}
+	}
+
+	return ""
+}
+
+// DesignationEvaluationInterface は記録作成時に称号(designation)のtierが上がったか
+// 判定し、上がっていれば称号獲得・ランクアップの通知を作成する。
+//
+// 称号のtierは5種類のcriteria_type(record/official_league_record/
+// official_city_league_record/official_city_league_placement/official_city_league_playoff)
+// の組み合わせで判定されるが、本評価が対象とするのはrecords起因の最初の3つのみ
+// (usecase/designation.goのDesignationCriteriaType*定数を参照)。残り2つは連携済み
+// プレイヤーIDでの公式サイト結果(cityleague_results)の有無で判定され、これは
+// import-cityleague-result-job(別リポジトリ、日次バッチ)がデータを取り込んだ瞬間に
+// 変化しうるものであり、core-apiserverの書き込みイベントと無関係なため対象外とする。
+// currentDesignation()はvaluesマップに無いcriteria_typeに到達すると判定を打ち切る
+// ため、この3つだけを渡しても後続tier(5以降)を誤って達成扱いにすることはない。
+type DesignationEvaluationInterface interface {
+	// CurrentTier は現在のシーズンにおける現在のtier(称号未達成なら0)を返す。
+	// record作成の前後で比較するため、呼び出し側は保存前に一度呼んでおく。
+	CurrentTier(
+		ctx context.Context,
+		userId string,
+	) (int, error)
+
+	// TierAsOf は現在のシーズン内で、asOf 時点までの実績のみで判定した場合のtierを返す
+	// (称号未達成なら0)。backfill-notification-history が「実際に達成した日」を過去の
+	// 記録から遡って特定するために使う特殊な用途で、通常のリアルタイム評価では使わない。
+	TierAsOf(
+		ctx context.Context,
+		userId string,
+		asOf time.Time,
+	) (int, error)
+
+	// NotifyIfTierChanged はbeforeTier(record保存前のtier)と現在のtierを比較し、
+	// 上がっていれば称号獲得の通知を、ランクの区分もまたいでいればランクアップの
+	// 通知も作成する。record作成自体を失敗させたくないため、内部のエラーは
+	// 握りつぶす(戻り値なし)。achievedAt は通知のcreated_atに使う実際の達成日時
+	// (記録のevent_date、対戦結果の作成日時等)。
+	NotifyIfTierChanged(
+		ctx context.Context,
+		userId string,
+		beforeTier int,
+		achievedAt time.Time,
+	)
+
+	// NotifyIfTierLost はbeforeTier(record削除前のtier)と現在のtierを比較し、
+	// 下がっていれば称号を失った通知を、ランクの区分もまたいでいればランクダウンの
+	// 通知も作成する。record削除自体を失敗させたくないため、内部のエラーは
+	// 握りつぶす(戻り値なし)。
+	NotifyIfTierLost(
+		ctx context.Context,
+		userId string,
+		beforeTier int,
+	)
+}
+
+type DesignationEvaluation struct {
+	designationRepo        repository.DesignationInterface
+	designationStatsRepo   repository.DesignationStatsInterface
+	championshipSeriesRepo repository.ChampionshipSeriesInterface
+	notificationRepo       repository.NotificationInterface
+}
+
+func NewDesignationEvaluation(
+	designationRepo repository.DesignationInterface,
+	designationStatsRepo repository.DesignationStatsInterface,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+	notificationRepo repository.NotificationInterface,
+) DesignationEvaluationInterface {
+	return &DesignationEvaluation{
+		designationRepo:        designationRepo,
+		designationStatsRepo:   designationStatsRepo,
+		championshipSeriesRepo: championshipSeriesRepo,
+		notificationRepo:       notificationRepo,
+	}
+}
+
+func (u *DesignationEvaluation) CurrentTier(
+	ctx context.Context,
+	userId string,
+) (int, error) {
+	def, _, _, err := u.currentDesignationForRecordCriteria(ctx, userId)
+	if err != nil {
+		return 0, err
+	}
+	if def == nil {
+		return 0, nil
+	}
+
+	return def.Tier, nil
+}
+
+func (u *DesignationEvaluation) TierAsOf(
+	ctx context.Context,
+	userId string,
+	asOf time.Time,
+) (int, error) {
+	def, _, _, err := u.currentDesignationForRecordCriteriaAsOf(ctx, userId, asOf)
+	if err != nil {
+		return 0, err
+	}
+	if def == nil {
+		return 0, nil
+	}
+
+	return def.Tier, nil
+}
+
+func (u *DesignationEvaluation) NotifyIfTierChanged(
+	ctx context.Context,
+	userId string,
+	beforeTier int,
+	achievedAt time.Time,
+) {
+	def, definitions, seasonLabel, err := u.currentDesignationForRecordCriteria(ctx, userId)
+	if err != nil || def == nil || def.Tier <= beforeTier {
+		return
+	}
+
+	// 1回の評価でtierが複数段上がることがある(称号機能の導入時点で既に多数の記録が
+	// あった場合等)。通過した各tierをすべて通知しないと、間のtierの通知が永久に
+	// 欠落するため、beforeTierの次から現在のtierまで1段ずつ通知する。
+	beforeRank := RankNameForTier(beforeTier)
+	for tier := beforeTier + 1; tier <= def.Tier; tier++ {
+		tierDef := designationForTier(definitions, tier)
+		if tierDef == nil {
+			continue
+		}
+
+		if err := u.notifyDesignationAchieved(ctx, userId, tierDef, seasonLabel, achievedAt); err != nil {
+			continue
+		}
+
+		afterRank := RankNameForTier(tier)
+		if afterRank != "" && afterRank != beforeRank {
+			_ = u.notifyRankUp(ctx, userId, afterRank, seasonLabel, achievedAt)
+			beforeRank = afterRank
+		}
+	}
+}
+
+func (u *DesignationEvaluation) NotifyIfTierLost(
+	ctx context.Context,
+	userId string,
+	beforeTier int,
+) {
+	if beforeTier <= 0 {
+		return
+	}
+
+	def, definitions, seasonLabel, err := u.currentDesignationForRecordCriteria(ctx, userId)
+	if err != nil {
+		return
+	}
+
+	afterTier := 0
+	if def != nil {
+		afterTier = def.Tier
+	}
+	if afterTier >= beforeTier {
+		return
+	}
+
+	lostDef := designationForTier(definitions, beforeTier)
+	if lostDef == nil {
+		return
+	}
+
+	if err := u.notifyDesignationLost(ctx, userId, lostDef, seasonLabel); err != nil {
+		return
+	}
+
+	beforeRank := RankNameForTier(beforeTier)
+	afterRank := RankNameForTier(afterTier)
+	if beforeRank != "" && beforeRank != afterRank {
+		_ = u.notifyRankDown(ctx, userId, beforeRank, seasonLabel)
+	}
+}
+
+// designationForTier はdefinitionsからtierが一致する称号定義を返す(無ければnil)。
+func designationForTier(definitions []*entity.Designation, tier int) *entity.Designation {
+	for _, def := range definitions {
+		if def.Tier == tier {
+			return def
+		}
+	}
+
+	return nil
+}
+
+// currentDesignationForRecordCriteria はrecords起因の3criteria_typeのみを使い、
+// usecase/designation.goのcurrentDesignation()で現在の到達tierを判定する。
+// championship_seriesが見つからない等でシーズン範囲が定まらない場合はerrを返し、
+// 呼び出し側(CurrentTier/NotifyIfTierChanged/NotifyIfTierLost)で評価自体をスキップする。
+// 併せて称号定義一覧(NotifyIfTierLostが「失った称号」の名前を引くために使う)と、
+// 通知本文にどのシーズンの実績かを明記するためのシーズンラベルも返す。
+func (u *DesignationEvaluation) currentDesignationForRecordCriteria(
+	ctx context.Context,
+	userId string,
+) (*entity.Designation, []*entity.Designation, string, error) {
+	return u.currentDesignationForRecordCriteriaAsOf(ctx, userId, time.Time{})
+}
+
+// currentDesignationForRecordCriteriaAsOf は currentDesignationForRecordCriteria と同様だが、
+// asOf が非ゼロの場合はシーズン終了日ではなく asOf を集計期間の上限として扱う(TierAsOf専用)。
+// asOf がゼロ値の場合はシーズン終了日まで(=currentDesignationForRecordCriteriaと同じ)集計する。
+func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
+	ctx context.Context,
+	userId string,
+	asOf time.Time,
+) (*entity.Designation, []*entity.Designation, string, error) {
+	definitions, err := u.designationRepo.FindAll(ctx)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	now := time.Now().Local()
+
+	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, "", now)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	if !asOf.IsZero() && asOf.Before(toDate) {
+		toDate = asOf
+	}
+
+	seasonLabel, err := CurrentSeasonLabel(ctx, u.championshipSeriesRepo, now)
+	if err != nil {
+		seasonLabel = ""
+	}
+
+	recordCount, err := u.designationStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	leagueCount, err := u.designationStatsRepo.CountLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	cityLeagueCount, err := u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	previousFromDate, previousToDate, err := previousSeasonRange(ctx, u.championshipSeriesRepo, "", now)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	previousCityLeagueCount, err := u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, previousFromDate, previousToDate)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	values := map[string]int{
+		DesignationCriteriaTypeRecord:                   recordCount,
+		DesignationCriteriaTypeOfficialLeagueRecord:     leagueCount,
+		DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCount,
+	}
+
+	return currentDesignation(definitions, values, previousCityLeagueCount), definitions, seasonLabel, nil
+}
+
+func (u *DesignationEvaluation) notifyDesignationAchieved(
+	ctx context.Context,
+	userId string,
+	def *entity.Designation,
+	seasonLabel string,
+	achievedAt time.Time,
+) error {
+	id, err := generateId()
+	if err != nil {
+		return err
+	}
+
+	body := fmt.Sprintf("称号「%s %s」を獲得しました！", def.Emoji, def.Name)
+	if seasonLabel != "" {
+		body = fmt.Sprintf("%sシーズンで称号「%s %s」を獲得しました！", seasonLabel, def.Emoji, def.Name)
+	}
+
+	notification := entity.NewNotification(
+		id,
+		achievedAt,
+		userId,
+		NotificationCategoryDesignation,
+		"称号を獲得しました",
+		body,
+		notificationLinkUrlForDesignation,
+	)
+
+	return u.notificationRepo.Save(ctx, notification)
+}
+
+func (u *DesignationEvaluation) notifyRankUp(
+	ctx context.Context,
+	userId string,
+	rankName string,
+	seasonLabel string,
+	achievedAt time.Time,
+) error {
+	id, err := generateId()
+	if err != nil {
+		return err
+	}
+
+	body := fmt.Sprintf("ランクが「%s」に上がりました！", rankName)
+	if seasonLabel != "" {
+		body = fmt.Sprintf("%sシーズンでランクが「%s」に上がりました！", seasonLabel, rankName)
+	}
+
+	notification := entity.NewNotification(
+		id,
+		achievedAt,
+		userId,
+		NotificationCategoryRank,
+		"ランクが上がりました",
+		body,
+		notificationLinkUrlForDesignation,
+	)
+
+	return u.notificationRepo.Save(ctx, notification)
+}
+
+func (u *DesignationEvaluation) notifyDesignationLost(
+	ctx context.Context,
+	userId string,
+	def *entity.Designation,
+	seasonLabel string,
+) error {
+	id, err := generateId()
+	if err != nil {
+		return err
+	}
+
+	body := fmt.Sprintf("称号「%s %s」の条件を満たさなくなりました", def.Emoji, def.Name)
+	if seasonLabel != "" {
+		body = fmt.Sprintf("%sシーズンで称号「%s %s」の条件を満たさなくなりました", seasonLabel, def.Emoji, def.Name)
+	}
+
+	notification := entity.NewNotification(
+		id,
+		time.Now().Local(),
+		userId,
+		NotificationCategoryDesignation,
+		"称号を失いました",
+		body,
+		notificationLinkUrlForDesignation,
+	)
+
+	return u.notificationRepo.Save(ctx, notification)
+}
+
+func (u *DesignationEvaluation) notifyRankDown(
+	ctx context.Context,
+	userId string,
+	rankName string,
+	seasonLabel string,
+) error {
+	id, err := generateId()
+	if err != nil {
+		return err
+	}
+
+	body := fmt.Sprintf("ランクが「%s」から下がりました", rankName)
+	if seasonLabel != "" {
+		body = fmt.Sprintf("%sシーズンでランクが「%s」から下がりました", seasonLabel, rankName)
+	}
+
+	notification := entity.NewNotification(
+		id,
+		time.Now().Local(),
+		userId,
+		NotificationCategoryRank,
+		"ランクが下がりました",
+		body,
+		notificationLinkUrlForDesignation,
+	)
+
+	return u.notificationRepo.Save(ctx, notification)
+}

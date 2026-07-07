@@ -58,10 +58,44 @@ func (stubBadgeEvaluation) EvaluateOnRecordDeleted(
 	return nil
 }
 
+// stubDesignationEvaluation は usecase パッケージ自身のテストで使う
+// DesignationEvaluationInterface のスタブ(stubBadgeEvaluationと同じ理由でgomockを使わない)。
+type stubDesignationEvaluation struct{}
+
+func (stubDesignationEvaluation) CurrentTier(
+	ctx context.Context,
+	userId string,
+) (int, error) {
+	return 0, nil
+}
+
+func (stubDesignationEvaluation) TierAsOf(
+	ctx context.Context,
+	userId string,
+	asOf time.Time,
+) (int, error) {
+	return 0, nil
+}
+
+func (stubDesignationEvaluation) NotifyIfTierChanged(
+	ctx context.Context,
+	userId string,
+	beforeTier int,
+	achievedAt time.Time,
+) {
+}
+
+func (stubDesignationEvaluation) NotifyIfTierLost(
+	ctx context.Context,
+	userId string,
+	beforeTier int,
+) {
+}
+
 func TestRecordUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewRecord(mockRepository, stubBadgeEvaluation{})
+	usecase := NewRecord(mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

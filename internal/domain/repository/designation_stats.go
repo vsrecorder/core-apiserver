@@ -11,7 +11,8 @@ import (
 // 期間を渡す(BadgeStatsInterface と異なり、両方ゼロ値=無期限で呼び出す使い方はしない)。
 type DesignationStatsInterface interface {
 	// CountRecordsByUserId は、公式イベント・Tonamelイベント・記入形式(unofficial_event)
-	// のいずれであるかを問わず、ユーザーが作成した全ての記録の件数を返す。
+	// のいずれであるかを問わず、対戦結果(matches)が1件以上紐づいている記録の件数を返す
+	// (対戦結果が未追加の記録はカウントしない)。
 	CountRecordsByUserId(
 		ctx context.Context,
 		userId string,
@@ -38,8 +39,8 @@ type DesignationStatsInterface interface {
 	) (int, error)
 
 	// CountRecordsGroupByUserId は CountRecordsByUserId のユーザー横断版。
-	// 指定期間内に記録を1件以上持つユーザーごとの件数を user_id をキーに返す
-	// (該当記録が0件のユーザーはキーに含まれない)。
+	// 指定期間内に対戦結果(matches)付きの記録を1件以上持つユーザーごとの件数を
+	// user_id をキーに返す(該当記録が0件のユーザーはキーに含まれない)。
 	CountRecordsGroupByUserId(
 		ctx context.Context,
 		fromDate time.Time,

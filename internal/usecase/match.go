@@ -139,15 +139,19 @@ type MatchInterface interface {
 }
 
 type Match struct {
-	repository      repository.MatchInterface
-	badgeEvaluation BadgeEvaluationInterface
+	repository            repository.MatchInterface
+	recordRepository      repository.RecordInterface
+	badgeEvaluation       BadgeEvaluationInterface
+	designationEvaluation DesignationEvaluationInterface
 }
 
 func NewMatch(
 	repository repository.MatchInterface,
+	recordRepository repository.RecordInterface,
 	badgeEvaluation BadgeEvaluationInterface,
+	designationEvaluation DesignationEvaluationInterface,
 ) MatchInterface {
-	return &Match{repository, badgeEvaluation}
+	return &Match{repository, recordRepository, badgeEvaluation, designationEvaluation}
 }
 
 func (u *Match) FindById(
@@ -212,6 +216,11 @@ func (u *Match) Create(
 		return nil, err
 	}
 
+	// 称号のtier変化を対戦結果作成の前後で比較するため、保存前の時点で取得しておく。
+	// 称号の「記録数」条件は対戦結果が1件以上紐づく記録のみをカウントするため、
+	// 記録作成時点ではなく対戦結果作成時点でtierが上がることが多い。
+	beforeTier, tierErr := u.designationEvaluation.CurrentTier(ctx, param.UserId)
+
 	createdAt := time.Now().Local()
 
 	var games []*entity.Game
@@ -272,6 +281,18 @@ func (u *Match) Create(
 
 	if _, err := u.badgeEvaluation.EvaluateOnMatchCreated(ctx, param.UserId, match); err != nil {
 		return nil, err
+	}
+
+	if tierErr == nil {
+		// 称号の達成日時は「対戦結果を入力した日時」ではなく「実際に対戦した日」
+		// (紐づくrecordのevent_date)を使いたいため、親recordを取得する。
+		// 取得できない場合(通常発生しない)はmatchの作成日時にフォールバックする。
+		achievedAt := match.CreatedAt
+		if record, err := u.recordRepository.FindById(ctx, param.RecordId); err == nil {
+			achievedAt = RecordBasisTime(record.EventDate, record.CreatedAt)
+		}
+
+		u.designationEvaluation.NotifyIfTierChanged(ctx, param.UserId, beforeTier, achievedAt)
 	}
 
 	return match, nil
@@ -393,10 +414,20 @@ func (u *Match) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	err := u.repository.Delete(ctx, id)
-
+	match, err := u.repository.FindById(ctx, id)
 	if err != nil {
 		return err
+	}
+
+	// 称号のtier変化を削除の前後で比較するため、削除前の時点で取得しておく。
+	beforeTier, tierErr := u.designationEvaluation.CurrentTier(ctx, match.UserId)
+
+	if err := u.repository.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	if tierErr == nil {
+		u.designationEvaluation.NotifyIfTierLost(ctx, match.UserId, beforeTier)
 	}
 
 	return nil

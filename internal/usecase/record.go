@@ -145,15 +145,17 @@ type RecordInterface interface {
 }
 
 type Record struct {
-	repository      repository.RecordInterface
-	badgeEvaluation BadgeEvaluationInterface
+	repository            repository.RecordInterface
+	badgeEvaluation       BadgeEvaluationInterface
+	designationEvaluation DesignationEvaluationInterface
 }
 
 func NewRecord(
 	repository repository.RecordInterface,
 	badgeEvaluation BadgeEvaluationInterface,
+	designationEvaluation DesignationEvaluationInterface,
 ) RecordInterface {
-	return &Record{repository, badgeEvaluation}
+	return &Record{repository, badgeEvaluation, designationEvaluation}
 }
 
 func (u *Record) FindById(
@@ -321,6 +323,11 @@ func (u *Record) Create(
 
 	createdAt := time.Now().Local()
 
+	// 称号のtier変化を記録の前後で比較するため、保存前の時点で取得しておく。
+	// シーズン範囲が定まらない等でエラーになった場合は、この記録作成では
+	// 称号/ランクの通知判定自体を行わない(記録作成そのものは失敗させない)。
+	beforeTier, tierErr := u.designationEvaluation.CurrentTier(ctx, param.userId)
+
 	record := entity.NewRecord(
 		id,
 		createdAt,
@@ -343,6 +350,10 @@ func (u *Record) Create(
 
 	if _, err := u.badgeEvaluation.EvaluateOnRecordCreated(ctx, param.userId, record); err != nil {
 		return nil, err
+	}
+
+	if tierErr == nil {
+		u.designationEvaluation.NotifyIfTierChanged(ctx, param.userId, beforeTier, RecordBasisTime(record.EventDate, record.CreatedAt))
 	}
 
 	return record, nil
@@ -393,12 +404,19 @@ func (u *Record) Delete(
 		return err
 	}
 
+	// 称号のtier変化を削除の前後で比較するため、削除前の時点で取得しておく。
+	beforeTier, tierErr := u.designationEvaluation.CurrentTier(ctx, record.UserId)
+
 	if err := u.repository.Delete(ctx, id); err != nil {
 		return err
 	}
 
 	if err := u.badgeEvaluation.EvaluateOnRecordDeleted(ctx, record.UserId); err != nil {
 		return err
+	}
+
+	if tierErr == nil {
+		u.designationEvaluation.NotifyIfTierLost(ctx, record.UserId, beforeTier)
 	}
 
 	return nil

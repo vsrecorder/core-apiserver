@@ -16,11 +16,13 @@ import (
 func TestMatchUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
-	usecase := NewMatch(mockRepository, stubBadgeEvaluation{})
+	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+	usecase := NewMatch(mockRepository, mockRecordRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 		mockRepository *mock_repository.MockMatchInterface,
+		mockRecordRepository *mock_repository.MockRecordInterface,
 		usecase MatchInterface,
 	){
 		"FindById":      test_MatchUsecase_FindById,
@@ -31,12 +33,12 @@ func TestMatchUsecase(t *testing.T) {
 		"Reorder":       test_MatchUsecase_Reorder,
 	} {
 		t.Run(scenario, func(t *testing.T) {
-			fn(t, mockRepository, usecase)
+			fn(t, mockRepository, mockRecordRepository, usecase)
 		})
 	}
 }
 
-func test_MatchUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockMatchInterface, usecase MatchInterface) {
+func test_MatchUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -66,7 +68,7 @@ func test_MatchUsecase_FindById(t *testing.T, mockRepository *mock_repository.Mo
 	})
 }
 
-func test_MatchUsecase_FindByRecordId(t *testing.T, mockRepository *mock_repository.MockMatchInterface, usecase MatchInterface) {
+func test_MatchUsecase_FindByRecordId(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -119,7 +121,7 @@ func test_MatchUsecase_FindByRecordId(t *testing.T, mockRepository *mock_reposit
 	})
 }
 
-func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.MockMatchInterface, usecase MatchInterface) {
+func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		recordId := "01JMPK4VF04QX714CG4PHYJ88K"
 		deckId := "01JMKRNBW5TVN902YAE8GYZ367"
@@ -160,6 +162,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		)
 
 		mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId}, nil)
 
 		ret, err := usecase.Create(context.Background(), matchParam)
 
@@ -239,6 +242,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		)
 
 		mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId}, nil)
 
 		ret, err := usecase.Create(context.Background(), matchParam)
 
@@ -328,7 +332,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 	})
 }
 
-func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.MockMatchInterface, usecase MatchInterface) {
+func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		matchId, _ := generateId()
 		datetime := time.Now().Local()
@@ -811,10 +815,12 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 	})
 }
 
-func test_MatchUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockMatchInterface, usecase MatchInterface) {
+func test_MatchUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		id, _ := generateId()
+		match := &entity.Match{ID: id, UserId: "user-1"}
 
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		err := usecase.Delete(context.Background(), id)
@@ -822,9 +828,21 @@ func test_MatchUsecase_Delete(t *testing.T, mockRepository *mock_repository.Mock
 		require.NoError(t, err)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_#01_FindByIdが失敗する場合", func(t *testing.T) {
 		id, _ := generateId()
 
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+
+		err := usecase.Delete(context.Background(), id)
+
+		require.Equal(t, err, errors.New(""))
+	})
+
+	t.Run("異常系_#02_Deleteが失敗する場合", func(t *testing.T) {
+		id, _ := generateId()
+		match := &entity.Match{ID: id, UserId: "user-1"}
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		err := usecase.Delete(context.Background(), id)
@@ -833,7 +851,7 @@ func test_MatchUsecase_Delete(t *testing.T, mockRepository *mock_repository.Mock
 	})
 }
 
-func test_MatchUsecase_Reorder(t *testing.T, mockRepository *mock_repository.MockMatchInterface, usecase MatchInterface) {
+func test_MatchUsecase_Reorder(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {
 	t.Run("正常系_#01", func(t *testing.T) {
 		recordId, _ := generateId()
 		id1, _ := generateId()

@@ -52,6 +52,16 @@ func seasonRange(
 	return championshipSeriesDateRange(cs, now.Location())
 }
 
+// CurrentSeasonDateRange は seasonRange(season="")と同じ結果(nowが属する現在のシーズンの
+// from_date〜to_date)を返す、package外(cmd/配下のバッチ等)向けのエクスポート版。
+func CurrentSeasonDateRange(
+	ctx context.Context,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+	now time.Time,
+) (fromDate time.Time, toDate time.Time, err error) {
+	return seasonRange(ctx, championshipSeriesRepo, "", now)
+}
+
 // previousSeasonRange は season(空文字なら現在のシーズン)のひとつ前(championship_series上で
 // from_dateが直前に終わる)シーズンの期間を返す。「前シーズンに引き続き」といった、シーズンを
 // またいだ継続条件の判定に使う。

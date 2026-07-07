@@ -26,6 +26,12 @@ func NewDesignationStats(
 	return &DesignationStats{db}
 }
 
+// existsMatchForRecordCondition は、records に対戦結果(matches)が1件以上
+// 紐づいていることを求める条件(駆け出し・見習いの達成条件)。
+const existsMatchForRecordCondition = "EXISTS (" +
+	"SELECT 1 FROM matches WHERE matches.record_id = records.id AND matches.deleted_at IS NULL" +
+	")"
+
 func (i *DesignationStats) CountRecordsByUserId(
 	ctx context.Context,
 	userId string,
@@ -34,7 +40,9 @@ func (i *DesignationStats) CountRecordsByUserId(
 ) (int, error) {
 	var count int64
 
-	query := i.db.Table("records").Where("user_id = ? AND deleted_at IS NULL", userId)
+	query := i.db.Table("records").
+		Where("user_id = ? AND deleted_at IS NULL", userId).
+		Where(existsMatchForRecordCondition)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}
@@ -133,7 +141,8 @@ func (i *DesignationStats) CountRecordsGroupByUserId(
 ) (map[string]int, error) {
 	query := i.db.Table("records").
 		Select("user_id AS user_id, COUNT(*) AS count").
-		Where("deleted_at IS NULL")
+		Where("deleted_at IS NULL").
+		Where(existsMatchForRecordCondition)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}

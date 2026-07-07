@@ -163,6 +163,15 @@ func main() {
 		infrastructure.NewUserBadge(db),
 		infrastructure.NewUserStreak(db),
 		infrastructure.NewBadgeStats(db),
+		infrastructure.NewNotification(db),
+		infrastructure.NewChampionshipSeries(db),
+	)
+
+	designationEvaluation := usecase.NewDesignationEvaluation(
+		infrastructure.NewDesignation(db),
+		infrastructure.NewDesignationStats(db),
+		infrastructure.NewChampionshipSeries(db),
+		infrastructure.NewNotification(db),
 	)
 
 	controller.NewUser(
@@ -238,6 +247,7 @@ func main() {
 		usecase.NewRecord(
 			infrastructure.NewRecord(db, slog.Default()),
 			badgeEvaluation,
+			designationEvaluation,
 		),
 	).RegisterRoute(relativePath)
 
@@ -247,7 +257,9 @@ func main() {
 		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewMatch(
 			infrastructure.NewMatch(db),
+			infrastructure.NewRecord(db, slog.Default()),
 			badgeEvaluation,
+			designationEvaluation,
 		),
 	).RegisterRoute(relativePath)
 
@@ -260,6 +272,13 @@ func main() {
 			infrastructure.NewChampionshipSeries(db),
 		),
 		infrastructure.NewChampionshipSeries(db),
+	).RegisterRoute(relativePath)
+
+	controller.NewNotification(
+		r,
+		usecase.NewNotification(
+			infrastructure.NewNotification(db),
+		),
 	).RegisterRoute(relativePath)
 
 	controller.NewStreak(

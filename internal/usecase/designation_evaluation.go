@@ -2,9 +2,11 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
@@ -52,13 +54,15 @@ func RankNameForTier(tier int) string {
 //
 // 称号のtierは5種類のcriteria_type(record/official_league_record/
 // official_city_league_record/official_city_league_placement/official_city_league_playoff)
-// の組み合わせで判定されるが、本評価が対象とするのはrecords起因の最初の3つのみ
+// の組み合わせで判定されるが、CurrentTier/NotifyIfTierChanged/NotifyIfTierLost(record作成・
+// 削除のイベント駆動で呼ばれるもの)が対象とするのはrecords起因の最初の3つのみ
 // (usecase/designation.goのDesignationCriteriaType*定数を参照)。残り2つは連携済み
 // プレイヤーIDでの公式サイト結果(cityleague_results)の有無で判定され、これは
 // import-cityleague-result-job(別リポジトリ、日次バッチ)がデータを取り込んだ瞬間に
 // 変化しうるものであり、core-apiserverの書き込みイベントと無関係なため対象外とする。
 // currentDesignation()はvaluesマップに無いcriteria_typeに到達すると判定を打ち切る
 // ため、この3つだけを渡しても後続tier(5以降)を誤って達成扱いにすることはない。
+// ただし TierAsOf のみ、この2つも含めて判定する(TierAsOfのコメント参照)。
 type DesignationEvaluationInterface interface {
 	// CurrentTier は現在のシーズンにおける現在のtier(称号未達成なら0)を返す。
 	// record作成の前後で比較するため、呼び出し側は保存前に一度呼んでおく。
@@ -104,6 +108,7 @@ type DesignationEvaluation struct {
 	designationStatsRepo   repository.DesignationStatsInterface
 	championshipSeriesRepo repository.ChampionshipSeriesInterface
 	notificationRepo       repository.NotificationInterface
+	userPlayerRepo         repository.UserPlayerInterface
 }
 
 func NewDesignationEvaluation(
@@ -111,12 +116,14 @@ func NewDesignationEvaluation(
 	designationStatsRepo repository.DesignationStatsInterface,
 	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 	notificationRepo repository.NotificationInterface,
+	userPlayerRepo repository.UserPlayerInterface,
 ) DesignationEvaluationInterface {
 	return &DesignationEvaluation{
 		designationRepo:        designationRepo,
 		designationStatsRepo:   designationStatsRepo,
 		championshipSeriesRepo: championshipSeriesRepo,
 		notificationRepo:       notificationRepo,
+		userPlayerRepo:         userPlayerRepo,
 	}
 }
 
@@ -140,7 +147,7 @@ func (u *DesignationEvaluation) TierAsOf(
 	userId string,
 	asOf time.Time,
 ) (int, error) {
-	def, _, _, err := u.currentDesignationForRecordCriteriaAsOf(ctx, userId, asOf)
+	def, _, _, err := u.currentDesignationForRecordCriteriaAsOf(ctx, userId, asOf, true)
 	if err != nil {
 		return 0, err
 	}
@@ -243,16 +250,28 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteria(
 	ctx context.Context,
 	userId string,
 ) (*entity.Designation, []*entity.Designation, string, error) {
-	return u.currentDesignationForRecordCriteriaAsOf(ctx, userId, time.Time{})
+	return u.currentDesignationForRecordCriteriaAsOf(ctx, userId, time.Time{}, false)
 }
 
 // currentDesignationForRecordCriteriaAsOf は currentDesignationForRecordCriteria と同様だが、
 // asOf が非ゼロの場合はシーズン終了日ではなく asOf を集計期間の上限として扱う(TierAsOf専用)。
 // asOf がゼロ値の場合はシーズン終了日まで(=currentDesignationForRecordCriteriaと同じ)集計する。
+//
+// includeCityLeagueResultCriteria が true の場合のみ、ベテラン(official_city_league_placement)・
+// 熟練(official_city_league_playoff)の2criteria_typeもvaluesに含める。この2つは
+// import-cityleague-result-job(別リポジトリ、日次バッチ)がcityleague_resultsを取り込んだ
+// 瞬間に変化しうるものであり、record作成イベントと無関係なため、CurrentTier/
+// NotifyIfTierChanged/NotifyIfTierLost(=currentDesignationForRecordCriteria経由)では
+// 従来通りfalseで除外する。一方 TierAsOf はbackfill-notification-historyが「実際に
+// 達成した日」を過去に遡って特定するための特殊な用途で、この2つを除外すると
+// currentDesignation()がvaluesに無いcriteria_typeで判定を打ち切ってしまいtier5以降に
+// 決して到達できず、ベテラン・熟練(および対応するランク「ハイパーボール級」等)の
+// achieved_atが常にfallback(バッチ実行時刻)になってしまうため、trueで含める。
 func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 	ctx context.Context,
 	userId string,
 	asOf time.Time,
+	includeCityLeagueResultCriteria bool,
 ) (*entity.Designation, []*entity.Designation, string, error) {
 	definitions, err := u.designationRepo.FindAll(ctx)
 	if err != nil {
@@ -303,6 +322,37 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 		DesignationCriteriaTypeRecord:                   recordCount,
 		DesignationCriteriaTypeOfficialLeagueRecord:     leagueCount,
 		DesignationCriteriaTypeOfficialCityLeagueRecord: cityLeagueCount,
+	}
+
+	if includeCityLeagueResultCriteria {
+		cityLeaguePlacement := 0
+		cityLeagueFinalTournament := 0
+
+		userPlayer, err := u.userPlayerRepo.FindByUserId(ctx, userId)
+		if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
+			return nil, nil, "", err
+		}
+
+		if userPlayer != nil {
+			exists, err := u.designationStatsRepo.ExistsCityLeagueResultByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+			if err != nil {
+				return nil, nil, "", err
+			}
+			if exists {
+				cityLeaguePlacement = 1
+			}
+
+			existsFinalTournament, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
+			if err != nil {
+				return nil, nil, "", err
+			}
+			if existsFinalTournament {
+				cityLeagueFinalTournament = 1
+			}
+		}
+
+		values[DesignationCriteriaTypeOfficialCityLeaguePlacement] = cityLeaguePlacement
+		values[DesignationCriteriaTypeOfficialCityLeagueFinalTournament] = cityLeagueFinalTournament
 	}
 
 	return currentDesignation(definitions, values, previousCityLeagueCount), definitions, seasonLabel, nil

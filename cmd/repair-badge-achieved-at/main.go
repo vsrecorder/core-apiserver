@@ -14,7 +14,8 @@
 // 正しい achieved_at の求め方は badge_evaluation.go の award() 呼び出し側と同じ基準を使う:
 //   - signup:       users.created_at
 //   - deck_count:   criteria_value 番目に古い deck の created_at
-//   - record_count: criteria_value 番目に古い record の RecordBasisTime(event_date優先)
+//   - record_count: criteria_value 番目に古い record の created_at(記録した日時。event_dateは
+//     過去の対戦日を表す入力値であり見ない)
 //   - match_count:  criteria_value 番目に古い match の created_at
 //
 // 使い方:
@@ -183,15 +184,14 @@ func correctAchievedAt(
 	case usecase.BadgeCriteriaTypeRecordCount:
 		var records []*model.Record
 		if tx := db.Where("user_id = ? AND deleted_at IS NULL", userId).
-			Order("event_date ASC NULLS FIRST, created_at ASC").
+			Order("created_at ASC").
 			Find(&records); tx.Error != nil {
 			return time.Time{}, false, tx.Error
 		}
 		if len(records) < def.CriteriaValue {
 			return time.Time{}, false, nil
 		}
-		r := records[def.CriteriaValue-1]
-		return usecase.RecordBasisTime(r.EventDate, r.CreatedAt), true, nil
+		return records[def.CriteriaValue-1].CreatedAt, true, nil
 
 	case usecase.BadgeCriteriaTypeMatchCount:
 		var matches []*model.Match

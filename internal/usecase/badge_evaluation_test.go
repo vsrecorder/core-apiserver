@@ -272,7 +272,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.Empty(t, awarded)
 	})
 
-	t.Run("backfill等で過去日のrecordを再生した場合、achieved_atはevent_dateになり実行時刻にならない", func(t *testing.T) {
+	t.Run("backfill等で過去日のrecordを再生した場合でも、achieved_atはcreated_at(記録した日時)になりevent_dateにならない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -292,13 +292,14 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 
 		userBadgeRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(ctx context.Context, ub *entity.UserBadge) error {
-				require.True(t, ub.AchievedAt.Equal(pastEventDate))
+				require.True(t, ub.AchievedAt.Equal(now))
 				return nil
 			},
 		).Times(1)
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
-		// created_at は「今backfillを実行した時刻」相当だが、achieved_atは実際の対戦日(event_date)を採用すべき
+		// event_dateは過去の対戦日(backfill入力値)だが、初記録バッジのachieved_atは
+		// first_deck/first_match/signupと同様、実際に記録した日時(created_at)を採用すべき
 		record := entity.NewRecord("record-1", now, 0, "", "", "", "user-1", "", "", pastEventDate, false, "", "")
 
 		_, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)

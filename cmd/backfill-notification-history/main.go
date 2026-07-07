@@ -104,6 +104,7 @@ func main() {
 		infrastructure.NewDesignationStats(db),
 		championshipSeriesRepo,
 		notificationRepo,
+		infrastructure.NewUserPlayer(db),
 	)
 
 	ctx := context.Background()

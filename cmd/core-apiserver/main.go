@@ -172,6 +172,7 @@ func main() {
 		infrastructure.NewDesignationStats(db),
 		infrastructure.NewChampionshipSeries(db),
 		infrastructure.NewNotification(db),
+		infrastructure.NewUserPlayer(db),
 	)
 
 	controller.NewUser(

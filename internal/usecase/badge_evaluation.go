@@ -675,13 +675,16 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 		return nil, err
 	}
 
-	achievedAt := RecordBasisTime(record.EventDate, record.CreatedAt)
-	awarded, err := u.award(ctx, userId, record.ID, onboardingDefinitions(definitions), BadgeCriteriaTypeRecordCount, recordCount, achieved, achievedAt)
+	// onboarding系(初記録)は他のオンボーディングバッジ(first_deck/first_match/signup)と
+	// 同様、実際に記録した日時(created_at)を採用する。event_dateは過去の対戦日を
+	// 表す入力値であり、backfill入力等でachieved_atが過去日にずれてしまうのを避ける。
+	awarded, err := u.award(ctx, userId, record.ID, onboardingDefinitions(definitions), BadgeCriteriaTypeRecordCount, recordCount, achieved, record.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
 
-	u.notifySeasonalMilestonesOnRecordCreated(ctx, userId, definitions, achievedAt)
+	// シーズン系マイルストーン・週次ストリークは実際に対戦した日(event_date)基準のまま。
+	u.notifySeasonalMilestonesOnRecordCreated(ctx, userId, definitions, RecordBasisTime(record.EventDate, record.CreatedAt))
 
 	return awarded, nil
 }

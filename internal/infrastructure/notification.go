@@ -57,9 +57,12 @@ func (i *Notification) FindByUserId(
 	// created_at が同一の通知(1回の評価で複数tier/バッジを同時達成した場合等、
 	// 同じachievedAtで複数件作成されうる)でも順序が不定にならないよう、
 	// 生成時刻順に単調増加するULIDのidを第2ソートキーとして安定させる。
+	// 全体がcreated_at DESC(新しい順)なので、同値時のタイブレークもid DESCにする
+	// (例: 称号獲得→直後にランクアップを通知する場合、後発のランク通知の方がidが
+	// 大きく、idを新しい順に並べることで称号獲得の通知より上=より新しく表示される)。
 	if tx := i.db.
 		Where("user_id = ?", userId).
-		Order("created_at DESC, id ASC").
+		Order("created_at DESC, id DESC").
 		Limit(limit).
 		Find(&models); tx.Error != nil {
 		return nil, tx.Error

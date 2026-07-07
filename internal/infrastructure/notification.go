@@ -54,9 +54,12 @@ func (i *Notification) FindByUserId(
 ) ([]*entity.Notification, error) {
 	var models []*model.Notification
 
+	// created_at が同一の通知(1回の評価で複数tier/バッジを同時達成した場合等、
+	// 同じachievedAtで複数件作成されうる)でも順序が不定にならないよう、
+	// 生成時刻順に単調増加するULIDのidを第2ソートキーとして安定させる。
 	if tx := i.db.
 		Where("user_id = ?", userId).
-		Order("created_at DESC").
+		Order("created_at DESC, id ASC").
 		Limit(limit).
 		Find(&models); tx.Error != nil {
 		return nil, tx.Error

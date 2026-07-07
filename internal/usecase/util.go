@@ -9,7 +9,6 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -22,9 +21,12 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 )
 
-var (
-	entropy = rand.New(rand.NewSource(time.Now().UnixNano()))
-)
+// entropy はULID生成用の乱数源。DefaultEntropyはプロセス全体で単調増加する
+// (=生成順に文字列としても昇順になる)スレッドセーフな実装のため、同一ミリ秒内で
+// generateId()が連続で呼ばれても(例: 称号獲得→ランクアップ通知を同時刻で連続作成する
+// notifyRankUp等)IDの前後関係が生成順と一致し、created_at が同値の通知が並ぶ際の
+// ソートの安定した第2キーとして使える(notification.goのOrder("created_at DESC, id ASC")参照)。
+var entropy = ulid.DefaultEntropy()
 
 type PokemonSpriteParam struct {
 	ID string

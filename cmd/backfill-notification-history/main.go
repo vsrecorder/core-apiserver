@@ -30,7 +30,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"sort"
 	"time"
@@ -54,7 +53,10 @@ const (
 
 const notificationLinkUrl = "/users"
 
-var entropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+// entropy はULID生成用の乱数源。称号・ランクアップ等、同じachievedAtで複数件の
+// 通知を連続作成するケースで生成順とID順を一致させるため、単調増加なDefaultEntropyを使う
+// (internal/usecase/util.go の同名変数と同じ意図)。
+var entropy = ulid.DefaultEntropy()
 
 func generateId() (string, error) {
 	ms := ulid.Timestamp(time.Now())

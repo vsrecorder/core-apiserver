@@ -540,9 +540,10 @@ func backfillDesignationHistory(
 			continue
 		}
 
+		rankMinTier := usecase.MinTierForRank(rankName)
 		rankAt := designationAchievedAt(
 			ctx, designationEvaluation, userId, candidateDates, achievedAtByEventDate,
-			func(t int) bool { return usecase.RankNameForTier(t) == rankName },
+			func(t int) bool { return t >= rankMinTier },
 			now,
 		)
 

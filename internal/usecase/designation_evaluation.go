@@ -49,6 +49,21 @@ func RankNameForTier(tier int) string {
 	return ""
 }
 
+// MinTierForRank はrankNameに属するランクの最小tierを返す(該当なしなら0)。
+// backfill-notifications がランク到達日を探索する際、tierの離散サンプリングで
+// tier幅の狭いランク帯(例: ハイパーボール級はtier5のみ)を飛び越えてしまい、
+// rankNameの完全一致では到達日が見つからなくなるケースがあるため、
+// 「このランクの最小tier以上に達した最初の日」を探す用途で使う。
+func MinTierForRank(rankName string) int {
+	for _, r := range rankRanges {
+		if r.name == rankName {
+			return r.minTier
+		}
+	}
+
+	return 0
+}
+
 // DesignationEvaluationInterface は記録作成時に称号(designation)のtierが上がったか
 // 判定し、上がっていれば称号獲得・ランクアップの通知を作成する。
 //

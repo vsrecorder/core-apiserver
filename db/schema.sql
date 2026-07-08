@@ -576,12 +576,6 @@ INSERT INTO badge_definitions (id, code, category, name, description, icon_key, 
 ('milestone-deck-03', 'deck_count_30', 'milestone', 'ベテランビルダー',  'デッキコード数が30に到達した', 'medal', 'deck_code_count', 30, now(), now()),
 ('milestone-deck-04', 'deck_count_50', 'milestone', 'マスタービルダー',  'デッキコード数が50に到達した', 'medal', 'deck_code_count', 50, now(), now());
 
-UPDATE badge_definitions
-SET criteria_type = 'deck_code_count',
-    updated_at    = now()
-WHERE id IN ('milestone-deck-01', 'milestone-deck-02', 'milestone-deck-03', 'milestone-deck-04') AND criteria_type = 'deck_count';
-
-
 INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
 ('milestone-match-01', 'match_count_10',  'milestone', '駆け出しバトラー',  '対戦数が10に到達した',  'medal', 'match_count', 10,  now(), now()),
 ('milestone-match-02', 'match_count_50',  'milestone', '常連バトラー',      '対戦数が50に到達した', 'medal', 'match_count', 50, now(), now()),

@@ -20,6 +20,27 @@ type DesignationStatsInterface interface {
 		toDate time.Time,
 	) (int, error)
 
+	// CountRecordsAsOfByUserId は CountRecordsByUserId と同様の条件に加え、
+	// records.updated_at < asOf、および対戦結果(matches)についても
+	// matches.created_at < asOf も要求する。CountRecordsByUserId は「現在の状態」
+	// (現在デッキが登録されているか、現在対戦結果が1件以上紐づいているか)しか見ておらず、
+	// それぞれいつ登録・追加されたかを記録していないため、そのまま過去の特定時点(asOf)の
+	// 判定に使うと誤判定してしまう:
+	//   - デッキ未登録のまま作成した記録に後からデッキを登録(使用したデッキとして編集)
+	//     したケース → records.updated_at(デッキ登録時の更新で必ず進む)を下限として使う。
+	//   - 対戦結果を追加する前に記録だけ先に作成したケース → 対戦結果はrecordsとは別
+	//     テーブルへの追加行で、追加してもrecordsの行(updated_at含む)は更新されない
+	//     ため、matches.created_atを直接下限として使う。
+	// これらにより、asOf時点でまだデッキ登録/対戦結果追加がされていなかった記録を正しく
+	// 除外する。usecase.DesignationEvaluation.TierAsOf(backfill-notificationsの「実際に
+	// 達成した日」再構築専用)からのみ呼ばれる。
+	CountRecordsAsOfByUserId(
+		ctx context.Context,
+		userId string,
+		fromDate time.Time,
+		asOf time.Time,
+	) (int, error)
+
 	// CountLeagueRecordsByUserId は、公式イベントのうちトレーナーズリーグまたは
 	// シティリーグに紐づく記録の件数を返す。
 	CountLeagueRecordsByUserId(
@@ -77,6 +98,22 @@ type DesignationStatsInterface interface {
 		toDate time.Time,
 	) (bool, error)
 
+	// ExistsCityLeagueResultAsOfByPlayerId は ExistsCityLeagueResultByPlayerId と同様の条件に
+	// 加え、一致するuserId自身のrecordについて records.created_at < asOf も要求する。
+	// ExistsCityLeagueResultByPlayerId は「現在userIdの記録が存在するか」しか見ておらず、
+	// その記録がいつ作成されたかを見ていないため、そのまま過去の特定時点(asOf)の判定に
+	// 使うと、実際にその記録が作成されるより前のasOfでも達成済みとして扱ってしまう
+	// (公式サイトの結果は先に存在していて、バトレコ側の記録を後から作成したケース)。
+	// usecase.DesignationEvaluation.TierAsOf(backfill-notificationsの「実際に達成した日」
+	// 再構築専用)からのみ呼ばれる。
+	ExistsCityLeagueResultAsOfByPlayerId(
+		ctx context.Context,
+		userId string,
+		playerId string,
+		fromDate time.Time,
+		asOf time.Time,
+	) (bool, error)
+
 	// ExistsCityLeagueResultGroupByUserId は ExistsCityLeagueResultByPlayerId のユーザー横断版。
 	// users_players(プレイヤーズクラブ連携。deleted_at IS NULL のもののみ)を介して
 	// cityleague_results.player_id をバトレコの user_id に変換した上で、指定期間内に
@@ -102,6 +139,19 @@ type DesignationStatsInterface interface {
 		maxRank int,
 		fromDate time.Time,
 		toDate time.Time,
+	) (bool, error)
+
+	// ExistsCityLeagueFinalTournamentResultAsOfByPlayerId は
+	// ExistsCityLeagueFinalTournamentResultByPlayerId と同様だが、
+	// ExistsCityLeagueResultAsOfByPlayerId と同じ理由で records.created_at < asOf も要求する。
+	// usecase.DesignationEvaluation.TierAsOf からのみ呼ばれる。
+	ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(
+		ctx context.Context,
+		userId string,
+		playerId string,
+		maxRank int,
+		fromDate time.Time,
+		asOf time.Time,
 	) (bool, error)
 
 	// ExistsCityLeagueFinalTournamentResultGroupByUserId は

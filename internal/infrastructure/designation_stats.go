@@ -32,6 +32,13 @@ const existsMatchForRecordCondition = "EXISTS (" +
 	"SELECT 1 FROM matches WHERE matches.record_id = records.id AND matches.deleted_at IS NULL" +
 	")"
 
+// hasDeckForRecordCondition は、records にデッキ(deck_id もしくは deck_code_id)が
+// 指定されていることを求める条件(駆け出し・見習いの達成条件)。デッキ未指定のまま
+// 対戦結果だけを追加したケースを「オンボーディング(はじめの一歩)未完了」として除外する。
+// deck_id/deck_code_id は未指定時にNULLではなく空文字列で保存される(deck_usage_stat.goの
+// records.deck_id != ” 判定と同じ理由)ため、IS NOT NULLではなく != ” で判定する。
+const hasDeckForRecordCondition = "(records.deck_id != '' OR records.deck_code_id != '')"
+
 func (i *DesignationStats) CountRecordsByUserId(
 	ctx context.Context,
 	userId string,
@@ -42,12 +49,51 @@ func (i *DesignationStats) CountRecordsByUserId(
 
 	query := i.db.Table("records").
 		Where("user_id = ? AND deleted_at IS NULL", userId).
-		Where(existsMatchForRecordCondition)
+		Where(existsMatchForRecordCondition).
+		Where(hasDeckForRecordCondition)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
 		query = query.Where("event_date < ?", toDate)
+	}
+
+	if tx := query.Count(&count); tx.Error != nil {
+		return 0, tx.Error
+	}
+
+	return int(count), nil
+}
+
+// existsMatchForRecordConditionAsOf は existsMatchForRecordCondition と同様だが、
+// 加えて matches.created_at < asOf も要求する。対戦結果(matches)はrecordsとは別の
+// テーブルへの追加行であり、対戦結果を追加してもrecordsの行自体(updated_at含む)は
+// 更新されない。そのため existsMatchForRecordCondition をそのまま過去の特定時点(asOf)の
+// 判定に使うと、「現在は対戦結果が付いているか」しか見ておらず、実際に対戦結果が
+// 追加されるより前のasOfでも達成済みと誤判定してしまう(記録だけ先に作成し、対戦結果を
+// 後から追加したケース)。matches.created_atも見ることで、asOf時点でまだ対戦結果が
+// 追加されていなかった記録を正しく除外する。
+const existsMatchForRecordConditionAsOf = "EXISTS (" +
+	"SELECT 1 FROM matches WHERE matches.record_id = records.id AND matches.deleted_at IS NULL " +
+	"AND matches.created_at < ?" +
+	")"
+
+func (i *DesignationStats) CountRecordsAsOfByUserId(
+	ctx context.Context,
+	userId string,
+	fromDate time.Time,
+	asOf time.Time,
+) (int, error) {
+	var count int64
+
+	query := i.db.Table("records").
+		Where("user_id = ? AND deleted_at IS NULL", userId).
+		Where(existsMatchForRecordConditionAsOf, asOf).
+		Where(hasDeckForRecordCondition).
+		Where("updated_at < ?", asOf).
+		Where("event_date < ?", asOf)
+	if !fromDate.IsZero() {
+		query = query.Where("event_date >= ?", fromDate)
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
@@ -142,7 +188,8 @@ func (i *DesignationStats) CountRecordsGroupByUserId(
 	query := i.db.Table("records").
 		Select("user_id AS user_id, COUNT(*) AS count").
 		Where("deleted_at IS NULL").
-		Where(existsMatchForRecordCondition)
+		Where(existsMatchForRecordCondition).
+		Where(hasDeckForRecordCondition)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}
@@ -211,6 +258,38 @@ func (i *DesignationStats) ExistsCityLeagueResultByPlayerId(
 	return count > 0, nil
 }
 
+// existsRecordWithSameOfficialEventIdConditionAsOf は existsRecordWithSameOfficialEventIdCondition
+// と同様だが、加えて records.created_at < asOf も要求する(理由は
+// repository.DesignationStatsInterface.ExistsCityLeagueResultAsOfByPlayerId参照)。
+const existsRecordWithSameOfficialEventIdConditionAsOf = "EXISTS (" +
+	"SELECT 1 FROM records WHERE records.official_event_id = cityleague_results.official_event_id " +
+	"AND records.user_id = ? AND records.deleted_at IS NULL AND records.created_at < ?" +
+	")"
+
+func (i *DesignationStats) ExistsCityLeagueResultAsOfByPlayerId(
+	ctx context.Context,
+	userId string,
+	playerId string,
+	fromDate time.Time,
+	asOf time.Time,
+) (bool, error) {
+	var count int64
+
+	query := i.db.Table("cityleague_results").
+		Where("player_id = ?", playerId).
+		Where(existsRecordWithSameOfficialEventIdConditionAsOf, userId, asOf).
+		Where("event_date < ?", asOf)
+	if !fromDate.IsZero() {
+		query = query.Where("event_date >= ?", fromDate)
+	}
+
+	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}
+
 func (i *DesignationStats) ExistsCityLeagueResultGroupByUserId(
 	ctx context.Context,
 	fromDate time.Time,
@@ -253,6 +332,31 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultByPlayerId(
 	}
 	if !toDate.IsZero() {
 		query = query.Where("event_date < ?", toDate)
+	}
+
+	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}
+
+func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(
+	ctx context.Context,
+	userId string,
+	playerId string,
+	maxRank int,
+	fromDate time.Time,
+	asOf time.Time,
+) (bool, error) {
+	var count int64
+
+	query := i.db.Table("cityleague_results").
+		Where("player_id = ? AND rank <= ?", playerId, maxRank).
+		Where(existsRecordWithSameOfficialEventIdConditionAsOf, userId, asOf).
+		Where("event_date < ?", asOf)
+	if !fromDate.IsZero() {
+		query = query.Where("event_date >= ?", fromDate)
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {

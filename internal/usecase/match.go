@@ -143,6 +143,7 @@ type Match struct {
 	recordRepository      repository.RecordInterface
 	badgeEvaluation       BadgeEvaluationInterface
 	designationEvaluation DesignationEvaluationInterface
+	environmentBadgeEval  EnvironmentBadgeEvaluationInterface
 }
 
 func NewMatch(
@@ -150,8 +151,9 @@ func NewMatch(
 	recordRepository repository.RecordInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	designationEvaluation DesignationEvaluationInterface,
+	environmentBadgeEval EnvironmentBadgeEvaluationInterface,
 ) MatchInterface {
-	return &Match{repository, recordRepository, badgeEvaluation, designationEvaluation}
+	return &Match{repository, recordRepository, badgeEvaluation, designationEvaluation, environmentBadgeEval}
 }
 
 func (u *Match) FindById(
@@ -279,20 +281,32 @@ func (u *Match) Create(
 		return nil, err
 	}
 
+	// 通知一覧はcreated_at DESC(新しい順、同値時はid DESC)で表示されるため、後から
+	// 生成した通知ほど上に表示される。作成順序を「ユーザバッジ→環境バッジ→称号/
+	// ランクアップ」にすることで、表示順序は下から「ユーザバッジ→環境バッジ→称号/
+	// ランクアップ」(=上から称号/ランクアップ→環境バッジ→ユーザバッジ)になる。
 	if _, err := u.badgeEvaluation.EvaluateOnMatchCreated(ctx, param.UserId, match); err != nil {
 		return nil, err
 	}
 
-	if tierErr == nil {
-		// 称号の達成日時は「対戦結果を入力した日時」ではなく「実際に対戦した日」
-		// (紐づくrecordのevent_date)を使いたいため、親recordを取得する。
-		// 取得できない場合(通常発生しない)はmatchの作成日時にフォールバックする。
-		achievedAt := match.CreatedAt
-		if record, err := u.recordRepository.FindById(ctx, param.RecordId); err == nil {
-			achievedAt = RecordBasisTime(record.EventDate, record.CreatedAt)
-		}
+	// 環境バッジは公式イベント(OfficialEventId != 0)に紐づく記録のみを対象とする。
+	// 環境判定も「対戦結果を入力した日時」ではなく「実際に対戦した日」(紐づくrecordの
+	// event_date)を使いたいため、親recordを取得する。取得できない場合(通常発生しない)や
+	// 公式イベントでない記録の場合は環境バッジの判定自体を行わない。
+	if record, err := u.recordRepository.FindById(ctx, param.RecordId); err == nil && record.OfficialEventId != 0 {
+		basisTime := RecordBasisTime(record.EventDate, record.CreatedAt)
 
-		u.designationEvaluation.NotifyIfTierChanged(ctx, param.UserId, beforeTier, achievedAt)
+		if _, err := u.environmentBadgeEval.EvaluateOnMatchCreated(ctx, param.UserId, match, basisTime); err != nil {
+			return nil, err
+		}
+	}
+
+	if tierErr == nil {
+		// 通知のcreated_atは対戦日(event_date)ではなく実際の処理時刻を使う。
+		// event_dateを使うと登録直後に過去日の対戦を記録した際、他の通知より
+		// 過去のcreated_atになり通知の並び順が崩れるため使わない(basisTimeは環境
+		// 判定にのみ使う)。
+		u.designationEvaluation.NotifyIfTierChanged(ctx, param.UserId, beforeTier, match.CreatedAt)
 	}
 
 	return match, nil

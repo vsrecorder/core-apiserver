@@ -41,6 +41,21 @@ func (m *MockBadgeStatsInterface) EXPECT() *MockBadgeStatsInterfaceMockRecorder 
 	return m.recorder
 }
 
+// CountDeckCodesByUserId mocks base method.
+func (m *MockBadgeStatsInterface) CountDeckCodesByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountDeckCodesByUserId", ctx, userId, fromDate, toDate)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountDeckCodesByUserId indicates an expected call of CountDeckCodesByUserId.
+func (mr *MockBadgeStatsInterfaceMockRecorder) CountDeckCodesByUserId(ctx, userId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountDeckCodesByUserId", reflect.TypeOf((*MockBadgeStatsInterface)(nil).CountDeckCodesByUserId), ctx, userId, fromDate, toDate)
+}
+
 // CountDecksByUserId mocks base method.
 func (m *MockBadgeStatsInterface) CountDecksByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) (int, error) {
 	m.ctrl.T.Helper()
@@ -84,6 +99,21 @@ func (m *MockBadgeStatsInterface) CountRecordsByUserId(ctx context.Context, user
 func (mr *MockBadgeStatsInterfaceMockRecorder) CountRecordsByUserId(ctx, userId, fromDate, toDate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountRecordsByUserId", reflect.TypeOf((*MockBadgeStatsInterface)(nil).CountRecordsByUserId), ctx, userId, fromDate, toDate)
+}
+
+// FindDeckCodeDatesByUserId mocks base method.
+func (m *MockBadgeStatsInterface) FindDeckCodeDatesByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) ([]time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindDeckCodeDatesByUserId", ctx, userId, fromDate, toDate)
+	ret0, _ := ret[0].([]time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindDeckCodeDatesByUserId indicates an expected call of FindDeckCodeDatesByUserId.
+func (mr *MockBadgeStatsInterfaceMockRecorder) FindDeckCodeDatesByUserId(ctx, userId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDeckCodeDatesByUserId", reflect.TypeOf((*MockBadgeStatsInterface)(nil).FindDeckCodeDatesByUserId), ctx, userId, fromDate, toDate)
 }
 
 // FindDeckDatesByUserId mocks base method.

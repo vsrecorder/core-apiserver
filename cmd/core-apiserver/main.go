@@ -175,6 +175,13 @@ func main() {
 		infrastructure.NewUserPlayer(db),
 	)
 
+	environmentBadgeEvaluation := usecase.NewEnvironmentBadgeEvaluation(
+		infrastructure.NewEnvironment(db),
+		infrastructure.NewUserEnvironmentBadge(db),
+		infrastructure.NewNotification(db),
+		infrastructure.NewTransactionManager(db),
+	)
+
 	controller.NewUser(
 		logger,
 		r,
@@ -227,6 +234,7 @@ func main() {
 		infrastructure.NewRecord(db, slog.Default()),
 		usecase.NewDeckCode(
 			infrastructure.NewDeckCode(db),
+			badgeEvaluation,
 		),
 	).RegisterRoute(relativePath)
 
@@ -261,6 +269,7 @@ func main() {
 			infrastructure.NewRecord(db, slog.Default()),
 			badgeEvaluation,
 			designationEvaluation,
+			environmentBadgeEvaluation,
 		),
 	).RegisterRoute(relativePath)
 
@@ -273,6 +282,14 @@ func main() {
 			infrastructure.NewChampionshipSeries(db),
 		),
 		infrastructure.NewChampionshipSeries(db),
+	).RegisterRoute(relativePath)
+
+	controller.NewEnvironmentBadge(
+		r,
+		usecase.NewEnvironmentBadge(
+			infrastructure.NewEnvironment(db),
+			infrastructure.NewUserEnvironmentBadge(db),
+		),
 	).RegisterRoute(relativePath)
 
 	controller.NewNotification(

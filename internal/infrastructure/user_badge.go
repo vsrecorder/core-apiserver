@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
@@ -45,6 +46,10 @@ func (i *UserBadge) FindByUserId(
 	return entities, nil
 }
 
+// Save は user_id, badge_definition_id の組み合わせで既に行が存在する場合は
+// 何もしない(DoNothing)。呼び出し元(award()やbackfillツール)が未達成のバッジのみを
+// 渡す設計だが、リトライや再実行で同じ組み合わせが二重に渡されても一意制約違反で
+// 失敗しないようにするため、Save自体を冪等にする。
 func (i *UserBadge) Save(
 	ctx context.Context,
 	entity *entity.UserBadge,
@@ -58,7 +63,11 @@ func (i *UserBadge) Save(
 		AchievedAt:        entity.AchievedAt,
 	}
 
-	if tx := i.db.Create(model); tx.Error != nil {
+	tx := i.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}, {Name: "badge_definition_id"}},
+		DoNothing: true,
+	}).Create(model)
+	if tx.Error != nil {
 		return tx.Error
 	}
 

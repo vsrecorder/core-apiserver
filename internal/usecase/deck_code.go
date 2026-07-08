@@ -77,13 +77,15 @@ type DeckCodeInterface interface {
 }
 
 type DeckCode struct {
-	repository repository.DeckCodeInterface
+	repository      repository.DeckCodeInterface
+	badgeEvaluation BadgeEvaluationInterface
 }
 
 func NewDeckCode(
 	repository repository.DeckCodeInterface,
+	badgeEvaluation BadgeEvaluationInterface,
 ) DeckCodeInterface {
-	return &DeckCode{repository}
+	return &DeckCode{repository, badgeEvaluation}
 }
 
 func (u *DeckCode) FindById(
@@ -148,6 +150,10 @@ func (u *DeckCode) Create(
 
 	if err := u.repository.Save(ctx, deckcode); err != nil {
 		return nil, err
+	}
+
+	if deckcode.Code != "" {
+		u.badgeEvaluation.EvaluateOnDeckCodeCreated(ctx, param.UserId, deckcode)
 	}
 
 	return deckcode, nil

@@ -42,6 +42,18 @@ func (m *MockBadgeEvaluationInterface) EXPECT() *MockBadgeEvaluationInterfaceMoc
 	return m.recorder
 }
 
+// EvaluateOnDeckCodeCreated mocks base method.
+func (m *MockBadgeEvaluationInterface) EvaluateOnDeckCodeCreated(ctx context.Context, userId string, deckCode *entity.DeckCode) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "EvaluateOnDeckCodeCreated", ctx, userId, deckCode)
+}
+
+// EvaluateOnDeckCodeCreated indicates an expected call of EvaluateOnDeckCodeCreated.
+func (mr *MockBadgeEvaluationInterfaceMockRecorder) EvaluateOnDeckCodeCreated(ctx, userId, deckCode any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnDeckCodeCreated", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).EvaluateOnDeckCodeCreated), ctx, userId, deckCode)
+}
+
 // EvaluateOnDeckCreated mocks base method.
 func (m *MockBadgeEvaluationInterface) EvaluateOnDeckCreated(ctx context.Context, userId string, deck *entity.Deck) ([]*entity.UserBadge, error) {
 	m.ctrl.T.Helper()

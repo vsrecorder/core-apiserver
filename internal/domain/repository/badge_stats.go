@@ -33,6 +33,17 @@ type BadgeStatsInterface interface {
 		toDate time.Time,
 	) (int, error)
 
+	// CountDeckCodesByUserId は、デッキコードが登録済みのデッキの件数を返す。
+	// マイルストーン系バッジ(deck_code_count、「デッキコード数」)の判定用で、
+	// CountDecksByUserId(デッキ登録数そのもの。オンボーディング系「初デッキ」判定用)とは
+	// 別物であり、デッキコード未登録のデッキはカウントに含めない。
+	CountDeckCodesByUserId(
+		ctx context.Context,
+		userId string,
+		fromDate time.Time,
+		toDate time.Time,
+	) (int, error)
+
 	// FindRecordDatesByUserId は指定期間内の記録の日付(event_dateが無ければcreated_at)を
 	// 重複を許して返す。週次ストリークバッジの期間内集計のため、週への丸め込みや連続数の
 	// 計算は呼び出し側(usecase層)で行う。
@@ -58,6 +69,16 @@ type BadgeStatsInterface interface {
 	// マイルストーン系バッジ(match_count)の「シーズン内で何番目の対戦が閾値に到達したか」
 	// を求めるために使う。
 	FindMatchDatesByUserId(
+		ctx context.Context,
+		userId string,
+		fromDate time.Time,
+		toDate time.Time,
+	) ([]time.Time, error)
+
+	// FindDeckCodeDatesByUserId は指定期間内のデッキコード登録日時(deck_codes.created_at)を
+	// 昇順で返す。マイルストーン系バッジ(deck_code_count)の「シーズン内で何番目の
+	// デッキコード登録が閾値に到達したか」を求めるために使う。
+	FindDeckCodeDatesByUserId(
 		ctx context.Context,
 		userId string,
 		fromDate time.Time,

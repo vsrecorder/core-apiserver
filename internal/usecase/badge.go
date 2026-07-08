@@ -162,11 +162,12 @@ func (u *Badge) allTimeValuesByCriteriaType(
 // 内の集計値と、criteria_value 番目の条件を満たした実際の日時(初回到達日)を求めるための
 // 生データを保持する。
 type seasonAggregate struct {
-	values      map[string]int
-	recordDates []time.Time
-	deckDates   []time.Time
-	matchDates  []time.Time
-	streakDates map[int]time.Time
+	values        map[string]int
+	recordDates   []time.Time
+	deckDates     []time.Time
+	deckCodeDates []time.Time
+	matchDates    []time.Time
+	streakDates   map[int]time.Time
 }
 
 // achievedAt は criteriaType の criteriaValue 番目の条件を、シーズン内で最初に満たした
@@ -185,6 +186,8 @@ func (a *seasonAggregate) achievedAt(criteriaType string, criteriaValue int) (ti
 		return nthDate(a.recordDates, criteriaValue)
 	case BadgeCriteriaTypeDeckCount:
 		return nthDate(a.deckDates, criteriaValue)
+	case BadgeCriteriaTypeDeckCodeCount:
+		return nthDate(a.deckCodeDates, criteriaValue)
 	case BadgeCriteriaTypeMatchCount:
 		return nthDate(a.matchDates, criteriaValue)
 	case BadgeCriteriaTypeStreakWeeks:
@@ -231,6 +234,17 @@ func (u *Badge) seasonAggregateByCriteriaType(
 	}
 	sort.Slice(deckDates, func(i, j int) bool { return deckDates[i].Before(deckDates[j]) })
 
+	deckCodeCount, err := u.badgeStatsRepo.CountDeckCodesByUserId(ctx, userId, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	deckCodeDates, err := u.badgeStatsRepo.FindDeckCodeDatesByUserId(ctx, userId, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(deckCodeDates, func(i, j int) bool { return deckCodeDates[i].Before(deckCodeDates[j]) })
+
 	matchDates, err := u.badgeStatsRepo.FindMatchDatesByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
 		return nil, err
@@ -239,15 +253,17 @@ func (u *Badge) seasonAggregateByCriteriaType(
 
 	return &seasonAggregate{
 		values: map[string]int{
-			BadgeCriteriaTypeRecordCount: recordCount,
-			BadgeCriteriaTypeMatchCount:  matchCount,
-			BadgeCriteriaTypeDeckCount:   deckCount,
-			BadgeCriteriaTypeStreakWeeks: seasonStreakWeeks(recordDates),
+			BadgeCriteriaTypeRecordCount:   recordCount,
+			BadgeCriteriaTypeMatchCount:    matchCount,
+			BadgeCriteriaTypeDeckCount:     deckCount,
+			BadgeCriteriaTypeDeckCodeCount: deckCodeCount,
+			BadgeCriteriaTypeStreakWeeks:   seasonStreakWeeks(recordDates),
 		},
-		recordDates: recordDates,
-		deckDates:   deckDates,
-		matchDates:  matchDates,
-		streakDates: ComputeStreakMilestoneDates(recordDates),
+		recordDates:   recordDates,
+		deckDates:     deckDates,
+		deckCodeDates: deckCodeDates,
+		matchDates:    matchDates,
+		streakDates:   ComputeStreakMilestoneDates(recordDates),
 	}, nil
 }
 

@@ -110,9 +110,9 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 		asOf := time.Date(2026, 1, 15, 0, 0, 0, 0, time.Local)
 
 		var capturedToDate time.Time
-		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ string, _ time.Time, toDate time.Time) (int, error) {
-				capturedToDate = toDate
+		designationStatsRepo.EXPECT().CountRecordsAsOfByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ time.Time, asOf time.Time) (int, error) {
+				capturedToDate = asOf
 				return 1, nil
 			})
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
@@ -140,9 +140,9 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 		asOf := time.Date(2027, 1, 1, 0, 0, 0, 0, time.Local)
 
 		var capturedToDate time.Time
-		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ string, _ time.Time, toDate time.Time) (int, error) {
-				capturedToDate = toDate
+		designationStatsRepo.EXPECT().CountRecordsAsOfByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, _ time.Time, asOf time.Time) (int, error) {
+				capturedToDate = asOf
 				return 5, nil
 			})
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
@@ -156,7 +156,7 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 	})
 
 	t.Run("cityleague_results起因のティア(ベテラン)にも到達できる", func(t *testing.T) {
-		// backfill-notification-historyがベテラン・ハイパーボール級の実際の達成日を
+		// backfill-notificationsがベテラン・ハイパーボール級の実際の達成日を
 		// 遡って特定できるようにする回帰テスト。CurrentTier/NotifyIfTierChangedと違い
 		// TierAsOfはcityleague_results起因のcriteria_typeも含めて判定しなければならない
 		// (含めないとcurrentDesignation()がtier5未満で判定を打ち切ってしまい、
@@ -167,7 +167,7 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fiveTierDefinitions(now), nil)
-		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountRecordsAsOfByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
 		// 今シーズン単独でDesignationCityLeagueStandaloneThreshold(2)件以上にして
 		// レギュラー(tier4)を継続条件抜きで満たす。
@@ -175,8 +175,8 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 
 		userPlayer := entity.NewUserPlayer("user-player-1", now, "user-1", "player-1")
 		userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
-		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
-		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultAsOfByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		asOf := time.Date(2026, 1, 15, 0, 0, 0, 0, time.Local)
 		tier, err := u.TierAsOf(context.Background(), "user-1", asOf)

@@ -90,6 +90,31 @@ func (i *BadgeStats) CountDecksByUserId(
 	return int(count), nil
 }
 
+func (i *BadgeStats) CountDeckCodesByUserId(
+	ctx context.Context,
+	userId string,
+	fromDate time.Time,
+	toDate time.Time,
+) (int, error) {
+	var count int64
+
+	query := i.db.Table("decks").
+		Joins("JOIN deck_codes ON deck_codes.deck_id = decks.id AND deck_codes.deleted_at IS NULL AND deck_codes.code IS NOT NULL AND deck_codes.code != ''").
+		Where("decks.user_id = ? AND decks.deleted_at IS NULL", userId)
+	if !fromDate.IsZero() {
+		query = query.Where("deck_codes.created_at >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("deck_codes.created_at < ?", toDate)
+	}
+
+	if tx := query.Count(&count); tx.Error != nil {
+		return 0, tx.Error
+	}
+
+	return int(count), nil
+}
+
 func (i *BadgeStats) FindRecordDatesByUserId(
 	ctx context.Context,
 	userId string,
@@ -145,6 +170,31 @@ func (i *BadgeStats) FindDeckDatesByUserId(
 	}
 
 	if tx := query.Order("created_at ASC").Pluck("created_at", &dates); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return dates, nil
+}
+
+func (i *BadgeStats) FindDeckCodeDatesByUserId(
+	ctx context.Context,
+	userId string,
+	fromDate time.Time,
+	toDate time.Time,
+) ([]time.Time, error) {
+	var dates []time.Time
+
+	query := i.db.Table("decks").
+		Joins("JOIN deck_codes ON deck_codes.deck_id = decks.id AND deck_codes.deleted_at IS NULL AND deck_codes.code IS NOT NULL AND deck_codes.code != ''").
+		Where("decks.user_id = ? AND decks.deleted_at IS NULL", userId)
+	if !fromDate.IsZero() {
+		query = query.Where("deck_codes.created_at >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("deck_codes.created_at < ?", toDate)
+	}
+
+	if tx := query.Order("deck_codes.created_at ASC").Pluck("deck_codes.created_at", &dates); tx.Error != nil {
 		return nil, tx.Error
 	}
 

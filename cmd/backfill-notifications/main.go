@@ -1,4 +1,4 @@
-// backfill-notification-history は、通知機能の導入前から既にバッジ・称号・ランクを
+// backfill-notifications は、通知機能の導入前から既にバッジ・称号・ランク・環境バッジを
 // 達成していたユーザーに対し、その実績を「既読済みの通知履歴」として遡って作成するための
 // 一回限りの初期投入バッチ。
 //
@@ -8,21 +8,36 @@
 // records/matches/decksの日付を遡って走査し、閾値・tierへ実際に到達した日を
 // created_at/read_at として1件だけ作成する(見つからない場合のみ本バッチ実行時刻を使う)。
 //
-// 冪等性: 対象ユーザーが既に1件でも notifications 行を持つ場合はスキップする。これにより
-// 誤って複数回実行しても通知が重複しない(backfill-badges が再実行で通知を重複生成しうる
-// 問題を踏まえた設計)。ただし裏を返すと、対象ユーザーが導入後に何らかの通知を既に
-// 受け取っている場合はバックフィル対象外になる(導入前に一度だけ実行する運用を想定)。
+// 環境バッジ(user_environment_badgesに永続化済み)も、オンボーディング系バッジと同様に
+// 実際の achieved_at(正確にはcreated_at。usecase.EnvironmentBadgeEvaluation.NotifyAchieved
+// 参照)をそのまま使う。ただし、バッジ行自体は backfill-user-environment-badges が先に
+// 作成する運用のため、ここでは notification_id が空の行に対してのみ通知を作成し、生成した
+// 通知IDを user_environment_badges.notification_id へ書き戻す(次回以降の重複作成を防ぐ)。
+//
+// 称号・ランク(3)は「はじめの一歩」バッジ(オンボーディング系、user_badges)が全て
+// 揃っていないユーザーはスキップする。称号・ランクは対戦記録の蓄積が前提の実績のため
+// オンボーディング完了より先に到達すること自体はあり得るが、ユーザーが最初に受け取る
+// 通知は「はじめの一歩」から順に見せたいための意図的な制約。未達成分は次回以降の
+// 実行時、オンボーディングが揃った時点でまとめて補完される。
+//
+// 冪等性: 対象ユーザーが既に1件でも notifications 行を持つ場合、1(オンボーディング系
+// バッジ)・2(マイルストーン・ストリーク系バッジ)はスキップする。これにより誤って複数回
+// 実行しても通知が重複しない(backfill-badges が再実行で通知を重複生成しうる問題を踏まえた
+// 設計)。ただし裏を返すと、対象ユーザーが導入後に何らかの通知を既に受け取っている場合は
+// 1・2のバックフィル対象外になる(導入前に一度だけ実行する運用を想定)。3(称号・ランク)・
+// 4(環境バッジ)はこの制約を受けず、常に個別の重複判定(称号・ランクはbody文字列、環境バッジは
+// notification_idの有無)で補完する。
 //
 // 使い方:
 //
 //	# 変更内容を書き込まずに確認するだけ(デフォルト)
-//	go run ./cmd/backfill-notification-history
+//	go run ./cmd/backfill-notifications
 //
 //	# 実際に notifications へ反映する
-//	go run ./cmd/backfill-notification-history -dry-run=false
+//	go run ./cmd/backfill-notifications -dry-run=false
 //
 //	# 特定ユーザーのみ対象にする(調査・検証用)
-//	go run ./cmd/backfill-notification-history -user-id=xxxxx -dry-run=false
+//	go run ./cmd/backfill-notifications -user-id=xxxxx -dry-run=false
 package main
 
 import (
@@ -108,6 +123,14 @@ func main() {
 		notificationRepo,
 		infrastructure.NewUserPlayer(db),
 	)
+	environmentRepo := infrastructure.NewEnvironment(db)
+	userEnvironmentBadgeRepo := infrastructure.NewUserEnvironmentBadge(db)
+	environmentBadgeEvaluation := usecase.NewEnvironmentBadgeEvaluation(
+		environmentRepo,
+		userEnvironmentBadgeRepo,
+		notificationRepo,
+		infrastructure.NewTransactionManager(db),
+	)
 
 	ctx := context.Background()
 
@@ -149,6 +172,7 @@ func main() {
 	for _, userId := range userIds {
 		created, err := backfillUser(
 			ctx, db, notificationRepo, badgeStatsRepo, badgeUsecase, designationUsecase, designationEvaluation,
+			userEnvironmentBadgeRepo, environmentRepo, environmentBadgeEvaluation,
 			userId, seasonLabel, seasonFromDate, seasonToDate, now, *dryRun,
 		)
 		if err != nil {
@@ -214,6 +238,9 @@ func backfillUser(
 	badgeUsecase usecase.BadgeInterface,
 	designationUsecase usecase.DesignationInterface,
 	designationEvaluation usecase.DesignationEvaluationInterface,
+	userEnvironmentBadgeRepo repository.UserEnvironmentBadgeInterface,
+	environmentRepo repository.EnvironmentInterface,
+	environmentBadgeEvaluation usecase.EnvironmentBadgeEvaluationInterface,
 	userId string,
 	seasonLabel string,
 	seasonFromDate time.Time,
@@ -228,10 +255,28 @@ func backfillUser(
 
 	created := 0
 
+	// 称号・ランク(3)は「はじめの一歩」バッジ(オンボーディング系)が全て揃うまで通知を
+	// 作らない。称号・ランクは対戦記録の蓄積が前提の実績であり、オンボーディングより
+	// 先に到達すること自体は起こり得るが、ユーザーが最初に受け取る通知は「はじめの一歩」から
+	// 順に見せたいため。badgeUsecase.GetByUserId はセクション2でも使うためここで一度だけ呼ぶ。
+	badgeViews, err := badgeUsecase.GetByUserId(ctx, userId, "")
+	if err != nil {
+		return 0, err
+	}
+
+	onboardingComplete := true
+	for _, view := range badgeViews {
+		if view.Definition.Category == usecase.BadgeCategoryOnboarding && !view.Achieved {
+			onboardingComplete = false
+			break
+		}
+	}
+
 	// バッジ(1・2)は個別の重複チェックを持たないため、従来通り「1件でも通知があれば
-	// 丸ごとスキップ」する。称号・ランク(3)は、既にバッジ通知だけ受け取っている
-	// ユーザーの称号履歴だけが欠落する問題(達成tierを飛び越えた場合に最終tierしか
-	// 通知されなかった等)があるため、existingCountに関わらず個別に判定する。
+	// 丸ごとスキップ」する。称号・ランク(3)・環境バッジ(4)は、既にバッジ通知だけ受け取っている
+	// ユーザーの称号履歴・環境バッジ履歴だけが欠落する問題(達成tierを飛び越えた場合に最終tierしか
+	// 通知されなかった、環境バッジがbackfill-user-environment-badgesで先に付与されていた等)が
+	// あるため、existingCountに関わらず個別に判定する。
 	if existingCount == 0 {
 		// 1. オンボーディング系バッジ(永続化済み、実際のachieved_atを使う)
 		var userBadges []*model.UserBadge
@@ -268,13 +313,8 @@ func backfillUser(
 		}
 
 		// 2. マイルストーン系・週次ストリーク系バッジ(現在のシーズンで達成済みのもののみ)。
-		// 「実際に達成した日」を遡って求めるため、シーズン内のrecord/match/deckの日付を
+		// 「実際に達成した日」を遡って求めるため、シーズン内のrecord/match/deck_codeの日付を
 		// 昇順に並べ、閾値に到達した時点の日付を使う(週次ストリークはStreakWeeksAchievedAtで求める)。
-		badgeViews, err := badgeUsecase.GetByUserId(ctx, userId, "")
-		if err != nil {
-			return created, err
-		}
-
 		hasMilestoneOrStreak := false
 		for _, view := range badgeViews {
 			if view.Definition.Category != usecase.BadgeCategoryOnboarding && view.Achieved {
@@ -283,7 +323,7 @@ func backfillUser(
 			}
 		}
 
-		var recordDates, matchDates, deckDates []time.Time
+		var recordDates, matchDates, deckCodeDates []time.Time
 		var streakAchievedAt map[int]time.Time
 		if hasMilestoneOrStreak {
 			recordDates, err = badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, seasonFromDate, seasonToDate)
@@ -297,7 +337,7 @@ func backfillUser(
 				return created, err
 			}
 
-			deckDates, err = badgeStatsRepo.FindDeckDatesByUserId(ctx, userId, seasonFromDate, seasonToDate)
+			deckCodeDates, err = badgeStatsRepo.FindDeckCodeDatesByUserId(ctx, userId, seasonFromDate, seasonToDate)
 			if err != nil {
 				return created, err
 			}
@@ -317,7 +357,7 @@ func backfillUser(
 				title = "ストリークを継続中です"
 			}
 
-			achievedAt := milestoneAchievedAt(view.Definition, recordDates, matchDates, deckDates, streakAchievedAt, now)
+			achievedAt := milestoneAchievedAt(view.Definition, recordDates, matchDates, deckCodeDates, streakAchievedAt, now)
 
 			if err := saveNotification(
 				ctx, notificationRepo, dryRun,
@@ -337,14 +377,88 @@ func backfillUser(
 	// (既に通知済みかどうかをbody文字列で判定して)補完する。「実際に達成した日」を
 	// 遡って求めるため、シーズン内のrecordのevent_dateを候補日として昇順に走査し、
 	// TierAsOfがそのtier/ランクを満たす最初の日を使う。
-	designationCreated, err := backfillDesignationHistory(
-		ctx, db, notificationRepo, designationUsecase, designationEvaluation,
-		userId, seasonLabel, seasonFromDate, seasonToDate, now, dryRun,
+	//
+	// 「はじめの一歩」バッジが揃うまではスキップする(上のonboardingComplete参照)。
+	// 未達成分は次回以降の実行で「はじめの一歩」が揃った時点でまとめて補完される。
+	if !onboardingComplete {
+		if dryRun {
+			log.Printf("[dry-run] user=%s: オンボーディングバッジが未達成のため称号・ランク通知をスキップ\n", userId)
+		}
+	} else {
+		designationCreated, err := backfillDesignationHistory(
+			ctx, db, notificationRepo, designationUsecase, designationEvaluation,
+			userId, seasonLabel, seasonFromDate, seasonToDate, now, dryRun,
+		)
+		if err != nil {
+			return created, err
+		}
+		created += designationCreated
+	}
+
+	// 4. 環境バッジ(user_environment_badgesに永続化済み)。バッジ行自体は
+	// backfill-user-environment-badges が先に作成する運用のため、ここでは通知だけを
+	// notification_idが空の行に対して補完し、生成した通知IDを書き戻す。
+	environmentBadgeCreated, err := backfillEnvironmentBadgeNotifications(
+		ctx, db, userEnvironmentBadgeRepo, environmentRepo, environmentBadgeEvaluation, userId, dryRun,
 	)
 	if err != nil {
 		return created, err
 	}
-	created += designationCreated
+	created += environmentBadgeCreated
+
+	return created, nil
+}
+
+// backfillEnvironmentBadgeNotifications はユーザーが獲得済みの環境バッジ
+// (user_environment_badges)のうち、まだ通知(notifications)が無いもの(notification_idが
+// 空の行)だけを個別に補完する。通知の内容(タイトル・本文)は環境バッジ獲得時のリアルタイム
+// 通知と同じにするため、usecase.EnvironmentBadgeEvaluation.NotifyAchieved をそのまま使う
+// (backfill-user-environment-badges から移植。isReadはtrueにして通知ベルに新着として
+// 表示しないようにする点も同様)。生成した通知IDはuser_environment_badges.notification_idへ
+// 書き戻し、再実行時に同じ行へ重複して通知が作られないようにする。
+func backfillEnvironmentBadgeNotifications(
+	ctx context.Context,
+	db *gorm.DB,
+	userEnvironmentBadgeRepo repository.UserEnvironmentBadgeInterface,
+	environmentRepo repository.EnvironmentInterface,
+	environmentBadgeEvaluation usecase.EnvironmentBadgeEvaluationInterface,
+	userId string,
+	dryRun bool,
+) (int, error) {
+	badges, err := userEnvironmentBadgeRepo.FindByUserId(ctx, userId)
+	if err != nil {
+		return 0, err
+	}
+
+	created := 0
+	for _, badge := range badges {
+		if badge.NotificationId != "" {
+			continue
+		}
+
+		if dryRun {
+			created++
+			continue
+		}
+
+		env, err := environmentRepo.FindById(ctx, badge.EnvironmentId)
+		if err != nil {
+			return created, err
+		}
+
+		notificationId, err := environmentBadgeEvaluation.NotifyAchieved(ctx, userId, env, badge.CreatedAt, true)
+		if err != nil {
+			return created, err
+		}
+
+		if tx := db.Model(&model.UserEnvironmentBadge{}).
+			Where("user_id = ? AND environment_id = ?", userId, badge.EnvironmentId).
+			Update("notification_id", notificationId); tx.Error != nil {
+			return created, tx.Error
+		}
+
+		created++
+	}
 
 	return created, nil
 }
@@ -375,7 +489,7 @@ func backfillDesignationHistory(
 		return 0, nil
 	}
 
-	candidateDates, err := seasonRecordEventDates(db, userId, seasonFromDate, seasonToDate)
+	candidateDates, achievedAtByEventDate, err := seasonRecordEventDates(db, userId, seasonFromDate, seasonToDate)
 	if err != nil {
 		return 0, err
 	}
@@ -396,7 +510,7 @@ func backfillDesignationHistory(
 		}
 		if !exists {
 			achievedAt := designationAchievedAt(
-				ctx, designationEvaluation, userId, candidateDates,
+				ctx, designationEvaluation, userId, candidateDates, achievedAtByEventDate,
 				func(t int) bool { return t >= tier },
 				now,
 			)
@@ -427,7 +541,7 @@ func backfillDesignationHistory(
 		}
 
 		rankAt := designationAchievedAt(
-			ctx, designationEvaluation, userId, candidateDates,
+			ctx, designationEvaluation, userId, candidateDates, achievedAtByEventDate,
 			func(t int) bool { return usecase.RankNameForTier(t) == rankName },
 			now,
 		)
@@ -466,7 +580,7 @@ func milestoneAchievedAt(
 	def *entity.BadgeDefinition,
 	recordDates []time.Time,
 	matchDates []time.Time,
-	deckDates []time.Time,
+	deckCodeDates []time.Time,
 	streakAchievedAt map[int]time.Time,
 	fallback time.Time,
 ) time.Time {
@@ -475,8 +589,8 @@ func milestoneAchievedAt(
 		return nthDate(recordDates, def.CriteriaValue, fallback)
 	case usecase.BadgeCriteriaTypeMatchCount:
 		return nthDate(matchDates, def.CriteriaValue, fallback)
-	case usecase.BadgeCriteriaTypeDeckCount:
-		return nthDate(deckDates, def.CriteriaValue, fallback)
+	case usecase.BadgeCriteriaTypeDeckCodeCount:
+		return nthDate(deckCodeDates, def.CriteriaValue, fallback)
 	case usecase.BadgeCriteriaTypeStreakWeeks:
 		if at, ok := streakAchievedAt[def.CriteriaValue]; ok {
 			return at
@@ -496,39 +610,74 @@ func nthDate(dates []time.Time, n int, fallback time.Time) time.Time {
 	return dates[n-1]
 }
 
-// seasonRecordEventDates はシーズン内でevent_dateが設定されているrecordの日付を
-// 重複を除いて昇順で返す。称号・ランクの実際の達成日を遡って求めるための候補日として使う
-// (DesignationStatsInterfaceの各種Countメソッドがevent_date基準で集計するため、
-// event_dateがNULLの記録は称号判定に影響しない=候補日にする必要がない)。
-func seasonRecordEventDates(db *gorm.DB, userId string, fromDate time.Time, toDate time.Time) ([]time.Time, error) {
-	var dates []time.Time
+// seasonRecordEventDates はシーズン内でevent_dateが設定されているrecordについて、
+// TierAsOfでtierの推移を辿るための候補日を重複を除いて昇順で返す(DesignationStats
+// Interfaceの各種Countメソッドがevent_date基準で集計するため、event_dateがNULLの
+// 記録は称号判定に影響しない=候補日にする必要がない)。
+//
+// 各recordの候補日(=achievedAtByEventDateで引ける実際の処理時刻)は、
+// GREATEST(event_date, updated_at, その記録に紐づくmatchのcreated_atのうち最も早いもの)
+// で求める。称号(駆け出し・見習い等)の達成条件「対戦結果(matches)が1件以上ある」
+// 「デッキが登録されている」は、それぞれ対戦結果の追加・デッキの登録という別々の
+// タイミングで満たされうる(CountRecordsAsOfByUserIdはevent_date/updated_at/matchの
+// created_atをそれぞれ独立にasOfと比較するため、record作成後にどちらか一方だけ
+// 後から満たされるケースがある)。この記録が実際に両条件を満たした瞬間は、それら
+// 個々のタイミングのうち最も遅いものであるため、GREATESTで求める。event_date単独や
+// updated_at単独を候補にすると、他方の条件がまだ満たされていない時点を誤って
+// 達成日として拾ってしまう(例: event_dateが古い日付でも、対戦結果の追加はそれより
+// 後、というケース)。
+func seasonRecordEventDates(
+	db *gorm.DB,
+	userId string,
+	fromDate time.Time,
+	toDate time.Time,
+) ([]time.Time, map[time.Time]time.Time, error) {
+	type row struct {
+		AchievedAt time.Time
+	}
+	var rows []row
+
 	tx := db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL AND event_date IS NOT NULL", userId).
-		Where("event_date >= ? AND event_date < ?", fromDate, toDate).
-		Distinct().
-		Order("event_date ASC").
-		Pluck("event_date", &dates)
+		Select("GREATEST(records.event_date, records.updated_at, COALESCE(MIN(matches.created_at), records.created_at)) AS achieved_at").
+		Joins("LEFT JOIN matches ON matches.record_id = records.id AND matches.deleted_at IS NULL").
+		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.event_date IS NOT NULL", userId).
+		Where("records.event_date >= ? AND records.event_date < ?", fromDate, toDate).
+		Group("records.id, records.event_date, records.updated_at, records.created_at").
+		Scan(&rows)
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, nil, tx.Error
 	}
 
-	return dates, nil
+	achievedAtByEventDate := make(map[time.Time]time.Time, len(rows))
+	for _, r := range rows {
+		achievedAtByEventDate[r.AchievedAt] = r.AchievedAt
+	}
+
+	dates := make([]time.Time, 0, len(achievedAtByEventDate))
+	for d := range achievedAtByEventDate {
+		dates = append(dates, d)
+	}
+	sort.Slice(dates, func(i, j int) bool { return dates[i].Before(dates[j]) })
+
+	return dates, achievedAtByEventDate, nil
 }
 
-// designationAchievedAt は candidateDates(シーズン内のrecord.event_date、昇順)を先頭から
-// 走査し、その日までの実績で判定したtier(TierAsOf)がsatisfiesを満たす最初の日を返す。
-// tierはシーズン内で記録が増えるほど単調非減少のため、最初に見つかった日が実際の達成日になる。
+// designationAchievedAt は candidateDates(シーズン内の各recordが実際に達成条件を
+// 満たした時刻。seasonRecordEventDates参照、昇順)を先頭から走査し、その時点までの
+// 実績で判定したtier(TierAsOf)がsatisfiesを満たす最初の候補を探す。tierはシーズン内で
+// 記録が増えるほど単調非減少のため、最初に見つかった候補が実際の達成日になる。
 // 見つからない場合(通常発生しない)はfallbackを返す。
 func designationAchievedAt(
 	ctx context.Context,
 	designationEvaluation usecase.DesignationEvaluationInterface,
 	userId string,
 	candidateDates []time.Time,
+	achievedAtByEventDate map[time.Time]time.Time,
 	satisfies func(tier int) bool,
 	fallback time.Time,
 ) time.Time {
 	for _, d := range candidateDates {
-		// TierAsOfのtoDateはexclusive上限のため、dの記録を含めるには翌日0時を渡す。
+		// TierAsOfのtoDateはexclusive上限のため、dの記録・編集を含めるには1日後を渡す。
 		cutoff := d.AddDate(0, 0, 1)
 
 		tier, err := designationEvaluation.TierAsOf(ctx, userId, cutoff)
@@ -536,6 +685,9 @@ func designationAchievedAt(
 			continue
 		}
 		if satisfies(tier) {
+			if at, ok := achievedAtByEventDate[d]; ok {
+				return at
+			}
 			return d
 		}
 	}

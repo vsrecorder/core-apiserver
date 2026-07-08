@@ -337,7 +337,9 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 				require.Equal(t, NotificationCategoryBadge, n.Category)
 				require.Contains(t, n.Body, "10戦達成")
 				require.Contains(t, n.Body, "2026シーズン") // どのシーズンの実績かを明記する
-				require.True(t, n.CreatedAt.Equal(eventDate)) // 通知の作成日時は達成日(event_date)を使う
+				// 通知一覧の並び順が崩れないよう、通知のcreated_atは対戦日(event_date)ではなく
+				// 実際の処理時刻(record.CreatedAt)を使う。
+				require.True(t, n.CreatedAt.Equal(now))
 				return nil
 			},
 		).Times(1)
@@ -421,6 +423,54 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 
 		_, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 		require.NoError(t, err)
+	})
+
+	t.Run("onboarding系とマイルストーン系が同時に達成した場合、onboarding系の通知が先(=通知一覧では下)になる", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+
+		// 2026-06-15は月曜日(TestMondayOfで確認済みの2026-06-29から7日単位で遡って算出)
+		thisWeekRecord := time.Date(2026, 6, 15, 10, 0, 0, 0, time.Local)
+		definitions := []*entity.BadgeDefinition{
+			entity.NewBadgeDefinition("def-first-record", "first_record", "onboarding", "初記録", "", "", BadgeCriteriaTypeRecordCount, 1, time.Time{}, time.Time{}, thisWeekRecord, thisWeekRecord),
+			entity.NewBadgeDefinition("def-streak-1", "streak_week_1", "streak", "初週達成", "", "", BadgeCriteriaTypeStreakWeeks, 1, time.Time{}, time.Time{}, thisWeekRecord, thisWeekRecord),
+		}
+
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
+		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		userBadgeRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+
+		season := entity.NewChampionshipSeries("series_2026", "2026", time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 8, 31, 0, 0, 0, 0, time.Local))
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).Times(2)
+
+		// 初めての記録: onboarding判定用(全期間)・マイルストーン判定用(シーズンスコープ)とも1件
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
+		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return([]time.Time{thisWeekRecord}, nil)
+
+		var savedCategories []string
+		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, n *entity.Notification) error {
+				// onboarding系・マイルストーン系とも通知のcreated_atはrecord.CreatedAt
+				// (=thisWeekRecord)で揃う。id DESCタイブレークで呼び出し順を制御するため。
+				require.True(t, n.CreatedAt.Equal(thisWeekRecord))
+				savedCategories = append(savedCategories, n.Category)
+				return nil
+			},
+		).Times(2)
+
+		record := entity.NewRecord("record-x", thisWeekRecord, 0, "", "", "", "user-1", "", "", thisWeekRecord, false, "", "")
+
+		awarded, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
+		require.NoError(t, err)
+		require.Len(t, awarded, 1)
+
+		// onboarding系(badge)が先に、マイルストーン系(streak)が後に保存される必要がある。
+		// created_atが同値のため、id DESCタイブレークにより後に保存されたマイルストーン系の
+		// 通知が通知一覧で上に、onboarding系の通知が一番下に表示される。
+		require.Equal(t, []string{NotificationCategoryBadge, NotificationCategoryStreak}, savedCategories)
 	})
 
 	t.Run("同じ週の2件目の記録では週次ストリーク通知が重複しない", func(t *testing.T) {
@@ -519,9 +569,9 @@ func TestBadgeEvaluation_EvaluateOnMatchCreated(t *testing.T) {
 }
 
 func TestBadgeEvaluation_EvaluateOnDeckCreated(t *testing.T) {
-	t.Run("初デッキバッジが付与される", func(t *testing.T) {
+	t.Run("初デッキバッジが付与される(デッキコード無し)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, _, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, _, badgeStatsRepo, notificationRepo, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
@@ -539,9 +589,39 @@ func TestBadgeEvaluation_EvaluateOnDeckCreated(t *testing.T) {
 			},
 		).Times(1)
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
 
+		// デッキコード無しで作成した場合、deck_codes は増えないため
+		// マイルストーン系(deck_code_count)の判定は行われない
+		// (=CountDeckCodesByUserId・championshipSeriesRepo は一切呼ばれない)。
 		deck := entity.NewDeck("deck-1", now, time.Time{}, "user-1", "リザードンex", false, nil, nil)
+
+		awarded, err := u.EvaluateOnDeckCreated(context.Background(), "user-1", deck)
+
+		require.NoError(t, err)
+		require.Len(t, awarded, 1)
+		require.Equal(t, "def-first-deck", awarded[0].BadgeDefinitionId)
+	})
+
+	t.Run("デッキコード付きで作成した場合はマイルストーン系(deck_code_count)も判定する", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, badgeDefinitionRepo, userBadgeRepo, _, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+
+		now := time.Now()
+		definitions := []*entity.BadgeDefinition{
+			entity.NewBadgeDefinition("def-first-deck", "first_deck", "onboarding", "初デッキ", "", "", BadgeCriteriaTypeDeckCount, 1, time.Time{}, time.Time{}, now, now),
+			entity.NewBadgeDefinition("def-deck-code-1", "deck_code_count_1", "milestone", "駆け出しビルダー", "", "", BadgeCriteriaTypeDeckCodeCount, 1, time.Time{}, time.Time{}, now, now),
+		}
+
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		userBadgeRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Times(1)
+		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Times(2)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil).Times(2)
+
+		deckCode := entity.NewDeckCode("deckcode-1", now, "user-1", "deck-1", "AbCdEfGhIj12", false, "")
+		deck := entity.NewDeck("deck-1", now, time.Time{}, "user-1", "リザードンex", false, deckCode, nil)
 
 		awarded, err := u.EvaluateOnDeckCreated(context.Background(), "user-1", deck)
 

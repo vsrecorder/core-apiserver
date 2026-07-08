@@ -40,8 +40,34 @@ func (i *Notification) Save(
 		m.ReadAt = &entity.ReadAt
 	}
 
-	if tx := i.db.Create(m); tx.Error != nil {
+	if tx := dbFromContext(ctx, i.db).Create(m); tx.Error != nil {
 		return tx.Error
+	}
+
+	return nil
+}
+
+func (i *Notification) UpdateContent(
+	ctx context.Context,
+	id string,
+	createdAt time.Time,
+	title string,
+	body string,
+	isRead bool,
+) error {
+	tx := dbFromContext(ctx, i.db).Model(&model.Notification{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"created_at": createdAt,
+			"title":      title,
+			"body":       body,
+			"is_read":    isRead,
+		})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return apperror.ErrRecordNotFound
 	}
 
 	return nil

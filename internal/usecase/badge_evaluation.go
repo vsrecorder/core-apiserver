@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	BadgeCriteriaTypeSignup      = "signup"
-	BadgeCriteriaTypeRecordCount = "record_count"
-	BadgeCriteriaTypeMatchCount  = "match_count"
-	BadgeCriteriaTypeDeckCount   = "deck_count"
-	BadgeCriteriaTypeStreakWeeks = "streak_weeks"
+	BadgeCriteriaTypeSignup        = "signup"
+	BadgeCriteriaTypeRecordCount   = "record_count"
+	BadgeCriteriaTypeMatchCount    = "match_count"
+	BadgeCriteriaTypeDeckCount     = "deck_count"
+	BadgeCriteriaTypeDeckCodeCount = "deck_code_count"
+	BadgeCriteriaTypeStreakWeeks   = "streak_weeks"
 )
 
 const (
@@ -68,6 +69,14 @@ type BadgeEvaluationInterface interface {
 		userId string,
 		deck *entity.Deck,
 	) ([]*entity.UserBadge, error)
+
+	// EvaluateOnDeckCodeCreated はデッキ作成後に別途デッキコードを登録した時、マイルストーン系
+	// (deck_code_count)バッジの新規達成を通知する。永続化しない(ライブ集計)ため戻り値は無い。
+	EvaluateOnDeckCodeCreated(
+		ctx context.Context,
+		userId string,
+		deckCode *entity.DeckCode,
+	)
 
 	// EvaluateOnUserCreated はユーザー登録時、サインアップ系バッジを判定する。
 	// createdAt はユーザーの実際の登録日時(遡及バックフィル時は過去日、通常登録時は現在時刻)で、
@@ -251,7 +260,7 @@ func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, 
 // StreakWeeksAchievedAt は dates(記録の基準日時、順不同・重複可)を走査し、週次ストリークの
 // 連続週数ごとに「その週数へ初めて到達した実際の記録日」を 連続週数 -> achievedAt のマップで
 // 返す。ComputeStreakStateと同じ連続判定ロジック(フリーズ枠含む)を週の推移ごとに適用する。
-// backfill-notification-history が、シーズンごとにライブ集計する週次ストリーク系バッジの
+// backfill-notifications が、シーズンごとにライブ集計する週次ストリーク系バッジの
 // 「実際の達成日」を過去の記録から遡って求めるために使う(通常のリアルタイム評価では
 // notifySeasonalStreakMilestonesの判定で十分なため使わない)。
 func StreakWeeksAchievedAt(dates []time.Time) map[int]time.Time {
@@ -494,6 +503,7 @@ func (u *BadgeEvaluation) notifySeasonalStreakMilestones(
 	definitions []*entity.BadgeDefinition,
 	seasonRecordDates []time.Time,
 	thisRecordBasis time.Time,
+	createdAt time.Time,
 	seasonLabel string,
 ) error {
 	currentWeeks, _, _, _ := ComputeStreakState(seasonRecordDates)
@@ -517,8 +527,10 @@ func (u *BadgeEvaluation) notifySeasonalStreakMilestones(
 			continue
 		}
 
-		// 週次ストリークを達成した実際の日時(=今回の記録の基準日)を通知のcreated_atに使う
-		if err := u.notifyBadgeAchieved(ctx, userId, def, seasonLabel, thisRecordBasis); err != nil {
+		// 週の判定自体はthisRecordBasis(対戦日基準)で行うが、通知のcreated_atは
+		// 実際の処理時刻(createdAt)を使う。対戦日を使うと他の通知とのcreated_at
+		// 基準がずれて並び順が崩れるため。
+		if err := u.notifyBadgeAchieved(ctx, userId, def, seasonLabel, createdAt); err != nil {
 			return err
 		}
 	}
@@ -531,11 +543,15 @@ func (u *BadgeEvaluation) notifySeasonalStreakMilestones(
 // championship_seriesが見つからない等でシーズン範囲が定まらない場合は、記録作成自体を
 // 失敗させないため何もせず処理を終える(通知は付随的な機能であり、本体の書き込みを
 // 阻害してはならない)。
+// thisRecordBasis は週次ストリーク等の判定基準(対戦日優先)、createdAt は通知の
+// created_atに使う実際の処理時刻。両者を分けているのは、対戦日を通知のcreated_atに
+// 使うと他の通知(バッジ獲得等)とのcreated_at基準がずれ、通知一覧の並び順が崩れるため。
 func (u *BadgeEvaluation) notifySeasonalMilestonesOnRecordCreated(
 	ctx context.Context,
 	userId string,
 	definitions []*entity.BadgeDefinition,
 	thisRecordBasis time.Time,
+	createdAt time.Time,
 ) {
 	now := time.Now().Local()
 
@@ -552,11 +568,11 @@ func (u *BadgeEvaluation) notifySeasonalMilestonesOnRecordCreated(
 	}
 
 	if seasonRecordCount, err := u.badgeStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate); err == nil {
-		_ = u.notifySeasonalCountMilestones(ctx, userId, milestoneDefinitions(definitions), BadgeCriteriaTypeRecordCount, seasonRecordCount, seasonLabel, thisRecordBasis)
+		_ = u.notifySeasonalCountMilestones(ctx, userId, milestoneDefinitions(definitions), BadgeCriteriaTypeRecordCount, seasonRecordCount, seasonLabel, createdAt)
 	}
 
 	if seasonRecordDates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, fromDate, toDate); err == nil {
-		_ = u.notifySeasonalStreakMilestones(ctx, userId, streakDefinitions(definitions), seasonRecordDates, thisRecordBasis, seasonLabel)
+		_ = u.notifySeasonalStreakMilestones(ctx, userId, streakDefinitions(definitions), seasonRecordDates, thisRecordBasis, createdAt, seasonLabel)
 	}
 }
 
@@ -587,8 +603,8 @@ func (u *BadgeEvaluation) notifySeasonalCountMilestonesForCriteria(
 	switch criteriaType {
 	case BadgeCriteriaTypeMatchCount:
 		newSeasonCount, err = u.badgeStatsRepo.CountMatchesByUserId(ctx, userId, fromDate, toDate)
-	case BadgeCriteriaTypeDeckCount:
-		newSeasonCount, err = u.badgeStatsRepo.CountDecksByUserId(ctx, userId, fromDate, toDate)
+	case BadgeCriteriaTypeDeckCodeCount:
+		newSeasonCount, err = u.badgeStatsRepo.CountDeckCodesByUserId(ctx, userId, fromDate, toDate)
 	default:
 		return
 	}
@@ -638,7 +654,11 @@ func (u *BadgeEvaluation) award(
 			return nil, err
 		}
 
-		if err := u.notifyBadgeAchieved(ctx, userId, def, "", time.Now().Local()); err != nil {
+		// 通知のcreated_atにもachievedAtを使う(time.Now()を使わない)。他の通知
+		// (マイルストーン系・環境バッジ・称号/ランクアップ)と同じ基準の時刻に揃えることで、
+		// created_at同値時のid DESCタイブレークが機能し、通知一覧の並び順を呼び出し順で
+		// 制御できるようにするため。
+		if err := u.notifyBadgeAchieved(ctx, userId, def, "", achievedAt); err != nil {
 			return nil, err
 		}
 
@@ -675,6 +695,11 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 		return nil, err
 	}
 
+	// onboarding系(初記録)の通知を最も古く(=通知一覧の一番下に)するため、onboarding系を
+	// 先に評価し、マイルストーン系を後に評価する。award()・notifySeasonalMilestones...とも
+	// 通知のcreated_atにはrecord.CreatedAt(実際の処理時刻)を使うため、同値時のid DESC
+	// タイブレークにより、後に評価したマイルストーン系の通知が上に表示される。
+	//
 	// onboarding系(初記録)は他のオンボーディングバッジ(first_deck/first_match/signup)と
 	// 同様、実際に記録した日時(created_at)を採用する。event_dateは過去の対戦日を
 	// 表す入力値であり、backfill入力等でachieved_atが過去日にずれてしまうのを避ける。
@@ -683,8 +708,9 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 		return nil, err
 	}
 
-	// シーズン系マイルストーン・週次ストリークは実際に対戦した日(event_date)基準のまま。
-	u.notifySeasonalMilestonesOnRecordCreated(ctx, userId, definitions, RecordBasisTime(record.EventDate, record.CreatedAt))
+	// シーズン系マイルストーン・週次ストリークの達成判定は実際に対戦した日(event_date)
+	// 基準のまま。ただし通知のcreated_atはrecord.CreatedAt(実際の処理時刻)を使う。
+	u.notifySeasonalMilestonesOnRecordCreated(ctx, userId, definitions, RecordBasisTime(record.EventDate, record.CreatedAt), record.CreatedAt)
 
 	return awarded, nil
 }
@@ -724,6 +750,8 @@ func (u *BadgeEvaluation) EvaluateOnMatchCreated(
 		return nil, err
 	}
 
+	// onboarding系(初対戦)の通知を最も古く(=通知一覧の一番下に)するため、onboarding系を
+	// 先に評価する(record作成時のEvaluateOnRecordCreatedと同じ理由)。
 	awarded, err := u.award(ctx, userId, match.RecordId, onboardingDefinitions(definitions), BadgeCriteriaTypeMatchCount, matchCount, achieved, match.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -754,15 +782,38 @@ func (u *BadgeEvaluation) EvaluateOnDeckCreated(
 		return nil, err
 	}
 
+	// onboarding系(初デッキ)の通知を最も古く(=通知一覧の一番下に)するため、onboarding系を
+	// 先に評価する(record作成時のEvaluateOnRecordCreatedと同じ理由)。
 	// デッキ起点のバッジ獲得のため、紐づく record は存在しない
 	awarded, err := u.award(ctx, userId, "", onboardingDefinitions(definitions), BadgeCriteriaTypeDeckCount, deckCount, achieved, deck.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
 
-	u.notifySeasonalCountMilestonesForCriteria(ctx, userId, definitions, BadgeCriteriaTypeDeckCount, deck.CreatedAt)
+	// マイルストーン系(deck_code_count)はデッキ「登録」数ではなくデッキ「コード」登録数を
+	// 見る仕様のため、デッキコード付きで作成された場合のみ判定する。コード無しで作成した
+	// 場合は deck_codes が増えていないため判定不要(むしろ判定すると誤ってカウントされる)。
+	if deck.LatestDeckCode != nil && deck.LatestDeckCode.Code != "" {
+		u.notifySeasonalCountMilestonesForCriteria(ctx, userId, definitions, BadgeCriteriaTypeDeckCodeCount, deck.CreatedAt)
+	}
 
 	return awarded, nil
+}
+
+// EvaluateOnDeckCodeCreated はデッキ作成後に別途デッキコードを登録した時、マイルストーン系
+// (deck_code_count)バッジの新規達成を通知する。デッキ作成時に既にコードがある場合は
+// EvaluateOnDeckCreated 側で判定済みのため、ここでは呼ばれない。
+func (u *BadgeEvaluation) EvaluateOnDeckCodeCreated(
+	ctx context.Context,
+	userId string,
+	deckCode *entity.DeckCode,
+) {
+	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
+	if err != nil {
+		return
+	}
+
+	u.notifySeasonalCountMilestonesForCriteria(ctx, userId, definitions, BadgeCriteriaTypeDeckCodeCount, deckCode.CreatedAt)
 }
 
 func (u *BadgeEvaluation) EvaluateOnUserCreated(

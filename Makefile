@@ -40,6 +40,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/championship_series.go -destination=./internal/mock/mock_repository/championship_series.go
 	mockgen -source=./internal/domain/repository/player_ranking.go -destination=./internal/mock/mock_repository/player_ranking.go
 	mockgen -source=./internal/domain/repository/notification.go -destination=./internal/mock/mock_repository/notification.go
+	mockgen -source=./internal/domain/repository/user_environment_badge.go -destination=./internal/mock/mock_repository/user_environment_badge.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go
 	mockgen -source=./internal/usecase/user.go -destination=./internal/mock/mock_usecase/user.go
@@ -61,6 +62,8 @@ mockgen:
 	mockgen -source=./internal/usecase/designation_evaluation.go -destination=./internal/mock/mock_usecase/designation_evaluation.go
 	mockgen -source=./internal/usecase/designation.go -destination=./internal/mock/mock_usecase/designation.go
 	mockgen -source=./internal/usecase/notification.go -destination=./internal/mock/mock_usecase/notification.go
+	mockgen -source=./internal/usecase/environment_badge.go -destination=./internal/mock/mock_usecase/environment_badge.go
+	mockgen -source=./internal/usecase/environment_badge_evaluation.go -destination=./internal/mock/mock_usecase/environment_badge_evaluation.go
 
 .PHONY: image
 image:

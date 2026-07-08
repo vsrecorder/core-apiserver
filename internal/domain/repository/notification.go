@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
@@ -10,6 +11,17 @@ type NotificationInterface interface {
 	Save(
 		ctx context.Context,
 		entity *entity.Notification,
+	) error
+
+	// UpdateContent は既存通知の内容を上書きする。バックフィルツールが過去に作成した通知を、
+	// 再計算結果で上書きするために使う。該当行が無い場合は apperror.ErrRecordNotFound を返す。
+	UpdateContent(
+		ctx context.Context,
+		id string,
+		createdAt time.Time,
+		title string,
+		body string,
+		isRead bool,
 	) error
 
 	// FindByUserId は指定ユーザーの通知を created_at 降順で最大 limit 件返す。

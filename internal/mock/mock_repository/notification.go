@@ -12,6 +12,7 @@ package mock_repository
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	gomock "go.uber.org/mock/gomock"
@@ -111,4 +112,18 @@ func (m *MockNotificationInterface) Save(ctx context.Context, entity *entity.Not
 func (mr *MockNotificationInterfaceMockRecorder) Save(ctx, entity any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockNotificationInterface)(nil).Save), ctx, entity)
+}
+
+// UpdateContent mocks base method.
+func (m *MockNotificationInterface) UpdateContent(ctx context.Context, id string, createdAt time.Time, title, body string, isRead bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateContent", ctx, id, createdAt, title, body, isRead)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateContent indicates an expected call of UpdateContent.
+func (mr *MockNotificationInterfaceMockRecorder) UpdateContent(ctx, id, createdAt, title, body, isRead any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateContent", reflect.TypeOf((*MockNotificationInterface)(nil).UpdateContent), ctx, id, createdAt, title, body, isRead)
 }

@@ -348,12 +348,19 @@ func (u *Record) Create(
 		return nil, err
 	}
 
+	// 通知一覧はcreated_at DESC(新しい順、同値時はid DESC)で表示されるため、後から
+	// 生成した通知ほど上に表示される。作成順序を「ユーザバッジ→称号/ランクアップ」に
+	// することで、表示順序は下から「ユーザバッジ→称号/ランクアップ」(=上から称号/
+	// ランクアップ→ユーザバッジ)になる。
 	if _, err := u.badgeEvaluation.EvaluateOnRecordCreated(ctx, param.userId, record); err != nil {
 		return nil, err
 	}
 
 	if tierErr == nil {
-		u.designationEvaluation.NotifyIfTierChanged(ctx, param.userId, beforeTier, RecordBasisTime(record.EventDate, record.CreatedAt))
+		// 通知のcreated_atは対戦日(event_date)ではなく実際の処理時刻を使う。
+		// event_dateはユーザ登録直後に過去日を入力されると、登録バッジ通知より
+		// 過去のcreated_atになり通知の並び順が崩れるため使わない。
+		u.designationEvaluation.NotifyIfTierChanged(ctx, param.userId, beforeTier, record.CreatedAt)
 	}
 
 	return record, nil
@@ -371,6 +378,11 @@ func (u *Record) Update(
 	} else if err != nil {
 		return nil, err
 	}
+
+	// 称号のtier変化を更新の前後で比較するため、保存前の時点で取得しておく。
+	// デッキ未登録のまま作成した記録に、後からデッキを登録するケースでは、この
+	// Updateで初めて称号のrecordカウント対象になりtierが変化しうる(Createと同様)。
+	beforeTier, tierErr := u.designationEvaluation.CurrentTier(ctx, param.userId)
 
 	record := entity.NewRecord(
 		id,
@@ -390,6 +402,11 @@ func (u *Record) Update(
 
 	if err := u.repository.Save(ctx, record); err != nil {
 		return nil, err
+	}
+
+	if tierErr == nil {
+		u.designationEvaluation.NotifyIfTierChanged(ctx, param.userId, beforeTier, time.Now().Local())
+		u.designationEvaluation.NotifyIfTierLost(ctx, param.userId, beforeTier)
 	}
 
 	return record, nil

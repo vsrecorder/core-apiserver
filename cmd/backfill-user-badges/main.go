@@ -15,10 +15,13 @@
 //     backfill入力等でachieved_atが過去日にずれるのを避けるための仕様、EvaluateOnRecordCreated参照)
 //   - match_count:  criteria_value 番目に古い match の created_at
 //
-// 冪等性: UserBadgeInterface.Save は単純な INSERT(upsertではない)ため、既に user_badges
-// に行があるユーザー・バッジの組は事前にスキップし、重複INSERTしない。
+// 冪等性: UserBadgeInterface.Save は (user_id, badge_definition_id) の一意制約に対して
+// ON CONFLICT DO NOTHING で保存するため、同じユーザー・バッジの組で複数回呼んでも
+// エラーにならず重複INSERTもしない。本バッチも既存行は事前にスキップしており、
+// Save側の冪等性と合わせて二重に安全なため、失敗後の再実行や重複実行があっても
+// 問題なく再実行できる。
 //
-// 通知(notifications)は作成しない。通知履歴の補完は cmd/backfill-notification-history が
+// 通知(notifications)は作成しない。通知履歴の補完は cmd/backfill-notifications が
 // 別途 user_badges を読んで行う(役割分担)。
 //
 // 使い方:

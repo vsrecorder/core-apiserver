@@ -73,6 +73,8 @@ func TestBadge_GetByUserId(t *testing.T) {
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
 		badgeStatsRepo.EXPECT().CountMatchesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
 		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
+		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
+		badgeStatsRepo.EXPECT().FindDeckCodeDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
 		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
 		badgeStatsRepo.EXPECT().FindDeckDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
 		badgeStatsRepo.EXPECT().FindMatchDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
@@ -111,8 +113,10 @@ func TestBadge_GetByUserId(t *testing.T) {
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Not(time.Time{}), gomock.Not(time.Time{})).Return(10, nil)
 		badgeStatsRepo.EXPECT().CountMatchesByUserId(gomock.Any(), "user-1", gomock.Not(time.Time{}), gomock.Not(time.Time{})).Return(0, nil)
 		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Not(time.Time{}), gomock.Not(time.Time{})).Return(0, nil)
+		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", gomock.Not(time.Time{}), gomock.Not(time.Time{})).Return(0, nil)
 		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
 		badgeStatsRepo.EXPECT().FindDeckDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
+		badgeStatsRepo.EXPECT().FindDeckCodeDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
 		badgeStatsRepo.EXPECT().FindMatchDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
 
 		views, err := u.GetByUserId(t.Context(), "user-1", "")
@@ -132,7 +136,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
 			entity.NewBadgeDefinition("def-record-3", "record_count_3", BadgeCategoryMilestone, "駆け出しユーザー", "", "", BadgeCriteriaTypeRecordCount, 3, time.Time{}, time.Time{}, now, now),
-			entity.NewBadgeDefinition("def-deck-2", "deck_count_2", BadgeCategoryMilestone, "駆け出しビルダー", "", "", BadgeCriteriaTypeDeckCount, 2, time.Time{}, time.Time{}, now, now),
+			entity.NewBadgeDefinition("def-deck-2", "deck_count_2", BadgeCategoryMilestone, "駆け出しビルダー", "", "", BadgeCriteriaTypeDeckCodeCount, 2, time.Time{}, time.Time{}, now, now),
 			entity.NewBadgeDefinition("def-match-2", "match_count_2", BadgeCategoryMilestone, "駆け出しバトラー", "", "", BadgeCriteriaTypeMatchCount, 2, time.Time{}, time.Time{}, now, now),
 		}
 
@@ -142,7 +146,8 @@ func TestBadge_GetByUserId(t *testing.T) {
 
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(3, nil).Times(2)
 		badgeStatsRepo.EXPECT().CountMatchesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(2, nil).Times(2)
-		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(2, nil).Times(2)
+		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
+		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(2, nil)
 
 		recordDate3 := time.Date(2026, 6, 20, 0, 0, 0, 0, time.Local)
 		deckDate2 := time.Date(2026, 5, 10, 0, 0, 0, 0, time.Local)
@@ -153,7 +158,8 @@ func TestBadge_GetByUserId(t *testing.T) {
 		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(
 			[]time.Time{recordDate3, recordDate3.AddDate(0, 0, -20), recordDate3.AddDate(0, 0, -40)}, nil,
 		)
-		badgeStatsRepo.EXPECT().FindDeckDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(
+		badgeStatsRepo.EXPECT().FindDeckDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
+		badgeStatsRepo.EXPECT().FindDeckCodeDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(
 			[]time.Time{deckDate2, deckDate2.AddDate(0, 0, -5)}, nil,
 		)
 		badgeStatsRepo.EXPECT().FindMatchDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(
@@ -196,6 +202,8 @@ func TestBadge_GetByUserId(t *testing.T) {
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
 		badgeStatsRepo.EXPECT().CountMatchesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
 		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
+		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
+		badgeStatsRepo.EXPECT().FindDeckCodeDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
 
 		// 3週連続分の記録日(月曜始まり基準で3週分)
 		week1 := time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local)
@@ -232,6 +240,8 @@ func TestBadge_GetByUserId(t *testing.T) {
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
 		badgeStatsRepo.EXPECT().CountMatchesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
 		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
+		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
+		badgeStatsRepo.EXPECT().FindDeckCodeDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
 
 		// 1,2週目で2週連続を達成した後、大きく空いて途切れ、直近は単発(1週)のみの状態。
 		// 「現在」は2週連続ではない(Achieved=false)が、シーズン内で最初に2週連続に到達した
@@ -279,8 +289,10 @@ func TestBadge_GetByUserId(t *testing.T) {
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", wantFrom, wantTo).Return(3, nil)
 		badgeStatsRepo.EXPECT().CountMatchesByUserId(gomock.Any(), "user-1", wantFrom, wantTo).Return(0, nil)
 		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", wantFrom, wantTo).Return(0, nil)
+		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", wantFrom, wantTo).Return(0, nil)
 		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", wantFrom, wantTo).Return(nil, nil)
 		badgeStatsRepo.EXPECT().FindDeckDatesByUserId(gomock.Any(), "user-1", wantFrom, wantTo).Return(nil, nil)
+		badgeStatsRepo.EXPECT().FindDeckCodeDatesByUserId(gomock.Any(), "user-1", wantFrom, wantTo).Return(nil, nil)
 		badgeStatsRepo.EXPECT().FindMatchDatesByUserId(gomock.Any(), "user-1", wantFrom, wantTo).Return(nil, nil)
 
 		views, err := u.GetByUserId(t.Context(), "user-1", "2024")

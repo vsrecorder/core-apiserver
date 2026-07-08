@@ -13,11 +13,121 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
 
+// orderTrackingXxxEvaluation は、通知の作成順序(呼び出し順)を記録するためだけの
+// 手書きスタブ(mock_usecaseはusecaseパッケージに依存しており、usecaseパッケージ内の
+// テストから直接importするとimport cycleになるため、stubBadgeEvaluation等と同じ理由で
+// gomockではなくこの手書きスタブを使う)。
+type orderTrackingDesignationEvaluation struct {
+	calls *[]string
+}
+
+func (s orderTrackingDesignationEvaluation) CurrentTier(ctx context.Context, userId string) (int, error) {
+	return 0, nil
+}
+
+func (s orderTrackingDesignationEvaluation) TierAsOf(ctx context.Context, userId string, asOf time.Time) (int, error) {
+	return 0, nil
+}
+
+func (s orderTrackingDesignationEvaluation) NotifyIfTierChanged(ctx context.Context, userId string, beforeTier int, achievedAt time.Time) {
+	*s.calls = append(*s.calls, "designation")
+}
+
+func (s orderTrackingDesignationEvaluation) NotifyIfTierLost(ctx context.Context, userId string, beforeTier int) {
+}
+
+type orderTrackingBadgeEvaluation struct {
+	calls *[]string
+}
+
+func (s orderTrackingBadgeEvaluation) EvaluateOnRecordCreated(ctx context.Context, userId string, record *entity.Record) ([]*entity.UserBadge, error) {
+	return nil, nil
+}
+
+func (s orderTrackingBadgeEvaluation) EvaluateOnMatchCreated(ctx context.Context, userId string, match *entity.Match) ([]*entity.UserBadge, error) {
+	*s.calls = append(*s.calls, "badge")
+	return nil, nil
+}
+
+func (s orderTrackingBadgeEvaluation) EvaluateOnDeckCreated(ctx context.Context, userId string, deck *entity.Deck) ([]*entity.UserBadge, error) {
+	return nil, nil
+}
+
+func (s orderTrackingBadgeEvaluation) EvaluateOnDeckCodeCreated(ctx context.Context, userId string, deckCode *entity.DeckCode) {
+}
+
+func (s orderTrackingBadgeEvaluation) EvaluateOnUserCreated(ctx context.Context, userId string, createdAt time.Time) ([]*entity.UserBadge, error) {
+	return nil, nil
+}
+
+func (s orderTrackingBadgeEvaluation) EvaluateOnRecordDeleted(ctx context.Context, userId string) error {
+	return nil
+}
+
+type orderTrackingEnvironmentBadgeEvaluation struct {
+	calls *[]string
+}
+
+func (s orderTrackingEnvironmentBadgeEvaluation) EvaluateOnMatchCreated(ctx context.Context, userId string, match *entity.Match, basisTime time.Time) (*entity.Environment, error) {
+	*s.calls = append(*s.calls, "environment_badge")
+	return nil, nil
+}
+
+func (s orderTrackingEnvironmentBadgeEvaluation) NotifyAchieved(ctx context.Context, userId string, env *entity.Environment, achievedAt time.Time, isRead bool) (string, error) {
+	return "", nil
+}
+
+func (s orderTrackingEnvironmentBadgeEvaluation) UpdateAchievedNotification(ctx context.Context, notificationId string, env *entity.Environment, achievedAt time.Time) error {
+	return nil
+}
+
+// 通知の作成順は「ユーザバッジ→環境バッジ→称号/ランクアップ」である必要がある。
+// created_at DESC(同値時はid DESC)で表示されるため、この作成順により表示順は下から
+// 「ユーザバッジ→環境バッジ→称号/ランクアップ」(=上から称号/ランクアップ→環境バッジ→
+// ユーザバッジ)になる。この呼び出し順が崩れると通知一覧の並び順バグが再発するため、
+// 明示的に固定する。
+func TestMatchUsecase_Create_NotificationCreationOrder(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
+	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+
+	var calls []string
+	usecase := NewMatch(
+		mockRepository,
+		mockRecordRepository,
+		orderTrackingBadgeEvaluation{calls: &calls},
+		orderTrackingDesignationEvaluation{calls: &calls},
+		orderTrackingEnvironmentBadgeEvaluation{calls: &calls},
+	)
+
+	recordId := "01JMPK4VF04QX714CG4PHYJ88K"
+	deckId := "01JMKRNBW5TVN902YAE8GYZ367"
+	userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	var gameParams []*GameParam
+	gameParams = append(gameParams, NewGameParam(true, false, 0, 0, ""))
+
+	matchParam := NewMatchParam(
+		recordId, deckId, "", userId, "",
+		false, false, false, false, false, false, false, false,
+		"", "", gameParams, nil,
+	)
+
+	mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+	// OfficialEventId != 0 の記録として扱い、環境バッジ評価も呼ばれる経路を通す。
+	mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, OfficialEventId: 1}, nil)
+
+	_, err := usecase.Create(context.Background(), matchParam)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"badge", "environment_badge", "designation"}, calls)
+}
+
 func TestMatchUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
 	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewMatch(mockRepository, mockRecordRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{})
+	usecase := NewMatch(mockRepository, mockRecordRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

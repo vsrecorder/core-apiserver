@@ -43,6 +43,13 @@ func (stubBadgeEvaluation) EvaluateOnDeckCreated(
 	return nil, nil
 }
 
+func (stubBadgeEvaluation) EvaluateOnDeckCodeCreated(
+	ctx context.Context,
+	userId string,
+	deckCode *entity.DeckCode,
+) {
+}
+
 func (stubBadgeEvaluation) EvaluateOnUserCreated(
 	ctx context.Context,
 	userId string,
@@ -90,6 +97,103 @@ func (stubDesignationEvaluation) NotifyIfTierLost(
 	userId string,
 	beforeTier int,
 ) {
+}
+
+// stubEnvironmentBadgeEvaluation は usecase パッケージ自身のテストで使う
+// EnvironmentBadgeEvaluationInterface のスタブ(stubBadgeEvaluationと同じ理由でgomockを使わない)。
+type stubEnvironmentBadgeEvaluation struct{}
+
+func (stubEnvironmentBadgeEvaluation) EvaluateOnMatchCreated(
+	ctx context.Context,
+	userId string,
+	match *entity.Match,
+	basisTime time.Time,
+) (*entity.Environment, error) {
+	return nil, nil
+}
+
+func (stubEnvironmentBadgeEvaluation) NotifyAchieved(
+	ctx context.Context,
+	userId string,
+	env *entity.Environment,
+	achievedAt time.Time,
+	isRead bool,
+) (string, error) {
+	return "", nil
+}
+
+func (stubEnvironmentBadgeEvaluation) UpdateAchievedNotification(
+	ctx context.Context,
+	notificationId string,
+	env *entity.Environment,
+	achievedAt time.Time,
+) error {
+	return nil
+}
+
+// spyDesignationEvaluation は usecase パッケージ自身のテストで使う、
+// NotifyIfTierChanged/NotifyIfTierLost の呼び出し有無だけを記録する手書きスタブ
+// (stubDesignationEvaluationと同じ理由でgomockを使わない)。
+type spyDesignationEvaluation struct {
+	currentTier               int
+	notifyIfTierChangedCalled *bool
+	notifyIfTierLostCalled    *bool
+}
+
+func (s spyDesignationEvaluation) CurrentTier(ctx context.Context, userId string) (int, error) {
+	return s.currentTier, nil
+}
+
+func (s spyDesignationEvaluation) TierAsOf(ctx context.Context, userId string, asOf time.Time) (int, error) {
+	return s.currentTier, nil
+}
+
+func (s spyDesignationEvaluation) NotifyIfTierChanged(ctx context.Context, userId string, beforeTier int, achievedAt time.Time) {
+	*s.notifyIfTierChangedCalled = true
+}
+
+func (s spyDesignationEvaluation) NotifyIfTierLost(ctx context.Context, userId string, beforeTier int) {
+	*s.notifyIfTierLostCalled = true
+}
+
+// デッキ未登録のまま作成した記録に、あとからデッキを登録するケースでは、
+// Update経由で称号のtierが変化しうる。この変化がUpdateからも通知されることを保証する
+// (Createのみ通知していた過去のバグの再発防止)。
+func TestRecordUsecase_Update_NotifiesDesignationChange(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+
+	var notifyIfTierChangedCalled, notifyIfTierLostCalled bool
+	usecase := NewRecord(
+		mockRepository,
+		stubBadgeEvaluation{},
+		spyDesignationEvaluation{
+			currentTier:               1,
+			notifyIfTierChangedCalled: &notifyIfTierChangedCalled,
+			notifyIfTierLostCalled:    &notifyIfTierLostCalled,
+		},
+	)
+
+	id, err := generateId()
+	require.NoError(t, err)
+
+	deckId, err := generateId()
+	require.NoError(t, err)
+
+	record := entity.NewRecord(
+		id, time.Now().Local(), 0, "", "", "", "", deckId, "", time.Time{}, false, "", "",
+	)
+
+	param := NewRecordParam(0, "", "", "", "", deckId, "", time.Time{}, false, "", "")
+
+	mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
+	mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+	_, err = usecase.Update(context.Background(), id, param)
+
+	require.NoError(t, err)
+	require.True(t, notifyIfTierChangedCalled)
+	require.True(t, notifyIfTierLostCalled)
 }
 
 func TestRecordUsecase(t *testing.T) {

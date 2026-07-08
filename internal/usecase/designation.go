@@ -12,8 +12,8 @@ import (
 
 const (
 	// DesignationCriteriaTypeRecord は、公式イベント・Tonamelイベント・記入形式のいずれで
-	// あるかを問わない、対戦結果(matches)付きの記録の件数を条件とするティア
-	// (駆け出し・見習い)に使う。
+	// あるかを問わない、対戦結果(matches)付きかつデッキ(deck_id/deck_code_id)指定済みの
+	// 記録の件数を条件とするティア(駆け出し・見習い)に使う。
 	DesignationCriteriaTypeRecord                   = "record"
 	DesignationCriteriaTypeOfficialLeagueRecord     = "official_league_record"
 	DesignationCriteriaTypeOfficialCityLeagueRecord = "official_city_league_record"

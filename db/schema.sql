@@ -286,7 +286,6 @@ INSERT INTO environments VALUES ('s11a', '白熱のアルカナ','2022-09-02','2
 
 
 
-
 CREATE TABLE championship_series (
     id          VARCHAR(11) PRIMARY KEY,
     title       VARCHAR(255) NOT NULL,
@@ -506,15 +505,28 @@ CREATE TABLE deck_pokemon_sprites (
 
 
 
+CREATE TABLE user_badges (
+    id                    VARCHAR(26) PRIMARY KEY,
+    created_at            TIMESTAMP NOT NULL,
+    user_id               VARCHAR(32) NOT NULL,
+    badge_definition_id   VARCHAR(26) NOT NULL,
+    record_id             VARCHAR(26) DEFAULT NULL,
+    achieved_at           TIMESTAMP NOT NULL,
+    FOREIGN KEY (badge_definition_id) REFERENCES badge_definitions (id)
+);
+CREATE UNIQUE INDEX idx_user_badges_user_id_badge_definition_id ON user_badges(user_id, badge_definition_id);
+CREATE INDEX idx_user_badges_user_id ON user_badges(user_id);
 
 
 
-
-
-
-TRUNCATE TABLE user_badges, user_streaks, badge_definitions, designations, user_designations;
-
-
+CREATE TABLE user_streaks (
+    user_id             VARCHAR(32) PRIMARY KEY,
+    current_weeks       INT NOT NULL DEFAULT 0,
+    longest_weeks       INT NOT NULL DEFAULT 0,
+    freeze_used_count   INT NOT NULL DEFAULT 0,
+    last_recorded_week  DATE NOT NULL,
+    updated_at          TIMESTAMP NOT NULL
+);
 
 
 
@@ -543,31 +555,69 @@ CREATE TABLE badge_definitions (
 CREATE UNIQUE INDEX idx_badge_definitions_code ON badge_definitions(code);
 
 
-CREATE TABLE user_badges (
-    id                    VARCHAR(26) PRIMARY KEY,
-    created_at            TIMESTAMP NOT NULL,
-    user_id               VARCHAR(32) NOT NULL,
-    badge_definition_id   VARCHAR(26) NOT NULL,
-    record_id             VARCHAR(26) DEFAULT NULL,
-    achieved_at           TIMESTAMP NOT NULL,
-    FOREIGN KEY (badge_definition_id) REFERENCES badge_definitions (id)
-);
-CREATE UNIQUE INDEX idx_user_badges_user_id_badge_definition_id ON user_badges(user_id, badge_definition_id);
-CREATE INDEX idx_user_badges_user_id ON user_badges(user_id);
+-- badge_definitions フェーズ1シード: オンボーディング系(onboarding-xx)
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('onboarding-00', 'signup',           'onboarding', 'ユーザ登録', 'バトレコのユーザになった',     'user',   'signup',       1, now(), now()),
+('onboarding-01', 'first_deck',       'onboarding', '初デッキ',  '初めてデッキを登録した',       'deck',   'deck_count',   1, now(), now()),
+('onboarding-02', 'first_record',     'onboarding', '初記録',   '初めて記録を作成した',         'record', 'record_count', 1, now(), now()),
+('onboarding-03', 'first_match',      'onboarding', '初対戦',   '初めて対戦結果を追加した',     'trophy', 'match_count',  1, now(), now());
 
 
-CREATE TABLE user_streaks (
-    user_id             VARCHAR(32) PRIMARY KEY,
-    current_weeks       INT NOT NULL DEFAULT 0,
-    longest_weeks       INT NOT NULL DEFAULT 0,
-    freeze_used_count   INT NOT NULL DEFAULT 0,
-    last_recorded_week  DATE NOT NULL,
-    updated_at          TIMESTAMP NOT NULL
+-- badge_definitions フェーズ1シード: マイルストーン系(milestone-〇〇-xx)
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('milestone-record-01', 'record_count_3',  'milestone', '駆け出しユーザー', '記録数が3に到達した',  'medal', 'record_count', 3, now(), now()),
+('milestone-record-02', 'record_count_15', 'milestone', '常連ユーザー',    '記録数が15に到達した',  'medal', 'record_count', 15, now(), now()),
+('milestone-record-03', 'record_count_30', 'milestone', 'ベテランユーザー', '記録数が30に到達した',  'medal', 'record_count', 30, now(), now()),
+('milestone-record-04', 'record_count_50', 'milestone', 'マスターユーザー', '記録数が50に到達した', 'medal', 'record_count', 50, now(), now());
+
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('milestone-deck-01', 'deck_count_3',  'milestone', '駆け出しビルダー',  'デッキコード数が3に到達した',  'medal', 'deck_code_count', 3,  now(), now()),
+('milestone-deck-02', 'deck_count_15', 'milestone', '常連ビルダー',     'デッキコード数が15に到達した', 'medal', 'deck_code_count', 15, now(), now()),
+('milestone-deck-03', 'deck_count_30', 'milestone', 'ベテランビルダー',  'デッキコード数が30に到達した', 'medal', 'deck_code_count', 30, now(), now()),
+('milestone-deck-04', 'deck_count_50', 'milestone', 'マスタービルダー',  'デッキコード数が50に到達した', 'medal', 'deck_code_count', 50, now(), now());
+
+UPDATE badge_definitions
+SET criteria_type = 'deck_code_count',
+    updated_at    = now()
+WHERE id IN ('milestone-deck-01', 'milestone-deck-02', 'milestone-deck-03', 'milestone-deck-04') AND criteria_type = 'deck_count';
+
+
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('milestone-match-01', 'match_count_10',  'milestone', '駆け出しバトラー',  '対戦数が10に到達した',  'medal', 'match_count', 10,  now(), now()),
+('milestone-match-02', 'match_count_50',  'milestone', '常連バトラー',      '対戦数が50に到達した', 'medal', 'match_count', 50, now(), now()),
+('milestone-match-03', 'match_count_100', 'milestone', 'ベテランバトラー',  '対戦数が100に到達した', 'medal', 'match_count', 100, now(), now()),
+('milestone-match-04', 'match_count_150', 'milestone', 'マスターバトラー',  '対戦数が150に到達した', 'medal', 'match_count', 150, now(), now());
+
+
+-- badge_definitions フェーズ1シード: 週次ストリーク系(streak-xx)
+INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
+('streak-01', 'streak_week_3',  'streak', '週次記録3週連続',  '3週連続で対戦を記録した',  'flame', 'streak_weeks', 3,  now(), now()),
+('streak-02', 'streak_week_7',  'streak', '週次記録7週連続',  '7週連続で対戦を記録した',  'flame', 'streak_weeks', 7,  now(), now()),
+('streak-03', 'streak_week_15', 'streak', '週次記録15週連続', '15週連続で対戦を記録した', 'flame', 'streak_weeks', 15, now(), now()),
+('streak-04', 'streak_week_30', 'streak', '週次記録30週連続', '30週連続で対戦を記録した', 'flame', 'streak_weeks', 30, now(), now());
+
+
+
+-- 環境バッジ: ユーザーがその環境(environments)で初めて対戦結果を追加したことを表す実績。
+-- badge_definitions/user_badges とは別の独立した仕組み(名前・期間は environments を唯一の
+-- 正とするため、badge_definitions へのコピーは持たない)。
+CREATE TABLE user_environment_badges (
+    user_id         VARCHAR(32) NOT NULL,
+    environment_id  VARCHAR(8)  NOT NULL REFERENCES environments(id),
+    record_id       VARCHAR(26) DEFAULT NULL,
+    notification_id VARCHAR(26) DEFAULT NULL, -- 紐づくnotifications.id。バックフィル再実行時に、新規作成ではなく既存通知の上書きを行うための参照。
+    achieved_at     TIMESTAMP NOT NULL,
+    created_at      TIMESTAMP NOT NULL,
+    PRIMARY KEY (user_id, environment_id)
 );
+CREATE INDEX idx_user_environment_badges_user_id ON user_environment_badges(user_id);
+
 
 
 -- 称号(designation): ユーザーの通算成長を表す一本道のランク。バッジと異なり、
--- 現在の最高到達ティアのみを user_designations に保持する(過去のティアは自動的に内包される)。
+-- ユーザーごとの到達実績を永続化するテーブルは持たず、指定シーズンの集計値から
+-- 都度ライブ判定する(過去シーズンの実績を永続的に保持しないため、シーズンを
+-- 切り替えるとその期間の状態がそのまま表示される)。
 -- criteria_type = 'unimplemented' のティアはまだ判定ロジックが無いため、実装が追加されるまで
 -- 絶対に達成されない(=「準備中」)。
 CREATE TABLE designations (
@@ -586,58 +636,8 @@ CREATE UNIQUE INDEX idx_designations_tier ON designations(tier);
 CREATE UNIQUE INDEX idx_designations_code ON designations(code);
 
 
-CREATE TABLE user_designations (
-    user_id        VARCHAR(32) PRIMARY KEY,
-    designation_id VARCHAR(26) NOT NULL REFERENCES designations(id),
-    achieved_at    TIMESTAMP NOT NULL,
-    updated_at     TIMESTAMP NOT NULL
-);
-
-
-
--- badge_definitions フェーズ1シード: オンボーディング系(onboarding-xx)
--- onboarding-00 はデッキ登録等より前に達成される起点のため、連番の先頭として 00 を割り当てる
-INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
-('onboarding-00', 'signup',           'onboarding', 'ユーザ登録', 'バトレコのユーザになった',     'user',   'signup',       1, now(), now()),
-('onboarding-01', 'first_deck',       'onboarding', '初デッキ',  '初めてデッキを登録した',       'deck',   'deck_count',   1, now(), now()),
-('onboarding-02', 'first_record',     'onboarding', '初記録',   '初めて記録を作成した',         'record', 'record_count', 1, now(), now()),
-('onboarding-03', 'first_match',      'onboarding', '初対戦',   '初めて対戦結果を追加した',     'trophy', 'match_count',  1, now(), now());
-
--- badge_definitions フェーズ1シード: マイルストーン系(milestone-〇〇-xx)
-INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
-('milestone-record-01', 'record_count_3',  'milestone', '駆け出しユーザー', '記録数が3に到達した',  'medal', 'record_count', 3, now(), now()),
-('milestone-record-02', 'record_count_15', 'milestone', '常連ユーザー',    '記録数が15に到達した',  'medal', 'record_count', 15, now(), now()),
-('milestone-record-03', 'record_count_30', 'milestone', 'ベテランユーザー', '記録数が30に到達した',  'medal', 'record_count', 30, now(), now()),
-('milestone-record-04', 'record_count_50', 'milestone', 'マスターユーザー', '記録数が50に到達した', 'medal', 'record_count', 50, now(), now());
-
-UPDATE badge_definitions SET name = '駆け出しユーザー' WHERE id = 'milestone-record-01';
-UPDATE badge_definitions SET name = '常連ユーザー'    WHERE id = 'milestone-record-02';
-UPDATE badge_definitions SET name = 'ベテランユーザー' WHERE id = 'milestone-record-03';
-UPDATE badge_definitions SET name = 'マスターユーザー' WHERE id = 'milestone-record-04';
-
-INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
-('milestone-deck-01', 'deck_count_3',  'milestone', '駆け出しビルダー',  'デッキコード数が3に到達した',  'medal', 'deck_count', 3,  now(), now()),
-('milestone-deck-02', 'deck_count_15', 'milestone', '常連ビルダー',     'デッキコード数が15に到達した', 'medal', 'deck_count', 15, now(), now()),
-('milestone-deck-03', 'deck_count_30', 'milestone', 'ベテランビルダー',  'デッキコード数が30に到達した', 'medal', 'deck_count', 30, now(), now()),
-('milestone-deck-04', 'deck_count_50', 'milestone', 'マスタービルダー',  'デッキコード数が50に到達した', 'medal', 'deck_count', 50, now(), now());
-
-INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
-('milestone-match-01', 'match_count_10',  'milestone', '駆け出しバトラー',  '対戦数が10に到達した',  'medal', 'match_count', 10,  now(), now()),
-('milestone-match-02', 'match_count_50',  'milestone', '常連バトラー',      '対戦数が50に到達した', 'medal', 'match_count', 50, now(), now()),
-('milestone-match-03', 'match_count_100', 'milestone', 'ベテランバトラー',  '対戦数が100に到達した', 'medal', 'match_count', 100, now(), now()),
-('milestone-match-04', 'match_count_150', 'milestone', 'マスターバトラー',  '対戦数が150に到達した', 'medal', 'match_count', 150, now(), now());
-
--- badge_definitions フェーズ1シード: 週次ストリーク系(streak-xx)
-INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
-('streak-01', 'streak_week_3',  'streak', '週次記録3週連続',  '3週連続で対戦を記録した',  'flame', 'streak_weeks', 3,  now(), now()),
-('streak-02', 'streak_week_7',  'streak', '週次記録7週連続',  '7週連続で対戦を記録した',  'flame', 'streak_weeks', 7,  now(), now()),
-('streak-03', 'streak_week_15', 'streak', '週次記録15週連続', '15週連続で対戦を記録した', 'flame', 'streak_weeks', 15, now(), now()),
-('streak-04', 'streak_week_30', 'streak', '週次記録30週連続', '30週連続で対戦を記録した', 'flame', 'streak_weeks', 30, now(), now());
-
-
-
 INSERT INTO designations (id, tier, code, emoji, name, description, criteria_type, criteria_value, created_at, updated_at) VALUES
-('designation-01', 1,  'beginner',     '🌱', '駆け出し',   '公式イベント/Tonamel/記入形式、いずれかの記録を作成し、対戦結果を追加した', 'record', 1, now(), now()),
+('designation-01', 1,  'beginner',     '🌱', '駆け出し',   '公式イベント/Tonamel/記入形式、いずれかの記録において使用したデッキを指定のうえで作成し、対戦結果を追加した', 'record', 1, now(), now()),
 ('designation-02', 2,  'novice',       '🔰', '見習い',     '称号：【🌱 駆け出し】を持っており、公式イベント/Tonamel/記入形式、いずれかの記録を3つ以上作成した', 'record', 3, now(), now()),
 ('designation-03', 3,  'independent',  '👍', '一人前',     '称号：【🔰 見習い】を持っており、トレーナーズリーグかシティリーグの記録を作成した', 'official_league_record', 1, now(), now()),
 ('designation-04', 4,  'regular',      '🎫', 'レギュラー',  '称号：【👍 一人前】を持っており、前シーズンに引き続き今シーズンでもシティリーグの記録をしているか、今シーズンでシティリーグの記録を2つ以上作成した', 'official_city_league_record', 1, now(), now()),
@@ -651,51 +651,7 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 
 
 
-
--- 駆け出しの達成条件に「対戦結果(matches)を1件以上追加していること」を追加。
--- criteria_type='record' の集計対象は records の存在有無ではなく、matches が1件以上
--- 紐づく records の件数に変更(判定ロジックは internal/infrastructure/designation_stats.go の
--- CountRecordsByUserId 系で実装。同じ criteria_type を使う見習い(designation-02)にも
--- この変更は連動する)。
-UPDATE designations SET description = '公式イベント/Tonamel/記入形式、いずれかの記録を作成し、対戦結果を追加した' WHERE id = 'designation-01';
-
-
-
-
-
-
-UPDATE designations SET description = '公式イベント/Tonamel/記入形式、いずれかの記録を作成した',                                    criteria_type = 'record'                     WHERE id = 'designation-01';
-UPDATE designations SET description = '称号：【🌱 駆け出し】を持っており、公式イベント/Tonamel/記入形式、いずれかの記録を3つ以上作成した', criteria_type = 'record', criteria_value = 3 WHERE id = 'designation-02';
-UPDATE designations SET description = '称号：【🔰 見習い】を持っており、トレーナーズリーグかシティリーグの記録を作成した'                                                              WHERE id = 'designation-03';
-
-
--- レギュラーの達成条件に「前シーズンからの継続」に加え「今シーズン単独でシティリーグ記録2つ以上」の
--- 代替条件を追加(判定ロジックは internal/usecase/designation.go の currentDesignation で実装)。
-UPDATE designations SET description = '称号：【👍 一人前】を持っており、前シーズンに引き続き今シーズンでもシティリーグの記録をしているか、今シーズンでシティリーグの記録を2つ以上作成した' WHERE id = 'designation-04';
-
-
--- ベテランの達成条件を実装。プレイヤーズクラブ連携済みのプレイヤーIDで、選択中のシーズン内に
--- 公式サイトの結果(cityleague_results)にそのプレイヤーIDのレコードが1件以上あれば達成
--- (判定ロジックは internal/usecase/designation.go の seasonValuesByCriteriaType で実装)。
-UPDATE designations SET
-    criteria_type = 'official_city_league_placement',
-    criteria_value = 1,
-    description = '称号:【🎫 レギュラー】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで入賞した'
-WHERE id = 'designation-05';
-
-
--- 熟練の達成条件を実装。プレイヤーズクラブ連携済みのプレイヤーIDで、選択中のシーズン内に
--- 公式サイトの結果(cityleague_results)にそのプレイヤーIDかつrankが5以下のレコードが
--- 1件以上あれば達成(判定ロジックは internal/usecase/designation.go の
--- seasonValuesByCriteriaType で実装)。
-UPDATE designations SET
-    criteria_type = 'official_city_league_playoff',
-    criteria_value = 1,
-    description = '称号:【💪 ベテラン】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで決勝トーナメントに進出した'
-WHERE id = 'designation-06';
-
-
-UPDATE designations SET name = '熟練' WHERE id = 'designation-06';
+UPDATE designations SET description = '公式イベント/Tonamel/記入形式、いずれかの記録において使用したデッキを指定のうえで作成し、対戦結果を追加した' WHERE id = 'designation-01';
 
 
 
@@ -736,7 +692,7 @@ CREATE TABLE notifications (
     id          VARCHAR(26) PRIMARY KEY,
     created_at  TIMESTAMP NOT NULL,
     user_id     VARCHAR(32) NOT NULL,
-    category    VARCHAR(32) NOT NULL,   -- 'badge' / 'streak' (webappのNotificationCategoryと一致)
+    category    VARCHAR(32) NOT NULL, -- 'badge'/'designation'/'rank'/'streak'
     title       VARCHAR(128) NOT NULL,
     body        VARCHAR(256) NOT NULL,
     link_url    VARCHAR(256) NOT NULL DEFAULT '',
@@ -750,44 +706,45 @@ CREATE INDEX idx_notifications_user_id_created_at ON notifications (user_id, cre
 
 
 
-GRANT SELECT ON shops                 TO grafana;
-GRANT SELECT ON official_events       TO grafana;
-GRANT SELECT ON unofficial_events     TO grafana;
+GRANT SELECT ON shops                   TO grafana;
+GRANT SELECT ON official_events         TO grafana;
+GRANT SELECT ON unofficial_events       TO grafana;
 
-GRANT SELECT ON pokemon_sprites       TO grafana;
-GRANT SELECT ON pokemon_avatars       TO grafana;
+GRANT SELECT ON pokemon_sprites         TO grafana;
+GRANT SELECT ON pokemon_avatars         TO grafana;
 
-GRANT SELECT ON users                 TO grafana;
-GRANT SELECT ON users_players         TO grafana;
-GRANT SELECT ON player_rankings       TO grafana;
+GRANT SELECT ON users                   TO grafana;
+GRANT SELECT ON users_players           TO grafana;
+GRANT SELECT ON player_rankings         TO grafana;
 
-GRANT SELECT ON records               TO grafana;
-GRANT SELECT ON matches               TO grafana;
-GRANT SELECT ON match_pokemon_sprites TO grafana;
-GRANT SELECT ON games                 TO grafana;
+GRANT SELECT ON records                 TO grafana;
+GRANT SELECT ON matches                 TO grafana;
+GRANT SELECT ON match_pokemon_sprites   TO grafana;
+GRANT SELECT ON games                   TO grafana;
 
-GRANT SELECT ON decks                 TO grafana;
-GRANT SELECT ON deck_codes            TO grafana;
-GRANT SELECT ON deck_pokemon_sprites  TO grafana;
+GRANT SELECT ON decks                   TO grafana;
+GRANT SELECT ON deck_codes              TO grafana;
+GRANT SELECT ON deck_pokemon_sprites    TO grafana;
 
-GRANT SELECT ON championship_series   TO grafana;
-GRANT SELECT ON standard_regulations  TO grafana;
-GRANT SELECT ON environments          TO grafana;
+GRANT SELECT ON championship_series     TO grafana;
+GRANT SELECT ON standard_regulations    TO grafana;
+GRANT SELECT ON environments            TO grafana;
 
-GRANT SELECT ON cityleague_schedules  TO grafana;
-GRANT SELECT ON cityleague_results    TO grafana;
+GRANT SELECT ON cityleague_schedules    TO grafana;
+GRANT SELECT ON cityleague_results      TO grafana;
 
-GRANT SELECT ON cards                 TO grafana;
-GRANT SELECT ON pokemon_cards         TO grafana;
+GRANT SELECT ON cards                   TO grafana;
+GRANT SELECT ON pokemon_cards           TO grafana;
 
-GRANT SELECT ON badge_definitions     TO grafana;
-GRANT SELECT ON user_badges           TO grafana;
-GRANT SELECT ON user_streaks          TO grafana;
+GRANT SELECT ON badge_definitions       TO grafana;
+GRANT SELECT ON user_badges             TO grafana;
+GRANT SELECT ON user_streaks            TO grafana;
 
-GRANT SELECT ON designations          TO grafana;
-GRANT SELECT ON user_designations     TO grafana;
+GRANT SELECT ON user_environment_badges TO grafana;
 
-GRANT SELECT ON notifications         TO grafana;
+GRANT SELECT ON designations            TO grafana;
+
+GRANT SELECT ON notifications           TO grafana;
 
 
 

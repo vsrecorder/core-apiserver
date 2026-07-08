@@ -1,12 +1,6 @@
 // repair-streaks は、何らかの理由で user_streaks が現存の records と食い違ってしまった
 // 場合に、全対象ユーザーの週次ストリーク状態を records から作り直すための復旧バッチ。
 //
-// backfill-badges(cmd/backfill-badges)は「badge_definitions/user_badges/user_streaks
-// テーブル作成後、本番投入前に一度だけ実行する」初回投入専用のツールで、既存の
-// user_streaks 行を上書き・削除するロジックを持たない。そのため、record の削除が
-// EvaluateOnRecordDeleted を経由しない形(過去の不具合や手動でのDB操作等)で行われて
-// user_streaks が古いまま残ったケースを、backfill-badges の再実行では是正できない。
-//
 // 本ツールは EvaluateOnRecordDeleted と同じ「現存する records の日付からゼロから
 // 再計算し、行ごと上書きする」ロジック(usecase.ComputeStreakState)を、削除以外の
 // トリガーからも使えるようにしたものである。

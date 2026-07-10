@@ -18,6 +18,7 @@ type Record struct {
 	DeckId          string
 	DeckCodeId      string
 	PrivateFlg      bool
+	IgnoreStatsFlg  bool
 	TCGMeisterURL   string
 	Memo            string
 	// 自由形式イベント用。開催日(EventDate)はユーザ入力値を保持し、
@@ -41,6 +42,7 @@ func NewRecord(
 	deckId string,
 	deckCodeId string,
 	privateFlg bool,
+	ignoreStatsFlg bool,
 	tcgMeisterURL string,
 	memo string,
 	eventDate time.Time,
@@ -56,6 +58,7 @@ func NewRecord(
 		DeckId:            deckId,
 		DeckCodeId:        deckCodeId,
 		PrivateFlg:        privateFlg,
+		IgnoreStatsFlg:    ignoreStatsFlg,
 		TCGMeisterURL:     tcgMeisterURL,
 		Memo:              memo,
 		EventDate:         eventDate,

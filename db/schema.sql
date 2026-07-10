@@ -162,6 +162,7 @@ CREATE TABLE records (
     deck_code_id              VARCHAR(26) DEFAULT NULL,
     event_date                DATE DEFAULT NULL,
     private_flg               BOOLEAN DEFAULT NULL,
+    ignore_stats_flg          BOOLEAN NOT NULL DEFAULT false,
     tcg_meister_url           TEXT,
     memo                      TEXT,
     -- deck_id/deck_code_idが未設定→設定ありに変わった日時。称号判定のasOf集計
@@ -971,6 +972,13 @@ FROM (
     FROM matches
 ) sub
 WHERE m.id = sub.id;
+
+COMMIT;
+
+-- 記録を戦績集計(勝率・デッキ使用率・バッジ/称号判定など)から除外するためのフラグを追加
+BEGIN;
+
+ALTER TABLE records ADD COLUMN ignore_stats_flg BOOLEAN NOT NULL DEFAULT false;
 
 COMMIT;
 

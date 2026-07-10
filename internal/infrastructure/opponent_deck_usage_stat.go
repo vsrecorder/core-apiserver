@@ -51,7 +51,7 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 		Select("matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg").
 		Joins("JOIN records ON matches.record_id = records.id").
 		Where(
-			"records.user_id = ? AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND matches.opponents_deck_info != ''",
+			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != ''",
 			userId,
 		)
 

@@ -45,7 +45,7 @@ func (i *UserStatRecent) FindRecentMatches(
 				"matches.opponents_deck_info AS opponents_deck_info, "+
 				"matches.victory_flg AS victory_flg",
 		).
-		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 
 	if deckId != "" {

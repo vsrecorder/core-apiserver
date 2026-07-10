@@ -47,6 +47,7 @@ func (i *Record) FindById(
 		model.DeckCodeId,
 		model.EventDate,
 		model.PrivateFlg,
+		model.IgnoreStatsFlg,
 		model.TCGMeisterURL,
 		model.Memo,
 	)
@@ -96,6 +97,7 @@ func (i *Record) Find(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -163,6 +165,7 @@ func (i *Record) FindOnCursor(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -215,6 +218,7 @@ func (i *Record) FindByUserId(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -268,6 +272,7 @@ func (i *Record) FindByUserIdOnCursor(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -304,6 +309,7 @@ func (i *Record) FindByOfficialEventId(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -340,6 +346,7 @@ func (i *Record) FindByTonamelEventId(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -392,6 +399,7 @@ func (i *Record) FindByDeckId(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -445,6 +453,7 @@ func (i *Record) FindByDeckIdOnCursor(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -481,6 +490,7 @@ func (i *Record) FindByDeckCodeId(
 			model.DeckCodeId,
 			model.EventDate,
 			model.PrivateFlg,
+			model.IgnoreStatsFlg,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -518,6 +528,7 @@ func (i *Record) Save(
 		entity.DeckId,
 		entity.DeckCodeId,
 		entity.PrivateFlg,
+		entity.IgnoreStatsFlg,
 		entity.TCGMeisterURL,
 		entity.Memo,
 		entity.EventDate,

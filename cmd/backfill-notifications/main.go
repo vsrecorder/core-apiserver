@@ -617,16 +617,22 @@ func nthDate(dates []time.Time, n int, fallback time.Time) time.Time {
 // 記録は称号判定に影響しない=候補日にする必要がない)。
 //
 // 各recordの候補日(=achievedAtByEventDateで引ける実際の処理時刻)は、
-// GREATEST(event_date, updated_at, その記録に紐づくmatchのcreated_atのうち最も早いもの)
+// GREATEST(event_date, デッキ登録日時, その記録に紐づくmatchのcreated_atのうち最も早いもの)
 // で求める。称号(駆け出し・見習い等)の達成条件「対戦結果(matches)が1件以上ある」
 // 「デッキが登録されている」は、それぞれ対戦結果の追加・デッキの登録という別々の
-// タイミングで満たされうる(CountRecordsAsOfByUserIdはevent_date/updated_at/matchの
-// created_atをそれぞれ独立にasOfと比較するため、record作成後にどちらか一方だけ
+// タイミングで満たされうる(CountRecordsAsOfByUserIdはevent_date/deck_registered_at/
+// matchのcreated_atをそれぞれ独立にasOfと比較するため、record作成後にどちらか一方だけ
 // 後から満たされるケースがある)。この記録が実際に両条件を満たした瞬間は、それら
 // 個々のタイミングのうち最も遅いものであるため、GREATESTで求める。event_date単独や
-// updated_at単独を候補にすると、他方の条件がまだ満たされていない時点を誤って
+// デッキ登録日時単独を候補にすると、他方の条件がまだ満たされていない時点を誤って
 // 達成日として拾ってしまう(例: event_dateが古い日付でも、対戦結果の追加はそれより
 // 後、というケース)。
+//
+// デッキ登録日時には records.updated_at ではなく records.deck_registered_at
+// (COALESCE先はcreated_at)を使う。updated_atは記録全体のあらゆる編集(メモ修正等の
+// デッキ登録と無関係な変更)でも進んでしまうため、これをそのまま使うと、複数の記録を
+// まとめて後から編集しただけで無関係な達成日に化けたり、その編集日にまとめて達成日が
+// 集中してしまう(=称号・ランクアップ通知が軒並み同じ日時になる)不具合になる。
 func seasonRecordEventDates(
 	db *gorm.DB,
 	userId string,
@@ -639,11 +645,11 @@ func seasonRecordEventDates(
 	var rows []row
 
 	tx := db.Table("records").
-		Select("GREATEST(records.event_date, records.updated_at, COALESCE(MIN(matches.created_at), records.created_at)) AS achieved_at").
+		Select("GREATEST(records.event_date, COALESCE(records.deck_registered_at, records.created_at), COALESCE(MIN(matches.created_at), records.created_at)) AS achieved_at").
 		Joins("LEFT JOIN matches ON matches.record_id = records.id AND matches.deleted_at IS NULL").
 		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.event_date IS NOT NULL", userId).
 		Where("records.event_date >= ? AND records.event_date < ?", fromDate, toDate).
-		Group("records.id, records.event_date, records.updated_at, records.created_at").
+		Group("records.id, records.event_date, records.deck_registered_at, records.created_at").
 		Scan(&rows)
 	if tx.Error != nil {
 		return nil, nil, tx.Error

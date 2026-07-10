@@ -48,7 +48,7 @@ func (i *DesignationStats) CountRecordsByUserId(
 	var count int64
 
 	query := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL", userId).
+		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId).
 		Where(existsMatchForRecordCondition).
 		Where(hasDeckForRecordCondition)
 	if !fromDate.IsZero() {
@@ -87,7 +87,7 @@ func (i *DesignationStats) CountRecordsAsOfByUserId(
 	var count int64
 
 	query := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL", userId).
+		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId).
 		Where(existsMatchForRecordConditionAsOf, asOf).
 		Where(hasDeckForRecordCondition).
 		Where("updated_at < ?", asOf).
@@ -114,7 +114,7 @@ func (i *DesignationStats) CountCityLeagueRecordsByUserId(
 	query := i.db.Table("records").
 		Joins("JOIN official_events ON official_events.id = records.official_event_id").
 		Where(
-			"records.user_id = ? AND records.deleted_at IS NULL AND official_events.type_id = ?",
+			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id = ?",
 			userId, cityLeagueTypeId,
 		)
 	if !fromDate.IsZero() {
@@ -142,7 +142,7 @@ func (i *DesignationStats) CountLeagueRecordsByUserId(
 	query := i.db.Table("records").
 		Joins("JOIN official_events ON official_events.id = records.official_event_id").
 		Where(
-			"records.user_id = ? AND records.deleted_at IS NULL AND official_events.type_id IN (?, ?)",
+			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id IN (?, ?)",
 			userId, cityLeagueTypeId, trainersLeagueTypeId,
 		)
 	if !fromDate.IsZero() {
@@ -187,7 +187,7 @@ func (i *DesignationStats) CountRecordsGroupByUserId(
 ) (map[string]int, error) {
 	query := i.db.Table("records").
 		Select("user_id AS user_id, COUNT(*) AS count").
-		Where("deleted_at IS NULL").
+		Where("deleted_at IS NULL AND ignore_stats_flg = false").
 		Where(existsMatchForRecordCondition).
 		Where(hasDeckForRecordCondition)
 	if !fromDate.IsZero() {
@@ -210,7 +210,7 @@ func (i *DesignationStats) CountCityLeagueRecordsGroupByUserId(
 		Select("records.user_id AS user_id, COUNT(*) AS count").
 		Joins("JOIN official_events ON official_events.id = records.official_event_id").
 		Where(
-			"records.deleted_at IS NULL AND official_events.type_id = ?",
+			"records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id = ?",
 			cityLeagueTypeId,
 		)
 	if !fromDate.IsZero() {
@@ -229,7 +229,7 @@ func (i *DesignationStats) CountCityLeagueRecordsGroupByUserId(
 // 追加条件(ユーザーへ提示する説明文には含めない)。
 const existsRecordWithSameOfficialEventIdCondition = "EXISTS (" +
 	"SELECT 1 FROM records WHERE records.official_event_id = cityleague_results.official_event_id " +
-	"AND records.user_id = ? AND records.deleted_at IS NULL" +
+	"AND records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false" +
 	")"
 
 func (i *DesignationStats) ExistsCityLeagueResultByPlayerId(
@@ -263,7 +263,7 @@ func (i *DesignationStats) ExistsCityLeagueResultByPlayerId(
 // repository.DesignationStatsInterface.ExistsCityLeagueResultAsOfByPlayerId参照)。
 const existsRecordWithSameOfficialEventIdConditionAsOf = "EXISTS (" +
 	"SELECT 1 FROM records WHERE records.official_event_id = cityleague_results.official_event_id " +
-	"AND records.user_id = ? AND records.deleted_at IS NULL AND records.created_at < ?" +
+	"AND records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND records.created_at < ?" +
 	")"
 
 func (i *DesignationStats) ExistsCityLeagueResultAsOfByPlayerId(
@@ -302,7 +302,7 @@ func (i *DesignationStats) ExistsCityLeagueResultGroupByUserId(
 		).
 		Joins(
 			"JOIN records ON records.official_event_id = cityleague_results.official_event_id " +
-				"AND records.user_id = users_players.user_id AND records.deleted_at IS NULL",
+				"AND records.user_id = users_players.user_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false",
 		)
 	if !fromDate.IsZero() {
 		query = query.Where("cityleague_results.event_date >= ?", fromDate)
@@ -379,7 +379,7 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultGroupByUserId(
 		).
 		Joins(
 			"JOIN records ON records.official_event_id = cityleague_results.official_event_id "+
-				"AND records.user_id = users_players.user_id AND records.deleted_at IS NULL",
+				"AND records.user_id = users_players.user_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false",
 		).
 		Where("cityleague_results.rank <= ?", maxRank)
 	if !fromDate.IsZero() {
@@ -454,7 +454,7 @@ func (i *DesignationStats) CountLeagueRecordsGroupByUserId(
 		Select("records.user_id AS user_id, COUNT(*) AS count").
 		Joins("JOIN official_events ON official_events.id = records.official_event_id").
 		Where(
-			"records.deleted_at IS NULL AND official_events.type_id IN (?, ?)",
+			"records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id IN (?, ?)",
 			cityLeagueTypeId, trainersLeagueTypeId,
 		)
 	if !fromDate.IsZero() {

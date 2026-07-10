@@ -57,7 +57,7 @@ func test_OpponentDeckUsageStatInfrastructure_SameDeckInfoDifferentSpritesAreTre
 		AddRow("match-02", "リザードンex", false)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '' ORDER BY records.event_date ASC`,
+		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '' ORDER BY records.event_date ASC`,
 	)).WithArgs(userId).WillReturnRows(matchRows)
 
 	spriteRows := sqlmock.NewRows([]string{"match_id", "position", "pokemon_sprite_id"}).
@@ -91,7 +91,7 @@ func test_OpponentDeckUsageStatInfrastructure_SameDeckInfoSameSpritesAreAggregat
 		AddRow("match-02", "リザードンex", false)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '' ORDER BY records.event_date ASC`,
+		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '' ORDER BY records.event_date ASC`,
 	)).WithArgs(userId).WillReturnRows(matchRows)
 
 	spriteRows := sqlmock.NewRows([]string{"match_id", "position", "pokemon_sprite_id"}).
@@ -124,7 +124,7 @@ func test_OpponentDeckUsageStatInfrastructure_NoMatches(t *testing.T) {
 	matchRows := sqlmock.NewRows([]string{"match_id", "deck_info", "victory_flg"})
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '' ORDER BY records.event_date ASC`,
+		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '' ORDER BY records.event_date ASC`,
 	)).WithArgs(userId).WillReturnRows(matchRows)
 
 	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, "")
@@ -149,7 +149,7 @@ func test_OpponentDeckUsageStatInfrastructure_FilterByDeckIdUsesRecordsDeckId(t 
 		AddRow("match-01", "リザードンex", true)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE (records.user_id = $1 AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '') AND records.deck_id = $2 ORDER BY records.event_date ASC`,
+		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE (records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '') AND records.deck_id = $2 ORDER BY records.event_date ASC`,
 	)).WithArgs(userId, deckId).WillReturnRows(matchRows)
 
 	spriteRows := sqlmock.NewRows([]string{"match_id", "position", "pokemon_sprite_id"}).

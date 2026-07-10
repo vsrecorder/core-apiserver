@@ -523,6 +523,7 @@ func test_RecordController_Create(t *testing.T) {
 			"",
 			time.Time{},
 			privateFlg,
+			false,
 			"",
 			"",
 		)
@@ -602,6 +603,7 @@ func test_RecordController_Create(t *testing.T) {
 			"",
 			time.Time{},
 			privateFlg,
+			false,
 			"",
 			"",
 		)
@@ -729,6 +731,7 @@ func test_RecordController_Update(t *testing.T) {
 			"",
 			time.Time{},
 			privateFlg,
+			false,
 			"",
 			"",
 		)
@@ -811,6 +814,7 @@ func test_RecordController_Update(t *testing.T) {
 			"",
 			time.Time{},
 			privateFlg,
+			false,
 			"",
 			"",
 		)
@@ -883,6 +887,7 @@ func test_RecordController_Update(t *testing.T) {
 			"",
 			time.Time{},
 			privateFlg,
+			false,
 			"",
 			"",
 		)

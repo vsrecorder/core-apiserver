@@ -633,9 +633,9 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(
 		`UPDATE "records" SET "created_at"=$1,"updated_at"=$2,"deleted_at"=$3,"official_event_id"=$4,"tonamel_event_id"=$5,`+
-			`"friend_id"=$6,"user_id"=$7,"deck_id"=$8,"deck_code_id"=$9,"private_flg"=$10,"tcg_meister_url"=$11,"memo"=$12,`+
-			`"event_date"=$13,"unofficial_event_id"=$14 `+
-			`WHERE "records"."deleted_at" IS NULL AND "id" = $15`,
+			`"friend_id"=$6,"user_id"=$7,"deck_id"=$8,"deck_code_id"=$9,"private_flg"=$10,"ignore_stats_flg"=$11,"tcg_meister_url"=$12,"memo"=$13,`+
+			`"event_date"=$14,"unofficial_event_id"=$15 `+
+			`WHERE "records"."deleted_at" IS NULL AND "id" = $16`,
 	)).WithArgs(
 		datetime,
 		AnyTime{},
@@ -646,6 +646,7 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 		"",
 		"",
+		false,
 		false,
 		"",
 		"",

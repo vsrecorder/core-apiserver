@@ -44,7 +44,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		Select("records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(*) AS count, SUM(CASE WHEN matches.victory_flg THEN 1 ELSE 0 END) AS wins").
 		Joins("JOIN records ON matches.record_id = records.id").
 		Joins("LEFT JOIN decks ON records.deck_id = decks.id").
-		Where("records.user_id = ? AND records.deleted_at IS NULL AND matches.deleted_at IS NULL AND records.deck_id != ''", userId)
+		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND records.deck_id != ''", userId)
 
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)

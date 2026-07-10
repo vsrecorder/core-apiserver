@@ -162,6 +162,7 @@ CREATE TABLE records (
     deck_code_id              VARCHAR(26) DEFAULT NULL,
     event_date                DATE DEFAULT NULL,
     private_flg               BOOLEAN DEFAULT NULL,
+    ignore_stats_flg          BOOLEAN NOT NULL DEFAULT false,
     tcg_meister_url           TEXT,
     memo                      TEXT
 );

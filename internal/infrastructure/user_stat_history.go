@@ -39,7 +39,7 @@ func (i *UserStatHistory) FindUserStatHistory(
 				"COUNT(*) AS total_matches, "+
 				"SUM(CASE WHEN matches.victory_flg = true THEN 1 ELSE 0 END) AS wins",
 		).
-		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId).
 		Where("records.event_date >= ? AND records.event_date < ?", fromDate, toDate)
 

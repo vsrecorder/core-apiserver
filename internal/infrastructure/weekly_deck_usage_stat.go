@@ -65,6 +65,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	// - 期間フィルタは既存の集計に合わせ records.event_date の半開区間 [from, to)。
 	// - 論理削除は deleted_at IS NULL で除外。
 	// - private_flg は現状すべて true の予約フラグのため、フィルタ条件には入れない。
+	// - ignore_stats_flg が立っている記録は、個人の戦績だけでなくこの公開レポートからも除外する。
 	// - デッキ名・対戦相手デッキ名（フリーテキスト）は集計に使わないため取得しない。
 	query := i.db.Table("matches").
 		Select(
@@ -74,7 +75,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 				"matches.victory_flg AS victory_flg",
 		).
 		Joins("JOIN records ON matches.record_id = records.id").
-		Where("records.deleted_at IS NULL AND matches.deleted_at IS NULL")
+		Where("records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL")
 
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)

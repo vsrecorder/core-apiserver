@@ -19,6 +19,7 @@ type RecordParam struct {
 	deckCodeId        string
 	eventDate         time.Time
 	privateFlg        bool
+	ignoreStatsFlg    bool
 	tcgMeisterURL     string
 	memo              string
 }
@@ -33,6 +34,7 @@ func NewRecordParam(
 	deckCodeId string,
 	eventDate time.Time,
 	privateFlg bool,
+	ignoreStatsFlg bool,
 	tcgMeisterURL string,
 	memo string,
 ) *RecordParam {
@@ -46,6 +48,7 @@ func NewRecordParam(
 		deckCodeId:        deckCodeId,
 		eventDate:         eventDate,
 		privateFlg:        privateFlg,
+		ignoreStatsFlg:    ignoreStatsFlg,
 		tcgMeisterURL:     tcgMeisterURL,
 		memo:              memo,
 	}
@@ -340,6 +343,7 @@ func (u *Record) Create(
 		param.deckCodeId,
 		param.eventDate,
 		param.privateFlg,
+		param.ignoreStatsFlg,
 		param.tcgMeisterURL,
 		param.memo,
 	)
@@ -396,6 +400,7 @@ func (u *Record) Update(
 		param.deckCodeId,
 		param.eventDate,
 		param.privateFlg,
+		param.ignoreStatsFlg,
 		param.tcgMeisterURL,
 		param.memo,
 	)

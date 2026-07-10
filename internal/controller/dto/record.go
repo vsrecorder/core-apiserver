@@ -13,6 +13,7 @@ type RecordRequest struct {
 	DeckCodeId        string    `json:"deck_code_id"`
 	EventDate         time.Time `json:"event_date"`
 	PrivateFlg        bool      `json:"private_flg"`
+	IgnoreStatsFlg    bool      `json:"ignore_stats_flg"`
 	TCGMeisterURL     string    `json:"tcg_meister_url"`
 	Memo              string    `json:"memo"`
 }
@@ -42,6 +43,7 @@ type RecordResponse struct {
 	DeckCodeId        string    `json:"deck_code_id"`
 	EventDate         time.Time `json:"event_date"`
 	PrivateFlg        bool      `json:"private_flg"`
+	IgnoreStatsFlg    bool      `json:"ignore_stats_flg"`
 	TCGMeisterURL     string    `json:"tcg_meister_url"`
 	Memo              string    `json:"memo"`
 }

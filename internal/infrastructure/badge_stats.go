@@ -27,7 +27,7 @@ func (i *BadgeStats) CountRecordsByUserId(
 ) (int, error) {
 	var count int64
 
-	query := i.db.Table("records").Where("user_id = ? AND deleted_at IS NULL", userId)
+	query := i.db.Table("records").Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}
@@ -51,7 +51,7 @@ func (i *BadgeStats) CountMatchesByUserId(
 	var count int64
 
 	query := i.db.Table("matches").
-		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)
@@ -129,7 +129,7 @@ func (i *BadgeStats) FindRecordDatesByUserId(
 
 	query := i.db.Table("records").
 		Select("event_date, created_at").
-		Where("user_id = ? AND deleted_at IS NULL", userId)
+		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId)
 	if !fromDate.IsZero() {
 		query = query.Where("COALESCE(event_date, created_at) >= ?", fromDate)
 	}
@@ -210,7 +210,7 @@ func (i *BadgeStats) FindMatchDatesByUserId(
 	var dates []time.Time
 
 	query := i.db.Table("matches").
-		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)

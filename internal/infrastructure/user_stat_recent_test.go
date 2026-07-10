@@ -61,7 +61,7 @@ func test_UserStatRecentInfrastructure_FindRecentMatches(t *testing.T) {
 	})
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT matches.id AS match_id, records.event_date AS event_date, matches.deck_id AS deck_id, matches.opponents_deck_info AS opponents_deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL WHERE matches.user_id = $1 AND matches.deleted_at IS NULL ORDER BY records.event_date DESC, matches.created_at DESC LIMIT $2`,
+		`SELECT matches.id AS match_id, records.event_date AS event_date, matches.deck_id AS deck_id, matches.opponents_deck_info AS opponents_deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false WHERE matches.user_id = $1 AND matches.deleted_at IS NULL ORDER BY records.event_date DESC, matches.created_at DESC LIMIT $2`,
 	)).WithArgs(
 		userId,
 		count,
@@ -90,7 +90,7 @@ func test_UserStatRecentInfrastructure_FindRecentMatchesWithDeckId(t *testing.T)
 	})
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT matches.id AS match_id, records.event_date AS event_date, matches.deck_id AS deck_id, matches.opponents_deck_info AS opponents_deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL WHERE (matches.user_id = $1 AND matches.deleted_at IS NULL) AND matches.deck_id = $2 ORDER BY records.event_date DESC, matches.created_at DESC LIMIT $3`,
+		`SELECT matches.id AS match_id, records.event_date AS event_date, matches.deck_id AS deck_id, matches.opponents_deck_info AS opponents_deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false WHERE (matches.user_id = $1 AND matches.deleted_at IS NULL) AND matches.deck_id = $2 ORDER BY records.event_date DESC, matches.created_at DESC LIMIT $3`,
 	)).WithArgs(
 		userId,
 		deckId,
@@ -127,7 +127,7 @@ func test_UserStatRecentInfrastructure_FindRecentMatchesOrdersAscending(t *testi
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT matches.id AS match_id, records.event_date AS event_date, matches.deck_id AS deck_id, matches.opponents_deck_info AS opponents_deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL WHERE matches.user_id = $1 AND matches.deleted_at IS NULL ORDER BY records.event_date DESC, matches.created_at DESC LIMIT $2`,
+		`SELECT matches.id AS match_id, records.event_date AS event_date, matches.deck_id AS deck_id, matches.opponents_deck_info AS opponents_deck_info, matches.victory_flg AS victory_flg FROM "matches" JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false WHERE matches.user_id = $1 AND matches.deleted_at IS NULL ORDER BY records.event_date DESC, matches.created_at DESC LIMIT $2`,
 	)).WithArgs(
 		userId,
 		count,

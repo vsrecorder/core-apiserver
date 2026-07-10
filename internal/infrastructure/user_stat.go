@@ -35,7 +35,7 @@ func (i *UserStat) FindUserStat(
 
 	matchQuery := i.db.Table("matches").
 		Select("COUNT(*) AS total_matches, SUM(CASE WHEN matches.victory_flg = true THEN 1 ELSE 0 END) AS wins").
-		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 
 	if !fromDate.IsZero() {
@@ -51,7 +51,7 @@ func (i *UserStat) FindUserStat(
 
 	var recordCount int64
 	recordQuery := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL", userId)
+		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId)
 
 	if !fromDate.IsZero() {
 		recordQuery = recordQuery.Where("event_date >= ?", fromDate)
@@ -66,7 +66,7 @@ func (i *UserStat) FindUserStat(
 
 	var officialEventCount int64
 	officialEventQuery := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL AND official_event_id != 0", userId)
+		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false AND official_event_id != 0", userId)
 
 	if !fromDate.IsZero() {
 		officialEventQuery = officialEventQuery.Where("event_date >= ?", fromDate)
@@ -81,7 +81,7 @@ func (i *UserStat) FindUserStat(
 
 	var tonamelEventCount int64
 	tonamelEventQuery := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL AND tonamel_event_id != ''", userId)
+		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false AND tonamel_event_id != ''", userId)
 
 	if !fromDate.IsZero() {
 		tonamelEventQuery = tonamelEventQuery.Where("event_date >= ?", fromDate)
@@ -96,7 +96,7 @@ func (i *UserStat) FindUserStat(
 
 	var unofficialEventCount int64
 	unofficialEventQuery := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL AND unofficial_event_id != ''", userId)
+		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false AND unofficial_event_id != ''", userId)
 
 	if !fromDate.IsZero() {
 		unofficialEventQuery = unofficialEventQuery.Where("event_date >= ?", fromDate)

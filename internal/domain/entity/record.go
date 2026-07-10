@@ -16,6 +16,7 @@ type Record struct {
 	DeckCodeId        string
 	EventDate         time.Time
 	PrivateFlg        bool
+	IgnoreStatsFlg    bool
 	TCGMeisterURL     string
 	Memo              string
 	// DeckRegisteredAt は deck_id/deck_code_id が未設定→設定ありに変わった日時
@@ -36,6 +37,7 @@ func NewRecord(
 	deckCodeId string,
 	eventDate time.Time,
 	privateFlg bool,
+	ignoreStatsFlg bool,
 	tcgMeisterURL string,
 	memo string,
 ) *Record {
@@ -51,6 +53,7 @@ func NewRecord(
 		DeckCodeId:        deckCodeId,
 		EventDate:         eventDate,
 		PrivateFlg:        privateFlg,
+		IgnoreStatsFlg:    ignoreStatsFlg,
 		TCGMeisterURL:     tcgMeisterURL,
 		Memo:              memo,
 	}

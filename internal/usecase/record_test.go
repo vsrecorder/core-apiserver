@@ -181,10 +181,10 @@ func TestRecordUsecase_Update_NotifiesDesignationChange(t *testing.T) {
 	require.NoError(t, err)
 
 	record := entity.NewRecord(
-		id, time.Now().Local(), 0, "", "", "", "", deckId, "", time.Time{}, false, "", "",
+		id, time.Now().Local(), 0, "", "", "", "", deckId, "", time.Time{}, false, false, "", "",
 	)
 
-	param := NewRecordParam(0, "", "", "", "", deckId, "", time.Time{}, false, "", "")
+	param := NewRecordParam(0, "", "", "", "", deckId, "", time.Time{}, false, false, "", "")
 
 	mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
 	mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -682,6 +682,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			time.Time{},
 			false,
+			false,
 			"",
 			"",
 		)
@@ -695,6 +696,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			time.Time{},
+			false,
 			false,
 			"",
 			"",
@@ -721,6 +723,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			time.Time{},
+			false,
 			false,
 			"",
 			"",
@@ -752,6 +755,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			time.Time{},
 			false,
+			false,
 			"",
 			"",
 		)
@@ -765,6 +769,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			time.Time{},
+			false,
 			false,
 			"",
 			"",
@@ -791,6 +796,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			time.Time{},
+			false,
 			false,
 			"",
 			"",
@@ -820,6 +826,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			time.Time{},
 			false,
+			false,
 			"",
 			"",
 		)
@@ -833,6 +840,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			time.Time{},
+			false,
 			false,
 			"",
 			"",
@@ -863,6 +871,7 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			time.Time{},
+			false,
 			false,
 			"",
 			"",
@@ -900,6 +909,7 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 			"",
 			"",
 			time.Time{},
+			false,
 			false,
 			"",
 			"",

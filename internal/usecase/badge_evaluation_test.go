@@ -230,7 +230,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			},
 		).Times(1)
 
-		record := entity.NewRecord("record-1", time.Now(), 0, "", "", "", "user-1", "", "", time.Now(), false, "", "")
+		record := entity.NewRecord("record-1", time.Now(), 0, "", "", "", "user-1", "", "", time.Now(), false, false, "", "")
 
 		awarded, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 
@@ -264,7 +264,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		// 既に獲得済みなので userBadgeRepo.Save は呼ばれない(=notificationRepo.Saveも呼ばれない)
 		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
 
-		record := entity.NewRecord("record-2", now, 0, "", "", "", "user-1", "", "", now, false, "", "")
+		record := entity.NewRecord("record-2", now, 0, "", "", "", "user-1", "", "", now, false, false, "", "")
 
 		awarded, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 
@@ -300,7 +300,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 
 		// event_dateは過去の対戦日(backfill入力値)だが、初記録バッジのachieved_atは
 		// first_deck/first_match/signupと同様、実際に記録した日時(created_at)を採用すべき
-		record := entity.NewRecord("record-1", now, 0, "", "", "", "user-1", "", "", pastEventDate, false, "", "")
+		record := entity.NewRecord("record-1", now, 0, "", "", "", "user-1", "", "", pastEventDate, false, false, "", "")
 
 		_, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 		require.NoError(t, err)
@@ -344,7 +344,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			},
 		).Times(1)
 
-		record := entity.NewRecord("record-10", now, 0, "", "", "", "user-1", "", "", eventDate, false, "", "")
+		record := entity.NewRecord("record-10", now, 0, "", "", "", "user-1", "", "", eventDate, false, false, "", "")
 
 		awarded, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 
@@ -374,7 +374,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(6, nil).Times(2)
 		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return([]time.Time{now}, nil)
 
-		record := entity.NewRecord("record-6", now, 0, "", "", "", "user-1", "", "", now, false, "", "")
+		record := entity.NewRecord("record-6", now, 0, "", "", "", "user-1", "", "", now, false, false, "", "")
 
 		awarded, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 
@@ -419,7 +419,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			},
 		).Times(1)
 
-		record := entity.NewRecord("record-x", thisWeekRecord, 0, "", "", "", "user-1", "", "", thisWeekRecord, false, "", "")
+		record := entity.NewRecord("record-x", thisWeekRecord, 0, "", "", "", "user-1", "", "", thisWeekRecord, false, false, "", "")
 
 		_, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 		require.NoError(t, err)
@@ -461,7 +461,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			},
 		).Times(2)
 
-		record := entity.NewRecord("record-x", thisWeekRecord, 0, "", "", "", "user-1", "", "", thisWeekRecord, false, "", "")
+		record := entity.NewRecord("record-x", thisWeekRecord, 0, "", "", "", "user-1", "", "", thisWeekRecord, false, false, "", "")
 
 		awarded, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 		require.NoError(t, err)
@@ -506,7 +506,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 
 		// notificationRepo.Saveは呼ばれない(EXPECT未設定=呼ばれたら失敗)
 
-		record := entity.NewRecord("record-y", secondRecordThisWeek, 0, "", "", "", "user-1", "", "", secondRecordThisWeek, false, "", "")
+		record := entity.NewRecord("record-y", secondRecordThisWeek, 0, "", "", "", "user-1", "", "", secondRecordThisWeek, false, false, "", "")
 
 		_, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
 		require.NoError(t, err)

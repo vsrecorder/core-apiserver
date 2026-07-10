@@ -101,12 +101,8 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 		}
 	}
 
-	// いずれも未指定の場合は当月
-	if fromDate.IsZero() {
-		now := time.Now().Local()
-		fromDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-		toDate = fromDate.AddDate(0, 1, 0)
-	}
-
+	// yearMonth/season/environmentId/regulationIdのいずれも未指定の場合は、
+	// fromDate/toDateをゼロ値のまま渡し「全期間」として扱う
+	// （repository側はゼロ値の場合event_dateによる絞り込みを行わない）
 	return u.opponentDeckUsageStatRepo.FindOpponentDeckUsageStat(ctx, userId, fromDate, toDate, deckId)
 }

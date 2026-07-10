@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -65,6 +66,29 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 
 		mockRepository.EXPECT().
 			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), gomock.Any(), deckId).
+			Return(stat, nil)
+
+		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, yearMonth, environmentId, season, regulationId, deckId)
+
+		require.NoError(t, err)
+		require.Equal(t, stat, ret)
+	})
+
+	// 「全期間」フィルタはyear_month等のクエリパラメータを一切送らないため、
+	// この場合に当月だけへ絞り込んでしまう不具合の再発防止テスト。
+	// fromDate/toDateがゼロ値のままrepositoryに渡され、event_dateによる絞り込みが行われないことを確認する。
+	t.Run("正常系_#03_フィルタ未指定時はfromDate_toDateがゼロ値のまま渡される(全期間)", func(t *testing.T) {
+		userId := "user-03"
+		yearMonth := ""
+		environmentId := ""
+		season := ""
+		regulationId := ""
+		deckId := "deck-01"
+
+		stat := entity.NewOpponentDeckUsageStat(userId, 3, []*entity.OpponentDeckUsage{})
+
+		mockRepository.EXPECT().
+			FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, deckId).
 			Return(stat, nil)
 
 		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, yearMonth, environmentId, season, regulationId, deckId)

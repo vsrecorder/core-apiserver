@@ -163,8 +163,35 @@ CREATE TABLE records (
     event_date                DATE DEFAULT NULL,
     private_flg               BOOLEAN DEFAULT NULL,
     tcg_meister_url           TEXT,
-    memo                      TEXT
+    memo                      TEXT,
+    -- deck_id/deck_code_idが未設定→設定ありに変わった日時。称号判定のasOf集計
+    -- (CountRecordsAsOfByUserId)で「デッキ後付け登録」を正しく判定するために使う。
+    deck_registered_at        TIMESTAMP DEFAULT NULL
 );
+
+
+
+
+
+BEGIN;
+
+ALTER TABLE records
+    ADD COLUMN deck_registered_at TIMESTAMP DEFAULT NULL;
+
+-- 既存レコードは「デッキが登録済みなら作成時に登録されていた」とみなしてcreated_atで埋める
+-- (過去に後付けでデッキ登録したケースを正確に区別する手段が無いための近似値。
+--  以後は usecase.Record.Create/Update が正しいタイミングで設定する)
+UPDATE records
+SET deck_registered_at = created_at
+WHERE (deck_id IS NOT NULL AND deck_id <> '')
+   OR (deck_code_id IS NOT NULL AND deck_code_id <> '');
+
+COMMIT;
+
+
+
+
+
 
 CREATE INDEX idx_records_created_at ON records(created_at);
 CREATE INDEX idx_records_deleted_at ON records(deleted_at);

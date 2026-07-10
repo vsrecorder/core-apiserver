@@ -343,6 +343,9 @@ func (u *Record) Create(
 		param.tcgMeisterURL,
 		param.memo,
 	)
+	if param.deckId != "" || param.deckCodeId != "" {
+		record.DeckRegisteredAt = &createdAt
+	}
 
 	if err := u.repository.Save(ctx, record); err != nil {
 		return nil, err
@@ -399,6 +402,14 @@ func (u *Record) Update(
 		param.tcgMeisterURL,
 		param.memo,
 	)
+	// デッキ未登録のまま作成した記録に、後からデッキを登録した瞬間だけ
+	// DeckRegisteredAtを更新する。それ以外(既に登録済み/デッキ以外の編集/
+	// デッキ未登録のまま)は更新前の値をそのまま引き継ぐ。
+	record.DeckRegisteredAt = ret.DeckRegisteredAt
+	if record.DeckRegisteredAt == nil && (param.deckId != "" || param.deckCodeId != "") {
+		now := time.Now().Local()
+		record.DeckRegisteredAt = &now
+	}
 
 	if err := u.repository.Save(ctx, record); err != nil {
 		return nil, err

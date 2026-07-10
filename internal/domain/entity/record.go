@@ -18,6 +18,10 @@ type Record struct {
 	PrivateFlg        bool
 	TCGMeisterURL     string
 	Memo              string
+	// DeckRegisteredAt は deck_id/deck_code_id が未設定→設定ありに変わった日時
+	// (称号判定のasOf集計で使う。usecase.Record.Create/Updateが設定する)。
+	// nil = 未設定。
+	DeckRegisteredAt *time.Time
 }
 
 func NewRecord(

@@ -24,6 +24,11 @@ type Record struct {
 	// イベント本体は unofficial_events テーブルへ分離して UnofficialEventId で参照する。
 	EventDate         time.Time
 	UnofficialEventId string
+	// DeckRegisteredAt は deck_id/deck_code_id が未設定→設定ありに変わった日時
+	// (称号判定のasOf集計で使う。usecase.Record.Create/Updateが設定する)。
+	// time.Time(非ポインタ)だとゼロ値がSaveのたびにNULLではなく'0001-01-01'として
+	// 書き込まれてしまうため、未設定=nilを表現できるポインタ型にする。
+	DeckRegisteredAt *time.Time
 }
 
 func NewRecord(

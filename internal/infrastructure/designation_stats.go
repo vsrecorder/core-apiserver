@@ -90,7 +90,7 @@ func (i *DesignationStats) CountRecordsAsOfByUserId(
 		Where("user_id = ? AND deleted_at IS NULL", userId).
 		Where(existsMatchForRecordConditionAsOf, asOf).
 		Where(hasDeckForRecordCondition).
-		Where("updated_at < ?", asOf).
+		Where("COALESCE(deck_registered_at, created_at) < ?", asOf).
 		Where("event_date < ?", asOf)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)

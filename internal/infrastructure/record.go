@@ -50,6 +50,7 @@ func (i *Record) FindById(
 		model.TCGMeisterURL,
 		model.Memo,
 	)
+	entity.DeckRegisteredAt = model.DeckRegisteredAt
 
 	return entity, nil
 }
@@ -98,6 +99,7 @@ func (i *Record) Find(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -164,6 +166,7 @@ func (i *Record) FindOnCursor(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -215,6 +218,7 @@ func (i *Record) FindByUserId(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -267,6 +271,7 @@ func (i *Record) FindByUserIdOnCursor(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -302,6 +307,7 @@ func (i *Record) FindByOfficialEventId(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -337,6 +343,7 @@ func (i *Record) FindByTonamelEventId(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -388,6 +395,7 @@ func (i *Record) FindByDeckId(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -440,6 +448,7 @@ func (i *Record) FindByDeckIdOnCursor(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -475,6 +484,7 @@ func (i *Record) FindByDeckCodeId(
 			model.TCGMeisterURL,
 			model.Memo,
 		)
+		entity.DeckRegisteredAt = model.DeckRegisteredAt
 		entities = append(entities, entity)
 	}
 
@@ -513,6 +523,7 @@ func (i *Record) Save(
 		entity.EventDate,
 		entity.UnofficialEventId,
 	)
+	model.DeckRegisteredAt = entity.DeckRegisteredAt
 
 	if tx := i.db.Save(model); tx.Error != nil {
 		return tx.Error

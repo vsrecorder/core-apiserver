@@ -21,13 +21,16 @@ type DesignationStatsInterface interface {
 	) (int, error)
 
 	// CountRecordsAsOfByUserId は CountRecordsByUserId と同様の条件に加え、
-	// records.updated_at < asOf、および対戦結果(matches)についても
+	// records.deck_registered_at < asOf、および対戦結果(matches)についても
 	// matches.created_at < asOf も要求する。CountRecordsByUserId は「現在の状態」
 	// (現在デッキが登録されているか、現在対戦結果が1件以上紐づいているか)しか見ておらず、
 	// それぞれいつ登録・追加されたかを記録していないため、そのまま過去の特定時点(asOf)の
 	// 判定に使うと誤判定してしまう:
 	//   - デッキ未登録のまま作成した記録に後からデッキを登録(使用したデッキとして編集)
-	//     したケース → records.updated_at(デッキ登録時の更新で必ず進む)を下限として使う。
+	//     したケース → records.deck_registered_at(deck_id/deck_code_idが未設定から
+	//     設定ありに変わった瞬間だけ進む。usecase.Record.Create/Updateが設定する)を
+	//     下限として使う。records.updated_atは記録全体のあらゆる編集(メモ修正等の
+	//     デッキ登録と無関係な変更)でも進んでしまうため使わない。
 	//   - 対戦結果を追加する前に記録だけ先に作成したケース → 対戦結果はrecordsとは別
 	//     テーブルへの追加行で、追加してもrecordsの行(updated_at含む)は更新されない
 	//     ため、matches.created_atを直接下限として使う。

@@ -153,6 +153,9 @@ CREATE TABLE records (
     created_at                TIMESTAMP NOT NULL,
     updated_at                TIMESTAMP NOT NULL,
     deleted_at                TIMESTAMP DEFAULT NULL,
+    -- deck_id/deck_code_idが未設定→設定ありに変わった日時。称号判定のasOf集計
+    -- (CountRecordsAsOfByUserId)で「デッキ後付け登録」を正しく判定するために使う。
+    deck_registered_at        TIMESTAMP DEFAULT NULL,
     official_event_id         INT DEFAULT NULL,
     tonamel_event_id          VARCHAR(8) DEFAULT NULL,
     friend_id                 VARCHAR(32) DEFAULT NULL,
@@ -164,10 +167,7 @@ CREATE TABLE records (
     private_flg               BOOLEAN DEFAULT NULL,
     ignore_stats_flg          BOOLEAN NOT NULL DEFAULT false,
     tcg_meister_url           TEXT,
-    memo                      TEXT,
-    -- deck_id/deck_code_idが未設定→設定ありに変わった日時。称号判定のasOf集計
-    -- (CountRecordsAsOfByUserId)で「デッキ後付け登録」を正しく判定するために使う。
-    deck_registered_at        TIMESTAMP DEFAULT NULL
+    memo                      TEXT
 );
 
 

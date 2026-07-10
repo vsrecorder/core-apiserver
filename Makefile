@@ -75,6 +75,7 @@ image:
 .PHONY: deploy
 deploy:
 	git pull
+	git fetch --prune
 	docker compose pull
 	docker compose up -d --no-deps --wait core-apiserver
 

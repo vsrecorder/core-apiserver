@@ -380,6 +380,13 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	controller.NewOldestRecord(
+		r,
+		usecase.NewOldestRecord(
+			infrastructure.NewOldestRecord(db),
+		),
+	).RegisterRoute(relativePath)
+
 	// プラットフォーム全体の週次デッキ使用率（公開・非会員閲覧可）。
 	controller.NewWeeklyDeckUsageStat(
 		r,

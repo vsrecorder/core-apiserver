@@ -64,6 +64,10 @@ func GetQueryArchived(ctx *gin.Context) string {
 	return ctx.Query("archived")
 }
 
+func GetQueryAllTime(ctx *gin.Context) string {
+	return ctx.Query("all_time")
+}
+
 func GetQueryYearMonth(ctx *gin.Context) string {
 	return ctx.Query("year_month")
 }

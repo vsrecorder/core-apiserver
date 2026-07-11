@@ -193,6 +193,17 @@ func GetArchived(ctx *gin.Context) bool {
 	return archived
 }
 
+func SetAllTime(ctx *gin.Context, value bool) {
+	ctx.Set("all_time", value)
+}
+
+func GetAllTime(ctx *gin.Context) bool {
+	value, _ := ctx.Get("all_time")
+	allTime, _ := value.(bool)
+
+	return allTime
+}
+
 func SetYearMonth(ctx *gin.Context, value string) {
 	ctx.Set("year_month", value)
 }

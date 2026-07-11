@@ -22,10 +22,14 @@ func NewDeckUsageStat(
 }
 
 type deckUsageResult struct {
-	DeckId string
-	Name   string
-	Count  int
-	Wins   int
+	DeckId       string
+	Name         string
+	Count        int
+	Wins         int
+	GameCount    int
+	GoFirstCount int
+	GoFirstWins  int
+	GoSecondWins int
 }
 
 func (i *DeckUsageStat) FindDeckUsageStat(
@@ -40,10 +44,13 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	// matches.deck_id は記録後にデッキを変更しても更新されないため使用しない
 	// （opponent_deck_usage_stat.go と同様の方針）。
 	// デッキが削除済みでも名称を表示できるよう decks.deleted_at は条件に含めない。
+	// games は1対戦(match)につき複数行になりうる（BO3）ため、count/winsは
+	// matches.id のDISTINCTで数え、先攻/後攻はgames行をそのままカウントする。
 	query := i.db.Table("matches").
-		Select("records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(*) AS count, SUM(CASE WHEN matches.victory_flg THEN 1 ELSE 0 END) AS wins").
+		Select("records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT matches.id) AS count, COUNT(DISTINCT CASE WHEN matches.victory_flg THEN matches.id END) AS wins, COUNT(games.id) AS game_count, SUM(CASE WHEN games.go_first THEN 1 ELSE 0 END) AS go_first_count, SUM(CASE WHEN games.go_first AND games.winning_flg THEN 1 ELSE 0 END) AS go_first_wins, SUM(CASE WHEN games.go_first = false AND games.winning_flg THEN 1 ELSE 0 END) AS go_second_wins").
 		Joins("JOIN records ON matches.record_id = records.id").
 		Joins("LEFT JOIN decks ON records.deck_id = decks.id").
+		Joins("LEFT JOIN games ON games.match_id = matches.id AND games.deleted_at IS NULL").
 		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND records.deck_id != ''", userId)
 
 	if !fromDate.IsZero() {
@@ -90,7 +97,28 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 			winRate = float64(r.Wins) / float64(r.Count)
 		}
 
-		decks = append(decks, entity.NewDeckUsage(r.DeckId, name, r.Count, usageRate, r.Wins, losses, winRate, pokemonSprites))
+		goSecondCount := r.GameCount - r.GoFirstCount
+		var goFirstRate float64
+		if r.GameCount > 0 {
+			goFirstRate = float64(r.GoFirstCount) / float64(r.GameCount)
+		}
+
+		var goFirstWinRate float64
+		if r.GoFirstCount > 0 {
+			goFirstWinRate = float64(r.GoFirstWins) / float64(r.GoFirstCount)
+		}
+
+		var goSecondWinRate float64
+		if goSecondCount > 0 {
+			goSecondWinRate = float64(r.GoSecondWins) / float64(goSecondCount)
+		}
+
+		decks = append(decks, entity.NewDeckUsage(
+			r.DeckId, name, r.Count, usageRate, r.Wins, losses, winRate,
+			r.GameCount, r.GoFirstCount, goSecondCount, goFirstRate,
+			r.GoFirstWins, goFirstWinRate, r.GoSecondWins, goSecondWinRate,
+			pokemonSprites,
+		))
 	}
 
 	return entity.NewDeckUsageStat(userId, totalMatches, decks), nil

@@ -22,14 +22,22 @@ func NewDeckUsageStatResponse(
 		}
 
 		decks = append(decks, &dto.DeckUsageItemResponse{
-			DeckId:         deck.DeckId,
-			Name:           deck.Name,
-			Count:          deck.Count,
-			UsageRate:      deck.UsageRate,
-			Wins:           deck.Wins,
-			Losses:         deck.Losses,
-			WinRate:        deck.WinRate,
-			PokemonSprites: pokemonSprites,
+			DeckId:          deck.DeckId,
+			Name:            deck.Name,
+			Count:           deck.Count,
+			UsageRate:       deck.UsageRate,
+			Wins:            deck.Wins,
+			Losses:          deck.Losses,
+			WinRate:         deck.WinRate,
+			GameCount:       deck.GameCount,
+			GoFirstCount:    deck.GoFirstCount,
+			GoSecondCount:   deck.GoSecondCount,
+			GoFirstRate:     deck.GoFirstRate,
+			GoFirstWins:     deck.GoFirstWins,
+			GoFirstWinRate:  deck.GoFirstWinRate,
+			GoSecondWins:    deck.GoSecondWins,
+			GoSecondWinRate: deck.GoSecondWinRate,
+			PokemonSprites:  pokemonSprites,
 		})
 	}
 

@@ -16,6 +16,7 @@ type DeckUsageStatInterface interface {
 		environmentId string,
 		season string,
 		regulationId string,
+		allTime bool,
 	) (*entity.DeckUsageStat, error)
 }
 
@@ -47,8 +48,15 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 	environmentId string,
 	season string,
 	regulationId string,
+	allTime bool,
 ) (*entity.DeckUsageStat, error) {
 	var fromDate, toDate time.Time
+
+	// 全期間集計が指定された場合は期間条件を一切適用しない
+	// （デッキ一覧カードのように期間セレクタを持たない画面向け）。
+	if allTime {
+		return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, fromDate, toDate)
+	}
 
 	if yearMonth != "" {
 		t, err := time.Parse("2006-01", yearMonth)

@@ -18,6 +18,7 @@ const (
 	DefaultLeagueType      = 0
 	DefaultEventType       = ""
 	DefaultArchived        = false
+	DefaultAllTime         = false
 
 	DateLayout = time.DateOnly
 )
@@ -302,6 +303,22 @@ func ParseQueryArchive(ctx *gin.Context) (bool, error) {
 
 	if err != nil {
 		return DefaultArchived, err
+	}
+
+	return ret, nil
+}
+
+func ParseQueryAllTime(ctx *gin.Context) (bool, error) {
+	query := GetQueryAllTime(ctx)
+
+	if query == "" {
+		return DefaultAllTime, nil
+	}
+
+	ret, err := strconv.ParseBool(query)
+
+	if err != nil {
+		return DefaultAllTime, err
 	}
 
 	return ret, nil

@@ -9,6 +9,13 @@ import (
 
 func DeckUsageStatGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		allTime, err := helper.ParseQueryAllTime(ctx)
+		if err != nil {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+		helper.SetAllTime(ctx, allTime)
+
 		yearMonth, err := helper.ParseQueryYearMonth(ctx)
 		if err != nil {
 			apierror.ErrBadRequest.JSON(ctx)

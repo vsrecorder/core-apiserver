@@ -32,6 +32,13 @@ type deckUsageResult struct {
 	GoSecondWins int
 }
 
+// deckIgnoredResult は集計対象外(ignore_stats_flg=true)の記録件数をデッキごとに表す。
+type deckIgnoredResult struct {
+	DeckId       string
+	Name         string
+	IgnoredCount int
+}
+
 func (i *DeckUsageStat) FindDeckUsageStat(
 	ctx context.Context,
 	userId string,
@@ -71,8 +78,39 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		totalMatches += r.Count
 	}
 
+	// 集計対象外(ignore_stats_flg=true)の記録件数をデッキごとに集計する。
+	// 上の集計と同じ期間条件・ユーザー条件で、除外された記録の件数のみを数える。
+	ignoredQuery := i.db.Table("records").
+		Select("records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT records.id) AS ignored_count").
+		Joins("LEFT JOIN decks ON records.deck_id = decks.id").
+		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = true AND records.deck_id != ''", userId)
+
+	if !fromDate.IsZero() {
+		ignoredQuery = ignoredQuery.Where("records.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		ignoredQuery = ignoredQuery.Where("records.event_date < ?", toDate)
+	}
+
+	ignoredQuery = ignoredQuery.Group("records.deck_id, decks.name").Order("ignored_count DESC")
+
+	var ignoredResults []deckIgnoredResult
+	if tx := ignoredQuery.Scan(&ignoredResults); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	ignoredMap := make(map[string]int, len(ignoredResults))
+	for _, r := range ignoredResults {
+		ignoredMap[r.DeckId] = r.IgnoredCount
+	}
+
+	// 集計対象の記録があるデッキの deck_id 集合。集計対象外のみのデッキを
+	// 後段で追加する際に、重複を避けるために使う。
+	seen := make(map[string]bool, len(results))
+
 	decks := []*entity.DeckUsage{}
 	for _, r := range results {
+		seen[r.DeckId] = true
 		// デッキに設定されたポケモンスプライトを取得する
 		var deckPokemonSpriteModels []*model.DeckPokemonSprite
 		if tx := i.db.Where("deck_id = ?", r.DeckId).Order("position ASC").Find(&deckPokemonSpriteModels); tx.Error != nil {
@@ -113,12 +151,41 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 			goSecondWinRate = float64(r.GoSecondWins) / float64(goSecondCount)
 		}
 
-		decks = append(decks, entity.NewDeckUsage(
+		deckUsage := entity.NewDeckUsage(
 			r.DeckId, name, r.Count, usageRate, r.Wins, losses, winRate,
 			r.GameCount, r.GoFirstCount, goSecondCount, goFirstRate,
 			r.GoFirstWins, goFirstWinRate, r.GoSecondWins, goSecondWinRate,
 			pokemonSprites,
-		))
+		)
+		deckUsage.IgnoredCount = ignoredMap[r.DeckId]
+		decks = append(decks, deckUsage)
+	}
+
+	// 全期間集計(all_time)の場合のみ、集計対象外の記録しか持たないデッキも
+	// 一覧に含める。デッキ一覧カードで「集計対象外の記録がN件ある」と示すためで、
+	// count=0 のため使用率ランキング等では他の画面（期間指定）には現れない。
+	if fromDate.IsZero() && toDate.IsZero() {
+		for _, r := range ignoredResults {
+			if seen[r.DeckId] {
+				continue
+			}
+
+			var deckPokemonSpriteModels []*model.DeckPokemonSprite
+			if tx := i.db.Where("deck_id = ?", r.DeckId).Order("position ASC").Find(&deckPokemonSpriteModels); tx.Error != nil {
+				return nil, tx.Error
+			}
+
+			var pokemonSprites []*entity.PokemonSprite
+			for _, m := range deckPokemonSpriteModels {
+				pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(m.PokemonSpriteId))
+			}
+
+			deckUsage := entity.NewDeckUsage(
+				r.DeckId, r.Name, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, pokemonSprites,
+			)
+			deckUsage.IgnoredCount = r.IgnoredCount
+			decks = append(decks, deckUsage)
+		}
 	}
 
 	return entity.NewDeckUsageStat(userId, totalMatches, decks), nil

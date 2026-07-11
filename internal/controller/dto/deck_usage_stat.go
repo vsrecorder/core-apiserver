@@ -16,6 +16,7 @@ type DeckUsageItemResponse struct {
 	GoFirstWinRate  float64                  `json:"go_first_win_rate"`
 	GoSecondWins    int                      `json:"go_second_wins"`
 	GoSecondWinRate float64                  `json:"go_second_win_rate"`
+	IgnoredCount    int                      `json:"ignored_count,omitempty"`
 	PokemonSprites  []*PokemonSpriteResponse `json:"pokemon_sprites"`
 }
 

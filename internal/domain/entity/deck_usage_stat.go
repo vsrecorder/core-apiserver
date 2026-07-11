@@ -18,7 +18,11 @@ type DeckUsage struct {
 	GoFirstWinRate  float64
 	GoSecondWins    int
 	GoSecondWinRate float64
-	PokemonSprites  []*PokemonSprite
+	// IgnoredCount は集計対象外(ignore_stats_flg=true)の記録件数。
+	// 勝率などの集計には含めず、デッキ一覧に「集計対象外の記録がある」旨を
+	// 表示するためだけに用いる。コンストラクタ外でフィールドに直接設定する。
+	IgnoredCount   int
+	PokemonSprites []*PokemonSprite
 }
 
 func NewDeckUsage(

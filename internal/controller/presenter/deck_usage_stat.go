@@ -37,6 +37,7 @@ func NewDeckUsageStatResponse(
 			GoFirstWinRate:  deck.GoFirstWinRate,
 			GoSecondWins:    deck.GoSecondWins,
 			GoSecondWinRate: deck.GoSecondWinRate,
+			IgnoredCount:    deck.IgnoredCount,
 			PokemonSprites:  pokemonSprites,
 		})
 	}

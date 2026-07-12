@@ -174,44 +174,7 @@ CREATE TABLE records (
 
 
 
-BEGIN;
 
-ALTER TABLE records
-    ADD COLUMN deck_registered_at TIMESTAMP DEFAULT NULL;
-
--- 既存レコードは「デッキが登録済みなら作成時に登録されていた」とみなしてcreated_atで埋める
--- (過去に後付けでデッキ登録したケースを正確に区別する手段が無いための近似値。
---  以後は usecase.Record.Create/Update が正しいタイミングで設定する)
-UPDATE records
-SET deck_registered_at = created_at
-WHERE (deck_id IS NOT NULL AND deck_id <> '')
-   OR (deck_code_id IS NOT NULL AND deck_code_id <> '');
-
-COMMIT;
-
-
-
-
-BEGIN;
-
--- deck_registered_at の近似値(上の created_at 埋め)の補正。
--- デッキを後から登録した記録では、デッキがまだ作成されてすらいない記録作成時点が
--- 「デッキ登録日時」になってしまう。称号の遡り判定(CountRecordsAsOfByUserId)がこの値を
--- 使うため、称号・ランクの達成日が「初デッキ」バッジの達成日より前と算出され、通知一覧で
--- 「初デッキ」の通知が称号獲得・ランクアップの通知より新しく表示される(達成条件と逆転する)。
--- デッキ(コード)は記録に登録されるより前に必ず作成されているため、紐づくデッキ・デッキコードの
--- created_at を下限としてクランプする。既に正しい値(デッキ作成後に登録された日時)が
--- 入っている行はGREATESTによりそのまま維持されるため、複数回実行しても安全。
-UPDATE records r
-SET deck_registered_at = GREATEST(
-    COALESCE(r.deck_registered_at, r.created_at),
-    COALESCE((SELECT d.created_at FROM decks d WHERE d.id = r.deck_id), r.created_at),
-    COALESCE((SELECT dc.created_at FROM deck_codes dc WHERE dc.id = r.deck_code_id), r.created_at)
-)
-WHERE (r.deck_id IS NOT NULL AND r.deck_id <> '')
-   OR (r.deck_code_id IS NOT NULL AND r.deck_code_id <> '');
-
-COMMIT;
 
 
 

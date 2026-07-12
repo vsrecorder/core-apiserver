@@ -63,7 +63,9 @@ func (i *Match) FindById(
 		games.opponents_prize_cards AS game_opponents_prize_cards,
 		games.memo AS game_memo`,
 	).Joins(
-		"LEFT JOIN games ON matches.id = games.match_id",
+		// 論理削除済みのgamesを取得しないよう、JOIN条件でdeleted_atを除外する。
+		// (Table()+Scan()のためgormのソフトデリートは自動適用されない)
+		"LEFT JOIN games ON matches.id = games.match_id AND games.deleted_at IS NULL",
 	).Where(
 		"matches.id = ? AND matches.deleted_at IS NULL", id,
 	).Order(
@@ -181,7 +183,7 @@ func (i *Match) FindByRecordId(
 		INNER JOIN matches
 		ON records.id = matches.record_id
 		LEFT JOIN games
-		ON matches.id = games.match_id`,
+		ON matches.id = games.match_id AND games.deleted_at IS NULL`,
 	).Where(
 		"records.id = ? AND records.deleted_at IS NULL AND matches.deleted_at IS NULL",
 		recordId,
@@ -336,7 +338,9 @@ func (i *Match) FindByUserId(
 		games.opponents_prize_cards AS game_opponents_prize_cards,
 		games.memo AS game_memo`,
 	).Joins(
-		"LEFT JOIN games ON matches.id = games.match_id",
+		// 論理削除済みのgamesを取得しないよう、JOIN条件でdeleted_atを除外する。
+		// (Table()+Scan()のためgormのソフトデリートは自動適用されない)
+		"LEFT JOIN games ON matches.id = games.match_id AND games.deleted_at IS NULL",
 	).Where(
 		"matches.id IN (?)", subQuery,
 	).Order(
@@ -486,7 +490,9 @@ func (i *Match) FindLatest(
 		games.opponents_prize_cards AS game_opponents_prize_cards,
 		games.memo AS game_memo`,
 	).Joins(
-		"LEFT JOIN games ON matches.id = games.match_id",
+		// 論理削除済みのgamesを取得しないよう、JOIN条件でdeleted_atを除外する。
+		// (Table()+Scan()のためgormのソフトデリートは自動適用されない)
+		"LEFT JOIN games ON matches.id = games.match_id AND games.deleted_at IS NULL",
 	).Where(
 		"matches.id IN (?)", subQuery,
 	).Order(

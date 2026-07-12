@@ -8,6 +8,103 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
 
+// isValidMatchRequest はMatchの作成/更新リクエストの整合性を検証する。
+//
+// 作成と更新で満たすべき整合性は同一のため、両Middlewareからこの関数を呼ぶ。
+// (以前は同じ検証を各Middlewareに二重実装しており、更新側にだけ
+//  GroupMatchVictoryFlgの検証が無い、といった乖離が生まれていた)
+func isValidMatchRequest(req dto.MatchRequest) bool {
+	// RecordIdが空
+	if req.RecordId == "" {
+		return false
+	}
+
+	// DefaultVictoryFlgとDefaultDefeatFlgの両方がtrue
+	if req.DefaultVictoryFlg && req.DefaultDefeatFlg {
+		return false
+	}
+
+	// DefaultVictoryFlgがtrueなのにVictoryFlgがfalse
+	if req.DefaultVictoryFlg && !req.VictoryFlg {
+		return false
+	}
+
+	// DefaultDefeatFlgがtrueなのにVictoryFlgがtrue
+	if req.DefaultDefeatFlg && req.VictoryFlg {
+		return false
+	}
+
+	// 不戦勝/不戦敗は対戦が行われていないため、Gameが存在してはならない
+	isDefault := req.DefaultVictoryFlg || req.DefaultDefeatFlg
+	if isDefault && len(req.Games) > 0 {
+		return false
+	}
+
+	// チームの勝敗(GroupMatchVictoryFlg)を持てるのはチーム戦のBO1のみ
+	if req.GroupMatchVictoryFlg && (req.BO3Flg || !req.GroupMatchFlg) {
+		return false
+	}
+
+	// 不戦勝/不戦敗の場合はGameが存在しないため、ここから先の検証は行わない
+	if isDefault {
+		return true
+	}
+
+	if req.BO3Flg {
+		// BO3(2本先取)は2ゲーム(2-0)または3ゲーム(2-1)で決着する
+		if len(req.Games) != 2 && len(req.Games) != 3 {
+			return false
+		}
+
+		if len(req.Games) == 2 {
+			// 2ゲームで決着した場合は2連勝(2-0)か2連敗(0-2)であり、
+			// どちらのゲームの勝敗も対戦全体の勝敗と一致する
+			//
+			// | victory | game 1 | game 2 |
+			// ------------------------------
+			// |  true   |  true  |  true  |
+			// |  false  |  false |  false |
+			//
+			if req.Games[0].WinningFlg != req.VictoryFlg || req.Games[1].WinningFlg != req.VictoryFlg {
+				return false
+			}
+		}
+
+		if len(req.Games) == 3 {
+			// 3ゲーム目が行われるのは1勝1敗で並んだ場合のみ。
+			// 1・2ゲーム目が同じ勝敗(2-0 or 0-2)なら既に決着しているため不正
+			if req.Games[0].WinningFlg == req.Games[1].WinningFlg {
+				return false
+			}
+
+			// 1勝1敗で並んだ場合、3ゲーム目の勝敗が対戦全体の勝敗になる
+			//
+			// | victory | game 1 | game 2 | game 3 |
+			// --------------------------------------
+			// |  true   |  true  |  false |  true  |
+			// |  true   |  false |  true  |  true  |
+			// |  false  |  true  |  false |  false |
+			// |  false  |  false |  true  |  false |
+			//
+			if req.Games[2].WinningFlg != req.VictoryFlg {
+				return false
+			}
+		}
+	} else {
+		// BO1(1本勝負)はちょうど1ゲームで決着する
+		if len(req.Games) != 1 {
+			return false
+		}
+
+		// GameのWinningFlgとMatchのVictoryFlgが異なる
+		if req.Games[0].WinningFlg != req.VictoryFlg {
+			return false
+		}
+	}
+
+	return true
+}
+
 func MatchCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.MatchCreateRequest{}
@@ -16,119 +113,9 @@ func MatchCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// RecordIdが空
-		if req.RecordId == "" {
+		if !isValidMatchRequest(req.MatchRequest) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
-		}
-
-		// DefaultVictoryFlgとDefaultDefeatFlgの両方がtrue
-		if req.DefaultVictoryFlg && req.DefaultDefeatFlg {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		// DefaultVictoryFlgがtrueなのにVictoryFlgがfalse
-		if req.DefaultVictoryFlg && !req.VictoryFlg {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		// DefaultDefeatFlgがtrueなのにVictoryFlgがtrue
-		if req.DefaultDefeatFlg && req.VictoryFlg {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		// DefaultVictoryFlg or DefaultDefeatFlgがtrueなのにGamesが存在している
-		if req.DefaultVictoryFlg || req.DefaultDefeatFlg {
-			if len(req.Games) > 0 {
-				apierror.ErrBadRequest.JSON(ctx)
-				return
-			}
-		}
-
-		if ((!req.BO3Flg && !req.GroupMatchVictoryFlg) || req.BO3Flg || !req.GroupMatchFlg) && req.GroupMatchVictoryFlg {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		if req.BO3Flg {
-			// BO3なのに試合数が1つ or 3つを超えている
-			if len(req.Games) == 1 || len(req.Games) > 3 {
-				apierror.ErrBadRequest.JSON(ctx)
-				return
-			}
-
-			if len(req.Games) == 2 {
-				// 試合数が2つの場合はそれぞれのGameのWinningFlgとMatchのVictoryFlgが同じであるべき
-				if !((req.Games[0].WinningFlg == req.VictoryFlg) && (req.Games[1].WinningFlg == req.VictoryFlg)) {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-			}
-
-			if len(req.Games) == 3 {
-				// 1試合目も2試合目も勝っているのに試合数が3つある
-				//
-				// | victory | game 1 | game 2 | game 3 |
-				// --------------------------------------
-				// |  true   |  true  |  true  |  true  |
-				// |  true   |  true  |  true  |  false |
-				// |  false  |  true  |  true  |  true  |
-				// |  false  |  true  |  true  |  false |
-				//
-				if req.Games[0].WinningFlg && req.Games[1].WinningFlg {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-
-				// 1試合目も2試合目も負けているのに試合数が3つある
-				//
-				// | victory | game 1 | game 2 | game 3 |
-				// --------------------------------------
-				// |  true   |  false |  false |  true  |
-				// |  true   |  false |  false |  false |
-				// |  false  |  false |  false |  true  |
-				// |  false  |  false |  false |  false |
-				//
-				if !req.Games[0].WinningFlg && !req.Games[1].WinningFlg {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-
-				//
-				// | victory | game 1 | game 2 | game 3 |   XOR  |
-				// -----------------------------------------------
-				// |  true   |  true  |  false |  true  |  true  |
-				// |  true   |  false |  true  |  true  |  true  |
-				// |  false  |  true  |  false |  false |  true  |
-				// |  false  |  false |  true  |  false |  true  |
-				//
-				// |  false  |  true  |  false |  true  |  false |
-				// |  false  |  false |  true  |  true  |  false |
-				// |  true   |  true  |  false |  false |  false |
-				// |  true   |  false |  true  |  false |  false |
-				//
-				if !(req.Games[0].WinningFlg != req.Games[1].WinningFlg != req.Games[2].WinningFlg != req.VictoryFlg) {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-			}
-		} else {
-			// BO1なのに試合数が1つを超えている
-			if len(req.Games) > 1 {
-				apierror.ErrBadRequest.JSON(ctx)
-				return
-			}
-
-			if !req.DefaultVictoryFlg && !req.DefaultDefeatFlg {
-				// GameのWinningFlgとMatchのVictoryFlgが異なる
-				if req.Games[0].WinningFlg != req.VictoryFlg {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-			}
 		}
 
 		helper.SetMatchCreateRequest(ctx, req)
@@ -143,114 +130,9 @@ func MatchUpdateMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// RecordIdが空
-		if req.RecordId == "" {
+		if !isValidMatchRequest(req.MatchRequest) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
-		}
-
-		// DefaultVictoryFlgとDefaultDefeatFlgの両方がtrue
-		if req.DefaultVictoryFlg && req.DefaultDefeatFlg {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		// DefaultVictoryFlgがtrueなのにVictoryFlgがfalse
-		if req.DefaultVictoryFlg && !req.VictoryFlg {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		// DefaultDefeatFlgがtrueなのにVictoryFlgがtrue
-		if req.DefaultDefeatFlg && req.VictoryFlg {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		// DefaultVictoryFlg or DefaultDefeatFlgがtrueなのにGamesが存在している
-		if req.DefaultVictoryFlg || req.DefaultDefeatFlg {
-			if len(req.Games) > 0 {
-				apierror.ErrBadRequest.JSON(ctx)
-				return
-			}
-		}
-
-		if req.BO3Flg {
-			// BO3なのに試合数が1つ or 3つを超えている
-			if len(req.Games) == 1 || len(req.Games) > 3 {
-				apierror.ErrBadRequest.JSON(ctx)
-				return
-			}
-
-			if len(req.Games) == 2 {
-				// 試合数が2つの場合はそれぞれのGameのWinningFlgとMatchのVictoryFlgが同じであるべき
-				if !((req.Games[0].WinningFlg == req.VictoryFlg) && (req.Games[1].WinningFlg == req.VictoryFlg)) {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-			}
-
-			if len(req.Games) == 3 {
-				// 1試合目も2試合目も勝っているのに試合数が3つある
-				//
-				// | victory | game 1 | game 2 | game 3 |
-				// --------------------------------------
-				// |  true   |  true  |  true  |  true  |
-				// |  true   |  true  |  true  |  false |
-				// |  false  |  true  |  true  |  true  |
-				// |  false  |  true  |  true  |  false |
-				//
-				if req.Games[0].WinningFlg && req.Games[1].WinningFlg {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-
-				// 1試合目も2試合目も負けているのに試合数が3つある
-				//
-				// | victory | game 1 | game 2 | game 3 |
-				// --------------------------------------
-				// |  true   |  false |  false |  true  |
-				// |  true   |  false |  false |  false |
-				// |  false  |  false |  false |  true  |
-				// |  false  |  false |  false |  false |
-				//
-				if !req.Games[0].WinningFlg && !req.Games[1].WinningFlg {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-
-				//
-				// | victory | game 1 | game 2 | game 3 |   XOR  |
-				// -----------------------------------------------
-				// |  true   |  true  |  false |  true  |  true  |
-				// |  true   |  false |  true  |  true  |  true  |
-				// |  false  |  true  |  false |  false |  true  |
-				// |  false  |  false |  true  |  false |  true  |
-				//
-				// |  false  |  true  |  false |  true  |  false |
-				// |  false  |  false |  true  |  true  |  false |
-				// |  true   |  true  |  false |  false |  false |
-				// |  true   |  false |  true  |  false |  false |
-				//
-				if !(req.Games[0].WinningFlg != req.Games[1].WinningFlg != req.Games[2].WinningFlg != req.VictoryFlg) {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-			}
-		} else {
-			// BO1なのに試合数が1つを超えている
-			if len(req.Games) > 1 {
-				apierror.ErrBadRequest.JSON(ctx)
-				return
-			}
-
-			if !req.DefaultVictoryFlg && !req.DefaultDefeatFlg {
-				// GameのWinningFlgとMatchのVictoryFlgが異なる
-				if req.Games[0].WinningFlg != req.VictoryFlg {
-					apierror.ErrBadRequest.JSON(ctx)
-					return
-				}
-			}
 		}
 
 		helper.SetMatchUpdateRequest(ctx, req)

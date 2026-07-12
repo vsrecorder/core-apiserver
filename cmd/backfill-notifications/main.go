@@ -264,11 +264,24 @@ func backfillUser(
 		return 0, err
 	}
 
+	// onboardingAchievedAt は「はじめの一歩」(オンボーディング系バッジ)を全て達成した日時
+	// (=最後に達成したオンボーディングバッジの achieved_at)。称号は「デッキが登録され、
+	// 対戦結果が紐づいた記録」が前提のため、オンボーディング完了より前に称号へ到達すること
+	// は達成条件上あり得ない。称号・ランクの達成日は過去のデータから遡って求める近似値で
+	// あり、算出結果がこの日時より前になると通知の並び順が達成条件と逆転する(「初デッキ」
+	// バッジの通知が称号獲得・ランクアップの通知より新しく表示される)ため、下限として使う。
 	onboardingComplete := true
+	var onboardingAchievedAt time.Time
 	for _, view := range badgeViews {
-		if view.Definition.Category == usecase.BadgeCategoryOnboarding && !view.Achieved {
+		if view.Definition.Category != usecase.BadgeCategoryOnboarding {
+			continue
+		}
+		if !view.Achieved {
 			onboardingComplete = false
-			break
+			continue
+		}
+		if view.AchievedAt.After(onboardingAchievedAt) {
+			onboardingAchievedAt = view.AchievedAt
 		}
 	}
 
@@ -387,7 +400,7 @@ func backfillUser(
 	} else {
 		designationCreated, err := backfillDesignationHistory(
 			ctx, db, notificationRepo, designationUsecase, designationEvaluation,
-			userId, seasonLabel, seasonFromDate, seasonToDate, now, dryRun,
+			userId, seasonLabel, seasonFromDate, seasonToDate, onboardingAchievedAt, now, dryRun,
 		)
 		if err != nil {
 			return created, err
@@ -464,9 +477,12 @@ func backfillEnvironmentBadgeNotifications(
 }
 
 // backfillDesignationHistory はユーザーが現在のシーズンで通過済みの称号tier・ランクの
-// うち、まだ通知(notifications)が無いものだけを個別に補完する。称号名・ランク名は
+// うち、まだ通知(notifications)が無いものを個別に補完する。称号名・ランク名は
 // tierごとに一意なため、既存通知のbody文字列にその名前が含まれるかで重複判定する
 // (backfillUser本体と異なり、他カテゴリ(バッジ)の通知が既にあるユーザーでも対象にする)。
+// 併せて、既に作成済みの称号・ランク通知の created_at が onboardingAchievedAt より前に
+// なっている(=「はじめの一歩」完了前に称号を獲得したことになっており、達成条件上あり得ない)
+// 場合は、再計算した達成日時で補正する。
 func backfillDesignationHistory(
 	ctx context.Context,
 	db *gorm.DB,
@@ -477,6 +493,7 @@ func backfillDesignationHistory(
 	seasonLabel string,
 	seasonFromDate time.Time,
 	seasonToDate time.Time,
+	onboardingAchievedAt time.Time,
 	now time.Time,
 	dryRun bool,
 ) (int, error) {
@@ -504,27 +521,17 @@ func backfillDesignationHistory(
 		def := item.Designation
 		tier := def.Tier
 
-		exists, err := notificationBodyContainsExists(db, userId, usecase.NotificationCategoryDesignation, def.Name)
+		designationCreated, err := upsertDesignationNotification(
+			ctx, db, notificationRepo, designationEvaluation, dryRun,
+			userId, usecase.NotificationCategoryDesignation, "称号を獲得しました", def.Name,
+			fmt.Sprintf("%sシーズンで称号「%s %s」を獲得しました！", seasonLabel, def.Emoji, def.Name),
+			func(t int) bool { return t >= tier },
+			candidateDates, achievedAtByEventDate, onboardingAchievedAt, now,
+		)
 		if err != nil {
 			return created, err
 		}
-		if !exists {
-			achievedAt := designationAchievedAt(
-				ctx, designationEvaluation, userId, candidateDates, achievedAtByEventDate,
-				func(t int) bool { return t >= tier },
-				now,
-			)
-
-			if err := saveNotification(
-				ctx, notificationRepo, dryRun,
-				userId, usecase.NotificationCategoryDesignation, "称号を獲得しました",
-				fmt.Sprintf("%sシーズンで称号「%s %s」を獲得しました！", seasonLabel, def.Emoji, def.Name),
-				achievedAt,
-			); err != nil {
-				return created, err
-			}
-			created++
-		}
+		created += designationCreated
 
 		rankName := usecase.RankNameForTier(tier)
 		if rankName == "" || notifiedRanks[rankName] {
@@ -532,47 +539,119 @@ func backfillDesignationHistory(
 		}
 		notifiedRanks[rankName] = true
 
-		rankExists, err := notificationBodyContainsExists(db, userId, usecase.NotificationCategoryRank, rankName)
+		rankMinTier := usecase.MinTierForRank(rankName)
+
+		rankCreated, err := upsertDesignationNotification(
+			ctx, db, notificationRepo, designationEvaluation, dryRun,
+			userId, usecase.NotificationCategoryRank, "ランクが上がりました", rankName,
+			fmt.Sprintf("%sシーズンでランクが「%s」に上がりました！", seasonLabel, rankName),
+			func(t int) bool { return t >= rankMinTier },
+			candidateDates, achievedAtByEventDate, onboardingAchievedAt, now,
+		)
 		if err != nil {
 			return created, err
 		}
-		if rankExists {
-			continue
-		}
-
-		rankMinTier := usecase.MinTierForRank(rankName)
-		rankAt := designationAchievedAt(
-			ctx, designationEvaluation, userId, candidateDates, achievedAtByEventDate,
-			func(t int) bool { return t >= rankMinTier },
-			now,
-		)
-
-		if err := saveNotification(
-			ctx, notificationRepo, dryRun,
-			userId, usecase.NotificationCategoryRank, "ランクが上がりました",
-			fmt.Sprintf("%sシーズンでランクが「%s」に上がりました！", seasonLabel, rankName),
-			rankAt,
-		); err != nil {
-			return created, err
-		}
-		created++
+		created += rankCreated
 	}
 
 	return created, nil
 }
 
-// notificationBodyContainsExists は、指定カテゴリの通知でbodyにneedleを含むものが
-// 既に存在するかを返す(称号名・ランク名はtierごとに一意なため、これで重複判定できる)。
-func notificationBodyContainsExists(db *gorm.DB, userId string, category string, needle string) (bool, error) {
-	var count int64
+// upsertDesignationNotification は称号・ランクの通知1件について、
+//   - まだ無ければ、遡って求めた達成日時(onboardingAchievedAtを下限とする)で作成する
+//   - 既にあり、その created_at が onboardingAchievedAt より前(達成条件上あり得ない日時)
+//     なら、再計算した達成日時で created_at を補正する
+//
+// 通知を新規作成した場合のみ1を返す(補正はログのみで、作成件数には数えない)。
+// 既存通知の created_at が onboardingAchievedAt 以降であれば、リアルタイムに作成された
+// 正しい通知(処理時刻ベース)であるため一切触らない。
+func upsertDesignationNotification(
+	ctx context.Context,
+	db *gorm.DB,
+	notificationRepo repository.NotificationInterface,
+	designationEvaluation usecase.DesignationEvaluationInterface,
+	dryRun bool,
+	userId string,
+	category string,
+	title string,
+	needle string,
+	body string,
+	satisfies func(tier int) bool,
+	candidateDates []time.Time,
+	achievedAtByEventDate map[time.Time]time.Time,
+	onboardingAchievedAt time.Time,
+	now time.Time,
+) (int, error) {
+	existing, err := findNotificationByBodyContains(db, userId, category, needle)
+	if err != nil {
+		return 0, err
+	}
+
+	if existing != nil && !existing.CreatedAt.Before(onboardingAchievedAt) {
+		return 0, nil
+	}
+
+	achievedAt := designationAchievedAt(
+		ctx, designationEvaluation, userId, candidateDates, achievedAtByEventDate, satisfies, now,
+	)
+	// 遡って求めた達成日時は近似値のため、「はじめの一歩」完了より前になることがある。
+	// 称号は「はじめの一歩」(デッキ登録・記録作成・対戦結果追加)が揃って初めて到達できる
+	// ため、その完了日時を下限としてクランプし、通知の並び順が達成条件と逆転しないようにする。
+	if achievedAt.Before(onboardingAchievedAt) {
+		achievedAt = onboardingAchievedAt
+	}
+
+	if existing == nil {
+		if err := saveNotification(
+			ctx, notificationRepo, dryRun, userId, category, title, body, achievedAt,
+		); err != nil {
+			return 0, err
+		}
+
+		return 1, nil
+	}
+
+	if dryRun {
+		log.Printf(
+			"[dry-run] user=%s: 通知の日時を補正予定 body=%s created_at=%s -> %s\n",
+			userId, existing.Body, existing.CreatedAt.Format(time.RFC3339), achievedAt.Format(time.RFC3339),
+		)
+
+		return 0, nil
+	}
+
+	if err := notificationRepo.UpdateContent(
+		ctx, existing.ID, achievedAt, existing.Title, existing.Body, existing.IsRead,
+	); err != nil {
+		return 0, err
+	}
+
+	log.Printf(
+		"user=%s: 通知の日時を補正しました body=%s created_at=%s -> %s\n",
+		userId, existing.Body, existing.CreatedAt.Format(time.RFC3339), achievedAt.Format(time.RFC3339),
+	)
+
+	return 0, nil
+}
+
+// findNotificationByBodyContains は、指定カテゴリの通知でbodyにneedleを含むものを返す
+// (称号名・ランク名はtierごとに一意なため、これで重複判定できる)。無ければnilを返す。
+func findNotificationByBodyContains(db *gorm.DB, userId string, category string, needle string) (*model.Notification, error) {
+	var notifications []*model.Notification
 	if tx := db.Model(&model.Notification{}).
 		Where("user_id = ? AND category = ?", userId, category).
 		Where("body LIKE ?", "%"+needle+"%").
-		Count(&count); tx.Error != nil {
-		return false, tx.Error
+		Order("created_at ASC").
+		Limit(1).
+		Find(&notifications); tx.Error != nil {
+		return nil, tx.Error
 	}
 
-	return count > 0, nil
+	if len(notifications) == 0 {
+		return nil, nil
+	}
+
+	return notifications[0], nil
 }
 
 // milestoneAchievedAt はマイルストーン系・週次ストリーク系バッジ定義について、
@@ -633,6 +712,13 @@ func nthDate(dates []time.Time, n int, fallback time.Time) time.Time {
 // デッキ登録と無関係な変更)でも進んでしまうため、これをそのまま使うと、複数の記録を
 // まとめて後から編集しただけで無関係な達成日に化けたり、その編集日にまとめて達成日が
 // 集中してしまう(=称号・ランクアップ通知が軒並み同じ日時になる)不具合になる。
+//
+// さらに、紐づくデッキ(deck_id)・デッキコード(deck_code_id)の created_at もGREATESTに
+// 含める。deck_registered_at はカラム追加時のマイグレーションで既存記録を created_at で
+// 埋めた近似値であり、デッキを後から登録した記録では「記録作成時点で既に登録済み」と
+// 扱われてしまう。デッキは記録に登録されるより前に必ず作成されているため、デッキの
+// 作成日時を下限に加えないと、デッキがまだ存在しない時点を達成日として拾い、称号・
+// ランクアップの通知が「初デッキ」バッジの通知より古くなる(達成条件と逆転する)。
 func seasonRecordEventDates(
 	db *gorm.DB,
 	userId string,
@@ -645,11 +731,21 @@ func seasonRecordEventDates(
 	var rows []row
 
 	tx := db.Table("records").
-		Select("GREATEST(records.event_date, COALESCE(records.deck_registered_at, records.created_at), COALESCE(MIN(matches.created_at), records.created_at)) AS achieved_at").
+		Select(
+			"GREATEST(" +
+				"records.event_date, " +
+				"COALESCE(records.deck_registered_at, records.created_at), " +
+				"COALESCE(MIN(matches.created_at), records.created_at), " +
+				"COALESCE(decks.created_at, records.created_at), " +
+				"COALESCE(deck_codes.created_at, records.created_at)" +
+				") AS achieved_at",
+		).
 		Joins("LEFT JOIN matches ON matches.record_id = records.id AND matches.deleted_at IS NULL").
+		Joins("LEFT JOIN decks ON decks.id = records.deck_id").
+		Joins("LEFT JOIN deck_codes ON deck_codes.id = records.deck_code_id").
 		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.event_date IS NOT NULL", userId).
 		Where("records.event_date >= ? AND records.event_date < ?", fromDate, toDate).
-		Group("records.id, records.event_date, records.deck_registered_at, records.created_at").
+		Group("records.id, records.event_date, records.deck_registered_at, records.created_at, decks.created_at, deck_codes.created_at").
 		Scan(&rows)
 	if tx.Error != nil {
 		return nil, nil, tx.Error

@@ -34,6 +34,11 @@ type DesignationStatsInterface interface {
 	//   - 対戦結果を追加する前に記録だけ先に作成したケース → 対戦結果はrecordsとは別
 	//     テーブルへの追加行で、追加してもrecordsの行(updated_at含む)は更新されない
 	//     ため、matches.created_atを直接下限として使う。
+	//   - deck_registered_at がカラム追加時のマイグレーションで created_at 埋めされた
+	//     既存記録 → 「記録作成時点で既にデッキが登録済み」という近似値になっており、
+	//     デッキがまだ作成されてすらいない時点を達成済みと誤判定してしまう。紐づく
+	//     デッキ(deck_id)・デッキコード(deck_code_id)の created_at < asOf も併せて
+	//     要求し、デッキ作成前の時点を除外する。
 	// これらにより、asOf時点でまだデッキ登録/対戦結果追加がされていなかった記録を正しく
 	// 除外する。usecase.DesignationEvaluation.TierAsOf(backfill-notificationsの「実際に
 	// 達成した日」再構築専用)からのみ呼ばれる。

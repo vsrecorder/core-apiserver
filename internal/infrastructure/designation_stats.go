@@ -78,6 +78,21 @@ const existsMatchForRecordConditionAsOf = "EXISTS (" +
 	"AND matches.created_at < ?" +
 	")"
 
+// hasDeckCreatedForRecordConditionAsOf は、records に指定されているデッキ(deck_id)もしくは
+// デッキコード(deck_code_id)が asOf 時点で既に作成済みであることを求める条件。
+// 「いつデッキが登録されたか」は records.deck_registered_at で判定するが、この値は
+// カラム追加時のマイグレーションで既存記録を created_at で埋めた近似値であり、デッキを
+// 後から登録した記録では「記録作成時点で既に登録済み」と誤って扱われる。その結果、
+// デッキがまだ存在すらしていない過去時点を称号の達成済み時点と誤判定し、称号・ランクの
+// 達成日が「初デッキ」バッジの達成日より前になる(=通知の並び順が達成条件と逆転する)。
+// デッキ(コード)は記録に登録されるより前に必ず作成されているため、その created_at を
+// asOf と比較してデッキ作成前の時点を除外する。
+const hasDeckCreatedForRecordConditionAsOf = "(" +
+	"EXISTS (SELECT 1 FROM decks WHERE decks.id = records.deck_id AND decks.created_at < ?)" +
+	" OR " +
+	"EXISTS (SELECT 1 FROM deck_codes WHERE deck_codes.id = records.deck_code_id AND deck_codes.created_at < ?)" +
+	")"
+
 func (i *DesignationStats) CountRecordsAsOfByUserId(
 	ctx context.Context,
 	userId string,
@@ -91,6 +106,7 @@ func (i *DesignationStats) CountRecordsAsOfByUserId(
 		Where(existsMatchForRecordConditionAsOf, asOf).
 		Where(hasDeckForRecordCondition).
 		Where("COALESCE(deck_registered_at, created_at) < ?", asOf).
+		Where(hasDeckCreatedForRecordConditionAsOf, asOf, asOf).
 		Where("event_date < ?", asOf)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)

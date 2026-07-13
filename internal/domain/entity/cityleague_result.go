@@ -28,6 +28,26 @@ func NewEventResult(
 	}
 }
 
+// CityleagueResultEvent は結果が登録されているイベントを、入賞者を含めずに表す。
+// sitemap の生成のように、イベントの識別子と開催日だけを必要とする用途で使う。
+type CityleagueResultEvent struct {
+	OfficialEventId uint
+	LeagueType      uint
+	EventDate       time.Time
+}
+
+func NewCityleagueResultEvent(
+	officialEventId uint,
+	leagueType uint,
+	eventDate time.Time,
+) *CityleagueResultEvent {
+	return &CityleagueResultEvent{
+		OfficialEventId: officialEventId,
+		LeagueType:      leagueType,
+		EventDate:       eventDate,
+	}
+}
+
 type CityleagueResult struct {
 	CityleagueScheduleId string
 	OfficialEventId      uint

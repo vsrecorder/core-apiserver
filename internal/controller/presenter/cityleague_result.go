@@ -8,6 +8,31 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
+func NewCityleagueResultGetEventsResponse(
+	count int,
+	cityleagueResultEvents []*entity.CityleagueResultEvent,
+) *dto.CityleagueResultGetEventsResponse {
+	events := []*dto.CityleagueResultEventResponse{}
+
+	for _, cityleagueResultEvent := range cityleagueResultEvents {
+		events = append(events, &dto.CityleagueResultEventResponse{
+			OfficialEventId: cityleagueResultEvent.OfficialEventId,
+			LeagueType:      cityleagueResultEvent.LeagueType,
+			Date: time.Date(
+				cityleagueResultEvent.EventDate.Year(),
+				cityleagueResultEvent.EventDate.Month(),
+				cityleagueResultEvent.EventDate.Day(),
+				0, 0, 0, 0, time.Local,
+			),
+		})
+	}
+
+	return &dto.CityleagueResultGetEventsResponse{
+		Count:  count,
+		Events: events,
+	}
+}
+
 func NewCityleagueResultGetByDateResponse(
 	leagueType uint,
 	date time.Time,

@@ -19,6 +19,18 @@ type EventResultResponse struct {
 	Results              []*ResultResponse `json:"results"`
 }
 
+// CityleagueResultEventResponse は入賞者を含まない、イベント単位の応答。
+type CityleagueResultEventResponse struct {
+	OfficialEventId uint      `json:"official_event_id"`
+	LeagueType      uint      `json:"league_type"`
+	Date            time.Time `json:"date"`
+}
+
+type CityleagueResultGetEventsResponse struct {
+	Count  int                              `json:"count"`
+	Events []*CityleagueResultEventResponse `json:"events"`
+}
+
 type CityleagueResultGetResponse struct {
 	LeagueType   uint                   `json:"league_type"`
 	FromDate     time.Time              `json:"from_date"`

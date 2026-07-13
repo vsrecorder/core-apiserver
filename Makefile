@@ -68,6 +68,7 @@ mockgen:
 	mockgen -source=./internal/usecase/notification.go -destination=./internal/mock/mock_usecase/notification.go
 	mockgen -source=./internal/usecase/environment_badge.go -destination=./internal/mock/mock_usecase/environment_badge.go
 	mockgen -source=./internal/usecase/environment_badge_evaluation.go -destination=./internal/mock/mock_usecase/environment_badge_evaluation.go
+	mockgen -source=./internal/usecase/cityleague_result.go -destination=./internal/mock/mock_usecase/cityleague_result.go
 
 .PHONY: image
 image:

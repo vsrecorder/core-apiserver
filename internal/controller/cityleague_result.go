@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	CityleagueResultsPath = "/cityleague_results"
+	CityleagueResultsPath      = "/cityleague_results"
+	CityleagueResultEventsPath = "/events"
 )
 
 type CityleagueResult struct {
@@ -44,6 +45,30 @@ func (c *CityleagueResult) RegisterRoute(relativePath string) {
 		c.GetByOfficialEventId,
 		c.Get,
 	)
+	r.GET(
+		CityleagueResultEventsPath,
+		validation.CityleagueResultGetEventsMiddleware(),
+		c.GetEvents,
+	)
+}
+
+// GetEvents は結果が登録されているイベントを、入賞者を含めずに返す。
+// 入賞者まで返す "" のハンドラは全期間で十数MBに達するため、イベントの識別子と開催日だけを
+// 必要とする用途（webapp の sitemap 生成など）はこちらを使う。
+func (c *CityleagueResult) GetEvents(ctx *gin.Context) {
+	leagueType := helper.GetLeagueType(ctx)
+	fromDate := helper.GetFromDate(ctx)
+	toDate := helper.GetToDate(ctx)
+
+	cityleagueResultEvents, err := c.usecase.FindEvents(context.Background(), leagueType, fromDate, toDate)
+	if err != nil {
+		apierror.ErrInternalServerError.JSON(ctx)
+		return
+	}
+
+	res := presenter.NewCityleagueResultGetEventsResponse(len(cityleagueResultEvents), cityleagueResultEvents)
+
+	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *CityleagueResult) GetByDate(ctx *gin.Context) {

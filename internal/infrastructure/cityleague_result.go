@@ -22,6 +22,48 @@ func NewCityleagueResult(
 	return &CityleagueResult{db}
 }
 
+// cityleague_results は入賞者1人につき1レコードを持つため、イベント単位の情報は
+// 同じ値が入賞者の人数分だけ重複する。DISTINCT でイベント単位に畳んでから返す。
+type cityleagueResultEventRow struct {
+	OfficialEventId uint
+	LeagueType      uint
+	EventDate       time.Time
+}
+
+func (i *CityleagueResult) FindEvents(
+	ctx context.Context,
+	leagueType uint,
+	fromDate time.Time,
+	toDate time.Time,
+) ([]*entity.CityleagueResultEvent, error) {
+	query := i.db.Model(&model.CityleagueResult{}).
+		Distinct("official_event_id", "league_type", "event_date")
+
+	if leagueType != 0 {
+		query = query.Where("league_type = ?", leagueType)
+	}
+
+	if !fromDate.IsZero() && !toDate.IsZero() {
+		query = query.Where("event_date >= ? AND event_date <= ?", fromDate, toDate)
+	}
+
+	var rows []*cityleagueResultEventRow
+	if tx := query.Order("event_date DESC, league_type ASC, official_event_id ASC").Scan(&rows); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	ret := []*entity.CityleagueResultEvent{}
+	for _, row := range rows {
+		ret = append(ret, entity.NewCityleagueResultEvent(
+			row.OfficialEventId,
+			row.LeagueType,
+			row.EventDate,
+		))
+	}
+
+	return ret, nil
+}
+
 func (i *CityleagueResult) FindByOfficialEventId(
 	ctx context.Context,
 	officialEventId uint,

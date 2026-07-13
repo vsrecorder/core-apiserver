@@ -8,6 +8,13 @@ import (
 )
 
 type CityleagueResultInterface interface {
+	FindEvents(
+		ctx context.Context,
+		leagueType uint,
+		fromDate time.Time,
+		toDate time.Time,
+	) ([]*entity.CityleagueResultEvent, error)
+
 	FindByOfficialEventId(
 		ctx context.Context,
 		officialEventId uint,
@@ -41,6 +48,15 @@ func NewCityleagueResult(
 	repository CityleagueResultInterface,
 ) *CityleagueResult {
 	return &CityleagueResult{repository}
+}
+
+func (u *CityleagueResult) FindEvents(
+	ctx context.Context,
+	leagueType uint,
+	fromDate time.Time,
+	toDate time.Time,
+) ([]*entity.CityleagueResultEvent, error) {
+	return u.repository.FindEvents(ctx, leagueType, fromDate, toDate)
 }
 
 func (u *CityleagueResult) FindByOfficialEventId(

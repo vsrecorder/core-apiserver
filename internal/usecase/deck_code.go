@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
@@ -79,16 +78,16 @@ type DeckCodeInterface interface {
 
 type DeckCode struct {
 	repository      repository.DeckCodeInterface
+	deckAsset       repository.DeckAssetInterface
 	badgeEvaluation BadgeEvaluationInterface
-	logger          *slog.Logger
 }
 
 func NewDeckCode(
 	repository repository.DeckCodeInterface,
+	deckAsset repository.DeckAssetInterface,
 	badgeEvaluation BadgeEvaluationInterface,
-	logger *slog.Logger,
 ) DeckCodeInterface {
-	return &DeckCode{repository, badgeEvaluation, logger}
+	return &DeckCode{repository, deckAsset, badgeEvaluation}
 }
 
 func (u *DeckCode) FindById(
@@ -144,11 +143,11 @@ func (u *DeckCode) Create(
 		// デッキコードのHTMLページのアップロードでは、デッキコードが正しいかどうかを確認することができるため、
 		// 先にデッキコードのHTMLページをアップロードすることで、デッキコードが正しいかどうかを確認することができる。
 		// アップロードに失敗した場合はデッキ作成を中止する。
-		if err := uploadDeckResultHTML(u.logger, deckcode.Code); err != nil {
+		if err := u.deckAsset.UploadDeckResultHTML(ctx, deckcode.Code); err != nil {
 			return nil, err
 		}
 
-		if err := uploadDeckImage(deckcode.Code); err != nil {
+		if err := u.deckAsset.UploadDeckImage(ctx, deckcode.Code); err != nil {
 			return nil, err
 		}
 	}

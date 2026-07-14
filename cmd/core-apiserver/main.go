@@ -224,8 +224,8 @@ func main() {
 		infrastructure.NewRecord(db, logger),
 		usecase.NewDeck(
 			infrastructure.NewDeck(db),
+			infrastructure.NewDeckAsset(logger),
 			badgeEvaluation,
-			logger,
 		),
 	).RegisterRoute(relativePath)
 
@@ -236,8 +236,8 @@ func main() {
 		infrastructure.NewRecord(db, logger),
 		usecase.NewDeckCode(
 			infrastructure.NewDeckCode(db),
+			infrastructure.NewDeckAsset(logger),
 			badgeEvaluation,
-			logger,
 		),
 	).RegisterRoute(relativePath)
 

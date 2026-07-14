@@ -9,6 +9,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -69,7 +70,7 @@ func convertPNG2JPG(imageBytes []byte) ([]byte, error) {
 	return nil, fmt.Errorf("unable to convert %#v to jpeg", contentType)
 }
 
-func uploadDeckResultHTML(deckCode string) error {
+func uploadDeckResultHTML(logger *slog.Logger, deckCode string) error {
 	ctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -92,12 +93,40 @@ func uploadDeckResultHTML(deckCode string) error {
 
 			resp, err := http.Get(url)
 			if err != nil {
+				logger.Error(
+					"failed to fetch deck result HTML page",
+					slog.String("deck_code", deckCode),
+					slog.String("request_url", url),
+					slog.String("error_message", err.Error()),
+				)
+
 				return err
 			}
 			defer resp.Body.Close()
 
+			// 異常なレスポンスのHTMLをS3にアップロードしてしまうと、
+			// HeadObjectで存在確認をしているため以降ずっと壊れたページを配信し続けることになる。
+			// そのためステータスが200以外のときはアップロードせずにエラーを返す。
+			if resp.StatusCode != http.StatusOK {
+				logger.Error(
+					"deck result HTML page returned non-200 status",
+					slog.String("deck_code", deckCode),
+					slog.String("request_url", url),
+					slog.Int("status_code", resp.StatusCode),
+				)
+
+				return fmt.Errorf("deck result html page status: %d", resp.StatusCode)
+			}
+
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {
+				logger.Error(
+					"failed to read deck result HTML page body",
+					slog.String("deck_code", deckCode),
+					slog.String("request_url", url),
+					slog.String("error_message", err.Error()),
+				)
+
 				return err
 			}
 

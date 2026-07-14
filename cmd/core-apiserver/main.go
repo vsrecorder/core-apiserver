@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -188,7 +187,7 @@ func main() {
 		infrastructure.NewUser(db),
 		usecase.NewUser(
 			infrastructure.NewUser(db),
-			infrastructure.NewRecord(db, slog.Default()),
+			infrastructure.NewRecord(db, logger),
 			infrastructure.NewDeck(db),
 			infrastructure.NewDeckCode(db),
 			infrastructure.NewUserPlayer(db),
@@ -200,7 +199,7 @@ func main() {
 	controller.NewTonamelEvent(
 		r,
 		usecase.NewTonamelEvent(
-			infrastructure.NewTonamelEvent(slog.Default()),
+			infrastructure.NewTonamelEvent(logger),
 		),
 	).RegisterRoute(relativePath)
 
@@ -222,10 +221,11 @@ func main() {
 		logger,
 		r,
 		infrastructure.NewDeck(db),
-		infrastructure.NewRecord(db, slog.Default()),
+		infrastructure.NewRecord(db, logger),
 		usecase.NewDeck(
 			infrastructure.NewDeck(db),
 			badgeEvaluation,
+			logger,
 		),
 	).RegisterRoute(relativePath)
 
@@ -233,10 +233,11 @@ func main() {
 		logger,
 		r,
 		infrastructure.NewDeckCode(db),
-		infrastructure.NewRecord(db, slog.Default()),
+		infrastructure.NewRecord(db, logger),
 		usecase.NewDeckCode(
 			infrastructure.NewDeckCode(db),
 			badgeEvaluation,
+			logger,
 		),
 	).RegisterRoute(relativePath)
 
@@ -254,9 +255,9 @@ func main() {
 
 	controller.NewRecord(
 		r,
-		infrastructure.NewRecord(db, slog.Default()),
+		infrastructure.NewRecord(db, logger),
 		usecase.NewRecord(
-			infrastructure.NewRecord(db, slog.Default()),
+			infrastructure.NewRecord(db, logger),
 			badgeEvaluation,
 			designationEvaluation,
 		),
@@ -265,10 +266,10 @@ func main() {
 	controller.NewMatch(
 		r,
 		infrastructure.NewMatch(db),
-		infrastructure.NewRecord(db, slog.Default()),
+		infrastructure.NewRecord(db, logger),
 		usecase.NewMatch(
 			infrastructure.NewMatch(db),
-			infrastructure.NewRecord(db, slog.Default()),
+			infrastructure.NewRecord(db, logger),
 			badgeEvaluation,
 			designationEvaluation,
 			environmentBadgeEvaluation,

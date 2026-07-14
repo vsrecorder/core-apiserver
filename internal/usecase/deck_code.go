@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
@@ -79,13 +80,15 @@ type DeckCodeInterface interface {
 type DeckCode struct {
 	repository      repository.DeckCodeInterface
 	badgeEvaluation BadgeEvaluationInterface
+	logger          *slog.Logger
 }
 
 func NewDeckCode(
 	repository repository.DeckCodeInterface,
 	badgeEvaluation BadgeEvaluationInterface,
+	logger *slog.Logger,
 ) DeckCodeInterface {
-	return &DeckCode{repository, badgeEvaluation}
+	return &DeckCode{repository, badgeEvaluation, logger}
 }
 
 func (u *DeckCode) FindById(
@@ -141,7 +144,7 @@ func (u *DeckCode) Create(
 		// デッキコードのHTMLページのアップロードでは、デッキコードが正しいかどうかを確認することができるため、
 		// 先にデッキコードのHTMLページをアップロードすることで、デッキコードが正しいかどうかを確認することができる。
 		// アップロードに失敗した場合はデッキ作成を中止する。
-		if err := uploadDeckResultHTML(deckcode.Code); err != nil {
+		if err := uploadDeckResultHTML(u.logger, deckcode.Code); err != nil {
 			return nil, err
 		}
 

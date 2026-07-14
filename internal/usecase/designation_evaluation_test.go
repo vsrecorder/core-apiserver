@@ -43,6 +43,7 @@ func newDesignationEvaluationTestUsecase(mockCtrl *gomock.Controller) (
 // officialCityLeagueRecord(今シーズン・前シーズン)の集計値モックを設定する。
 func expectRecordCriteriaCounts(
 	designationStatsRepo *mock_repository.MockDesignationStatsInterface,
+	userPlayerRepo *mock_repository.MockUserPlayerInterface,
 	userId string,
 	recordCount int,
 	leagueCount int,
@@ -50,17 +51,23 @@ func expectRecordCriteriaCounts(
 	designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), userId, gomock.Any(), gomock.Any()).Return(recordCount, nil)
 	designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), userId, gomock.Any(), gomock.Any()).Return(leagueCount, nil)
 	designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), userId, gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
+
+	// 通知経路(CurrentTier/NotifyIfTierChanged/NotifyIfTierLost)もベテラン・熟練
+	// (cityleague_results由来)のcriteriaを評価するようになったため、プレイヤーIDの連携有無を
+	// 必ず引く。これらのテストは称号tier1〜3(threeTierDefinitions)の挙動を見るものなので、
+	// 未連携(=ベテラン以降は未達成)として扱う。
+	userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), userId).Return(nil, apperror.ErrRecordNotFound).AnyTimes()
 }
 
 func TestDesignationEvaluation_CurrentTier(t *testing.T) {
 	t.Run("集計値から現在のtierを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 5, 0)
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 5, 0)
 
 		tier, err := u.CurrentTier(context.Background(), "user-1")
 
@@ -70,12 +77,12 @@ func TestDesignationEvaluation_CurrentTier(t *testing.T) {
 
 	t.Run("称号未達成なら0を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 0, 0)
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 0, 0)
 
 		tier, err := u.CurrentTier(context.Background(), "user-1")
 
@@ -157,10 +164,10 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 
 	t.Run("cityleague_results起因のティア(ベテラン)にも到達できる", func(t *testing.T) {
 		// backfill-notificationsがベテラン・ハイパーボール級の実際の達成日を
-		// 遡って特定できるようにする回帰テスト。CurrentTier/NotifyIfTierChangedと違い
-		// TierAsOfはcityleague_results起因のcriteria_typeも含めて判定しなければならない
-		// (含めないとcurrentDesignation()がtier5未満で判定を打ち切ってしまい、
-		// ベテラン・ハイパーボール級のachieved_atが常にfallback=バッチ実行時刻になる)。
+		// 遡って特定できるようにする回帰テスト。cityleague_results起因のcriteria_typeも
+		// 含めて判定しなければならない(含めないとcurrentDesignation()がtier5未満で判定を
+		// 打ち切ってしまい、ベテラン・ハイパーボール級のachieved_atが常にfallback=
+		// バッチ実行時刻になる)。
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -187,15 +194,83 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 	})
 }
 
+// expectVeteranCriteria は「ベテラン(tier5)に到達しているユーザー」のリアルタイム評価用モックを
+// 設定する。cityLeagueResultExists=false にすると、シティリーグ入賞の実績だけを失い
+// レギュラー(tier4)へ後退した状態になる。
+// リアルタイム評価(asOfゼロ)は表示側と同じ非AsOf版クエリを使うため、ここでも非AsOf版を期待する。
+func expectVeteranCriteria(
+	designationStatsRepo *mock_repository.MockDesignationStatsInterface,
+	userPlayerRepo *mock_repository.MockUserPlayerInterface,
+	now time.Time,
+	cityLeagueResultExists bool,
+) {
+	designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+	designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+	// 今シーズン単独でDesignationCityLeagueStandaloneThreshold(2)件以上にしてレギュラー(tier4)を満たす
+	designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(2, nil).Times(2)
+
+	userPlayer := entity.NewUserPlayer("user-player-1", now, "user-1", "player-1")
+	userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
+	designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(cityLeagueResultExists, nil)
+	designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
+}
+
+// 通知経路(CurrentTier/NotifyIfTierChanged/NotifyIfTierLost)がcityleague_results起因の
+// criteria_typeを評価しなかった頃は、currentDesignation()がtier5で判定を打ち切るため
+// beforeTierが最大4に丸められ、ベテラン・熟練の獲得/剥奪/ランク変動の通知が一度も飛ばなかった。
+// 表示側(usecase/designation.go)と判定を揃えたことの回帰テスト。
+func TestDesignationEvaluation_CityLeagueResultTiersAreEvaluatedOnNotifyPath(t *testing.T) {
+	t.Run("CurrentTierがベテラン(tier5)を返す", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fiveTierDefinitions(now), nil)
+		expectVeteranCriteria(designationStatsRepo, userPlayerRepo, now, true)
+
+		tier, err := u.CurrentTier(context.Background(), "user-1")
+
+		require.NoError(t, err)
+		require.Equal(t, 5, tier) // 修正前は4(レギュラー)に丸められていた
+	})
+
+	t.Run("ベテラン(tier5)からレギュラー(tier4)へ後退すると称号喪失を通知する", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fiveTierDefinitions(now), nil)
+		// シティリーグ入賞の実績を失い、tier5(ベテラン) -> tier4(レギュラー)へ後退
+		expectVeteranCriteria(designationStatsRepo, userPlayerRepo, now, false)
+
+		var saved []*entity.Notification
+		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, n *entity.Notification) error {
+				saved = append(saved, n)
+				return nil
+			},
+		).AnyTimes()
+
+		u.NotifyIfTierLost(context.Background(), "user-1", 5)
+
+		// 修正前は beforeTier/afterTier とも4に丸められ、通知が1件も作られなかった
+		require.NotEmpty(t, saved)
+		require.Equal(t, NotificationCategoryDesignation, saved[0].Category)
+		require.Contains(t, saved[0].Body, "ベテラン")
+	})
+}
+
 func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 	t.Run("初めて称号(tier1)に到達すると称号獲得とランクアップの両方を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 1, 0) // tier1(駆け出し)のみ達成
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 1, 0) // tier1(駆け出し)のみ達成
 
 		var categories []string
 		var bodies []string
@@ -217,14 +292,14 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 
 	t.Run("同じランク区分内でtierが上がった場合は称号獲得のみ通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		achievedAt := now.AddDate(0, 0, -5) // 実際に記録を作成した(=称号を達成した)過去の日時
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
 		// tier1(駆け出し)・tier2(見習い、記録5件)はどちらも「モンスターボール級」
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 5, 0)
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 5, 0)
 
 		var saved *entity.Notification
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -244,13 +319,13 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 
 	t.Run("ランク区分をまたいでtierが上がった場合は称号獲得とランクアップの両方を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
 		// tier3(一人前)は「スーパーボール級」(tier1・2の「モンスターボール級」とは異なる区分)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 5, 1)
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 5, 1)
 
 		var bodies []string
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -267,12 +342,12 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 
 	t.Run("tierが変化していなければ何も通知しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 5, 0) // tier2のまま
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 5, 0) // tier2のまま
 		// notificationRepo.Save は呼ばれない(EXPECT未設定=呼ばれたら失敗)
 
 		u.NotifyIfTierChanged(context.Background(), "user-1", 2, now)
@@ -280,14 +355,14 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 
 	t.Run("1回の評価で複数tierを一気に飛び越えた場合は通過した各tierをすべて通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
 		// tier1(駆け出し)を飛ばしてtier0からtier3(一人前)まで一気に到達したケース
 		// (称号機能の導入前から既に記録が5件・リーグ記録が1件あった場合等)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 5, 1)
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 5, 1)
 
 		var categories []string
 		var bodies []string
@@ -326,12 +401,12 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 
 	t.Run("tierが下がった場合(シーズン切り替え等)は何も通知しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 5, 0) // tier2
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 5, 0) // tier2
 		// notificationRepo.Save は呼ばれない
 
 		u.NotifyIfTierChanged(context.Background(), "user-1", 3, now)
@@ -353,13 +428,13 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 	t.Run("同じランク区分内でtierが下がった場合は称号喪失のみ通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
 		// 記録削除により5件→1件に減り、tier2(見習い)からtier1(駆け出し)に後退
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 1, 0)
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 1, 0)
 
 		var saved *entity.Notification
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -378,13 +453,13 @@ func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 
 	t.Run("ランク区分をまたいでtierが下がった場合は称号喪失とランクダウンの両方を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
 		// tier3(一人前、スーパーボール級)からtier1(駆け出し、モンスターボール級)に後退
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 1, 0)
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 1, 0)
 
 		var bodies []string
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -401,12 +476,12 @@ func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 
 	t.Run("称号が何もない状態まで失うと称号喪失とランクダウンの両方を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 0, 0)
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 0, 0)
 
 		var bodies []string
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -423,12 +498,12 @@ func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 
 	t.Run("tierが変化していなければ何も通知しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
 
 		now := time.Now()
 		designationRepo.EXPECT().FindAll(gomock.Any()).Return(threeTierDefinitions(now), nil)
-		expectRecordCriteriaCounts(designationStatsRepo, "user-1", 5, 0) // tier2のまま
+		expectRecordCriteriaCounts(designationStatsRepo, userPlayerRepo, "user-1", 5, 0) // tier2のまま
 		// notificationRepo.Save は呼ばれない
 
 		u.NotifyIfTierLost(context.Background(), "user-1", 2)

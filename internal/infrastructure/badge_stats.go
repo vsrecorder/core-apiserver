@@ -9,6 +9,14 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
+// BadgeStats はバッジ(はじめの一歩・マイルストーン)と週次ストリークの判定に使う集計値を返す。
+//
+// このリポジトリのクエリは、記録の集計対象外フラグ(ignore_stats_flg)を意図的に見ない。
+// 集計対象外は「対戦データの分析(デッキ使用率・対戦相手のデッキ分布・週次メタ・戦績)から
+// 除きたい」という意思表示であり、「記録し続けた」という活動量そのものを取り消すものではない。
+// バッジ・ストリークは活動量に対する実績のため、集計対象外の記録も一律に数える。
+// 分析側(deck_usage_stat/opponent_deck_usage_stat/weekly_deck_usage_stat/user_stat*/
+// designation_stats)は従来どおり ignore_stats_flg = false で除外する。
 type BadgeStats struct {
 	db *gorm.DB
 }
@@ -27,7 +35,7 @@ func (i *BadgeStats) CountRecordsByUserId(
 ) (int, error) {
 	var count int64
 
-	query := i.db.Table("records").Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId)
+	query := i.db.Table("records").Where("user_id = ? AND deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
 		query = query.Where("event_date >= ?", fromDate)
 	}
@@ -51,7 +59,7 @@ func (i *BadgeStats) CountMatchesByUserId(
 	var count int64
 
 	query := i.db.Table("matches").
-		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)
@@ -129,7 +137,7 @@ func (i *BadgeStats) FindRecordDatesByUserId(
 
 	query := i.db.Table("records").
 		Select("event_date, created_at").
-		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId)
+		Where("user_id = ? AND deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
 		query = query.Where("COALESCE(event_date, created_at) >= ?", fromDate)
 	}
@@ -210,7 +218,7 @@ func (i *BadgeStats) FindMatchDatesByUserId(
 	var dates []time.Time
 
 	query := i.db.Table("matches").
-		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)

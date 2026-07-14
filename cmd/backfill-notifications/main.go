@@ -26,7 +26,18 @@
 // 設計)。ただし裏を返すと、対象ユーザーが導入後に何らかの通知を既に受け取っている場合は
 // 1・2のバックフィル対象外になる(導入前に一度だけ実行する運用を想定)。3(称号・ランク)・
 // 4(環境バッジ)はこの制約を受けず、常に個別の重複判定(称号・ランクはbody文字列、環境バッジは
-// notification_idの有無)で補完する。
+// notification_idが指す通知の実在)で補完する。
+//
+// notificationsを全削除してから本バッチを実行すると、上記1〜4のすべてが対象になり、通知履歴を
+// ゼロから作り直せる(集計ロジックの変更で過去の達成判定が変わった場合などに、辻褄を合わせる
+// ための運用)。その際、user_environment_badges.notification_id は notifications とは別テーブル
+// のため削除されずに残るが、4は「IDが入っているか」ではなく「そのIDの通知が実在するか」で
+// 判定するため、環境バッジの通知も正しく作り直される(事前にnotification_idをクリアする必要はない)。
+//
+// ただし、称号喪失(notifyDesignationLost)・ランクダウン(notifyRankDown)の通知だけは作り直せない。
+// これらは「過去のある時点で条件を満たさなくなった」というイベントであり、現在のデータからは
+// 「今達成していない」ことしか分からず、いつ失ったかを遡れないため。全削除するとこの2種類の
+// 通知履歴は失われる。
 //
 // 使い方:
 //
@@ -443,10 +454,29 @@ func backfillEnvironmentBadgeNotifications(
 		return 0, err
 	}
 
+	// 既存通知のID集合。notification_id が「入っているか」ではなく「指す通知が実在するか」で
+	// 判定する。notifications を全削除してから本バッチで履歴を作り直す運用では、
+	// user_environment_badges 側の notification_id だけが残るため、IDの有無で判定すると
+	// 通知済みとみなされ環境バッジの通知だけが永久に復元されない。
+	var existingNotificationIds []string
+	if tx := db.Model(&model.Notification{}).
+		Where("user_id = ?", userId).
+		Pluck("id", &existingNotificationIds); tx.Error != nil {
+		return 0, tx.Error
+	}
+	existingNotifications := make(map[string]struct{}, len(existingNotificationIds))
+	for _, id := range existingNotificationIds {
+		existingNotifications[id] = struct{}{}
+	}
+
 	created := 0
 	for _, badge := range badges {
 		if badge.NotificationId != "" {
-			continue
+			if _, ok := existingNotifications[badge.NotificationId]; ok {
+				continue
+			}
+			// notification_id は残っているが参照先の通知が無い(通知だけ削除された)。
+			// 通知を作り直し、新しいIDで notification_id を上書きする。
 		}
 
 		if dryRun {

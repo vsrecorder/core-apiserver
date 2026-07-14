@@ -266,7 +266,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteria(
 	ctx context.Context,
 	userId string,
 ) (*entity.Designation, []*entity.Designation, string, error) {
-	return u.currentDesignationForRecordCriteriaAsOf(ctx, userId, time.Time{}, false)
+	return u.currentDesignationForRecordCriteriaAsOf(ctx, userId, time.Time{}, true)
 }
 
 // currentDesignationForRecordCriteriaAsOf は currentDesignationForRecordCriteria と同様だが、
@@ -274,15 +274,15 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteria(
 // asOf がゼロ値の場合はシーズン終了日まで(=currentDesignationForRecordCriteriaと同じ)集計する。
 //
 // includeCityLeagueResultCriteria が true の場合のみ、ベテラン(official_city_league_placement)・
-// 熟練(official_city_league_playoff)の2criteria_typeもvaluesに含める。この2つは
-// import-cityleague-result-job(別リポジトリ、日次バッチ)がcityleague_resultsを取り込んだ
-// 瞬間に変化しうるものであり、record作成イベントと無関係なため、CurrentTier/
-// NotifyIfTierChanged/NotifyIfTierLost(=currentDesignationForRecordCriteria経由)では
-// 従来通りfalseで除外する。一方 TierAsOf はbackfill-notificationsが「実際に
-// 達成した日」を過去に遡って特定するための特殊な用途で、この2つを除外すると
-// currentDesignation()がvaluesに無いcriteria_typeで判定を打ち切ってしまいtier5以降に
-// 決して到達できず、ベテラン・熟練(および対応するランク「ハイパーボール級」等)の
-// achieved_atが常にfallback(バッチ実行時刻)になってしまうため、trueで含める。
+// 熟練(official_city_league_playoff)の2criteria_typeもvaluesに含める。
+//
+// currentDesignation() は values に無い criteria_type に当たると判定を打ち切るため、この2つを
+// 除外すると tier5 以降には決して到達できず、返る tier は最大4(レギュラー)で頭打ちになる。
+// かつて CurrentTier/NotifyIfTierChanged/NotifyIfTierLost は false で呼んでいたが、その結果
+// ベテラン・熟練のユーザーで beforeTier が 4 と誤計算され、称号の獲得・剥奪・ランクアップ/
+// ランクダウン通知がいずれも飛ばなかった。表示側(usecase/designation.go)はこの2つを含めて
+// 判定するため、表示と通知で到達tierが食い違っていたのが原因。現在はリアルタイム評価・
+// TierAsOf(backfill-notifications)ともに true で呼び、表示側と判定を揃えている。
 func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 	ctx context.Context,
 	userId string,
@@ -361,11 +361,21 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 		}
 
 		if userPlayer != nil {
-			// includeCityLeagueResultCriteria=trueはTierAsOf(asOf非ゼロ)からのみ渡されるため、
-			// ここは常にAsOf版を使う(理由はCountRecordsAsOfByUserId・ExistsCityLeagueResult
-			// AsOfByPlayerIdのコメント参照。「現在の状態」だけでは、cityleague_resultsの方が
-			// 先に存在し、対応するuserId自身のrecordを後から作成したケースを正しく除外できない)。
-			exists, err := u.designationStatsRepo.ExistsCityLeagueResultAsOfByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+			// asOf(TierAsOf経由)ではAsOf版を使う。「現在の状態」だけでは、cityleague_resultsの
+			// 方が先に存在し、対応するuserId自身のrecordを後から作成したケースを、過去時点の
+			// 判定で正しく除外できないため(ExistsCityLeagueResultAsOfByPlayerIdのコメント参照)。
+			// 一方リアルタイム評価(asOfゼロ)では、表示側(usecase/designation.goの
+			// seasonValuesByCriteriaType)と同じ非AsOf版を使う。表示と通知で別のクエリを使うと
+			// 到達tierの判定が食い違い、表示上は称号が変わったのに通知だけ飛ばない(またはその逆)
+			// という不整合が起きるため。
+			var exists bool
+			var existsFinalTournament bool
+
+			if !asOf.IsZero() {
+				exists, err = u.designationStatsRepo.ExistsCityLeagueResultAsOfByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+			} else {
+				exists, err = u.designationStatsRepo.ExistsCityLeagueResultByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+			}
 			if err != nil {
 				return nil, nil, "", err
 			}
@@ -373,7 +383,11 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 				cityLeaguePlacement = 1
 			}
 
-			existsFinalTournament, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
+			if !asOf.IsZero() {
+				existsFinalTournament, err = u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
+			} else {
+				existsFinalTournament, err = u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
+			}
 			if err != nil {
 				return nil, nil, "", err
 			}

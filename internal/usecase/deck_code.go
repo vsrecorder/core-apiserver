@@ -118,9 +118,6 @@ func (u *DeckCode) Create(
 	ctx context.Context,
 	param *DeckCodeCreateParam,
 ) (*entity.DeckCode, error) {
-
-	// TODO: param.DeckIdが存在するか確認する(or 外部キー制約を利用する)
-
 	id, err := generateId()
 	if err != nil {
 		return nil, err
@@ -139,6 +136,11 @@ func (u *DeckCode) Create(
 	)
 
 	if deckcode.Code != "" {
+		// 先にデッキコードのHTMLページをアップロードする。
+		// デッキ画像のアップロードでは、そのデッキコードが存在するか確認することができないが、
+		// デッキコードのHTMLページのアップロードでは、デッキコードが正しいかどうかを確認することができるため、
+		// 先にデッキコードのHTMLページをアップロードすることで、デッキコードが正しいかどうかを確認することができる。
+		// アップロードに失敗した場合はデッキ作成を中止する。
 		if err := uploadDeckResultHTML(deckcode.Code); err != nil {
 			return nil, err
 		}

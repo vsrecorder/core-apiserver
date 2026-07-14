@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,7 @@ const (
 )
 
 type Deck struct {
+	logger           *slog.Logger
 	router           *gin.Engine
 	deckRepository   repository.DeckInterface
 	recordRepository repository.RecordInterface
@@ -30,12 +32,13 @@ type Deck struct {
 }
 
 func NewDeck(
+	logger *slog.Logger,
 	router *gin.Engine,
 	deckRepository repository.DeckInterface,
 	recordRepository repository.RecordInterface,
 	usecase usecase.DeckInterface,
 ) *Deck {
-	return &Deck{router, deckRepository, recordRepository, usecase}
+	return &Deck{logger, router, deckRepository, recordRepository, usecase}
 }
 
 func (c *Deck) RegisterRoute(relativePath string) {
@@ -61,7 +64,7 @@ func (c *Deck) RegisterRoute(relativePath string) {
 	r.POST(
 		"",
 		authentication.RequiredAuthenticationMiddleware(),
-		validation.DeckCreateMiddleware(),
+		validation.DeckCreateMiddleware(c.logger),
 		c.Create,
 	)
 	r.PUT(

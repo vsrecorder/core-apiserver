@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,7 @@ const (
 )
 
 type DeckCode struct {
+	logger             *slog.Logger
 	router             *gin.Engine
 	deckcodeRepository repository.DeckCodeInterface
 	recordRepository   repository.RecordInterface
@@ -30,12 +32,13 @@ type DeckCode struct {
 }
 
 func NewDeckCode(
+	logger *slog.Logger,
 	router *gin.Engine,
 	deckcodeRepository repository.DeckCodeInterface,
 	recordRepository repository.RecordInterface,
 	usecase usecase.DeckCodeInterface,
 ) *DeckCode {
-	return &DeckCode{router, deckcodeRepository, recordRepository, usecase}
+	return &DeckCode{logger, router, deckcodeRepository, recordRepository, usecase}
 }
 
 func (c *DeckCode) RegisterRoute(relativePath string) {
@@ -49,7 +52,7 @@ func (c *DeckCode) RegisterRoute(relativePath string) {
 		r.POST(
 			"",
 			authentication.RequiredAuthenticationMiddleware(),
-			validation.DeckCodeCreateMiddleware(),
+			validation.DeckCodeCreateMiddleware(c.logger),
 			c.Create,
 		)
 		r.PUT(

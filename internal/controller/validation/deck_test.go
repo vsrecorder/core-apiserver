@@ -2,6 +2,7 @@ package validation
 
 import (
 	"encoding/json"
+	"log/slog"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -173,7 +174,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := DeckCreateMiddleware()
+		middleware := DeckCreateMiddleware(slog.Default())
 		middleware(ginContext)
 
 		actual := helper.GetDeckCreateRequest(ginContext)
@@ -203,7 +204,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := DeckCreateMiddleware()
+		middleware := DeckCreateMiddleware(slog.Default())
 		middleware(ginContext)
 
 		actual := helper.GetDeckCreateRequest(ginContext)
@@ -221,7 +222,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := DeckCreateMiddleware()
+		middleware := DeckCreateMiddleware(slog.Default())
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
@@ -249,7 +250,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := DeckCreateMiddleware()
+		middleware := DeckCreateMiddleware(slog.Default())
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
@@ -277,7 +278,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		middleware := DeckCreateMiddleware()
+		middleware := DeckCreateMiddleware(slog.Default())
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusBadRequest, w.Code)

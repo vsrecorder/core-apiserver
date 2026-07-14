@@ -3,6 +3,7 @@ package validation
 import (
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -14,6 +15,8 @@ import (
 
 const (
 	DateLayout = time.DateOnly
+
+	DeckIDCheckURL = "https://www.pokemon-card.com/deck/deckIDCheck.php"
 )
 
 type DeckIDCheckResponse struct {
@@ -23,13 +26,35 @@ type DeckIDCheckResponse struct {
 	Existence int    `json:"existence"`
 }
 
-func checkDeckCode(ctx *gin.Context, deckCode string) {
+// deckCodeCheckLogAttrs はデッキコード確認APIのログに共通で付与する属性を返す。
+// request_idはアクセスログと突き合わせるためにRequestIDMiddlewareが設定した値を利用する。
+func deckCodeCheckLogAttrs(ctx *gin.Context, deckCode string) []any {
+	requestID, _ := ctx.Get("request_id")
+	requestIDStr, _ := requestID.(string)
+
+	return []any{
+		slog.String("request_id", requestIDStr),
+		slog.String("deck_code", deckCode),
+		slog.String("request_url", DeckIDCheckURL),
+	}
+}
+
+func checkDeckCode(ctx *gin.Context, logger *slog.Logger, deckCode string) {
 	data := url.Values{}
 	data.Add("deckID", deckCode)
 
-	resp, err := http.PostForm("https://www.pokemon-card.com/deck/deckIDCheck.php", data)
+	resp, err := http.PostForm(DeckIDCheckURL, data)
 
 	if err != nil {
+		logger.ErrorContext(
+			ctx.Request.Context(),
+			"failed to request deck code check API",
+			append(
+				deckCodeCheckLogAttrs(ctx, deckCode),
+				slog.String("error_message", err.Error()),
+			)...,
+		)
+
 		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
@@ -37,6 +62,15 @@ func checkDeckCode(ctx *gin.Context, deckCode string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		logger.ErrorContext(
+			ctx.Request.Context(),
+			"deck code check API returned non-200 status",
+			append(
+				deckCodeCheckLogAttrs(ctx, deckCode),
+				slog.Int("status_code", resp.StatusCode),
+			)...,
+		)
+
 		switch resp.StatusCode {
 		case http.StatusServiceUnavailable:
 			apierror.ErrServiceUnavailable.JSON(ctx)

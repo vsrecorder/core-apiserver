@@ -249,6 +249,11 @@ func (u *Deck) Create(
 		)
 
 		if LatestDeckCode.Code != "" {
+			// 先にデッキコードのHTMLページをアップロードする。
+			// デッキ画像のアップロードでは、そのデッキコードが存在するか確認することができないが、
+			// デッキコードのHTMLページのアップロードでは、デッキコードが正しいかどうかを確認することができるため、
+			// 先にデッキコードのHTMLページをアップロードすることで、デッキコードが正しいかどうかを確認することができる。
+			// アップロードに失敗した場合はデッキ作成を中止する。
 			if err := uploadDeckResultHTML(LatestDeckCode.Code); err != nil {
 				return nil, err
 			}

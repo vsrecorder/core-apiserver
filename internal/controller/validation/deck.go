@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"log/slog"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
@@ -41,7 +43,7 @@ func DeckGetMiddleware() gin.HandlerFunc {
 	}
 }
 
-func DeckCreateMiddleware() gin.HandlerFunc {
+func DeckCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.DeckCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -55,7 +57,7 @@ func DeckCreateMiddleware() gin.HandlerFunc {
 		}
 
 		if req.DeckCode != "" {
-			checkDeckCode(ctx, req.DeckCode)
+			checkDeckCode(ctx, logger, req.DeckCode)
 		}
 
 		helper.SetDeckCreateRequest(ctx, req)

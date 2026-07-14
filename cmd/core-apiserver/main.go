@@ -219,6 +219,7 @@ func main() {
 	).RegisterRoute(relativePath)
 
 	controller.NewDeck(
+		logger,
 		r,
 		infrastructure.NewDeck(db),
 		infrastructure.NewRecord(db, slog.Default()),
@@ -229,6 +230,7 @@ func main() {
 	).RegisterRoute(relativePath)
 
 	controller.NewDeckCode(
+		logger,
 		r,
 		infrastructure.NewDeckCode(db),
 		infrastructure.NewRecord(db, slog.Default()),

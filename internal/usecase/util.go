@@ -106,6 +106,11 @@ func uploadDeckResultHTML(deckCode string) error {
 				return apperror.ErrUnderMaintenance
 			}
 
+			// デッキコードエラーのときはアップロードしない
+			if bytes.Contains(bodyBytes, []byte("デッキコードが正しくありません")) {
+				return apperror.ErrDeckCodeInvalid
+			}
+
 			if _, err = s3client.PutObject(ctx, &s3.PutObjectInput{
 				ACL:    "public-read",
 				Bucket: aws.String("vsrecorder"),

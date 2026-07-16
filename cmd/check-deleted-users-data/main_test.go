@@ -58,6 +58,18 @@ func TestSummarizeByTable_検出結果が空の場合(t *testing.T) {
 	assert.Empty(t, summarizeByTable(nil))
 }
 
+func TestDisplayName(t *testing.T) {
+	names := map[string]string{
+		"uid_named":   "たいち",
+		"uid_no_name": "", // users.name は任意項目のため、DB上 NULL だと空文字になる
+	}
+
+	assert.Equal(t, "たいち", displayName(names, "uid_named"))
+	assert.Equal(t, "名前未設定", displayName(names, "uid_no_name"))
+	// 退会ユーザの一覧に無いIDは通常ありえないが、空欄で表示されないことを保証する
+	assert.Equal(t, "名前未設定", displayName(names, "uid_unknown"))
+}
+
 // specs は退会処理(internal/usecase/user.go の User.Delete)と1対1で対応させる前提のため、
 // 定義そのものの取り違え(分類漏れ・SQLの列数違い等)を検出する。
 func TestSpecs(t *testing.T) {

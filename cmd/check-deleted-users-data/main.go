@@ -54,6 +54,7 @@ import (
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 )
 
@@ -268,13 +269,13 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
-	deletedUserCount, err := countDeletedUsers(db, *userId)
+	names, err := fetchDeletedUserNames(db, *userId)
 	if err != nil {
-		log.Printf("failed to count deleted users: %v\n", err)
+		log.Printf("failed to fetch deleted users: %v\n", err)
 		os.Exit(ExitCodeNG)
 	}
 
-	if deletedUserCount == 0 {
+	if len(names) == 0 {
 		if *userId != "" {
 			log.Printf("確認対象の退会ユーザが見つかりません(user_id=%s は存在しないか、まだ退会していません)\n", *userId)
 			os.Exit(ExitCodeNG)
@@ -285,9 +286,9 @@ func main() {
 	}
 
 	if *userId != "" {
-		log.Printf("退会ユーザ user_id=%s のデータを確認します\n", *userId)
+		log.Printf("退会ユーザ user_id=%s (%s) のデータを確認します\n", *userId, displayName(names, *userId))
 	} else {
-		log.Printf("退会ユーザ %d 人のデータを確認します\n", deletedUserCount)
+		log.Printf("退会ユーザ %d 人のデータを確認します\n", len(names))
 	}
 
 	findings, err := collect(db, specs, *userId)
@@ -296,7 +297,7 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
-	report(findings, *verbose)
+	report(findings, names, *verbose)
 
 	if *exitCode && len(filterByCategory(findings, categoryLeak)) > 0 {
 		os.Exit(ExitCodeNG)
@@ -305,20 +306,40 @@ func main() {
 	os.Exit(ExitCodeOK)
 }
 
-// countDeletedUsers は確認対象の退会ユーザ数を返す。userId を指定した場合は、そのユーザが
-// 退会済みとして存在すれば1、そうでなければ0を返す。
-func countDeletedUsers(db *gorm.DB, userId string) (int64, error) {
-	query := db.Table("users").Where("deleted_at IS NOT NULL")
+// fetchDeletedUserNames は確認対象の退会ユーザについて、user_id をキーにした名前を返す。
+// userId を指定した場合は、そのユーザが退会済みとして存在すれば1件、そうでなければ0件を返す。
+// 確認対象のユーザ数としても使うため、件数だけが欲しい場合も len() で足りる。
+//
+// users.name は退会(論理削除)時に消していないため、退会後も表示に使える。
+// gorm.DeletedAt を持つモデルは論理削除された行がデフォルトで除外されてしまうため、
+// Unscoped で退会済みを取得する。
+func fetchDeletedUserNames(db *gorm.DB, userId string) (map[string]string, error) {
+	query := db.Unscoped().Model(&model.User{}).Where("deleted_at IS NOT NULL")
 	if userId != "" {
 		query = query.Where("id = ?", userId)
 	}
 
-	var count int64
-	if tx := query.Count(&count); tx.Error != nil {
-		return 0, tx.Error
+	var rows []*model.User
+	if tx := query.Find(&rows); tx.Error != nil {
+		return nil, tx.Error
 	}
 
-	return count, nil
+	names := make(map[string]string, len(rows))
+	for _, row := range rows {
+		names[row.ID] = row.Name
+	}
+
+	return names, nil
+}
+
+// displayName は表示用のユーザ名を返す。users.name は任意項目で未設定(NULL)のことがあり、
+// その場合は空文字になるため、空欄で表示されないようプレースホルダに置き換える。
+func displayName(names map[string]string, userId string) string {
+	if name := names[userId]; name != "" {
+		return name
+	}
+
+	return "名前未設定"
 }
 
 // collect は全テーブル分の確認を実行し、残っていたデータを検出結果として返す。
@@ -428,8 +449,8 @@ type tableSummary struct {
 	note      string
 }
 
-// report は確認結果を標準出力へ出力する。
-func report(findings []finding, verbose bool) {
+// report は確認結果を標準出力へ出力する。names は user_id をキーにした退会ユーザの名前。
+func report(findings []finding, names map[string]string, verbose bool) {
 	leaks := filterByCategory(findings, categoryLeak)
 	unhandled := filterByCategory(findings, categoryUnhandled)
 	references := filterByCategory(findings, categoryReference)
@@ -438,19 +459,19 @@ func report(findings []finding, verbose bool) {
 		log.Printf("OK: 退会処理が削除対象としているデータは、すべて削除されています\n")
 	} else {
 		log.Printf("NG: 削除漏れ(退会処理が削除するはずのデータが残っています)\n")
-		reportSection(leaks, verbose)
+		reportSection(leaks, names, verbose)
 	}
 
 	if len(unhandled) > 0 {
 		log.Printf("WARN: 未対応(退会処理が削除対象にしていないデータが残っています)\n")
 		log.Printf("      バグではなく仕様上の未対応です。消すなら退会処理(internal/usecase/user.go)の実装変更が必要です\n")
-		reportSection(unhandled, verbose)
+		reportSection(unhandled, names, verbose)
 	}
 
 	if len(references) > 0 {
 		log.Printf("INFO: 参照(他のユーザが作成したデータから、退会したユーザが参照されています)\n")
 		log.Printf("      他人のデータのため退会処理では削除しません。異常ではありません\n")
-		reportSection(references, verbose)
+		reportSection(references, names, verbose)
 	}
 
 	if !verbose && len(findings) > 0 {
@@ -460,14 +481,14 @@ func report(findings []finding, verbose bool) {
 
 // reportSection は1分類分の検出結果を、テーブル単位のサマリとして出力する。
 // verbose の場合は、テーブルごとに退会ユーザ単位の内訳も出力する。
-func reportSection(findings []finding, verbose bool) {
+func reportSection(findings []finding, names map[string]string, verbose bool) {
 	for _, s := range summarizeByTable(findings) {
 		log.Printf("  %-26s %6d 件 / 退会ユーザ %d 人 (%s)\n", s.table, s.count, s.userCount, s.note)
 
 		if verbose {
 			for _, f := range findings {
 				if f.table == s.table {
-					log.Printf("      user_id=%s %d 件\n", f.userId, f.count)
+					log.Printf("      user_id=%s (%s) %d 件\n", f.userId, displayName(names, f.userId), f.count)
 				}
 			}
 		}

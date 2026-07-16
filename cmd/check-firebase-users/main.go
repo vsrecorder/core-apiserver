@@ -8,9 +8,15 @@
 // 検出する差異は次の 2 種類:
 //
 //   - firebase_only: Firebase には存在するが、DB に有効なユーザーとして存在しない。
-//     退会処理(DBの論理削除)は行われたが Firebase 側のユーザー削除が失敗した、
-//     もしくはユーザー作成が途中で失敗した(Firebase作成後にDB登録が失敗した)ケース。
-//     DB に行自体はあるが deleted_at が入っている場合は「退会済み」として区別して表示する。
+//     同じ firebase_only でも原因と取るべき対処が正反対になるため、次の A / B に分類して表示する。
+//
+//     A:退会済み   … DB に行はあるが deleted_at が入っている。退会処理で DB の論理削除は
+//     成功したが、Firebase 側のユーザー削除に失敗して取り残されたケース。
+//     本人の意思による退会なので、再登録を促すような連絡をしてはいけない。
+//
+//     B:登録未完了 … DB に行が無い。Firebase のユーザー作成後、DB 登録に到達せずに
+//     中断したケース。本人はログインしたつもりでサービスを使えない
+//     状態のため、フォローの対象になる。
 //
 //   - db_only: DB には有効なユーザーとして存在するが、Firebase には存在しない。
 //     Firebase 側のユーザーが誤って削除された、もしくは別プロジェクトのデータを
@@ -276,6 +282,21 @@ func diff(firebaseUsers map[string]*firebaseUser, dbUsers map[string]*dbUser) (f
 	return firebaseOnly, dbOnly
 }
 
+// classifyFirebaseOnly は firebase_only のユーザーを A / B のどちらかに分類し、
+// ラベルと、判断の根拠になった状態を返す。
+//
+//   - A:退会済み   … DBに行はあるが deleted_at が入っている。本人の意思で退会しているため、
+//     再登録を促すような連絡をしてはいけない。残った Firebase ユーザーの削除が対処になる。
+//   - B:登録未完了 … DBに行が無い。本人はログインしたつもりでサービスを使えない状態のため、
+//     フォローの対象になる。
+func classifyFirebaseOnly(uid string, dbUsers map[string]*dbUser) (label string, state string) {
+	if u, ok := dbUsers[uid]; ok && u.DeletedAt != nil {
+		return "A:退会済み", "DB上は退会済み(deleted_at=" + u.DeletedAt.Format(time.RFC3339) + ")"
+	}
+
+	return "B:登録未完了", "DBに行なし"
+}
+
 // report は突合結果を標準出力へ出力する。
 func report(
 	firebaseOnly []string,
@@ -291,18 +312,18 @@ func report(
 
 	if len(firebaseOnly) > 0 {
 		log.Printf("NG: Firebaseにのみ存在するユーザーが %d 件あります(DBに未登録、またはDB上は退会済み)\n", len(firebaseOnly))
+		log.Printf("    A:退会済み   = 退会時にFirebase側の削除が失敗して残ったもの。本人は退会済みのため、再登録を促す連絡をしてはいけない\n")
+		log.Printf("    B:登録未完了 = 登録がDB登録前に中断したもの。本人はログインしたつもりでサービスを使えていない\n")
+
 		for _, uid := range firebaseOnly {
-			state := "DBに行なし"
-			if u, ok := dbUsers[uid]; ok && u.DeletedAt != nil {
-				state = "DB上は退会済み(deleted_at=" + u.DeletedAt.Format(time.RFC3339) + ")"
-			}
+			label, state := classifyFirebaseOnly(uid, dbUsers)
 
 			if verbose {
 				fu := firebaseUsers[uid]
-				log.Printf("  firebase_only uid=%s %s email=%s firebase_created_at=%s\n",
-					uid, state, fu.Email, fu.CreatedAt.Format(time.RFC3339))
+				log.Printf("  firebase_only uid=%s [%s] %s email=%s firebase_created_at=%s\n",
+					uid, label, state, fu.Email, fu.CreatedAt.Format(time.RFC3339))
 			} else {
-				log.Printf("  firebase_only uid=%s %s\n", uid, state)
+				log.Printf("  firebase_only uid=%s [%s] %s\n", uid, label, state)
 			}
 		}
 	}

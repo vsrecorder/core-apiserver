@@ -34,6 +34,29 @@ func TestDiff(t *testing.T) {
 	assert.Equal(t, []string{"uid_db_only"}, dbOnly)
 }
 
+func TestClassifyFirebaseOnly(t *testing.T) {
+	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+
+	dbUsers := map[string]*dbUser{
+		"uid_deleted_in_db": {ID: "uid_deleted_in_db", DeletedAt: &deletedAt},
+	}
+
+	t.Run("DB上は退会済みならA", func(t *testing.T) {
+		label, state := classifyFirebaseOnly("uid_deleted_in_db", dbUsers)
+
+		assert.Equal(t, "A:退会済み", label)
+		assert.Contains(t, state, "DB上は退会済み")
+		assert.Contains(t, state, deletedAt.Format(time.RFC3339))
+	})
+
+	t.Run("DBに行が無ければB", func(t *testing.T) {
+		label, state := classifyFirebaseOnly("uid_firebase_only", dbUsers)
+
+		assert.Equal(t, "B:登録未完了", label)
+		assert.Equal(t, "DBに行なし", state)
+	})
+}
+
 func TestDiff_差異が無い場合(t *testing.T) {
 	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
 

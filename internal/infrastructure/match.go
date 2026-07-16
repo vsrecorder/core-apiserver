@@ -199,6 +199,11 @@ func (i *Match) FindByRecordId(
 		return nil, apperror.ErrRecordNotFound
 	}
 
+	spritesByMatchId, err := findMatchPokemonSpritesByMatchIds(ctx, i.db, matchIdsOf(results))
+	if err != nil {
+		return nil, err
+	}
+
 	v := make(map[string]*entity.Match)
 	var keys []string
 
@@ -225,17 +230,6 @@ func (i *Match) FindByRecordId(
 				games = append(games, game)
 			}
 
-			var matchPokemonSpriteModels []*model.MatchPokemonSprite
-			if tx := i.db.Where("match_id = ?", result.MatchID).Find(&matchPokemonSpriteModels); tx.Error != nil {
-				return nil, tx.Error
-			}
-
-			var pokemonSprites []*entity.PokemonSprite
-			for _, matchPokemonSpriteModel := range matchPokemonSpriteModels {
-				entity := entity.NewPokemonSprite(matchPokemonSpriteModel.PokemonSpriteId)
-				pokemonSprites = append(pokemonSprites, entity)
-			}
-
 			match := entity.NewMatch(
 				result.MatchID,
 				result.MatchCreatedAt,
@@ -255,7 +249,7 @@ func (i *Match) FindByRecordId(
 				result.MatchOpponentsDeckInfo,
 				result.MatchMemo,
 				games,
-				pokemonSprites,
+				spritesByMatchId[result.MatchID],
 			)
 			match.Position = result.MatchPosition
 
@@ -355,6 +349,11 @@ func (i *Match) FindByUserId(
 		return nil, apperror.ErrRecordNotFound
 	}
 
+	spritesByMatchId, err := findMatchPokemonSpritesByMatchIds(ctx, i.db, matchIdsOf(results))
+	if err != nil {
+		return nil, err
+	}
+
 	v := make(map[string]*entity.Match)
 	var keys []string
 
@@ -379,16 +378,7 @@ func (i *Match) FindByUserId(
 				games = append(games, game)
 			}
 
-			var matchPokemonSpriteModels []*model.MatchPokemonSprite
-			if tx := i.db.Where("match_id = ?", result.MatchID).Find(&matchPokemonSpriteModels); tx.Error != nil {
-				return nil, tx.Error
-			}
-
-			var pokemonSprites []*entity.PokemonSprite
-			for _, matchPokemonSpriteModel := range matchPokemonSpriteModels {
-				entity := entity.NewPokemonSprite(matchPokemonSpriteModel.PokemonSpriteId)
-				pokemonSprites = append(pokemonSprites, entity)
-			}
+			pokemonSprites := spritesByMatchId[result.MatchID]
 
 			match := entity.NewMatch(
 				result.MatchID,
@@ -507,6 +497,11 @@ func (i *Match) FindLatest(
 		return nil, apperror.ErrRecordNotFound
 	}
 
+	spritesByMatchId, err := findMatchPokemonSpritesByMatchIds(ctx, i.db, matchIdsOf(results))
+	if err != nil {
+		return nil, err
+	}
+
 	v := make(map[string]*entity.Match)
 	var keys []string
 
@@ -531,16 +526,7 @@ func (i *Match) FindLatest(
 				games = append(games, game)
 			}
 
-			var matchPokemonSpriteModels []*model.MatchPokemonSprite
-			if tx := i.db.Where("match_id = ?", result.MatchID).Find(&matchPokemonSpriteModels); tx.Error != nil {
-				return nil, tx.Error
-			}
-
-			var pokemonSprites []*entity.PokemonSprite
-			for _, matchPokemonSpriteModel := range matchPokemonSpriteModels {
-				entity := entity.NewPokemonSprite(matchPokemonSpriteModel.PokemonSpriteId)
-				pokemonSprites = append(pokemonSprites, entity)
-			}
+			pokemonSprites := spritesByMatchId[result.MatchID]
 
 			match := entity.NewMatch(
 				result.MatchID,

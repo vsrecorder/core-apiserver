@@ -390,6 +390,17 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	// 活動ログのカレンダー。記録・対戦結果・デッキ・デッキコードと参照先のイベント情報を
+	// まとめて返し、呼び出し側が記録1件ごとにAPIを呼ばずに済むようにする。
+	controller.NewCalendar(
+		r,
+		usecase.NewCalendar(
+			logger,
+			infrastructure.NewCalendar(db),
+			infrastructure.NewTonamelEvent(logger),
+		),
+	).RegisterRoute(relativePath)
+
 	// プラットフォーム全体の週次デッキ使用率（公開・非会員閲覧可）。
 	controller.NewWeeklyDeckUsageStat(
 		r,

@@ -85,19 +85,15 @@ func (i *Deck) Find(
 		return []*entity.Deck{}, nil
 	}
 
+	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
-		var deckPokemonSpriteModels []*model.DeckPokemonSprite
-		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
-			return nil, tx.Error
-		}
-
-		var pokemonSprites []*entity.PokemonSprite
-		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
-			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
-			pokemonSprites = append(pokemonSprites, entity)
-		}
+		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
@@ -180,19 +176,15 @@ func (i *Deck) FindAll(
 		return []*entity.Deck{}, nil
 	}
 
+	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
-		var deckPokemonSpriteModels []*model.DeckPokemonSprite
-		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
-			return nil, tx.Error
-		}
-
-		var pokemonSprites []*entity.PokemonSprite
-		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
-			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
-			pokemonSprites = append(pokemonSprites, entity)
-		}
+		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
@@ -278,19 +270,15 @@ func (i *Deck) FindOnCursor(
 		return []*entity.Deck{}, nil
 	}
 
+	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
-		var deckPokemonSpriteModels []*model.DeckPokemonSprite
-		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
-			return nil, tx.Error
-		}
-
-		var pokemonSprites []*entity.PokemonSprite
-		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
-			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
-			pokemonSprites = append(pokemonSprites, entity)
-		}
+		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
@@ -524,19 +512,15 @@ func (i *Deck) FindByUserId(
 		return []*entity.Deck{}, nil
 	}
 
+	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
-		var deckPokemonSpriteModels []*model.DeckPokemonSprite
-		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
-			return nil, tx.Error
-		}
-
-		var pokemonSprites []*entity.PokemonSprite
-		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
-			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
-			pokemonSprites = append(pokemonSprites, entity)
-		}
+		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,
@@ -676,19 +660,15 @@ func (i *Deck) FindByUserIdOnCursor(
 		return []*entity.Deck{}, nil
 	}
 
+	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
-		var deckPokemonSpriteModels []*model.DeckPokemonSprite
-		if tx := i.db.Where("deck_id = ?", djdc.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
-			return nil, tx.Error
-		}
-
-		var pokemonSprites []*entity.PokemonSprite
-		for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
-			entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
-			pokemonSprites = append(pokemonSprites, entity)
-		}
+		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
 		ret = append(ret, entity.NewDeck(
 			djdc.DeckID,

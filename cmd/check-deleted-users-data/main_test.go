@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -70,6 +71,55 @@ func TestDisplayName(t *testing.T) {
 	assert.Equal(t, "名前未設定", displayName(names, "uid_unknown"))
 }
 
+func TestFilterByTables(t *testing.T) {
+	findings := []finding{
+		{table: "records", userId: "uid_1", count: 3},
+		{table: "notifications", userId: "uid_1", count: 5},
+		{table: "decks", userId: "uid_2", count: 1},
+	}
+
+	targets := []tableSpec{{name: "records"}, {name: "decks"}}
+
+	ret := filterByTables(findings, targets)
+
+	assert.Equal(t, []finding{
+		{table: "records", userId: "uid_1", count: 3},
+		{table: "decks", userId: "uid_2", count: 1},
+	}, ret)
+}
+
+func TestDeleteTargets(t *testing.T) {
+	specs := []tableSpec{
+		{name: "records", category: categoryLeak, deleteQuery: "UPDATE ..."},
+		{name: "notifications", category: categoryUnhandled, deleteQuery: "DELETE ..."},
+		// 他のユーザのデータからの参照。削除するSQLを持たない
+		{name: "matches.opponents_user_id", category: categoryReference},
+	}
+
+	t.Run("既定では削除漏れのみを対象にする", func(t *testing.T) {
+		targets := deleteTargets(specs, false)
+
+		assert.Len(t, targets, 1)
+		assert.Equal(t, "records", targets[0].name)
+	})
+
+	t.Run("includeUnhandledなら未対応も対象にする", func(t *testing.T) {
+		targets := deleteTargets(specs, true)
+
+		assert.Len(t, targets, 2)
+		assert.Equal(t, "records", targets[0].name)
+		assert.Equal(t, "notifications", targets[1].name)
+	})
+
+	t.Run("参照はどちらの場合も対象にしない", func(t *testing.T) {
+		for _, includeUnhandled := range []bool{false, true} {
+			for _, target := range deleteTargets(specs, includeUnhandled) {
+				assert.NotEqual(t, categoryReference, target.category, "他人のデータを削除対象にしてはいけない")
+			}
+		}
+	})
+}
+
 // specs は退会処理(internal/usecase/user.go の User.Delete)と1対1で対応させる前提のため、
 // 定義そのものの取り違え(分類漏れ・SQLの列数違い等)を検出する。
 func TestSpecs(t *testing.T) {
@@ -84,6 +134,24 @@ func TestSpecs(t *testing.T) {
 			assert.NotEmpty(t, spec.note, "検出時に原因の見当がつくよう note は必須")
 			assert.Contains(t, spec.query, "u.deleted_at IS NOT NULL", "退会ユーザに絞り込んでいない")
 			assert.Contains(t, spec.query, "GROUP BY", "退会ユーザごとの件数を返していない")
+
+			if spec.category == categoryReference {
+				// 他のユーザが作成したデータのため、削除できてしまってはいけない
+				assert.Empty(t, spec.deleteQuery, "参照に削除するSQLを持たせてはいけない")
+				return
+			}
+
+			assert.NotEmpty(t, spec.deleteQuery, "削除対象なのに削除するSQLが無い")
+			assert.Contains(t, spec.deleteQuery, "u.deleted_at IS NOT NULL", "退会ユーザに絞り込んでいない")
+			// -user 指定時に deleteQuery へ AND で条件を足すため、WHERE と ownerColumn が要る
+			assert.Contains(t, spec.deleteQuery, "WHERE", "AND で条件を足せる形になっていない")
+			assert.NotEmpty(t, spec.ownerColumn, "-user で絞り込めない")
+
+			// 論理削除を持つテーブルを物理削除してしまわないこと(退会処理の実装と揃える)
+			if strings.Contains(spec.query, "t.deleted_at IS NULL") {
+				assert.Contains(t, spec.deleteQuery, "SET deleted_at = now()", "論理削除すべきテーブルを物理削除している")
+				assert.Contains(t, spec.deleteQuery, "t.deleted_at IS NULL", "削除済みの行まで対象にしている")
+			}
 		})
 	}
 

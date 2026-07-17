@@ -66,6 +66,42 @@ func isValidImageURL(s string) bool {
 	return true
 }
 
+// isValidTCGMeisterURL はrecords.tcg_meister_urlとして受け入れられる値かを確認する。
+//
+// この項目は任意入力のため、未設定(空文字)は許容する。
+// 値がある場合にスキームを検証しないと javascript: や data: をそのまま保存でき、
+// webappはこの値を <a href> にそのまま入れて描画するためXSSに繋がる。
+// 記録は本人にしか表示されず影響は自己XSSに留まるが、描画側の実装次第で安全性が
+// 決まる状態にはしない。
+//
+// webapp側にも入力チェックはあるが、あれは送信ボタンの活性を切り替えるだけで、
+// APIを直接叩けば素通りする。保存を受け付けるここが実際の防御線になる。
+func isValidTCGMeisterURL(s string) bool {
+	if s == "" {
+		return true
+	}
+
+	u, err := url.Parse(s)
+	if err != nil {
+		return false
+	}
+
+	// url.Parseはスキームを小文字に正規化するため、大文字混じりの
+	// "JavaScript:" のような値もここで弾ける。
+	// 外部サイトへのリンクであり、webappの入力欄がhttp/httpsの両方を
+	// 受け付けているため、ここでも両方を許容する。
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+
+	// "https:/path" のようにホストを持たない値を除く。
+	if u.Host == "" {
+		return false
+	}
+
+	return true
+}
+
 // exceedsLength は文字列がmax文字を超えているかを返す。
 //
 // PostgresのVARCHAR(n)はバイト数ではなく文字数で制限するため、len()ではなく

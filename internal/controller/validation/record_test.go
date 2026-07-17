@@ -22,9 +22,10 @@ func TestRecordValidation(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 	){
-		"RecordGetMiddleware":    test_RecordGetMiddleware,
-		"RecordCreateMiddleware": test_RecordCreateMiddleware,
-		"RecordUpdateMiddleware": test_RecordUpdateMiddleware,
+		"RecordGetMiddleware":                 test_RecordGetMiddleware,
+		"RecordCreateMiddleware":              test_RecordCreateMiddleware,
+		"RecordUpdateMiddleware":              test_RecordUpdateMiddleware,
+		"RecordUpdateMiddlewareTCGMeisterURL": test_RecordUpdateMiddlewareTCGMeisterURL,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -484,6 +485,88 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
+
+	// webapp は tcg_meister_url を <a href> にそのまま入れて描画するため、
+	// javascript: のような危険なスキームは保存させない。
+	// webapp側の入力チェックはAPIを直接叩けば素通りするので、ここが防御線になる。
+	for _, tcgMeisterURL := range []string{
+		"javascript:alert(1)",
+		// url.Parseがスキームを小文字化するため、大文字混じりも同じく弾ける
+		"JavaScript:alert(1)",
+		"data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+		// ホストを持たない値
+		"https:/tour.asp",
+	} {
+		t.Run("異常系_#08_危険なTCGマイスターURL_"+tcgMeisterURL, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			ginContext, _ := gin.CreateTestContext(w)
+
+			data := dto.RecordCreateRequest{
+				RecordRequest: dto.RecordRequest{
+					OfficialEventId: uint(10000),
+					TonamelEventId:  "",
+					FriendId:        "",
+					DeckId:          "",
+					PrivateFlg:      false,
+					TCGMeisterURL:   tcgMeisterURL,
+					Memo:            "",
+				},
+			}
+
+			dataBytes, err := json.Marshal(data)
+			require.NoError(t, err)
+
+			// Middlewareのテストのためpathは何でもよい
+			req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
+
+			ginContext.Request = req
+
+			middleware := RecordCreateMiddleware()
+			middleware(ginContext)
+
+			require.Equal(t, http.StatusBadRequest, w.Code)
+		})
+	}
+
+	// 正規のTCGマイスターURLは従来どおり通す。
+	// webappの入力欄がhttp/httpsの両方を受け付けているため、どちらも許容する。
+	for _, tcgMeisterURL := range []string{
+		"https://tcg.sfc-jpn.jp/tour.asp?tid=123456",
+		"http://tcg.sfc-jpn.jp/tour.asp?tid=123456",
+	} {
+		t.Run("正常系_#08_正規のTCGマイスターURL_"+tcgMeisterURL, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			ginContext, _ := gin.CreateTestContext(w)
+
+			expected := dto.RecordCreateRequest{
+				RecordRequest: dto.RecordRequest{
+					OfficialEventId: uint(10000),
+					TonamelEventId:  "",
+					FriendId:        "",
+					DeckId:          "",
+					PrivateFlg:      false,
+					TCGMeisterURL:   tcgMeisterURL,
+					Memo:            "",
+				},
+			}
+
+			dataBytes, err := json.Marshal(expected)
+			require.NoError(t, err)
+
+			// Middlewareのテストのためpathは何でもよい
+			req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
+
+			ginContext.Request = req
+
+			middleware := RecordCreateMiddleware()
+			middleware(ginContext)
+
+			require.Equal(t, http.StatusOK, w.Code)
+			require.Equal(t, expected, helper.GetRecordCreateRequest(ginContext))
+		})
+	}
 }
 
 func test_RecordUpdateMiddleware(t *testing.T) {
@@ -789,5 +872,72 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		middleware(ginContext)
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+// 更新経路にも同じ検証が効いていることを担保する。
+// 危険なURLは作成で弾いても、更新で入れられれば同じことになる。
+func test_RecordUpdateMiddlewareTCGMeisterURL(t *testing.T) {
+	t.Run("異常系_#07_TCGマイスターURLにjavascriptスキーム", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		data := dto.RecordUpdateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: uint(10000),
+				TonamelEventId:  "",
+				FriendId:        "",
+				DeckId:          "",
+				PrivateFlg:      false,
+				TCGMeisterURL:   "javascript:alert(1)",
+				Memo:            "",
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("PUT", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := RecordUpdateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("正常系_#07_正規のTCGマイスターURL", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		expected := dto.RecordUpdateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: uint(10000),
+				TonamelEventId:  "",
+				FriendId:        "",
+				DeckId:          "",
+				PrivateFlg:      false,
+				TCGMeisterURL:   "https://tcg.sfc-jpn.jp/tour.asp?tid=123456",
+				Memo:            "",
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("PUT", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := RecordUpdateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, expected, helper.GetRecordUpdateRequest(ginContext))
 	})
 }

@@ -58,6 +58,11 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if !isValidTCGMeisterURL(req.RecordRequest.TCGMeisterURL) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetRecordCreateRequest(ctx, req)
 	}
 }
@@ -76,6 +81,11 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 		}
 
 		if !isValidRecordLength(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if !isValidTCGMeisterURL(req.RecordRequest.TCGMeisterURL) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

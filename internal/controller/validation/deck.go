@@ -51,7 +51,13 @@ func DeckCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 			return
 		}
 
-		if req.Name == "" {
+		if req.Name == "" || exceedsLength(req.Name, MaxDeckNameLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		// 長さの確認は外部APIへの問い合わせ前に行う。
+		if exceedsLength(req.DeckCode, MaxDeckCodeLength) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
@@ -72,7 +78,7 @@ func DeckUpdateMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if req.Name == "" {
+		if req.Name == "" || exceedsLength(req.Name, MaxDeckNameLength) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

@@ -38,6 +38,13 @@ type userPlayerChallengeClaims struct {
 // アバター画像への変更を求められた」という事実を署名済みトークンとして発行する。
 func signUserPlayerChallenge(uid string, playerId string, challengeAvatarImageURL string) (string, time.Time, error) {
 	secret := os.Getenv("VSRECORDER_JWT_SECRET")
+
+	// 空鍵で署名すると、誰でも同じ内容のトークンを作れてしまい所有権確認が
+	// 意味を成さなくなるため、発行自体を失敗させる。
+	if secret == "" {
+		return "", time.Time{}, errors.New("jwt secret is not configured")
+	}
+
 	now := time.Now()
 	expiresAt := now.Add(userPlayerChallengeTTL)
 
@@ -67,13 +74,20 @@ func signUserPlayerChallenge(uid string, playerId string, challengeAvatarImageUR
 func parseUserPlayerChallenge(tokenString string) (*userPlayerChallengeClaims, error) {
 	secret := os.Getenv("VSRECORDER_JWT_SECRET")
 
+	if secret == "" {
+		return nil, apperror.ErrInvalidChallenge
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, &userPlayerChallengeClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
 
 		return []byte(secret), nil
-	}, jwt.WithIssuer(userPlayerChallengeIssuer))
+	},
+		jwt.WithIssuer(userPlayerChallengeIssuer),
+		jwt.WithExpirationRequired(),
+	)
 	if err != nil {
 		return nil, apperror.ErrInvalidChallenge
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
+	"github.com/vsrecorder/core-apiserver/internal/httpclient"
 )
 
 type TonamelEvent struct {
@@ -29,7 +30,7 @@ func (i *TonamelEvent) FindById(
 ) (*entity.TonamelEvent, error) {
 	url := "https://tonamel.com/competition/" + id
 
-	res, err := http.Get(url)
+	res, err := httpclient.Get(url)
 	if err != nil {
 		i.logger.Error(
 			"failed to fetch Tonamel event page",

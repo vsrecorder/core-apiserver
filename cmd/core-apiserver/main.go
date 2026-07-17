@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -33,16 +34,54 @@ const (
 	appName      = "core-apiserver"
 )
 
+// jwtSecretMinLength はVSRECORDER_JWT_SECRETに要求する最小文字数。
+// HS256の鍵として妥当な強度(256bit相当)を下回る値を弾く。
+const jwtSecretMinLength = 32
+
+// validateJWTSecret はJWTの署名鍵として安全に使える値かを確認する。
+//
+// 未設定のまま起動すると、署名検証が空の鍵([]byte(""))で行われ、任意のuidを
+// 名乗るトークンを誰でも偽造できてしまう。設定漏れは実行時に何のエラーも
+// 出さないため、起動時に検知して落とす必要がある。
+func validateJWTSecret(secret string) error {
+	if secret == "" {
+		return errors.New("VSRECORDER_JWT_SECRET is not set")
+	}
+
+	if len(secret) < jwtSecretMinLength {
+		return fmt.Errorf(
+			"VSRECORDER_JWT_SECRET must be at least %d characters, got %d",
+			jwtSecretMinLength,
+			len(secret),
+		)
+	}
+
+	return nil
+}
+
 type APIServer struct {
 	httpServer *http.Server
 	db         *gorm.DB
 }
 
+// httpServerタイムアウト。タイムアウトを設定しない場合、ヘッダやボディを
+// 少しずつ送り続ける接続(Slowloris)によってコネクションを占有され続ける。
+const (
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 30 * time.Second
+	writeTimeout      = 60 * time.Second
+	idleTimeout       = 120 * time.Second
+)
+
 func NewAPIServer(addr string, handler http.Handler, db *gorm.DB) *APIServer {
 	return &APIServer{
 		httpServer: &http.Server{
-			Addr:    addr,
-			Handler: handler,
+			Addr:              addr,
+			Handler:           handler,
+			ReadHeaderTimeout: readHeaderTimeout,
+			ReadTimeout:       readTimeout,
+			WriteTimeout:      writeTimeout,
+			IdleTimeout:       idleTimeout,
 		},
 		db: db,
 	}
@@ -103,6 +142,11 @@ func main() {
 		log.Printf("failed to load .env file: %v", err)
 	}
 
+	if err := validateJWTSecret(os.Getenv("VSRECORDER_JWT_SECRET")); err != nil {
+		log.Printf("failed to validate JWT secret: %v", err)
+		os.Exit(ExitCodeNG)
+	}
+
 	if _, err := config.LoadDefaultConfig(context.Background()); err != nil {
 		log.Printf("failed to load default config: %v", err)
 		os.Exit(ExitCodeNG)
@@ -131,6 +175,7 @@ func main() {
 	r.Use(
 		internal.RequestIDMiddleware(),
 		internal.AccessLogMiddleware(logger),
+		internal.BodySizeLimitMiddleware(internal.MaxRequestBodyBytes),
 		gin.Recovery(),
 	)
 

@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
+	"github.com/vsrecorder/core-apiserver/internal/httpclient"
 )
 
 // PlayerAccount はポケモンカードゲーム プレイヤーズクラブの外部APIから取得した
@@ -36,7 +37,7 @@ func fetchPlayerAccount(playerId string) (*PlayerAccount, error) {
 	data := url.Values{}
 	data.Add("player_id", playerId)
 
-	resp, err := http.PostForm("https://players.pokemon-card.com/get_player_account_other", data)
+	resp, err := httpclient.PostForm("https://players.pokemon-card.com/get_player_account_other", data)
 	if err != nil {
 		return nil, err
 	}

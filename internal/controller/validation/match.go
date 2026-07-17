@@ -19,6 +19,25 @@ func isValidMatchRequest(req dto.MatchRequest) bool {
 		return false
 	}
 
+	// 自由入力欄が上限を超えている。memoはDB上TEXTで上限が無いため歯止めをかける
+	if exceedsLength(req.Memo, MaxMemoLength) {
+		return false
+	}
+
+	if exceedsLength(req.OpponentsDeckInfo, MaxOpponentsDeckInfoLength) {
+		return false
+	}
+
+	for _, g := range req.Games {
+		if g == nil {
+			return false
+		}
+
+		if exceedsLength(g.Memo, MaxMemoLength) {
+			return false
+		}
+	}
+
 	// DefaultVictoryFlgとDefaultDefeatFlgの両方がtrue
 	if req.DefaultVictoryFlg && req.DefaultDefeatFlg {
 		return false

@@ -53,6 +53,11 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if !isValidRecordLength(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetRecordCreateRequest(ctx, req)
 	}
 }
@@ -66,6 +71,11 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 		}
 
 		if !isValidRecordEventSource(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if !isValidRecordLength(req.RecordRequest) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
@@ -98,6 +108,20 @@ func isValidRecordEventSource(req dto.RecordRequest) bool {
 	}
 
 	if count != 1 {
+		return false
+	}
+
+	return true
+}
+
+// isValidRecordLength は自由入力欄が上限内に収まっているかを確認する。
+// memo と tcg_meister_url はDB上TEXTで上限が無いため、ここで歯止めをかける。
+func isValidRecordLength(req dto.RecordRequest) bool {
+	if exceedsLength(req.Memo, MaxMemoLength) {
+		return false
+	}
+
+	if exceedsLength(req.TCGMeisterURL, MaxURLLength) {
 		return false
 	}
 

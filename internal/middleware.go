@@ -2,11 +2,30 @@ package internal
 
 import (
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+// MaxRequestBodyBytes はリクエストボディとして受け付ける最大サイズ。
+// メモ欄などを含めても十分な余裕がある一方、巨大なJSONによってメモリを
+// 圧迫されることを防げる大きさとして 1MiB を採用している。
+const MaxRequestBodyBytes = 1 << 20
+
+// BodySizeLimitMiddleware はリクエストボディをmaxBytesまでに制限する。
+//
+// 上限が無い場合、ShouldBindJSONはボディ全体をメモリへ読み込むため、
+// 巨大なボディを送りつけるだけでメモリを枯渇させられる。上限を超えたボディは
+// 読み取り時にエラーとなり、各バリデーションミドルウェアが400を返す。
+func BodySizeLimitMiddleware(maxBytes int64) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)
+
+		c.Next()
+	}
+}
 
 func RequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

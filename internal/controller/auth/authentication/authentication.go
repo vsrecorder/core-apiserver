@@ -25,13 +25,27 @@ type VSRClaims struct {
 }
 
 func parseToken(tokenString string, secretKey string) (*jwt.Token, error) {
+	// 鍵が空のまま検証すると、空鍵([]byte(""))で署名された偽造トークンを
+	// 正当なものとして受け入れてしまう。起動時にも設定を検証しているが
+	// (cmd/core-apiserver)、認証が丸ごと破れる影響の大きさを踏まえ、
+	// 検証を行うこの場所でも必ず失敗させる。
+	if secretKey == "" {
+		return nil, errors.New("jwt secret is not configured")
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, &VSRClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
 
 		return []byte(secretKey), nil
-	}, jwt.WithIssuer(ExpectedIssuer))
+	},
+		jwt.WithIssuer(ExpectedIssuer),
+		// expを持たないトークンは有効期限が無いものとして通ってしまうため、
+		// 発行側(webapp)がexpを付け忘れた場合や、漏洩したトークンが失効しない
+		// 事態を防ぐために必須とする。
+		jwt.WithExpirationRequired(),
+	)
 	if err != nil {
 		return nil, err
 	}

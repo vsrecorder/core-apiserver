@@ -22,6 +22,11 @@ func UnofficialEventCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if exceedsLength(req.Title, MaxEventTitleLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetUnofficialEventCreateRequest(ctx, req)
 	}
 }

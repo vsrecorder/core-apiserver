@@ -18,12 +18,17 @@ func DeckCodeCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 			return
 		}
 
-		if req.Code == "" {
+		if req.Code == "" || exceedsLength(req.Code, MaxDeckCodeLength) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
-		} else {
-			checkDeckCode(ctx, logger, req.Code)
 		}
+
+		if exceedsLength(req.Memo, MaxMemoLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		checkDeckCode(ctx, logger, req.Code)
 
 		helper.SetDeckCodeCreateRequest(ctx, req)
 	}
@@ -33,6 +38,11 @@ func DeckCodeUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.DeckCodeUpdateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if exceedsLength(req.Memo, MaxMemoLength) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

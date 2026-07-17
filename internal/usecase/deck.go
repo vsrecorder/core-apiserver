@@ -337,6 +337,8 @@ func (u *Deck) Archive(
 	ret, err := u.repository.FindById(ctx, id)
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
+	} else if err != nil {
+		return nil, err
 	}
 
 	archivedAt := time.Now().Local()
@@ -366,6 +368,8 @@ func (u *Deck) Unarchive(
 	// 指定されたidのDeckが存在するか確認
 	ret, err := u.repository.FindById(ctx, id)
 	if err == apperror.ErrRecordNotFound {
+		return nil, err
+	} else if err != nil {
 		return nil, err
 	}
 

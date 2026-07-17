@@ -1,31 +1,38 @@
 package controller
 
-/*
 import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
-	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
+	"github.com/vsrecorder/core-apiserver/internal/testutil"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
-	"go.uber.org/mock/gomock"
-	"gorm.io/gorm"
 )
 
-func setupMock4TestDeckController(t *testing.T) (*mock_repository.MockDeckInterface, *mock_repository.MockRecordInterface, *mock_usecase.MockDeckInterface) {
+func setupMock4TestDeckController(t *testing.T) (
+	*mock_repository.MockDeckInterface,
+	*mock_repository.MockRecordInterface,
+	*mock_usecase.MockDeckInterface,
+) {
 	mockCtrl := gomock.NewController(t)
 	mockDeckRepository := mock_repository.NewMockDeckInterface(mockCtrl)
 	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
@@ -36,15 +43,49 @@ func setupMock4TestDeckController(t *testing.T) (*mock_repository.MockDeckInterf
 
 func setup4TestDeckController(t *testing.T, r *gin.Engine) (
 	*Deck,
+	*mock_repository.MockDeckInterface,
+	*mock_repository.MockRecordInterface,
 	*mock_usecase.MockDeckInterface,
 ) {
-	authDisable := true
 	mockDeckRepository, mockRecordRepository, mockUsecase := setupMock4TestDeckController(t)
 
-	c := NewDeck(r, mockDeckRepository, mockRecordRepository, mockUsecase)
-	c.RegisterRoute("", authDisable)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	c := NewDeck(logger, r, mockDeckRepository, mockRecordRepository, mockUsecase)
+	c.RegisterRoute("")
 
-	return c, mockUsecase
+	return c, mockDeckRepository, mockRecordRepository, mockUsecase
+}
+
+func encodeTestDeckCursor(createdAt time.Time) string {
+	return base64.StdEncoding.EncodeToString([]byte(createdAt.Format(time.RFC3339)))
+}
+
+// cursorEq はカーソルの時刻を検証するgomockマッチャ。
+// カーソルはRFC3339の文字列を経由して復元されるため、モノトニッククロックや
+// Locationのポインタがリクエスト前の値と一致せず、gomock既定のDeepEqualでは
+// 一致しない。時刻そのものが等しいかをtime.Equalで見る。
+func cursorEq(expected time.Time) gomock.Matcher {
+	return gomock.Cond(func(actual time.Time) bool {
+		return actual.Equal(expected)
+	})
+}
+
+// newTestDeck はレスポンス生成に必要な値(LatestDeckCodeは必須)を埋めたDeckを返す。
+func newTestDeck(id string, uid string, deckCode string, privateCodeFlg bool) *entity.Deck {
+	return &entity.Deck{
+		ID:         id,
+		CreatedAt:  time.Now().Local(),
+		UserId:     uid,
+		Name:       "テストデッキ",
+		PrivateFlg: false,
+		LatestDeckCode: &entity.DeckCode{
+			ID:             "01HD7Y3K8D6FDHMHTZ2GT41TC1",
+			UserId:         uid,
+			DeckId:         id,
+			Code:           deckCode,
+			PrivateCodeFlg: privateCodeFlg,
+		},
+	}
 }
 
 func TestDeckController(t *testing.T) {
@@ -52,12 +93,13 @@ func TestDeckController(t *testing.T) {
 
 	for scenario, fn := range map[string]func(t *testing.T){
 		"Get":         test_DeckController_Get,
+		"GetAll":      test_DeckController_GetAll,
 		"GetById":     test_DeckController_GetById,
 		"GetByUserId": test_DeckController_GetByUserId,
 		"Create":      test_DeckController_Create,
 		"Update":      test_DeckController_Update,
 		"Archive":     test_DeckController_Archive,
-		"Unarchie":    test_DeckController_Unarchive,
+		"Unarchive":   test_DeckController_Unarchive,
 		"Delete":      test_DeckController_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
@@ -68,27 +110,22 @@ func TestDeckController(t *testing.T) {
 
 func test_DeckController_Get(t *testing.T) {
 	r := gin.Default()
-	c, mockUsecase := setup4TestDeckController(t, r)
+	c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
+	// 未認証の場合、公開デッキの一覧が返る
 	t.Run("正常系_#01", func(t *testing.T) {
-		latestDeckCode := entity.DeckCode{}
-
-		deck := entity.Deck{
-			LatestDeckCode: &latestDeckCode,
-		}
-
-		decks := []*entity.Deck{
-			&deck,
-		}
-
 		limit := 10
 		offset := 0
+
+		decks := []*entity.Deck{
+			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "5dbFbk-uBwjqP-VVk5Vv", false),
+		}
 
 		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?limit=%d&offset=%d", limit, offset), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -100,27 +137,23 @@ func test_DeckController_Get(t *testing.T) {
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
+		require.Equal(t, "5dbFbk-uBwjqP-VVk5Vv", res.Decks[0].Data.LatestDeckCode.Code)
 	})
 
+	// 非公開のデッキコードは、未認証のユーザには伏せられる
 	t.Run("正常系_#02", func(t *testing.T) {
-		latestDeckCode := entity.DeckCode{}
-
-		deck := entity.Deck{
-			LatestDeckCode: &latestDeckCode,
-		}
-
-		decks := []*entity.Deck{
-			&deck,
-		}
-
 		limit := 10
 		offset := 0
+
+		decks := []*entity.Deck{
+			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "5dbFbk-uBwjqP-VVk5Vv", true),
+		}
 
 		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/decks", nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -129,58 +162,23 @@ func test_DeckController_Get(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(decks), len(res.Decks))
+		require.Empty(t, res.Decks[0].Data.LatestDeckCode.Code)
 	})
 
+	// カーソルが指定された場合はFindOnCursorが使われる
 	t.Run("正常系_#03", func(t *testing.T) {
-		decks := []*entity.Deck{}
-
 		limit := 10
-		offset := 0
-		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
-
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(decks, nil)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", "/decks", nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckGetResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"decks\":[]}", w.Body.String())
-	})
-
-	t.Run("正常系_#04", func(t *testing.T) {
-		latestDeckCode := entity.DeckCode{}
-
-		deck := entity.Deck{
-			LatestDeckCode: &latestDeckCode,
-		}
+		cursor := time.Now().Local().Truncate(time.Second)
 
 		decks := []*entity.Deck{
-			&deck,
+			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "", false),
 		}
 
-		limit := 10
-		offset := 0
-		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
-		require.NoError(t, err)
-
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(decks, nil)
+		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursorEq(cursor)).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&cursor=%s", limit, encodeTestDeckCursor(cursor)), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -189,18 +187,18 @@ func test_DeckController_Get(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
 		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))), res.Cursor)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
-		mockUsecase.EXPECT().Find(context.Background(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		limit := 10
+		offset := 0
+
+		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/decks", nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -208,16 +206,84 @@ func test_DeckController_Get(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
+	// 不正なlimitはバリデーションで弾かれる
 	t.Run("異常系_#02", func(t *testing.T) {
-		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", DecksPath+"?limit=invalid", nil)
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	// 不正なカーソルはバリデーションで弾かれる
+	t.Run("異常系_#03", func(t *testing.T) {
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", DecksPath+"?cursor=invalid", nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func test_DeckController_GetAll(t *testing.T) {
+	r := gin.Default()
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+	c, _, _, mockUsecase := setup4TestDeckController(t, r)
+
+	t.Run("正常系_#01", func(t *testing.T) {
+		decks := []*entity.Deck{
+			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", uid, "5dbFbk-uBwjqP-VVk5Vv", false),
+		}
+
+		mockUsecase.EXPECT().FindAll(context.Background(), uid).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		req, err := http.NewRequest("GET", DecksPath+"/all", nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.DeckGetAllResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, len(decks), len(res))
+		require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", res[0].ID)
+	})
+
+	// 認証が必須のエンドポイント
+	t.Run("異常系_#01", func(t *testing.T) {
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", DecksPath+"/all", nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		mockUsecase.EXPECT().FindAll(context.Background(), uid).Return(nil, errors.New(""))
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", DecksPath+"/all", nil)
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -226,35 +292,22 @@ func test_DeckController_Get(t *testing.T) {
 }
 
 func test_DeckController_GetById(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
+
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		id, err := generateId()
-		require.NoError(t, err)
+		deck := newTestDeck(id, uid, "5dbFbk-uBwjqP-VVk5Vv", false)
 
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		createdAt := time.Now().Local()
-		code := "01JGPC7829AMTNVVNX63VQF5XW"
-
-		latestDeckCode := entity.DeckCode{}
-
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     time.Time{},
-			UserId:         uid,
-			Name:           "",
-			Code:           code,
-			PrivateCodeFlg: false,
-			LatestDeckCode: &latestDeckCode,
-		}
-
+		// DeckGetByIdAuthorizationMiddlewareが公開設定の確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/decks/"+id, nil)
+		req, err := http.NewRequest("GET", DecksPath+"/"+id, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -264,45 +317,22 @@ func test_DeckController_GetById(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, code, res.Code)
+		require.Equal(t, "5dbFbk-uBwjqP-VVk5Vv", res.LatestDeckCode.Code)
 	})
 
+	// 非公開のデッキコードは、他人には伏せられる
 	t.Run("正常系_#02", func(t *testing.T) {
 		r := gin.Default()
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		// 認証済みとするためにuidをセット
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
+		deck := newTestDeck(id, uid, "5dbFbk-uBwjqP-VVk5Vv", true)
 
-		c, mockUsecase := setup4TestDeckController(t, r)
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		createdAt := time.Now().Local()
-		code := "01JGPC7829AMTNVVNX63VQF5XW"
-
-		latestDeckCode := entity.DeckCode{}
-
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     time.Time{},
-			UserId:         uid,
-			Name:           "",
-			Code:           code,
-			PrivateCodeFlg: true,
-			LatestDeckCode: &latestDeckCode,
-		}
-
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/decks/"+id, nil)
+		req, err := http.NewRequest("GET", DecksPath+"/"+id, nil)
 		require.NoError(t, err)
 
 		c.router.ServeHTTP(w, req)
@@ -311,38 +341,87 @@ func test_DeckController_GetById(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, code, res.Code)
+		require.Empty(t, res.LatestDeckCode.Code)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	// 非公開のデッキコードでも、本人であれば参照できる
+	t.Run("正常系_#03", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
 
-		id, err := generateId()
+		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
+
+		deck := newTestDeck(id, uid, "5dbFbk-uBwjqP-VVk5Vv", true)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/decks/"+id, nil)
+
+		req, err := http.NewRequest("GET", DecksPath+"/"+id, nil)
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.DeckGetByIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, "5dbFbk-uBwjqP-VVk5Vv", res.LatestDeckCode.Code)
+	})
+
+	// 非公開のデッキは他人からは参照できない
+	t.Run("異常系_#01", func(t *testing.T) {
+		r := gin.Default()
+		c, mockRepository, _, _ := setup4TestDeckController(t, r)
+
+		deck := newTestDeck(id, uid, "", false)
+		deck.PrivateFlg = true
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", DecksPath+"/"+id, nil)
+		require.NoError(t, err)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		r := gin.Default()
+		c, mockRepository, _, _ := setup4TestDeckController(t, r)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", DecksPath+"/"+id, nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_#03", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		id, err := generateId()
-		require.NoError(t, err)
-
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/decks/"+id, nil)
+
+		req, err := http.NewRequest("GET", DecksPath+"/"+id, nil)
+		require.NoError(t, err)
+
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
@@ -352,72 +431,30 @@ func test_DeckController_GetById(t *testing.T) {
 func test_DeckController_GetByUserId(t *testing.T) {
 	r := gin.Default()
 
-	// 認証済みとするためにuidをセット
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-	r.Use(func(ctx *gin.Context) {
-		helper.SetUID(ctx, uid)
-	})
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-	c, mockUsecase := setup4TestDeckController(t, r)
+	c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
-	t.Run("正常系_#01-01", func(t *testing.T) {
-		latestDeckCode := entity.DeckCode{}
-
-		deck := entity.Deck{
-			UserId:         uid,
-			LatestDeckCode: &latestDeckCode,
-		}
-
-		decks := []*entity.Deck{
-			&deck,
-		}
-
+	// 認証済みの場合、同じGETでも自分のデッキ一覧が返る
+	t.Run("正常系_#01", func(t *testing.T) {
+		limit := 10
+		offset := 0
 		archived := false
-		limit := 10
-		offset := 0
-
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?limit=%d&offset=%d&archived=%t", limit, offset, archived), nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckGetByUserIdResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, archived, res.Archived)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, uid, res.Decks[0].Data.UserId)
-	})
-
-	t.Run("正常系_#01-02", func(t *testing.T) {
-		latestDeckCode := entity.DeckCode{}
-
-		deck := entity.Deck{
-			UserId:         uid,
-			LatestDeckCode: &latestDeckCode,
-		}
 
 		decks := []*entity.Deck{
-			&deck,
+			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", uid, "5dbFbk-uBwjqP-VVk5Vv", true),
 		}
-
-		archived := true
-		limit := 10
-		offset := 0
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?limit=%d&offset=%d&archived=%t", limit, offset, archived), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -425,35 +462,32 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, archived, res.Archived)
 		require.Equal(t, limit, res.Limit)
 		require.Equal(t, offset, res.Offset)
+		require.False(t, res.Archived)
 		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, uid, res.Decks[0].Data.UserId)
+		// 本人のデッキコードは非公開設定でも伏せられない
+		require.Equal(t, "5dbFbk-uBwjqP-VVk5Vv", res.Decks[0].Data.LatestDeckCode.Code)
 	})
 
+	// archived=true の場合、アーカイブ済みのデッキ一覧が返る
 	t.Run("正常系_#02", func(t *testing.T) {
-		latestDeckCode := entity.DeckCode{}
-
-		deck := entity.Deck{
-			UserId:         uid,
-			LatestDeckCode: &latestDeckCode,
-		}
-
-		decks := []*entity.Deck{
-			&deck,
-		}
-
-		archived := false
 		limit := 10
 		offset := 0
+		archived := true
+
+		decks := []*entity.Deck{
+			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", uid, "", false),
+		}
+		decks[0].ArchivedAt = time.Now().Local()
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/decks", nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d&archived=true", limit, offset), nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -461,27 +495,54 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, archived, res.Archived)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, uid, res.Decks[0].Data.UserId)
+		require.True(t, res.Archived)
+		require.NotEmpty(t, res.Decks[0].Data.ArchivedAt)
 	})
 
+	// カーソルが指定された場合はFindByUserIdOnCursorが使われる
 	t.Run("正常系_#03", func(t *testing.T) {
-		decks := []*entity.Deck{}
-
+		limit := 10
 		archived := false
+		cursor := time.Now().Local().Truncate(time.Second)
+
+		decks := []*entity.Deck{
+			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", uid, "", false),
+		}
+
+		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, archived, limit, cursorEq(cursor)).Return(decks, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&cursor=%s", limit, encodeTestDeckCursor(cursor)), nil)
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.DeckGetByUserIdResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, len(decks), len(res.Decks))
+	})
+
+	// 他人の非公開のデッキコードは伏せられる
+	t.Run("正常系_#04", func(t *testing.T) {
 		limit := 10
 		offset := 0
-		cursor := base64.StdEncoding.EncodeToString([]byte(time.Time{}.Format(time.RFC3339)))
+		archived := false
+
+		decks := []*entity.Deck{
+			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "5dbFbk-uBwjqP-VVk5Vv", true),
+		}
 
 		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/decks", nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -489,179 +550,72 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, archived, res.Archived)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, "{\"archived\":false,\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"decks\":[]}", w.Body.String())
-	})
-
-	t.Run("正常系_#04", func(t *testing.T) {
-		latestDeckCode := entity.DeckCode{}
-
-		deck := entity.Deck{
-			UserId:         uid,
-			LatestDeckCode: &latestDeckCode,
-		}
-
-		decks := []*entity.Deck{
-			&deck,
-		}
-
-		archived := false
-		limit := 10
-		offset := 0
-		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
-		require.NoError(t, err)
-
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, archived, limit, cursor).Return(decks, nil)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckGetByUserIdResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, archived, res.Archived)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, uid, res.Decks[0].Data.UserId)
-		require.Equal(t, base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))), res.Cursor)
+		require.Empty(t, res.Decks[0].Data.LatestDeckCode.Code)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
-		mockUsecase.EXPECT().FindByUserId(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		limit := 10
+		offset := 0
+		archived := false
+
+		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", "/decks", nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
+	// 不正なarchivedはバリデーションで弾かれる
 	t.Run("異常系_#02", func(t *testing.T) {
-		cursor, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
-		require.NoError(t, err)
-
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
-
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("/decks?cursor=%s", base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339)))), nil)
+		req, err := http.NewRequest("GET", DecksPath+"?archived=invalid", nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusInternalServerError, w.Code)
+		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
 func test_DeckController_Create(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
+
+	// デッキコードを指定する場合、バリデーションが公式サイトへ問い合わせるため、
+	// ここではデッキコードなしのリクエストのみを扱う
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
 
-		id, err := generateId()
+		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		createdAt := time.Now().Local()
+		c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     time.Time{},
-			UserId:         "",
-			Name:           "ロスギラ",
-			Code:           "RUSyy2-NjZkO3-MMMMXE",
-			PrivateCodeFlg: false,
-			PrivateFlg:     false,
-		}
-
-		param := usecase.NewDeckCreateParam(
-			"",
-			"ロスギラ",
-			false,
-			"RUSyy2-NjZkO3-MMMMXE",
-			false,
-		)
-
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
-
-		data := dto.DeckCreateRequest{
-			Name:               "ロスギラ",
-			PrivateFlg:         false,
-			DeckCode:           "RUSyy2-NjZkO3-MMMMXE",
-			PrivateDeckCodeFlg: false,
-		}
-
-		dataBytes, err := json.Marshal(data)
-		require.NoError(t, err)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("POST", "/decks", strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckCreateResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusCreated, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-	})
-
-	t.Run("正常系_#02", func(t *testing.T) {
-		r := gin.Default()
-
-		// 認証済みとするためにuidをセット
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
-
-		c, mockUsecase := setup4TestDeckController(t, r)
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		createdAt := time.Now().Local()
-
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     time.Time{},
-			UserId:         uid,
-			Name:           "ロスギラ",
-			Code:           "RUSyy2-NjZkO3-MMMMXE",
-			PrivateCodeFlg: false,
-		}
+		deck := newTestDeck(id, uid, "", false)
 
 		param := usecase.NewDeckCreateParam(
 			uid,
-			"ロスギラ",
+			"テストデッキ",
 			false,
-			"RUSyy2-NjZkO3-MMMMXE",
+			"",
 			false,
+			nil,
 		)
 
 		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
 
 		data := dto.DeckCreateRequest{
-			Name:               "ロスギラ",
-			PrivateFlg:         false,
-			DeckCode:           "RUSyy2-NjZkO3-MMMMXE",
-			PrivateDeckCodeFlg: false,
+			Name:       "テストデッキ",
+			PrivateFlg: false,
 		}
 
 		dataBytes, err := json.Marshal(data)
@@ -669,8 +623,10 @@ func test_DeckController_Create(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("POST", "/decks", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("POST", DecksPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -679,21 +635,37 @@ func test_DeckController_Create(t *testing.T) {
 
 		require.Equal(t, http.StatusCreated, w.Code)
 		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
 		require.Equal(t, uid, res.UserId)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	// ポケモンスプライトはリクエストからパラメータへ引き継がれる
+	t.Run("正常系_#02", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
 
-		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, _, mockUsecase := setup4TestDeckController(t, r)
+
+		deck := newTestDeck(id, uid, "", false)
+		deck.PokemonSprites = []*entity.PokemonSprite{entity.NewPokemonSprite("pikachu")}
+
+		param := usecase.NewDeckCreateParam(
+			uid,
+			"テストデッキ",
+			true,
+			"",
+			false,
+			[]*usecase.PokemonSpriteParam{usecase.NewPokemonSpriteParam("pikachu")},
+		)
+
+		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
 
 		data := dto.DeckCreateRequest{
-			Name:               "ロスギラ",
-			PrivateFlg:         false,
-			DeckCode:           "RUSyy2-NjZkO3-MMMMXE",
-			PrivateDeckCodeFlg: false,
+			Name:           "テストデッキ",
+			PrivateFlg:     true,
+			PokemonSprites: []*dto.PokemonSpriteRequest{{ID: "pikachu"}},
 		}
 
 		dataBytes, err := json.Marshal(data)
@@ -701,46 +673,149 @@ func test_DeckController_Create(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("POST", "/decks", strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("POST", DecksPath, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		var res dto.DeckCreateResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusCreated, w.Code)
+		require.Len(t, res.PokemonSprites, 1)
+		require.Equal(t, "pikachu", res.PokemonSprites[0].ID)
+	})
+
+	// デッキ名は必須
+	t.Run("異常系_#01", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, _, _ := setup4TestDeckController(t, r)
+
+		dataBytes, err := json.Marshal(dto.DeckCreateRequest{Name: ""})
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", DecksPath, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	// 認証が必須のエンドポイント
+	t.Run("異常系_#02", func(t *testing.T) {
+		r := gin.Default()
+		c, _, _, _ := setup4TestDeckController(t, r)
+
+		dataBytes, err := json.Marshal(dto.DeckCreateRequest{Name: "テストデッキ"})
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", DecksPath, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("異常系_#03", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, _, mockUsecase := setup4TestDeckController(t, r)
+
+		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
+
+		dataBytes, err := json.Marshal(dto.DeckCreateRequest{Name: "テストデッキ"})
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", DecksPath, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
+
+	// デッキコードの取得元がメンテナンス中の場合は503を返す
+	t.Run("異常系_#04", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, _, mockUsecase := setup4TestDeckController(t, r)
+
+		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, apperror.ErrUnderMaintenance)
+
+		dataBytes, err := json.Marshal(dto.DeckCreateRequest{Name: "テストデッキ"})
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", DecksPath, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusServiceUnavailable, w.Code)
+	})
 }
 
 func test_DeckController_Update(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
+
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
 
-		id, err := generateId()
+		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		createdAt := time.Now().Local()
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     time.Time{},
-			UserId:         "",
-			Name:           "ロスギラ",
-			Code:           "",
-			PrivateCodeFlg: false,
-			PrivateFlg:     false,
-		}
+		deck := newTestDeck(id, uid, "", false)
+
+		// DeckUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 
 		param := usecase.NewDeckUpdateParam(
-			"ロスギラ",
-			false,
+			"更新後のデッキ",
+			true,
+			[]*usecase.PokemonSpriteParam{usecase.NewPokemonSpriteParam("pikachu")},
 		)
 
 		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(deck, nil)
 
 		data := dto.DeckUpdateRequest{
-			Name:       "ロスギラ",
-			PrivateFlg: false,
+			Name:           "更新後のデッキ",
+			PrivateFlg:     true,
+			PokemonSprites: []*dto.PokemonSpriteRequest{{ID: "pikachu"}},
 		}
 
 		dataBytes, err := json.Marshal(data)
@@ -748,8 +823,10 @@ func test_DeckController_Update(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PUT", "/decks/"+id, strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", DecksPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -758,88 +835,85 @@ func test_DeckController_Update(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
-		r := gin.Default()
-
-		// 認証済みとするためにuidをセット
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
-
-		c, mockUsecase := setup4TestDeckController(t, r)
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		createdAt := time.Now().Local()
-
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     time.Time{},
-			UserId:         uid,
-			Name:           "ロスギラ",
-			Code:           "",
-			PrivateCodeFlg: false,
-			PrivateFlg:     false,
-		}
-
-		param := usecase.NewDeckUpdateParam(
-			"ロスギラ",
-			false,
-		)
-
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(deck, nil)
-
-		data := dto.DeckUpdateRequest{
-			Name:       "ロスギラ",
-			PrivateFlg: false,
-		}
-
-		dataBytes, err := json.Marshal(data)
-		require.NoError(t, err)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("PUT", "/decks/"+id, strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckUpdateResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, uid, res.UserId)
-	})
-
+	// 他人のデッキは更新できない
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
 
-		id, err := generateId()
+		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(nil, errors.New(""))
+		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
-		data := dto.DeckUpdateRequest{
-			Name:       "ロスギラ",
-			PrivateFlg: false,
-		}
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(
+			newTestDeck(id, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "", false), nil,
+		)
 
-		dataBytes, err := json.Marshal(data)
+		dataBytes, err := json.Marshal(dto.DeckUpdateRequest{Name: "更新後のデッキ"})
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PUT", "/decks/"+id, strings.NewReader(string(dataBytes)))
+		req, err := http.NewRequest("PUT", DecksPath+"/"+id, strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	// デッキ名は必須
+	t.Run("異常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockRepository, _, _ := setup4TestDeckController(t, r)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
+
+		dataBytes, err := json.Marshal(dto.DeckUpdateRequest{Name: ""})
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", DecksPath+"/"+id, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_#03", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(nil, errors.New(""))
+
+		dataBytes, err := json.Marshal(dto.DeckUpdateRequest{Name: "更新後のデッキ"})
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", DecksPath+"/"+id, strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -848,38 +922,31 @@ func test_DeckController_Update(t *testing.T) {
 }
 
 func test_DeckController_Archive(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
+
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		// 認証済みとするためにuidをセット
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
 
-		c, mockUsecase := setup4TestDeckController(t, r)
-
-		id, err := generateId()
+		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		createdAt := time.Now().Local()
-		archivedAt := time.Now().Local()
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     archivedAt,
-			UserId:         uid,
-			Name:           "ロスギラ",
-			Code:           "",
-			PrivateCodeFlg: false,
-		}
+		deck := newTestDeck(id, uid, "", false)
+		archivedDeck := newTestDeck(id, uid, "", false)
+		archivedDeck.ArchivedAt = time.Now().Local()
 
-		mockUsecase.EXPECT().Archive(context.Background(), id).Return(deck, nil)
+		// DeckArchiveAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockUsecase.EXPECT().Archive(context.Background(), id).Return(archivedDeck, nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PATCH", "/decks/"+id+"/archive", nil)
+		req, err := http.NewRequest("PATCH", DecksPath+"/"+id+"/archive", nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -887,22 +954,51 @@ func test_DeckController_Archive(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, id, res.ID)
+		require.NotEmpty(t, res.ArchivedAt)
 	})
 
+	// 他人のデッキはアーカイブできない
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
 
-		id, err := generateId()
+		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
+		c, mockRepository, _, _ := setup4TestDeckController(t, r)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(
+			newTestDeck(id, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "", false), nil,
+		)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PATCH", DecksPath+"/"+id+"/archive", nil)
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
 		mockUsecase.EXPECT().Archive(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PATCH", "/decks/"+id+"/archive", nil)
+		req, err := http.NewRequest("PATCH", DecksPath+"/"+id+"/archive", nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -911,37 +1007,29 @@ func test_DeckController_Archive(t *testing.T) {
 }
 
 func test_DeckController_Unarchive(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
+
 	t.Run("正常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		// 認証済みとするためにuidをセット
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		r.Use(func(ctx *gin.Context) {
-			helper.SetUID(ctx, uid)
-		})
 
-		c, mockUsecase := setup4TestDeckController(t, r)
-
-		id, err := generateId()
+		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		createdAt := time.Now().Local()
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		deck := &entity.Deck{
-			ID:             id,
-			CreatedAt:      createdAt,
-			ArchivedAt:     time.Time{},
-			UserId:         uid,
-			Name:           "ロスギラ",
-			Code:           "",
-			PrivateCodeFlg: false,
-		}
+		archivedDeck := newTestDeck(id, uid, "", false)
+		archivedDeck.ArchivedAt = time.Now().Local()
 
-		mockUsecase.EXPECT().Unarchive(context.Background(), id).Return(deck, nil)
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(archivedDeck, nil)
+		mockUsecase.EXPECT().Unarchive(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PATCH", "/decks/"+id+"/unarchive", nil)
+		req, err := http.NewRequest("PATCH", DecksPath+"/"+id+"/unarchive", nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -949,22 +1037,50 @@ func test_DeckController_Unarchive(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 
 		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, id, res.ID)
+		require.Empty(t, res.ArchivedAt)
 	})
 
 	t.Run("異常系_#01", func(t *testing.T) {
 		r := gin.Default()
-		c, mockUsecase := setup4TestDeckController(t, r)
 
-		id, err := generateId()
+		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
+		c, mockRepository, _, _ := setup4TestDeckController(t, r)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(
+			newTestDeck(id, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "", false), nil,
+		)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PATCH", DecksPath+"/"+id+"/unarchive", nil)
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("異常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
 		mockUsecase.EXPECT().Unarchive(context.Background(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("PATCH", "/decks/"+id+"/unarchive", nil)
+		req, err := http.NewRequest("PATCH", DecksPath+"/"+id+"/unarchive", nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
@@ -973,55 +1089,155 @@ func test_DeckController_Unarchive(t *testing.T) {
 }
 
 func test_DeckController_Delete(t *testing.T) {
-	r := gin.Default()
-	c, mockUsecase := setup4TestDeckController(t, r)
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
 	t.Run("正常系_#01", func(t *testing.T) {
-		id, err := generateId()
-		require.NoError(t, err)
+		r := gin.Default()
 
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
+
+		// DeckDeleteAuthorizationMiddlewareが本人確認と、
+		// 紐づく対戦記録が無いことの確認のために参照する
+		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRecordRepository.EXPECT().FindByDeckId(context.Background(), id, 1, 0, "").Return([]*entity.Record{}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("DELETE", "/decks/"+id, nil)
+		req, err := http.NewRequest("DELETE", DecksPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusNoContent, w.Code)
 	})
 
+	// 対戦記録に使われているデッキは削除できない
 	t.Run("異常系_#01", func(t *testing.T) {
-		id, err := generateId()
-		require.NoError(t, err)
+		r := gin.Default()
 
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockDeckRepository, mockRecordRepository, _ := setup4TestDeckController(t, r)
+
+		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRecordRepository.EXPECT().FindByDeckId(context.Background(), id, 1, 0, "").Return(
+			[]*entity.Record{{ID: "01HD7Y3K8D6FDHMHTZ2GT41TR1"}}, nil,
+		)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("DELETE", DecksPath+"/"+id, nil)
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusConflict, w.Code)
+	})
+
+	// 他人のデッキは削除できない
+	t.Run("異常系_#02", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockDeckRepository, _, _ := setup4TestDeckController(t, r)
+
+		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(
+			newTestDeck(id, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "", false), nil,
+		)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("DELETE", DecksPath+"/"+id, nil)
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("異常系_#03", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
+
+		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRecordRepository.EXPECT().FindByDeckId(context.Background(), id, 1, 0, "").Return([]*entity.Record{}, nil)
+		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("DELETE", DecksPath+"/"+id, nil)
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	// 認可を通過した後に削除対象が消えていた場合(競合)は、404ではなく400を返す
+	t.Run("異常系_#04", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
+
+		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRecordRepository.EXPECT().FindByDeckId(context.Background(), id, 1, 0, "").Return([]*entity.Record{}, nil)
 		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("DELETE", "/decks/"+id, nil)
+		req, err := http.NewRequest("DELETE", DecksPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
-		id, err := generateId()
-		require.NoError(t, err)
+	// 存在しないデッキは認可の段階で404になる
+	t.Run("異常系_#05", func(t *testing.T) {
+		r := gin.Default()
 
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockDeckRepository, _, _ := setup4TestDeckController(t, r)
+
+		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
-		req, err := http.NewRequest("DELETE", "/decks/"+id, nil)
+		req, err := http.NewRequest("DELETE", DecksPath+"/"+id, nil)
 		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
 
 		c.router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusInternalServerError, w.Code)
+		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 }
-*/

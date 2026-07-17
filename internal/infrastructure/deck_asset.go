@@ -19,6 +19,7 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
+	"github.com/vsrecorder/core-apiserver/internal/httpclient"
 )
 
 const (
@@ -98,7 +99,7 @@ func (i *DeckAsset) UploadDeckResultHTML(
 
 	url := fmt.Sprintf("https://www.pokemon-card.com/deck/result.html/deckID/%s", deckCode)
 
-	resp, err := http.Get(url)
+	resp, err := httpclient.Get(url)
 	if err != nil {
 		i.logger.Error(
 			"failed to fetch deck result HTML page",
@@ -172,7 +173,7 @@ func (i *DeckAsset) UploadDeckImage(
 
 	url := fmt.Sprintf("https://www.pokemon-card.com/deck/deckView.php/deckID/%s.png", deckCode)
 
-	resp, err := http.Get(url)
+	resp, err := httpclient.Get(url)
 	if err != nil {
 		i.logger.Error(
 			"failed to fetch deck image",

@@ -80,6 +80,40 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 
 認証が必要なエンドポイントは `Authorization: Bearer <JWT>` ヘッダを要求します。
 
+## バッチ処理 (cmd)
+
+`cmd/` 以下には、APIサーバ本体 (`core-apiserver`) とは別に、運用・データ整備のために単体で実行するコマンドラインプログラムを配置しています。用途に応じて次の3種類に分かれます。
+
+各バッチの詳細な仕様・判定基準・冪等性は、それぞれの `main.go` 冒頭のパッケージコメントに記載しています。
+
+### 初期投入バッチ（一回限り）
+
+機能導入前から既に達成条件を満たしていた既存ユーザーに対し、データを遡って補完するためのバッチです。導入時に一度だけ実行することを想定しています。いずれも `-dry-run`（デフォルト `true`。書き込みせず差分のみ確認）と `-user-id`（特定ユーザーのみ対象）フラグを持ちます。
+
+| コマンド | 説明 |
+| -------- | ---- |
+| [`backfill-user-badges`](cmd/backfill-user-badges/) | オンボーディング系バッジ（はじめの一歩: signup / first_deck / first_record / first_match）を、実際の達成日時を計算して `user_badges` へ遡って付与します。API処理内でリアルタイム付与される仕様のため、導入前の既存ユーザーには付与されていない欠落分を補完します。通知は作成しません。 |
+| [`backfill-user-environment-badges`](cmd/backfill-user-environment-badges/) | 環境バッジ（対戦環境ごとの初回対戦バッジ）を、対戦の基準日時から環境を判定し `user_environment_badges` へ遡って付与します。判定基準の変更後に再実行して達成日時を更新し直せるよう、既存行は上書きします。通知は作成しません。 |
+| [`backfill-notifications`](cmd/backfill-notifications/) | 通知機能の導入前から達成済みだったバッジ・称号・ランク・環境バッジの実績を、「既読済みの通知履歴」として `notifications` へ遡って作成します。永続化済みの実績は実際の達成日時を、ライブ集計する実績は日付を遡って走査した到達日を通知日時に使います。誤って複数回実行しても通知が重複しないよう冪等性を持たせています。 |
+
+### 運用バッチ
+
+サービス運用のなかで定期実行、あるいは必要に応じて実行するバッチです。
+
+| コマンド | 説明 |
+| -------- | ---- |
+| [`sync-pokemon-avatars`](cmd/sync-pokemon-avatars/) | 公式サイト（プレイヤーズクラブ）のアバター一覧API から `avatarList` を取得し、`pokemon_avatars` テーブルへ upsert します。新規アバターの追加やタイトル・画像URLの変更に追随するため、定期実行を想定しています。 |
+| [`repair-streaks`](cmd/repair-streaks/) | 何らかの理由で `user_streaks` が現存の `records` と食い違った場合に、`records` の日付からゼロから週次ストリーク状態を再計算し、行ごと上書きして復旧します。`-dry-run` / `-user-id` フラグを持ちます。 |
+
+### 調査・確認ツール
+
+データの整合性を突合・検算するためのツールです。既定では読み取り専用で、DBやFirebaseに書き込みを行いません。差異検出時に終了コード1を返す `-exit-code` フラグを持ち、CI・定期実行での監視に利用できます。
+
+| コマンド | 説明 |
+| -------- | ---- |
+| [`check-firebase-users`](cmd/check-firebase-users/) | Firebase Authentication 上のユーザーと、DB (`users`) の有効なユーザー (`deleted_at IS NULL`) を突合し、差異（Firebaseのみ存在＝退会済み／登録未完了、DBのみ存在）を検出します。読み取り専用で一切書き込みません。 |
+| [`check-deleted-users-data`](cmd/check-deleted-users-data/) | 退会したユーザー (`deleted_at IS NOT NULL`) が作成したデータが残っていないかを検算し、削除漏れ (NG) / 未対応 (WARN) / 参照 (INFO) に分類して表示します。既定は確認のみで、`-delete` を指定したときに限り退会処理と揃えた方法で削除します。 |
+
 ## セットアップ
 
 ### 前提

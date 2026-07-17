@@ -182,6 +182,19 @@ func GetUID(ctx *gin.Context) string {
 	return uid
 }
 
+// SetPlayerId はリクエストが対象としているプレイヤーズクラブのplayer_idを保持する。
+// アクセスログへ出力するため、バリデーションミドルウェアが取り出した時点で設定する。
+func SetPlayerId(ctx *gin.Context, value string) {
+	ctx.Set("player_id", value)
+}
+
+func GetPlayerId(ctx *gin.Context) string {
+	value, _ := ctx.Get("player_id")
+	playerId, _ := value.(string)
+
+	return playerId
+}
+
 func SetArchived(ctx *gin.Context, value bool) {
 	ctx.Set("archived", value)
 }

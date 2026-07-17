@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
 
 // MaxRequestBodyBytes はリクエストボディとして受け付ける最大サイズ。
@@ -53,13 +55,26 @@ func AccessLogMiddleware(logger *slog.Logger) gin.HandlerFunc {
 		)
 
 		defer func() {
-			logger.InfoContext(c.Request.Context(), "request finished",
+			attrs := []any{
 				slog.String("request_id", requestIDStr),
 				slog.String("method", c.Request.Method),
 				slog.String("url", c.Request.URL.String()),
 				slog.Int("status_code", c.Writer.Status()),
 				slog.Duration("latency", time.Since(startedAt)),
-			)
+			}
+
+			// uid と player_id は認証・バリデーションの各ミドルウェアが設定するため、
+			// c.Next() 完了後であるこのdefer内でのみ参照できる。設定されないエンドポイント
+			// では出力しない。
+			if uid := helper.GetUID(c); uid != "" {
+				attrs = append(attrs, slog.String("uid", uid))
+			}
+
+			if playerId := helper.GetPlayerId(c); playerId != "" {
+				attrs = append(attrs, slog.String("player_id", playerId))
+			}
+
+			logger.InfoContext(c.Request.Context(), "request finished", attrs...)
 		}()
 
 		c.Next()

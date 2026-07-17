@@ -15,8 +15,12 @@ var (
 	// 他人の player_id を大量に試行する、いわゆる総当たりを抑止するためのレート制限。
 	// uid単位: 1人のユーザーが短時間に多数の player_id を試すのを防ぐ。
 	// player_id単位: 複数アカウントを使って特定の player_id を繰り返し狙うのを防ぐ。
+	//
+	// player_id単位の上限は、正当な所有者を巻き込まない値として10回を採用している。
+	// 連携フローは verify → (アバター変更) → create と進み1回あたり2回消費するため、
+	// 10回はやり直しを含めて5周分にあたる。
 	userPlayerAttemptLimiterByUID      = ratelimit.New(10, time.Hour)
-	userPlayerAttemptLimiterByPlayerID = ratelimit.New(5, 24*time.Hour)
+	userPlayerAttemptLimiterByPlayerID = ratelimit.New(10, 24*time.Hour)
 )
 
 func allowUserPlayerAttempt(ctx *gin.Context, playerId string) bool {
@@ -48,6 +52,8 @@ func UserPlayerCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		helper.SetPlayerId(ctx, req.PlayerId)
+
 		if req.ChallengeToken == "" {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
@@ -75,6 +81,8 @@ func UserPlayerVerifyMiddleware() gin.HandlerFunc {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
+
+		helper.SetPlayerId(ctx, req.PlayerId)
 
 		if !allowUserPlayerAttempt(ctx, req.PlayerId) {
 			return

@@ -243,7 +243,7 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 
 		match, err := r.FindById(context.Background(), matchId)
 
-		require.Equal(t, apperror.ErrRecordNotFound, err)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, match)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -308,7 +308,7 @@ func test_MatchInfrastructure_FindByRecordId(t *testing.T) {
 
 		matches, err := r.FindByRecordId(context.Background(), recordId)
 
-		require.Equal(t, apperror.ErrRecordNotFound, err)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, matches)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -365,7 +365,7 @@ func test_MatchInfrastructure_FindByUserId(t *testing.T) {
 
 		matches, err := r.FindByUserId(context.Background(), uid, limit)
 
-		require.Equal(t, apperror.ErrRecordNotFound, err)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, matches)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -415,7 +415,7 @@ func test_MatchInfrastructure_FindLatest(t *testing.T) {
 
 		matches, err := r.FindLatest(context.Background(), limit)
 
-		require.Equal(t, apperror.ErrRecordNotFound, err)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, matches)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})

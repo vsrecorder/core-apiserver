@@ -12,7 +12,8 @@ import (
 //
 // 作成と更新で満たすべき整合性は同一のため、両Middlewareからこの関数を呼ぶ。
 // (以前は同じ検証を各Middlewareに二重実装しており、更新側にだけ
-//  GroupMatchVictoryFlgの検証が無い、といった乖離が生まれていた)
+//
+//	GroupMatchVictoryFlgの検証が無い、といった乖離が生まれていた)
 func isValidMatchRequest(req dto.MatchRequest) bool {
 	// RecordIdが空
 	if req.RecordId == "" {

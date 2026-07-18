@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -59,7 +58,7 @@ func setup4TestUserPlayerController(t *testing.T, u stubUserPlayerUsecase, linki
 
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	r := gin.Default()

@@ -57,7 +57,7 @@ func test_TonamelEventUsecase_FindById(
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }

@@ -59,7 +59,7 @@ func (u *UserStat) GetUserStat(
 		toDate = fromDate.AddDate(0, 1, 0)
 	} else if season != "" {
 		var err error
-		fromDate, toDate, err = seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
+		fromDate, toDate, err = seasonRange(ctx, u.championshipSeriesRepo, season, timeNow().Local())
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +105,7 @@ func (u *UserStat) GetUserStat(
 
 	// いずれも未指定の場合は当月
 	if fromDate.IsZero() {
-		now := time.Now().Local()
+		now := timeNow().Local()
 		fromDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
 		toDate = fromDate.AddDate(0, 1, 0)
 	}

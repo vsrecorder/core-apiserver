@@ -68,7 +68,7 @@ func TestCityleagueScheduleInfrastructure(t *testing.T) {
 
 			ret, err := r.FindById(context.Background(), "unknown")
 
-			require.Equal(t, apperror.ErrRecordNotFound, err)
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 			require.Nil(t, ret)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
@@ -106,7 +106,7 @@ func TestCityleagueScheduleInfrastructure(t *testing.T) {
 
 			ret, err := r.FindByDate(context.Background(), date)
 
-			require.Equal(t, apperror.ErrRecordNotFound, err)
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 			require.Nil(t, ret)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})

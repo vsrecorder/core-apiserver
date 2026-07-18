@@ -90,8 +90,8 @@ func test_EnvironmentController_Get(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res[0].ID)
 		require.Equal(t, title, res[0].Title)
-		//require.Equal(t, fromDate.In(time.Local), res[0].FromDate)
-		//require.Equal(t, toDate.In(time.Local), res[0].ToDate)
+		require.Equal(t, fromDate.Format(time.DateOnly), res[0].FromDate.Format(time.DateOnly))
+		require.Equal(t, toDate.Format(time.DateOnly), res[0].ToDate.Format(time.DateOnly))
 	})
 
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
@@ -140,8 +140,8 @@ func test_EnvironmentController_GetById(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res.ID)
 		require.Equal(t, title, res.Title)
-		//require.Equal(t, fromDate.In(time.Local), res.FromDate)
-		//require.Equal(t, toDate.In(time.Local), res.ToDate)
+		require.Equal(t, fromDate.Format(time.DateOnly), res.FromDate.Format(time.DateOnly))
+		require.Equal(t, toDate.Format(time.DateOnly), res.ToDate.Format(time.DateOnly))
 	})
 
 	t.Run("異常系_環境が存在しなければ404を返す", func(t *testing.T) {
@@ -213,8 +213,8 @@ func test_EnvironmentController_GetByDate(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res.ID)
 		require.Equal(t, title, res.Title)
-		//require.Equal(t, fromDate.In(time.Local), res.FromDate)
-		//require.Equal(t, toDate.In(time.Local), res.ToDate)
+		require.Equal(t, fromDate.Format(time.DateOnly), res.FromDate.Format(time.DateOnly))
+		require.Equal(t, toDate.Format(time.DateOnly), res.ToDate.Format(time.DateOnly))
 	})
 
 	t.Run("異常系_該当環境がなければ404を返す", func(t *testing.T) {
@@ -291,8 +291,8 @@ func test_EnvironmentController_GetByTerm(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res[0].ID)
 		require.Equal(t, title, res[0].Title)
-		//require.Equal(t, fromDate, res[0].FromDate)
-		//require.Equal(t, toDate, res[0].ToDate)
+		require.Equal(t, fromDate.Format(time.DateOnly), res[0].FromDate.Format(time.DateOnly))
+		require.Equal(t, toDate.Format(time.DateOnly), res[0].ToDate.Format(time.DateOnly))
 	})
 
 	t.Run("異常系_該当環境がなければ404を返す", func(t *testing.T) {

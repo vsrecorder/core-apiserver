@@ -13,10 +13,13 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 )
 
-// レート制限はパッケージ変数として共有されるため、テスト間の干渉を避けるべく
+// レート制限はパッケージ変数として共有されるため、開始時に状態をリセットした上で、
 // テストごとに異なるuid・player_idを使う。
 
 func TestUserPlayerValidation(t *testing.T) {
+	userPlayerAttemptLimiterByUID.Reset()
+	userPlayerAttemptLimiterByPlayerID.Reset()
+
 	t.Run("UserPlayerVerifyMiddleware", func(t *testing.T) {
 		t.Run("正常系_player_idを受理してコンテキストに設定する", func(t *testing.T) {
 			b, err := json.Marshal(dto.UserPlayerVerifyRequest{PlayerId: "1000000000000001"})

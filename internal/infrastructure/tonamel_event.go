@@ -16,6 +16,10 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/httpclient"
 )
 
+// tonamelEventBaseURL は取得先のベースURL。外部サイトへ実通信せずにテストできるよう、
+// httptestサーバへ差し替え可能な変数にしている。
+var tonamelEventBaseURL = "https://tonamel.com/competition/"
+
 type TonamelEvent struct {
 	logger *slog.Logger
 }
@@ -28,7 +32,7 @@ func (i *TonamelEvent) FindById(
 	ctx context.Context,
 	id string,
 ) (*entity.TonamelEvent, error) {
-	url := "https://tonamel.com/competition/" + id
+	url := tonamelEventBaseURL + id
 
 	res, err := httpclient.Get(url)
 	if err != nil {

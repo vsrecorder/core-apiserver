@@ -63,7 +63,7 @@ func isStreakExpired(lastRecordedWeek time.Time, freezeUsedCount int) bool {
 		return false
 	}
 
-	diffDays := int(mondayOf(time.Now()).Sub(lastRecordedWeek).Hours() / 24)
+	diffDays := int(mondayOf(timeNow()).Sub(lastRecordedWeek).Hours() / 24)
 	diffWeeks := diffDays / 7
 
 	if diffWeeks <= 1 {

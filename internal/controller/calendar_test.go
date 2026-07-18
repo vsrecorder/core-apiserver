@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -33,7 +32,7 @@ func setup4TestCalendarController(t *testing.T, u stubCalendarUsecase) (*Calenda
 
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	r := gin.Default()
 	c := NewCalendar(r, u)

@@ -407,7 +407,7 @@ func test_DeckInfrastructure_FindById(t *testing.T) {
 
 		deck, err := r.FindById(context.Background(), id)
 
-		require.Equal(t, apperror.ErrRecordNotFound, err)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, deck)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})

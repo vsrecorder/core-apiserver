@@ -274,7 +274,7 @@ func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockR
 
 		ret, err := usecase.Find(context.Background(), limit, offset, eventType)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -331,7 +331,7 @@ func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_reposito
 
 		ret, err := usecase.FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -361,7 +361,7 @@ func test_RecordUsecase_FindById(t *testing.T, mockRepository *mock_repository.M
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -420,7 +420,7 @@ func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_reposito
 
 		ret, err := usecase.FindByUserId(context.Background(), uid, limit, offset, eventType)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -482,7 +482,7 @@ func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_
 
 		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursorEventDate, cursorCreatedAt, eventType)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -523,7 +523,7 @@ func test_RecordUsecase_FindByOfficialEventId(t *testing.T, mockRepository *mock
 
 		ret, err := usecase.FindByOfficialEventId(context.Background(), officialEventId, limit, offset)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -564,7 +564,7 @@ func test_RecordUsecase_FindByTonamelEventId(t *testing.T, mockRepository *mock_
 
 		ret, err := usecase.FindByTonamelEventId(context.Background(), tonamelEventId, limit, offset)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -611,7 +611,7 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 
 		ret, err := usecase.FindByDeckId(context.Background(), deckId, limit, offset, eventType)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -660,7 +660,7 @@ func test_RecordUsecase_FindByDeckIdOnCursor(t *testing.T, mockRepository *mock_
 
 		ret, err := usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -707,8 +707,8 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 		ret, err := usecase.Create(context.Background(), param)
 
 		require.NoError(t, err)
-		require.IsType(t, id, ret.ID)
-		require.IsType(t, createdAt, ret.CreatedAt)
+		require.NotEmpty(t, ret.ID)
+		require.NotEmpty(t, ret.CreatedAt)
 		require.Equal(t, record.OfficialEventId, ret.OfficialEventId)
 		require.Equal(t, record.PrivateFlg, ret.PrivateFlg)
 	})
@@ -733,7 +733,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -806,7 +806,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, apperror.ErrRecordNotFound)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 
@@ -851,7 +851,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -892,7 +892,7 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, apperror.ErrRecordNotFound)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 	})
 
 	t.Run("異常系_Deleteが失敗する場合", func(t *testing.T) {
@@ -920,6 +920,6 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 }

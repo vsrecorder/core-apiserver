@@ -10,6 +10,8 @@ import (
 )
 
 func TestNewWeeklyDeckUsageStatResponse(t *testing.T) {
+	t.Parallel()
+
 	weekStart := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
 
 	t.Run("正常系_週の開始日と終了日をYYYY-MM-DD形式で返す", func(t *testing.T) {

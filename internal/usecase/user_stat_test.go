@@ -52,9 +52,11 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 	t.Run("正常系_すべて未指定なら当月の期間で集計する", func(t *testing.T) {
 		mockUserStatRepo, _, _, _, usecase := setup4UserStatUsecase(t)
 
-		now := time.Now().Local()
-		fromDate := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-		toDate := fromDate.AddDate(0, 1, 0)
+		// 月末の23:59でも「当月」の期間になることを固定時刻で検証する
+		overrideTimeNow(t, time.Date(2026, 7, 31, 23, 59, 59, 0, time.Local))
+
+		fromDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local)
+		toDate := time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)
 
 		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate).Return(stat, nil)
 

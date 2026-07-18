@@ -17,9 +17,11 @@ import (
 
 const (
 	DateLayout = time.DateOnly
-
-	DeckIDCheckURL = "https://www.pokemon-card.com/deck/deckIDCheck.php"
 )
+
+// DeckIDCheckURL はデッキコードの実在確認APIのURL。外部サイトへ実通信せずに
+// テストできるよう、httptestサーバへ差し替え可能な変数にしている。
+var DeckIDCheckURL = "https://www.pokemon-card.com/deck/deckIDCheck.php"
 
 // 文字列長の上限。VARCHARのカラムは db/schema.sql の定義と対応させており、
 // 超過した値がPostgres側のエラー(500)になる前に400として弾く。

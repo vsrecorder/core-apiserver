@@ -27,15 +27,33 @@ const (
 	deckAssetBucket       = "vsrecorder"
 )
 
+// deckResultHTMLURLFormat・deckImageURLFormat は取得元のURL。外部サイトへ実通信せずに
+// テストできるよう、httptestサーバへ差し替え可能な変数にしている。
+var (
+	deckResultHTMLURLFormat = "https://www.pokemon-card.com/deck/result.html/deckID/%s"
+	deckImageURLFormat      = "https://www.pokemon-card.com/deck/deckView.php/deckID/%s.png"
+)
+
+// deckAssetS3API はDeckAssetが使うS3操作のサブセット。実S3へ接続せずに
+// テストできるよう、*s3.Clientをこのインターフェース越しに扱う。
+type deckAssetS3API interface {
+	HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
+	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+}
+
 type DeckAsset struct {
-	logger *slog.Logger
+	logger      *slog.Logger
+	newS3Client func(ctx context.Context) (deckAssetS3API, error)
 }
 
 func NewDeckAsset(logger *slog.Logger) repository.DeckAssetInterface {
-	return &DeckAsset{logger}
+	d := &DeckAsset{logger: logger}
+	d.newS3Client = d.defaultS3Client
+
+	return d
 }
 
-func (i *DeckAsset) s3Client(ctx context.Context) (*s3.Client, error) {
+func (i *DeckAsset) defaultS3Client(ctx context.Context) (deckAssetS3API, error) {
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
@@ -50,7 +68,7 @@ func (i *DeckAsset) s3Client(ctx context.Context) (*s3.Client, error) {
 
 // isNotFound は指定したキーのオブジェクトが存在するかどうかを返す。
 // オブジェクトが存在する場合(=アップロード済み)はfalseを返す。
-func isNotFound(ctx context.Context, s3client *s3.Client, key string) (bool, error) {
+func isNotFound(ctx context.Context, s3client deckAssetS3API, key string) (bool, error) {
 	if _, err := s3client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(deckAssetBucket),
 		Key:    aws.String(key),
@@ -66,7 +84,7 @@ func isNotFound(ctx context.Context, s3client *s3.Client, key string) (bool, err
 	return false, nil
 }
 
-func putObject(ctx context.Context, s3client *s3.Client, key string, body []byte) error {
+func putObject(ctx context.Context, s3client deckAssetS3API, key string, body []byte) error {
 	_, err := s3client.PutObject(ctx, &s3.PutObjectInput{
 		ACL:    "public-read",
 		Bucket: aws.String(deckAssetBucket),
@@ -81,7 +99,7 @@ func (i *DeckAsset) UploadDeckResultHTML(
 	ctx context.Context,
 	deckCode string,
 ) error {
-	s3client, err := i.s3Client(ctx)
+	s3client, err := i.newS3Client(ctx)
 	if err != nil {
 		return err
 	}
@@ -97,7 +115,7 @@ func (i *DeckAsset) UploadDeckResultHTML(
 		return nil
 	}
 
-	url := fmt.Sprintf("https://www.pokemon-card.com/deck/result.html/deckID/%s", deckCode)
+	url := fmt.Sprintf(deckResultHTMLURLFormat, deckCode)
 
 	resp, err := httpclient.Get(url)
 	if err != nil {
@@ -155,7 +173,7 @@ func (i *DeckAsset) UploadDeckImage(
 	ctx context.Context,
 	deckCode string,
 ) error {
-	s3client, err := i.s3Client(ctx)
+	s3client, err := i.newS3Client(ctx)
 	if err != nil {
 		return err
 	}
@@ -171,7 +189,7 @@ func (i *DeckAsset) UploadDeckImage(
 		return nil
 	}
 
-	url := fmt.Sprintf("https://www.pokemon-card.com/deck/deckView.php/deckID/%s.png", deckCode)
+	url := fmt.Sprintf(deckImageURLFormat, deckCode)
 
 	resp, err := httpclient.Get(url)
 	if err != nil {

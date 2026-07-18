@@ -231,7 +231,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 
 			ret, err := usecase.Update(context.Background(), id, NewDeckCodeUpdateParam(false, ""))
 
-			require.Equal(t, apperror.ErrRecordNotFound, err)
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 			require.Nil(t, ret)
 		})
 

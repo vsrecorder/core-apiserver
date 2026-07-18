@@ -54,7 +54,7 @@ func TestUserPlayerInfrastructure(t *testing.T) {
 
 			ret, err := r.FindByUserId(context.Background(), uid)
 
-			require.Equal(t, apperror.ErrRecordNotFound, err)
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 			require.Nil(t, ret)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})

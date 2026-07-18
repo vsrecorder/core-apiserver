@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -25,7 +24,7 @@ func setup4TestDeckUsageStatController(t *testing.T) (*DeckUsageStat, *mock_usec
 
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	mockCtrl := gomock.NewController(t)
 	mockUsecase := mock_usecase.NewMockDeckUsageStatInterface(mockCtrl)

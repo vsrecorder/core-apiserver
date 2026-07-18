@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -237,7 +236,7 @@ func test_DeckController_GetAll(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -350,7 +349,7 @@ func test_DeckController_GetById(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -434,7 +433,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -596,7 +595,7 @@ func test_DeckController_Create(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -644,7 +643,7 @@ func test_DeckController_Create(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -694,7 +693,7 @@ func test_DeckController_Create(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, _, _ := setup4TestDeckController(t, r)
 
@@ -737,7 +736,7 @@ func test_DeckController_Create(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -764,7 +763,7 @@ func test_DeckController_Create(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -795,7 +794,7 @@ func test_DeckController_Update(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -843,7 +842,7 @@ func test_DeckController_Update(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
@@ -872,7 +871,7 @@ func test_DeckController_Update(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
@@ -898,7 +897,7 @@ func test_DeckController_Update(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -930,7 +929,7 @@ func test_DeckController_Archive(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -963,7 +962,7 @@ func test_DeckController_Archive(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
@@ -987,7 +986,7 @@ func test_DeckController_Archive(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -1015,7 +1014,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -1045,7 +1044,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
@@ -1069,7 +1068,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -1097,7 +1096,7 @@ func test_DeckController_Delete(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
 
@@ -1124,7 +1123,7 @@ func test_DeckController_Delete(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockDeckRepository, mockRecordRepository, _ := setup4TestDeckController(t, r)
 
@@ -1150,7 +1149,7 @@ func test_DeckController_Delete(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockDeckRepository, _, _ := setup4TestDeckController(t, r)
 
@@ -1174,7 +1173,7 @@ func test_DeckController_Delete(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
 
@@ -1199,7 +1198,7 @@ func test_DeckController_Delete(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
 
@@ -1224,7 +1223,7 @@ func test_DeckController_Delete(t *testing.T) {
 
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockDeckRepository, _, _ := setup4TestDeckController(t, r)
 

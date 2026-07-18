@@ -10,6 +10,8 @@ import (
 )
 
 func TestNewCalendarGetByUserIdResponse(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now().Local()
 
 	t.Run("正常系_空のカレンダーはnilではなく空配列で返す", func(t *testing.T) {

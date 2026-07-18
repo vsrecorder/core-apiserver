@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +64,7 @@ func setup4TestDeckCodeController(t *testing.T, u stubDeckCodeUsecase) (
 
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	mockCtrl := gomock.NewController(t)
 	mockDeckCodeRepository := mock_repository.NewMockDeckCodeInterface(mockCtrl)

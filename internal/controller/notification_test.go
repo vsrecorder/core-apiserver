@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -55,7 +54,7 @@ func test_NotificationController_GetByUID(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	c, mockUsecase := setup4TestNotificationController(t, r)
 
@@ -94,7 +93,7 @@ func test_NotificationController_CountUnread(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	c, mockUsecase := setup4TestNotificationController(t, r)
 
@@ -120,7 +119,7 @@ func test_NotificationController_MarkAsRead(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	c, mockUsecase := setup4TestNotificationController(t, r)
 
@@ -164,7 +163,7 @@ func test_NotificationController_MarkAllAsRead(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	c, mockUsecase := setup4TestNotificationController(t, r)
 

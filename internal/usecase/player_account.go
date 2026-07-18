@@ -31,13 +31,17 @@ type playerAccountOtherResponse struct {
 	} `json:"player"`
 }
 
+// playerAccountAPIURL はプレイヤーズクラブの実在確認APIのURL。外部サイトへ実通信せずに
+// テストできるよう、httptestサーバへ差し替え可能な変数にしている。
+var playerAccountAPIURL = "https://players.pokemon-card.com/get_player_account_other"
+
 // fetchPlayerAccount はプレイヤーズクラブの外部APIへ player_id の実在確認を行い、
 // 存在すればその情報を返す。存在しない場合は apperror.ErrRecordNotFound を返す。
 func fetchPlayerAccount(playerId string) (*PlayerAccount, error) {
 	data := url.Values{}
 	data.Add("player_id", playerId)
 
-	resp, err := httpclient.PostForm("https://players.pokemon-card.com/get_player_account_other", data)
+	resp, err := httpclient.PostForm(playerAccountAPIURL, data)
 	if err != nil {
 		return nil, err
 	}

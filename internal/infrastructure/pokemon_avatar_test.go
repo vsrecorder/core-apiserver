@@ -47,7 +47,7 @@ func TestPokemonAvatarInfrastructure(t *testing.T) {
 
 		ret, err := r.FindRandomExcludingImageURL(context.Background(), "https://example.com/current.png")
 
-		require.Equal(t, apperror.ErrRecordNotFound, err)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, ret)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})

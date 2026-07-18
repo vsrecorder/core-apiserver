@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -165,7 +164,7 @@ func (u *UserPlayer) Create(
 		return existing, nil
 	}
 
-	now := time.Now().Local()
+	now := timeNow().Local()
 
 	// 既に有効な紐付けがあり、かつ紐付けから1ヶ月経過していない場合は変更不可
 	if existing != nil && now.Before(existing.LockedUntil()) {

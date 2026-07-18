@@ -173,7 +173,7 @@ func test_MatchUsecase_FindById(t *testing.T, mockRepository *mock_repository.Mo
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -226,7 +226,7 @@ func test_MatchUsecase_FindByRecordId(t *testing.T, mockRepository *mock_reposit
 
 		ret, err := usecase.FindByRecordId(context.Background(), recordId)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -278,8 +278,8 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 
 		require.NoError(t, err)
 
-		require.IsType(t, string(""), ret.ID)
-		require.IsType(t, time.Time{}, ret.CreatedAt)
+		require.NotEmpty(t, ret.ID)
+		require.NotEmpty(t, ret.CreatedAt)
 		require.Equal(t, recordId, ret.RecordId)
 		require.Equal(t, deckId, ret.DeckId)
 		require.Equal(t, userId, ret.UserId)
@@ -294,9 +294,9 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		require.Equal(t, matchParam.Memo, ret.Memo)
 
 		require.Equal(t, len(gameParams), len(ret.Games))
-		require.IsType(t, string(""), ret.Games[0].ID)
-		require.IsType(t, time.Time{}, ret.Games[0].CreatedAt)
-		require.IsType(t, string(""), ret.Games[0].MatchId)
+		require.NotEmpty(t, ret.Games[0].ID)
+		require.NotEmpty(t, ret.Games[0].CreatedAt)
+		require.NotEmpty(t, ret.Games[0].MatchId)
 		require.Equal(t, userId, ret.Games[0].UserId)
 		require.Equal(t, gameParams[0].GoFirst, ret.Games[0].GoFirst)
 		require.Equal(t, gameParams[0].WinningFlg, ret.Games[0].WinningFlg)
@@ -358,8 +358,8 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 
 		require.NoError(t, err)
 
-		require.IsType(t, string(""), ret.ID)
-		require.IsType(t, time.Time{}, ret.CreatedAt)
+		require.NotEmpty(t, ret.ID)
+		require.NotEmpty(t, ret.CreatedAt)
 		require.Equal(t, recordId, ret.RecordId)
 		require.Equal(t, deckId, ret.DeckId)
 		require.Equal(t, userId, ret.UserId)
@@ -374,18 +374,18 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		require.Equal(t, matchParam.Memo, ret.Memo)
 
 		require.Equal(t, len(gameParams), len(ret.Games))
-		require.IsType(t, string(""), ret.Games[0].ID)
-		require.IsType(t, time.Time{}, ret.Games[0].CreatedAt)
-		require.IsType(t, string(""), ret.Games[0].MatchId)
+		require.NotEmpty(t, ret.Games[0].ID)
+		require.NotEmpty(t, ret.Games[0].CreatedAt)
+		require.NotEmpty(t, ret.Games[0].MatchId)
 		require.Equal(t, userId, ret.Games[0].UserId)
 		require.Equal(t, gameParams[0].GoFirst, ret.Games[0].GoFirst)
 		require.Equal(t, gameParams[0].WinningFlg, ret.Games[0].WinningFlg)
 		require.Equal(t, gameParams[0].YourPrizeCards, ret.Games[0].YourPrizeCards)
 		require.Equal(t, gameParams[0].OpponentsPrizeCards, ret.Games[0].OpponentsPrizeCards)
 		require.Equal(t, gameParams[0].Memo, ret.Games[0].Memo)
-		require.IsType(t, string(""), ret.Games[1].ID)
-		require.IsType(t, time.Time{}, ret.Games[1].CreatedAt)
-		require.IsType(t, string(""), ret.Games[1].MatchId)
+		require.NotEmpty(t, ret.Games[1].ID)
+		require.NotEmpty(t, ret.Games[1].CreatedAt)
+		require.NotEmpty(t, ret.Games[1].MatchId)
 		require.Equal(t, userId, ret.Games[1].UserId)
 		require.Equal(t, gameParams[1].GoFirst, ret.Games[1].GoFirst)
 		require.Equal(t, gameParams[1].WinningFlg, ret.Games[1].WinningFlg)
@@ -437,7 +437,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 
 		ret, err := usecase.Create(context.Background(), matchParam)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -828,7 +828,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 
 		ret, err := usecase.Update(context.Background(), matchId, matchParam)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 
@@ -920,7 +920,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 
 		ret, err := usecase.Update(context.Background(), matchId, matchParam)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -945,7 +945,7 @@ func test_MatchUsecase_Delete(t *testing.T, mockRepository *mock_repository.Mock
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_Deleteが失敗する場合", func(t *testing.T) {
@@ -957,7 +957,7 @@ func test_MatchUsecase_Delete(t *testing.T, mockRepository *mock_repository.Mock
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 }
 
@@ -987,6 +987,6 @@ func test_MatchUsecase_Reorder(t *testing.T, mockRepository *mock_repository.Moc
 
 		err := usecase.Reorder(context.Background(), recordId, orders)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 }

@@ -14,6 +14,11 @@ import (
 // 参照。idも新しい順にすることで、後発のランクアップ通知が称号獲得通知より上に表示される)。
 var entropy = ulid.DefaultEntropy()
 
+// timeNow は現在時刻の取得関数。「現在時刻によって結果が変わる」ロジック
+// (当月・当シーズン・当週の判定やロック期限の比較)はこれを経由することで、
+// テストから固定時刻に差し替えて月末・シーズン境界でも決定的に検証できる。
+var timeNow = time.Now
+
 type PokemonSpriteParam struct {
 	ID string
 }

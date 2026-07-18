@@ -56,7 +56,7 @@ func test_GameUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -109,7 +109,7 @@ func test_GameUsecase_FindByMatchId(t *testing.T, mockRepository *mock_repositor
 
 		ret, err := usecase.FindByMatchId(context.Background(), matchId)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }

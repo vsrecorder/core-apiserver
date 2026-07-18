@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -27,7 +26,7 @@ func setup4TestOldestRecordController(t *testing.T) (*OldestRecord, *mock_usecas
 
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	mockCtrl := gomock.NewController(t)
 	mockUsecase := mock_usecase.NewMockOldestRecordInterface(mockCtrl)

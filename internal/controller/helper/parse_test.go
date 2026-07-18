@@ -36,6 +36,8 @@ func newTestContext(t *testing.T, rawQuery string) *gin.Context {
 }
 
 func TestParseQueryLimit(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならデフォルト値を返す", func(t *testing.T) {
 		limit, err := ParseQueryLimit(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -65,6 +67,8 @@ func TestParseQueryLimit(t *testing.T) {
 }
 
 func TestParseQueryOffset(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならデフォルト値を返す", func(t *testing.T) {
 		offset, err := ParseQueryOffset(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -90,6 +94,8 @@ func TestParseQueryOffset(t *testing.T) {
 }
 
 func TestParseQuerySingleCursor(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならゼロ値を返す", func(t *testing.T) {
 		cursor, err := ParseQuerySingleCursor(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -127,6 +133,8 @@ func encodeCompositeCursor(t *testing.T, eventDate string, createdAt string) str
 }
 
 func TestParseQueryCursor(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定なら両方ゼロ値を返す", func(t *testing.T) {
 		eventDate, createdAt, err := ParseQueryCursor(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -180,6 +188,8 @@ func TestParseQueryCursor(t *testing.T) {
 }
 
 func TestParseQueryDate(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならゼロ値を返す", func(t *testing.T) {
 		date, err := ParseQueryDate(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -199,6 +209,8 @@ func TestParseQueryDate(t *testing.T) {
 }
 
 func TestParseQueryFromDateAndToDate(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならゼロ値を返す", func(t *testing.T) {
 		fromDate, err := ParseQueryFromDate(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -229,6 +241,8 @@ func TestParseQueryFromDateAndToDate(t *testing.T) {
 }
 
 func TestParseQueryStartDateAndEndDate(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定なら当日の0時を返す", func(t *testing.T) {
 		now := time.Now()
 		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
@@ -262,6 +276,8 @@ func TestParseQueryStartDateAndEndDate(t *testing.T) {
 }
 
 func TestParseQueryOfficialEventId(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならデフォルト値を返す", func(t *testing.T) {
 		id, err := ParseQueryOfficialEventId(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -286,6 +302,8 @@ func TestParseQueryOfficialEventId(t *testing.T) {
 }
 
 func TestParseQueryTypeId(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならデフォルト値を返す", func(t *testing.T) {
 		typeId, err := ParseQueryTypeId(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -321,6 +339,8 @@ func TestParseQueryTypeId(t *testing.T) {
 }
 
 func TestParseQueryLeagueType(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならデフォルト値を返す", func(t *testing.T) {
 		leagueType, err := ParseQueryLeagueType(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -354,6 +374,8 @@ func TestParseQueryLeagueType(t *testing.T) {
 }
 
 func TestParseQueryEventType(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならデフォルト値を返す", func(t *testing.T) {
 		eventType, err := ParseQueryEventType(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -376,6 +398,8 @@ func TestParseQueryEventType(t *testing.T) {
 }
 
 func TestParseQueryArchive(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならデフォルト値を返す", func(t *testing.T) {
 		archived, err := ParseQueryArchive(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -399,6 +423,8 @@ func TestParseQueryArchive(t *testing.T) {
 }
 
 func TestParseQueryAllTime(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定ならデフォルト値を返す", func(t *testing.T) {
 		allTime, err := ParseQueryAllTime(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -418,6 +444,8 @@ func TestParseQueryAllTime(t *testing.T) {
 }
 
 func TestParseQueryYearMonth(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定なら空文字を返す", func(t *testing.T) {
 		yearMonth, err := ParseQueryYearMonth(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -440,6 +468,8 @@ func TestParseQueryYearMonth(t *testing.T) {
 }
 
 func TestParseQuerySeason(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定なら空文字を返す", func(t *testing.T) {
 		season, err := ParseQuerySeason(newTestContext(t, ""))
 		require.NoError(t, err)
@@ -459,6 +489,8 @@ func TestParseQuerySeason(t *testing.T) {
 }
 
 func TestParseQueryWeek(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_未指定なら空文字を返す", func(t *testing.T) {
 		week, err := ParseQueryWeek(newTestContext(t, ""))
 		require.NoError(t, err)

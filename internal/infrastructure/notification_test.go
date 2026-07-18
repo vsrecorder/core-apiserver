@@ -105,7 +105,7 @@ func TestNotificationInfrastructure(t *testing.T) {
 
 			err := r.UpdateContent(context.Background(), id, createdAt, "新しいタイトル", "新しい本文", true)
 
-			require.Equal(t, apperror.ErrRecordNotFound, err)
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	})
@@ -201,7 +201,7 @@ func TestNotificationInfrastructure(t *testing.T) {
 
 			err := r.MarkAsRead(context.Background(), id, uid)
 
-			require.Equal(t, apperror.ErrRecordNotFound, err)
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	})

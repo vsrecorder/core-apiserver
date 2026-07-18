@@ -57,7 +57,7 @@ func TestUnofficialEventInfrastructure(t *testing.T) {
 
 			ret, err := r.FindById(context.Background(), id)
 
-			require.Equal(t, apperror.ErrRecordNotFound, err)
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 			require.Nil(t, ret)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})

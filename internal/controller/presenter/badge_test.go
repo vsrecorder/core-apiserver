@@ -19,6 +19,8 @@ func newTestBadgeDefinitionEntity() *entity.BadgeDefinition {
 }
 
 func TestNewBadgeDefinitionsResponse(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_バッジ定義を変換して返す", func(t *testing.T) {
 		res := NewBadgeDefinitionsResponse([]*entity.BadgeDefinition{newTestBadgeDefinitionEntity()})
 
@@ -31,6 +33,8 @@ func TestNewBadgeDefinitionsResponse(t *testing.T) {
 }
 
 func TestNewUserBadgesResponse(t *testing.T) {
+	t.Parallel()
+
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 	t.Run("正常系_獲得済みバッジは獲得日時が設定される", func(t *testing.T) {

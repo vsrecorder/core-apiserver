@@ -46,7 +46,7 @@ func TestUserPlayerChallenge(t *testing.T) {
 
 		_, err := parseUserPlayerChallenge("whatever")
 
-		require.Equal(t, apperror.ErrInvalidChallenge, err)
+		require.ErrorIs(t, err, apperror.ErrInvalidChallenge)
 	})
 
 	t.Run("異常系_改ざんされたトークンはErrInvalidChallengeを返す", func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestUserPlayerChallenge(t *testing.T) {
 
 		_, err = parseUserPlayerChallenge(token + "tampered")
 
-		require.Equal(t, apperror.ErrInvalidChallenge, err)
+		require.ErrorIs(t, err, apperror.ErrInvalidChallenge)
 	})
 
 	t.Run("異常系_異なるシークレットで署名されたトークンはErrInvalidChallengeを返す", func(t *testing.T) {
@@ -77,6 +77,6 @@ func TestUserPlayerChallenge(t *testing.T) {
 
 		_, err = parseUserPlayerChallenge(token)
 
-		require.Equal(t, apperror.ErrInvalidChallenge, err)
+		require.ErrorIs(t, err, apperror.ErrInvalidChallenge)
 	})
 }

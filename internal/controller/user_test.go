@@ -131,7 +131,7 @@ func test_UserController_Create(t *testing.T) {
 		// 認証済みとするためJWTを生成
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
@@ -178,7 +178,7 @@ func test_UserController_Create(t *testing.T) {
 
 		require.Equal(t, http.StatusCreated, w.Code)
 		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
+		require.WithinDuration(t, createdAt, res.CreatedAt, time.Second)
 		require.Equal(t, name, res.Name)
 		require.Equal(t, imageURL, res.ImageURL)
 	})
@@ -190,7 +190,7 @@ func test_UserController_Create(t *testing.T) {
 		// 認証済みとするためJWTを生成
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
@@ -227,7 +227,7 @@ func test_UserController_Create(t *testing.T) {
 		// 認証済みとするためJWTを生成
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
@@ -266,7 +266,7 @@ func test_UserController_Update(t *testing.T) {
 		// 認証済みとするためJWTを生成
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, mockUsecase := setup4TestUserController(t, l, r)
 
@@ -315,7 +315,7 @@ func test_UserController_Update(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
+		require.WithinDuration(t, createdAt, res.CreatedAt, time.Second)
 		require.Equal(t, name, res.Name)
 		require.Equal(t, imageURL, res.ImageURL)
 	})
@@ -327,7 +327,7 @@ func test_UserController_Update(t *testing.T) {
 		// 認証済みとするためJWTを生成
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, mockUsecase := setup4TestUserController(t, l, r)
 
@@ -367,7 +367,7 @@ func test_UserController_Delete(t *testing.T) {
 
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	t.Run("正常系_本人のアカウントを削除する", func(t *testing.T) {
 		id, err := generateId()

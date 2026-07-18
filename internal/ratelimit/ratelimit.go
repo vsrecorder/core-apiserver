@@ -47,3 +47,12 @@ func (l *Limiter) Allow(key string) bool {
 	l.hits[key] = append(filtered, now)
 	return true
 }
+
+// Reset は全キーの試行記録を破棄する。テストが互いの消費分に影響されないよう
+// 状態を初期化するために使う。
+func (l *Limiter) Reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.hits = make(map[string][]time.Time)
+}

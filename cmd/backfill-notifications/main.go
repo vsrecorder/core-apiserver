@@ -762,12 +762,12 @@ func seasonRecordEventDates(
 
 	tx := db.Table("records").
 		Select(
-			"GREATEST(" +
-				"records.event_date, " +
-				"COALESCE(records.deck_registered_at, records.created_at), " +
-				"COALESCE(MIN(matches.created_at), records.created_at), " +
-				"COALESCE(decks.created_at, records.created_at), " +
-				"COALESCE(deck_codes.created_at, records.created_at)" +
+			"GREATEST("+
+				"records.event_date, "+
+				"COALESCE(records.deck_registered_at, records.created_at), "+
+				"COALESCE(MIN(matches.created_at), records.created_at), "+
+				"COALESCE(decks.created_at, records.created_at), "+
+				"COALESCE(deck_codes.created_at, records.created_at)"+
 				") AS achieved_at",
 		).
 		Joins("LEFT JOIN matches ON matches.record_id = records.id AND matches.deleted_at IS NULL").

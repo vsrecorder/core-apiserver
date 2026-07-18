@@ -74,7 +74,7 @@ func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -82,7 +82,6 @@ func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
 	t.Run("正常系_未登録IDならユーザを作成する", func(t *testing.T) {
 		id, _ := generateId()
-		createdAt := time.Now().Local()
 		name := "test"
 		imageURL := "http://example.com/image.png"
 
@@ -98,8 +97,8 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 		ret, err := usecase.Create(context.Background(), param)
 
 		require.NoError(t, err)
-		require.IsType(t, id, ret.ID)
-		require.IsType(t, createdAt, ret.CreatedAt)
+		require.NotEmpty(t, ret.ID)
+		require.NotEmpty(t, ret.CreatedAt)
 		require.Equal(t, name, ret.Name)
 		require.Equal(t, imageURL, ret.ImageURL)
 	})
@@ -127,7 +126,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, apperror.ErrAlreadyExists)
+		require.ErrorIs(t, err, apperror.ErrAlreadyExists)
 		require.Empty(t, ret)
 	})
 
@@ -146,7 +145,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -176,8 +175,8 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 		ret, err := usecase.Update(context.Background(), id, param)
 
 		require.NoError(t, err)
-		require.IsType(t, id, ret.ID)
-		require.IsType(t, createdAt, ret.CreatedAt)
+		require.NotEmpty(t, ret.ID)
+		require.NotEmpty(t, ret.CreatedAt)
 		require.Equal(t, name, ret.Name)
 		require.Equal(t, imageURL, ret.ImageURL)
 	})
@@ -196,7 +195,7 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, apperror.ErrRecordNotFound)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 
@@ -214,7 +213,7 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -264,7 +263,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_対戦記録の削除に失敗", func(t *testing.T) {
@@ -276,7 +275,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_デッキの削除に失敗", func(t *testing.T) {
@@ -289,7 +288,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_デッキコードのID取得に失敗", func(t *testing.T) {
@@ -301,7 +300,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_デッキコードの削除に失敗", func(t *testing.T) {
@@ -315,7 +314,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_プレイヤーIDのID取得に失敗", func(t *testing.T) {
@@ -328,7 +327,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_プレイヤーIDの削除に失敗", func(t *testing.T) {
@@ -344,7 +343,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_ユーザ本体の削除に失敗", func(t *testing.T) {
@@ -358,6 +357,6 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 
 		err := usecase.Delete(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 	})
 }

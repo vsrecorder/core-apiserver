@@ -11,7 +11,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
@@ -102,7 +101,7 @@ func test_GameInfrastructure_FindById(t *testing.T) {
 	game, err := r.FindById(context.Background(), id)
 
 	require.NoError(t, err)
-	require.IsType(t, &entity.Game{}, game)
+	require.NotNil(t, game)
 	require.Equal(t, id, game.ID)
 	require.Equal(t, matchId, game.MatchId)
 	require.Equal(t, userId, game.UserId)
@@ -152,7 +151,7 @@ func test_GameInfrastructure_FindByMatchId(t *testing.T) {
 	game, err := r.FindByMatchId(context.Background(), id)
 
 	require.NoError(t, err)
-	require.IsType(t, []*entity.Game{}, game)
+	require.NotEmpty(t, game)
 	require.Equal(t, id, game[0].ID)
 	require.Equal(t, matchId, game[0].MatchId)
 	require.Equal(t, userId, game[0].UserId)

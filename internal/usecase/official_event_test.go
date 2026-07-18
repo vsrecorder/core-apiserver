@@ -74,7 +74,7 @@ func test_OfficialEventUsecase_Find(
 
 		ret, err := usecase.Find(context.Background(), typeId, leagueType, startDate, endDate)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -108,7 +108,7 @@ func test_OfficialEventUsecase_FindById(
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }

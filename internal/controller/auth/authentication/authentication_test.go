@@ -3,7 +3,6 @@ package authentication
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -46,7 +45,7 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	// 環境変数にJWTのシークレットキーをセットする
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -183,7 +182,7 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 	require.NoError(t, err)
 
 	// 環境変数にJWTのシークレットキーをセットする
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 

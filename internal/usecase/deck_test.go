@@ -105,7 +105,7 @@ func test_DeckUsecase_Find(
 
 		ret, err := usecase.Find(context.Background(), limit, offset)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -155,7 +155,7 @@ func test_DeckUsecase_FindAll(
 
 		ret, err := usecase.FindAll(context.Background(), uid)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -207,7 +207,7 @@ func test_DeckUsecase_FindOnCursor(
 
 		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -240,7 +240,7 @@ func test_DeckUsecase_FindById(
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, apperror.ErrRecordNotFound)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 
@@ -252,7 +252,7 @@ func test_DeckUsecase_FindById(
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -336,7 +336,7 @@ func test_DeckUsecase_FindByUserId(
 
 		ret, err := usecase.FindByUserId(context.Background(), uid, archivedFlg, limit, offset)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -420,7 +420,7 @@ func test_DeckUsecase_FindByUserIdOnCursor(
 
 		ret, err := usecase.FindByUserIdOnCursor(context.Background(), uid, archivedFlg, limit, cursor)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -501,7 +501,7 @@ func test_DeckUsecase_Create(
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 
@@ -516,7 +516,7 @@ func test_DeckUsecase_Create(
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 
@@ -527,7 +527,7 @@ func test_DeckUsecase_Create(
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 
@@ -540,7 +540,7 @@ func test_DeckUsecase_Create(
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -622,7 +622,7 @@ func test_DeckUsecase_Update(
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, apperror.ErrRecordNotFound)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 
@@ -638,7 +638,7 @@ func test_DeckUsecase_Update(
 
 		ret, err := usecase.Update(context.Background(), id, param)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -679,7 +679,7 @@ func test_DeckUsecase_Archive(
 
 		ret, err := usecase.Archive(context.Background(), id)
 
-		require.Equal(t, err, apperror.ErrRecordNotFound)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 
@@ -694,7 +694,7 @@ func test_DeckUsecase_Archive(
 
 		ret, err := usecase.Archive(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 
@@ -708,7 +708,7 @@ func test_DeckUsecase_Archive(
 
 		ret, err := usecase.Archive(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -749,7 +749,7 @@ func test_DeckUsecase_Unarchive(
 
 		ret, err := usecase.Unarchive(context.Background(), id)
 
-		require.Equal(t, err, apperror.ErrRecordNotFound)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Empty(t, ret)
 	})
 
@@ -764,7 +764,7 @@ func test_DeckUsecase_Unarchive(
 
 		ret, err := usecase.Unarchive(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 
@@ -778,7 +778,7 @@ func test_DeckUsecase_Unarchive(
 
 		ret, err := usecase.Unarchive(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }

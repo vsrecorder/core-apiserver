@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -74,7 +73,7 @@ func (c *Designation) GetByUserId(ctx *gin.Context) {
 	}
 
 	if season == "" {
-		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, time.Now().Local())
+		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, timeNow().Local())
 		if err != nil {
 			apierror.ErrInternalServerError.JSON(ctx)
 			return
@@ -100,7 +99,7 @@ func (c *Designation) GetRankStats(ctx *gin.Context) {
 	}
 
 	if season == "" {
-		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, time.Now().Local())
+		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, timeNow().Local())
 		if err != nil {
 			apierror.ErrInternalServerError.JSON(ctx)
 			return

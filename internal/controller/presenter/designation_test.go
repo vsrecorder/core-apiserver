@@ -19,6 +19,8 @@ func newTestDesignationEntity(criteriaType string) *entity.Designation {
 }
 
 func TestNewDesignationsResponse(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_シティリーグ条件の称号には単独達成の閾値が付与される", func(t *testing.T) {
 		res := NewDesignationsResponse([]*entity.Designation{
 			newTestDesignationEntity(usecase.DesignationCriteriaTypeOfficialCityLeagueRecord),
@@ -39,6 +41,8 @@ func TestNewDesignationsResponse(t *testing.T) {
 }
 
 func TestNewUserDesignationResponse(t *testing.T) {
+	t.Parallel()
+
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 	t.Run("正常系_現在の称号とロードマップを変換して返す", func(t *testing.T) {
@@ -73,6 +77,8 @@ func TestNewUserDesignationResponse(t *testing.T) {
 }
 
 func TestNewDesignationRankStatsResponse(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系_ティア別の到達ユーザー数を変換して返す", func(t *testing.T) {
 		view := &usecase.DesignationRankStatsView{
 			TotalUsers: 10,

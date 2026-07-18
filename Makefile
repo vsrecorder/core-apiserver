@@ -5,6 +5,20 @@ test:
 	go mod tidy
 	go test -v -cover -race ./...
 
+# integration-test は使い捨てのPostgresコンテナを起動し、db/schema.sql を適用した上で
+# リポジトリ層の統合テスト(TestIntegration*)を実行する。終了後にコンテナは破棄される。
+.PHONY: integration-test
+integration-test:
+	docker rm -f vsrecorder-test-db 2>/dev/null || true
+	docker run -d --name vsrecorder-test-db \
+		-e POSTGRES_USER=vsrecorder -e POSTGRES_PASSWORD=vsrecorder -e POSTGRES_DB=vsrecorder_test \
+		-e TZ=Asia/Tokyo -p 15432:5432 postgres:16-alpine
+	@until docker exec vsrecorder-test-db pg_isready -U vsrecorder >/dev/null 2>&1; do sleep 1; done
+	docker exec -i vsrecorder-test-db psql -q -U vsrecorder -d vsrecorder_test < db/schema.sql
+	VSRECORDER_TEST_DATABASE_URL="host=localhost port=15432 user=vsrecorder password=vsrecorder dbname=vsrecorder_test sslmode=disable TimeZone=Asia/Tokyo" \
+		go test -count=1 -v -run TestIntegration ./internal/infrastructure/ ; \
+		status=$$?; docker rm -f vsrecorder-test-db >/dev/null; exit $$status
+
 .PHONY: run
 run:
 	go mod tidy
@@ -19,7 +33,7 @@ PHONY: mockgen
 mockgen:
 	mockgen -source=./internal/domain/repository/record.go -destination=./internal/mock/mock_repository/record.go
 	mockgen -source=./internal/domain/repository/user.go -destination=./internal/mock/mock_repository/user.go
-	mockgen -source=./internal/domain/repository/official_event.go -destination=./internal/mock/mock_repository/officail_event.go
+	mockgen -source=./internal/domain/repository/official_event.go -destination=./internal/mock/mock_repository/official_event.go
 	mockgen -source=./internal/domain/repository/tonamel_event.go -destination=./internal/mock/mock_repository/tonamel_event.go
 	mockgen -source=./internal/domain/repository/deck.go -destination=./internal/mock/mock_repository/deck.go
 	mockgen -source=./internal/domain/repository/deck_asset.go -destination=./internal/mock/mock_repository/deck_asset.go
@@ -44,6 +58,13 @@ mockgen:
 	mockgen -source=./internal/domain/repository/player_ranking.go -destination=./internal/mock/mock_repository/player_ranking.go
 	mockgen -source=./internal/domain/repository/notification.go -destination=./internal/mock/mock_repository/notification.go
 	mockgen -source=./internal/domain/repository/user_environment_badge.go -destination=./internal/mock/mock_repository/user_environment_badge.go
+	mockgen -source=./internal/domain/repository/user_player.go -destination=./internal/mock/mock_repository/user_player.go
+	mockgen -source=./internal/domain/repository/transaction.go -destination=./internal/mock/mock_repository/transaction.go
+	mockgen -source=./internal/domain/repository/calendar.go -destination=./internal/mock/mock_repository/calendar.go
+	mockgen -source=./internal/domain/repository/cityleague_result.go -destination=./internal/mock/mock_repository/cityleague_result.go
+	mockgen -source=./internal/domain/repository/cityleague_schedule.go -destination=./internal/mock/mock_repository/cityleague_schedule.go
+	mockgen -source=./internal/domain/repository/pokemon_avatar.go -destination=./internal/mock/mock_repository/pokemon_avatar.go
+	mockgen -source=./internal/domain/repository/unofficial_event.go -destination=./internal/mock/mock_repository/unofficial_event.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go
 	mockgen -source=./internal/usecase/user.go -destination=./internal/mock/mock_usecase/user.go
@@ -70,6 +91,12 @@ mockgen:
 	mockgen -source=./internal/usecase/environment_badge.go -destination=./internal/mock/mock_usecase/environment_badge.go
 	mockgen -source=./internal/usecase/environment_badge_evaluation.go -destination=./internal/mock/mock_usecase/environment_badge_evaluation.go
 	mockgen -source=./internal/usecase/cityleague_result.go -destination=./internal/mock/mock_usecase/cityleague_result.go
+	mockgen -source=./internal/usecase/calendar.go -destination=./internal/mock/mock_usecase/calendar.go
+	mockgen -source=./internal/usecase/championship_series.go -destination=./internal/mock/mock_usecase/championship_series.go
+	mockgen -source=./internal/usecase/cityleague_schedule.go -destination=./internal/mock/mock_usecase/cityleague_schedule.go
+	mockgen -source=./internal/usecase/deck_code.go -destination=./internal/mock/mock_usecase/deck_code.go
+	mockgen -source=./internal/usecase/unofficial_event.go -destination=./internal/mock/mock_usecase/unofficial_event.go
+	mockgen -source=./internal/usecase/user_player.go -destination=./internal/mock/mock_usecase/user_player.go
 
 .PHONY: image
 image:

@@ -33,6 +33,27 @@ func TestWeeklyDeckUsageStatUsecase_GetWeeklyDeckUsageStat(t *testing.T) {
 		require.Equal(t, stat, ret)
 	})
 
+	t.Run("正常系_週未指定なら現在時刻が属する週の期間で集計する", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mockRepository := mock_repository.NewMockWeeklyDeckUsageStatInterface(mockCtrl)
+		usecase := NewWeeklyDeckUsageStat(mockRepository)
+
+		// 2026-07-19は日曜。属する週の月曜は2026-07-13。
+		overrideTimeNow(t, time.Date(2026, 7, 19, 23, 0, 0, 0, time.Local))
+
+		fromDate := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
+		toDate := time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local)
+
+		stat := &entity.WeeklyDeckUsageStat{}
+
+		mockRepository.EXPECT().FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate).Return(stat, nil)
+
+		ret, err := usecase.GetWeeklyDeckUsageStat(context.Background(), "")
+
+		require.NoError(t, err)
+		require.Equal(t, stat, ret)
+	})
+
 	t.Run("異常系_週の形式が不正ならリポジトリを呼ばずエラーを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		mockRepository := mock_repository.NewMockWeeklyDeckUsageStatInterface(mockCtrl)

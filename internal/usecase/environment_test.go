@@ -68,7 +68,7 @@ func test_EnvironmentUsecase_Find(t *testing.T, mockRepository *mock_repository.
 
 		ret, err := usecase.Find(context.Background())
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -104,7 +104,7 @@ func test_EnvironmentUsecase_FindById(t *testing.T, mockRepository *mock_reposit
 
 		ret, err := usecase.FindById(context.Background(), id)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -141,7 +141,7 @@ func test_EnvironmentUsecase_FindByDate(t *testing.T, mockRepository *mock_repos
 
 		ret, err := usecase.FindByDate(context.Background(), date)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }
@@ -184,7 +184,7 @@ func test_EnvironmentUsecase_FindByTerm(t *testing.T, mockRepository *mock_repos
 
 		ret, err := usecase.FindByTerm(context.Background(), argFromDate, argToDate)
 
-		require.Equal(t, err, errors.New(""))
+		require.Error(t, err)
 		require.Empty(t, ret)
 	})
 }

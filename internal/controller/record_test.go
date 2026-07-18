@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -266,7 +265,7 @@ func test_RecordController_GetById(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
+		require.WithinDuration(t, createdAt, res.CreatedAt, time.Second)
 		require.Equal(t, officialEventId, res.OfficialEventId)
 		require.Equal(t, privateFlg, res.PrivateFlg)
 	})
@@ -309,7 +308,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	c, _, mockUsecase := setup4TestRecordController(t, r)
 
@@ -494,7 +493,7 @@ func test_RecordController_Create(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, mockUsecase := setup4TestRecordController(t, r)
 
@@ -561,7 +560,7 @@ func test_RecordController_Create(t *testing.T) {
 
 		require.Equal(t, http.StatusCreated, w.Code)
 		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
+		require.WithinDuration(t, createdAt, res.CreatedAt, time.Second)
 		require.Equal(t, officialEventId, res.OfficialEventId)
 		require.Equal(t, privateFlg, res.PrivateFlg)
 		require.Equal(t, uid, res.UserId)
@@ -573,7 +572,7 @@ func test_RecordController_Create(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, _, mockUsecase := setup4TestRecordController(t, r)
 
@@ -619,7 +618,7 @@ func test_RecordController_Update(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
 
@@ -689,7 +688,7 @@ func test_RecordController_Update(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
+		require.WithinDuration(t, createdAt, res.CreatedAt, time.Second)
 		require.Equal(t, officialEventId, res.OfficialEventId)
 		require.Equal(t, privateFlg, res.PrivateFlg)
 		require.Equal(t, uid, res.UserId)
@@ -701,7 +700,7 @@ func test_RecordController_Update(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		secretKey, err := testutil.GenerateJWTSecret()
 		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 		c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
 
@@ -770,7 +769,7 @@ func test_RecordController_Delete(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	secretKey, err := testutil.GenerateJWTSecret()
 	require.NoError(t, err)
-	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	t.Run("正常系_本人の記録を削除する", func(t *testing.T) {
 		id, err := generateId()

@@ -31,7 +31,7 @@ func TestUserStatHistoryUsecase(t *testing.T) {
 }
 
 func test_UserStatHistoryUsecase_GetUserStatHistory(t *testing.T, mockRepository *mock_repository.MockUserStatHistoryInterface, usecase UserStatHistoryInterface) {
-	t.Run("正常系_#01_deck_id指定時はそのままrepositoryに渡される", func(t *testing.T) {
+	t.Run("正常系_deck_id指定時はそのままrepositoryに渡される", func(t *testing.T) {
 		userId := "user-01"
 		period := "3months"
 		season := ""
@@ -51,7 +51,7 @@ func test_UserStatHistoryUsecase_GetUserStatHistory(t *testing.T, mockRepository
 		require.Equal(t, history, ret)
 	})
 
-	t.Run("正常系_#02_deck_id未指定でも空文字のまま渡される", func(t *testing.T) {
+	t.Run("正常系_deck_id未指定でも空文字のまま渡される", func(t *testing.T) {
 		userId := "user-02"
 		period := "6months"
 		season := ""

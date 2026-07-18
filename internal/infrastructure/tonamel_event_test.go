@@ -25,7 +25,7 @@ func test_TonamelEventInfrastructure_FindById(t *testing.T) {
 	logger := slog.Default()
 	r := NewTonamelEvent(logger)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_実在イベントIDでタイトルと画像を取得できる", func(t *testing.T) {
 
 		id := "OakZc"
 		title := "第23回 ACEカップ～FINAL～"
@@ -38,7 +38,7 @@ func test_TonamelEventInfrastructure_FindById(t *testing.T) {
 		require.NotEmpty(t, res.Image)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
 		id := "ERROR"
 
 		_, err := r.FindById(context.Background(), id)

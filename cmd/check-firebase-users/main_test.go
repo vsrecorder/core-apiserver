@@ -41,7 +41,7 @@ func TestClassifyFirebaseOnly(t *testing.T) {
 		"uid_deleted_in_db": {ID: "uid_deleted_in_db", DeletedAt: &deletedAt},
 	}
 
-	t.Run("DB上は退会済みならA", func(t *testing.T) {
+	t.Run("正常系_DB上は退会済みならA", func(t *testing.T) {
 		label, state := classifyFirebaseOnly("uid_deleted_in_db", dbUsers)
 
 		assert.Equal(t, "A:退会済み", label)
@@ -49,7 +49,7 @@ func TestClassifyFirebaseOnly(t *testing.T) {
 		assert.Contains(t, state, deletedAt.Format(time.RFC3339))
 	})
 
-	t.Run("DBに行が無ければB", func(t *testing.T) {
+	t.Run("正常系_DBに行が無ければB", func(t *testing.T) {
 		label, state := classifyFirebaseOnly("uid_firebase_only", dbUsers)
 
 		assert.Equal(t, "B:登録未完了", label)

@@ -95,7 +95,7 @@ func sixTierDefinitions(now time.Time) []*entity.Designation {
 }
 
 func TestDesignation_GetByUserId(t *testing.T) {
-	t.Run("今シーズンの集計値が条件を満たすと現在の称号として返す", func(t *testing.T) {
+	t.Run("正常系_今シーズンの集計値が条件を満たすと現在の称号として返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -127,7 +127,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		}
 	})
 
-	t.Run("シーズンが変わり集計値が0に戻れば称号なしになる(永続化された過去の実績は見ない)", func(t *testing.T) {
+	t.Run("正常系_シーズンが変わり集計値が0に戻れば称号なしになる(永続化された過去の実績は見ない)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -150,7 +150,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		}
 	})
 
-	t.Run("未実装(準備中)のティアは絶対に達成されない", func(t *testing.T) {
+	t.Run("正常系_未実装(準備中)のティアは絶対に達成されない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -171,7 +171,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.Nil(t, view.Current)
 	})
 
-	t.Run("シティリーグ記録数が条件を満たし前シーズンも継続しているとレギュラー(tier4)まで到達する", func(t *testing.T) {
+	t.Run("正常系_シティリーグ記録数が条件を満たし前シーズンも継続しているとレギュラー(tier4)まで到達する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -197,7 +197,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.Equal(t, 1, item04.PreviousValue)
 	})
 
-	t.Run("前シーズンの実績が無くても今シーズン単独でシティリーグ記録が2件以上あればレギュラー(tier4)に到達する", func(t *testing.T) {
+	t.Run("正常系_前シーズンの実績が無くても今シーズン単独でシティリーグ記録が2件以上あればレギュラー(tier4)に到達する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -223,7 +223,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.Equal(t, 0, item04.PreviousValue)
 	})
 
-	t.Run("シティリーグ記録が無いとレギュラー(tier4)には到達しない", func(t *testing.T) {
+	t.Run("正常系_シティリーグ記録が無いとレギュラー(tier4)には到達しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -248,7 +248,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.Equal(t, 0, item04.PreviousValue)
 	})
 
-	t.Run("今シーズンの記録が1件のみで前シーズンに記録が無ければレギュラー(tier4)には到達しない(継続条件も単独条件も未達)", func(t *testing.T) {
+	t.Run("正常系_今シーズンの記録が1件のみで前シーズンに記録が無ければレギュラー(tier4)には到達しない(継続条件も単独条件も未達)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -275,7 +275,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.Equal(t, 0, item04.PreviousValue)
 	})
 
-	t.Run("プレイヤーズクラブ未連携だとレギュラーの条件を満たしていてもベテラン(tier5)には到達しない", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ未連携だとレギュラーの条件を満たしていてもベテラン(tier5)には到達しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -301,7 +301,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.True(t, item05.CityLeagueRecordWithoutPlayerLink)
 	})
 
-	t.Run("プレイヤーズクラブ未連携かつシティリーグの記録も無ければベテラン(tier5)の連携済み案内のヒントは立たない", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ未連携かつシティリーグの記録も無ければベテラン(tier5)の連携済み案内のヒントは立たない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -325,7 +325,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.False(t, item05.CityLeagueRecordWithoutPlayerLink)
 	})
 
-	t.Run("プレイヤーズクラブ連携済みでもcityleague_resultsに一致するレコードが無ければベテラン(tier5)には到達しない", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ連携済みでもcityleague_resultsに一致するレコードが無ければベテラン(tier5)には到達しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -356,7 +356,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.False(t, item05.MissingOfficialEventRecord)
 	})
 
-	t.Run("プレイヤーズクラブ連携済みでcityleague_resultsに存在するがofficial_event_idが一致するrecordsが無ければベテラン(tier5)には到達せず、記録不足のヒントが立つ", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ連携済みでcityleague_resultsに存在するがofficial_event_idが一致するrecordsが無ければベテラン(tier5)には到達せず、記録不足のヒントが立つ", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -386,7 +386,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.True(t, item05.MissingOfficialEventRecord)
 	})
 
-	t.Run("プレイヤーズクラブ連携済みでcityleague_resultsに一致するレコードがあればベテラン(tier5)まで到達する", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ連携済みでcityleague_resultsに一致するレコードがあればベテラン(tier5)まで到達する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -416,7 +416,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.False(t, item05.MissingOfficialEventRecord)
 	})
 
-	t.Run("プレイヤーズクラブ未連携だとベテランの条件を満たしていても熟練(tier6)には到達しない", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ未連携だとベテランの条件を満たしていても熟練(tier6)には到達しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -441,7 +441,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.True(t, item06.CityLeagueRecordWithoutPlayerLink)
 	})
 
-	t.Run("プレイヤーズクラブ連携済みでもcityleague_resultsにrank5以下の一致するレコードが無ければ熟練(tier6)には到達しない", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ連携済みでもcityleague_resultsにrank5以下の一致するレコードが無ければ熟練(tier6)には到達しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -471,7 +471,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.False(t, item06.MissingOfficialEventRecord)
 	})
 
-	t.Run("プレイヤーズクラブ連携済みでcityleague_resultsにplayer_idは一致するがofficial_event_idが一致するrecordsが無ければ熟練(tier6)には到達せず、記録不足のヒントが立つ", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ連携済みでcityleague_resultsにplayer_idは一致するがofficial_event_idが一致するrecordsが無ければ熟練(tier6)には到達せず、記録不足のヒントが立つ", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -500,7 +500,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.True(t, item06.MissingOfficialEventRecord)
 	})
 
-	t.Run("プレイヤーズクラブ連携済みでcityleague_resultsにrank5以下の一致するレコードがあれば熟練(tier6)まで到達する", func(t *testing.T) {
+	t.Run("正常系_プレイヤーズクラブ連携済みでcityleague_resultsにrank5以下の一致するレコードがあれば熟練(tier6)まで到達する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -528,7 +528,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.Equal(t, 1, item06.CurrentValue)
 	})
 
-	t.Run("熟練の判定はプレイヤーIDだけでなく選択中シーズンの期間でも絞り込まれる", func(t *testing.T) {
+	t.Run("正常系_熟練の判定はプレイヤーIDだけでなく選択中シーズンの期間でも絞り込まれる", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -560,7 +560,7 @@ func TestDesignation_GetByUserId(t *testing.T) {
 }
 
 func TestDesignation_GetRankStats(t *testing.T) {
-	t.Run("ティアごとの到達ユーザー数と、いずれかのティアに到達した合計ユーザー数を返す", func(t *testing.T) {
+	t.Run("正常系_ティアごとの到達ユーザー数と、いずれかのティアに到達した合計ユーザー数を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _ := newDesignationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)

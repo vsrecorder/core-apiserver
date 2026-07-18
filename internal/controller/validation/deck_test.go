@@ -2,8 +2,8 @@ package validation
 
 import (
 	"encoding/json"
-	"log/slog"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -33,7 +33,7 @@ func TestDeckValidation(t *testing.T) {
 }
 
 func test_DeckGetMiddleware(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_クエリ未指定ならデフォルト値を設定して通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -56,7 +56,7 @@ func test_DeckGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedArchived, helper.GetArchived(ginContext))
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_limitとoffsetとarchived指定を受け付ける", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -79,7 +79,7 @@ func test_DeckGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedArchived, helper.GetArchived(ginContext))
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_archivedがfalse指定でも受け付ける", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -102,7 +102,7 @@ func test_DeckGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedArchived, helper.GetArchived(ginContext))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_limitが数値でなければ400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -118,7 +118,7 @@ func test_DeckGetMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_offsetが数値でなければ400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -134,7 +134,7 @@ func test_DeckGetMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_archivedが真偽値でなければ400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -152,7 +152,7 @@ func test_DeckGetMiddleware(t *testing.T) {
 }
 
 func test_DeckCreateMiddleware(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_デッキコード付きリクエストを受理してコンテキストに設定する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -182,7 +182,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_デッキコードなしのリクエストも受理する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -212,7 +212,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_JSONとして不正なボディなら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -228,7 +228,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_nameが空なら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -256,7 +256,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_デッキコードの形式が不正なら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -287,7 +287,7 @@ func test_DeckCreateMiddleware(t *testing.T) {
 }
 
 func test_DeckUpdateMiddleware(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_更新リクエストを受理してコンテキストに設定する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -315,7 +315,7 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_JSONとして不正なボディなら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -331,7 +331,7 @@ func test_DeckUpdateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_nameが空なら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 

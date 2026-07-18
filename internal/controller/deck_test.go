@@ -113,7 +113,7 @@ func test_DeckController_Get(t *testing.T) {
 	c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
 	// 未認証の場合、公開デッキの一覧が返る
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_未認証なら公開デッキ一覧を返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 
@@ -141,7 +141,7 @@ func test_DeckController_Get(t *testing.T) {
 	})
 
 	// 非公開のデッキコードは、未認証のユーザには伏せられる
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_非公開デッキコードは未認証には伏せられる", func(t *testing.T) {
 		limit := 10
 		offset := 0
 
@@ -166,7 +166,7 @@ func test_DeckController_Get(t *testing.T) {
 	})
 
 	// カーソルが指定された場合はFindOnCursorが使われる
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_カーソル指定時はFindOnCursorで取得する", func(t *testing.T) {
 		limit := 10
 		cursor := time.Now().Local().Truncate(time.Second)
 
@@ -190,7 +190,7 @@ func test_DeckController_Get(t *testing.T) {
 		require.Equal(t, len(decks), len(res.Decks))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 
@@ -207,7 +207,7 @@ func test_DeckController_Get(t *testing.T) {
 	})
 
 	// 不正なlimitはバリデーションで弾かれる
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_limitが不正なら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("GET", DecksPath+"?limit=invalid", nil)
@@ -219,7 +219,7 @@ func test_DeckController_Get(t *testing.T) {
 	})
 
 	// 不正なカーソルはバリデーションで弾かれる
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_カーソルが不正なら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("GET", DecksPath+"?cursor=invalid", nil)
@@ -241,7 +241,7 @@ func test_DeckController_GetAll(t *testing.T) {
 
 	c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_自分の全デッキを返す", func(t *testing.T) {
 		decks := []*entity.Deck{
 			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", uid, "5dbFbk-uBwjqP-VVk5Vv", false),
 		}
@@ -265,7 +265,7 @@ func test_DeckController_GetAll(t *testing.T) {
 	})
 
 	// 認証が必須のエンドポイント
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("GET", DecksPath+"/all", nil)
@@ -276,7 +276,7 @@ func test_DeckController_GetAll(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		mockUsecase.EXPECT().FindAll(context.Background(), uid).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
@@ -295,7 +295,7 @@ func test_DeckController_GetById(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのデッキを返す", func(t *testing.T) {
 		r := gin.Default()
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -321,7 +321,7 @@ func test_DeckController_GetById(t *testing.T) {
 	})
 
 	// 非公開のデッキコードは、他人には伏せられる
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_非公開デッキコードは他人には伏せられる", func(t *testing.T) {
 		r := gin.Default()
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -345,7 +345,7 @@ func test_DeckController_GetById(t *testing.T) {
 	})
 
 	// 非公開のデッキコードでも、本人であれば参照できる
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_非公開デッキコードでも本人には見える", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -375,7 +375,7 @@ func test_DeckController_GetById(t *testing.T) {
 	})
 
 	// 非公開のデッキは他人からは参照できない
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_非公開デッキは他人からは403", func(t *testing.T) {
 		r := gin.Default()
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
@@ -394,7 +394,7 @@ func test_DeckController_GetById(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_存在しないデッキは404を返す", func(t *testing.T) {
 		r := gin.Default()
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
@@ -410,7 +410,7 @@ func test_DeckController_GetById(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
@@ -439,7 +439,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
 	// 認証済みの場合、同じGETでも自分のデッキ一覧が返る
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_認証済みなら自分のデッキ一覧を返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 		archived := false
@@ -471,7 +471,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	})
 
 	// archived=true の場合、アーカイブ済みのデッキ一覧が返る
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_archived指定でアーカイブ済み一覧を返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 		archived := true
@@ -500,7 +500,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	})
 
 	// カーソルが指定された場合はFindByUserIdOnCursorが使われる
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_カーソル指定時はFindByUserIdOnCursorで取得する", func(t *testing.T) {
 		limit := 10
 		archived := false
 		cursor := time.Now().Local().Truncate(time.Second)
@@ -527,7 +527,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	})
 
 	// 他人の非公開のデッキコードは伏せられる
-	t.Run("正常系_#04", func(t *testing.T) {
+	t.Run("正常系_他人の非公開デッキコードは伏せられる", func(t *testing.T) {
 		limit := 10
 		offset := 0
 		archived := false
@@ -553,7 +553,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		require.Empty(t, res.Decks[0].Data.LatestDeckCode.Code)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 		archived := false
@@ -572,7 +572,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 	})
 
 	// 不正なarchivedはバリデーションで弾かれる
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_archivedが不正なら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		req, err := http.NewRequest("GET", DecksPath+"?archived=invalid", nil)
@@ -591,7 +591,7 @@ func test_DeckController_Create(t *testing.T) {
 
 	// デッキコードを指定する場合、バリデーションが公式サイトへ問い合わせるため、
 	// ここではデッキコードなしのリクエストのみを扱う
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_デッキコードなしのデッキを作成する", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -639,7 +639,7 @@ func test_DeckController_Create(t *testing.T) {
 	})
 
 	// ポケモンスプライトはリクエストからパラメータへ引き継がれる
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_ポケモンスプライトがパラメータへ引き継がれる", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -689,7 +689,7 @@ func test_DeckController_Create(t *testing.T) {
 	})
 
 	// デッキ名は必須
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_デッキ名が空なら400を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -714,7 +714,7 @@ func test_DeckController_Create(t *testing.T) {
 	})
 
 	// 認証が必須のエンドポイント
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
 		r := gin.Default()
 		c, _, _, _ := setup4TestDeckController(t, r)
 
@@ -732,7 +732,7 @@ func test_DeckController_Create(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -759,7 +759,7 @@ func test_DeckController_Create(t *testing.T) {
 	})
 
 	// デッキコードの取得元がメンテナンス中の場合は503を返す
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_公式サイトメンテナンス中は503を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -790,7 +790,7 @@ func test_DeckController_Update(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_本人のデッキを更新する", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -838,7 +838,7 @@ func test_DeckController_Update(t *testing.T) {
 	})
 
 	// 他人のデッキは更新できない
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_他人のデッキは403を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -867,7 +867,7 @@ func test_DeckController_Update(t *testing.T) {
 	})
 
 	// デッキ名は必須
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_デッキ名が空なら400を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -893,7 +893,7 @@ func test_DeckController_Update(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -925,7 +925,7 @@ func test_DeckController_Archive(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_本人のデッキをアーカイブする", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -958,7 +958,7 @@ func test_DeckController_Archive(t *testing.T) {
 	})
 
 	// 他人のデッキはアーカイブできない
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_他人のデッキは403を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -982,7 +982,7 @@ func test_DeckController_Archive(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1010,7 +1010,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_本人のデッキをアーカイブ解除する", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1040,7 +1040,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 		require.Empty(t, res.ArchivedAt)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_他人のデッキは403を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1064,7 +1064,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1092,7 +1092,7 @@ func test_DeckController_Delete(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_記録に未使用の本人デッキを削除する", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1119,7 +1119,7 @@ func test_DeckController_Delete(t *testing.T) {
 	})
 
 	// 対戦記録に使われているデッキは削除できない
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_記録に使用中のデッキは409を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1145,7 +1145,7 @@ func test_DeckController_Delete(t *testing.T) {
 	})
 
 	// 他人のデッキは削除できない
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_他人のデッキは403を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1169,7 +1169,7 @@ func test_DeckController_Delete(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1194,7 +1194,7 @@ func test_DeckController_Delete(t *testing.T) {
 	})
 
 	// 認可を通過した後に削除対象が消えていた場合(競合)は、404ではなく400を返す
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_認可後に消えていた場合は400を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()
@@ -1219,7 +1219,7 @@ func test_DeckController_Delete(t *testing.T) {
 	})
 
 	// 存在しないデッキは認可の段階で404になる
-	t.Run("異常系_#05", func(t *testing.T) {
+	t.Run("異常系_存在しないデッキは認可段階で404を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		secretKey, err := testutil.GenerateJWTSecret()

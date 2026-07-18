@@ -226,7 +226,7 @@ func TestRecordUsecase(t *testing.T) {
 }
 
 func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_記録一覧をそのまま返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 		eventType := ""
@@ -250,7 +250,7 @@ func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockR
 		require.Equal(t, id, ret[0].ID)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 		eventType := ""
@@ -265,7 +265,7 @@ func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockR
 		require.Equal(t, len(records), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 		eventType := ""
@@ -280,7 +280,7 @@ func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockR
 }
 
 func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_カーソル以降の記録一覧を返す", func(t *testing.T) {
 		limit := 10
 		cursorEventDate := time.Now().Local()
 		cursorCreatedAt := time.Now().Local()
@@ -305,7 +305,7 @@ func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_reposito
 		require.Equal(t, id, ret[0].ID)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		limit := 10
 		cursorEventDate := time.Now().Local()
 		cursorCreatedAt := time.Now().Local()
@@ -321,7 +321,7 @@ func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_reposito
 		require.Equal(t, len(records), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		limit := 10
 		cursorEventDate := time.Now().Local()
 		cursorCreatedAt := time.Now().Local()
@@ -337,7 +337,7 @@ func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_reposito
 }
 
 func test_RecordUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDの記録を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -353,7 +353,7 @@ func test_RecordUsecase_FindById(t *testing.T, mockRepository *mock_repository.M
 		require.Equal(t, id, ret.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -367,7 +367,7 @@ func test_RecordUsecase_FindById(t *testing.T, mockRepository *mock_repository.M
 }
 
 func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定ユーザの記録一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -394,7 +394,7 @@ func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_reposito
 		require.Equal(t, uid, ret[0].UserId)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		limit := 10
 		offset := 0
@@ -410,7 +410,7 @@ func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_reposito
 		require.Equal(t, len(records), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		limit := 10
 		offset := 0
@@ -426,7 +426,7 @@ func test_RecordUsecase_FindByUserId(t *testing.T, mockRepository *mock_reposito
 }
 
 func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定ユーザのカーソル以降の記録一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -454,7 +454,7 @@ func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_
 		require.Equal(t, uid, ret[0].UserId)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		limit := 10
 		cursorEventDate := time.Now().Local()
@@ -471,7 +471,7 @@ func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_
 		require.Equal(t, len(records), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		limit := 10
 		cursorEventDate := time.Now().Local()
@@ -488,7 +488,7 @@ func test_RecordUsecase_FindByUserIdOnCursor(t *testing.T, mockRepository *mock_
 }
 
 func test_RecordUsecase_FindByOfficialEventId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定公式イベントの記録一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -514,7 +514,7 @@ func test_RecordUsecase_FindByOfficialEventId(t *testing.T, mockRepository *mock
 		require.Equal(t, officialEventId, ret[0].OfficialEventId)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		officialEventId := uint(10000)
 		limit := 10
 		offset := 0
@@ -529,7 +529,7 @@ func test_RecordUsecase_FindByOfficialEventId(t *testing.T, mockRepository *mock
 }
 
 func test_RecordUsecase_FindByTonamelEventId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定Tonamelイベントの記録一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -555,7 +555,7 @@ func test_RecordUsecase_FindByTonamelEventId(t *testing.T, mockRepository *mock_
 		require.Equal(t, tonamelEventId, ret[0].TonamelEventId)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		tonamelEventId := "61ozP"
 		limit := 10
 		offset := 0
@@ -570,7 +570,7 @@ func test_RecordUsecase_FindByTonamelEventId(t *testing.T, mockRepository *mock_
 }
 
 func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定デッキの記録一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -599,7 +599,7 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 		require.Equal(t, deckId, ret[0].DeckId)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		deckId, err := generateId()
 		require.NoError(t, err)
 
@@ -617,7 +617,7 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 }
 
 func test_RecordUsecase_FindByDeckIdOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定デッキのカーソル以降の記録一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -647,7 +647,7 @@ func test_RecordUsecase_FindByDeckIdOnCursor(t *testing.T, mockRepository *mock_
 		require.Equal(t, deckId, ret[0].DeckId)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		deckId, err := generateId()
 		require.NoError(t, err)
 
@@ -666,7 +666,7 @@ func test_RecordUsecase_FindByDeckIdOnCursor(t *testing.T, mockRepository *mock_
 }
 
 func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_IDと作成日時を採番して保存する", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
 
@@ -713,7 +713,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 		require.Equal(t, record.PrivateFlg, ret.PrivateFlg)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
 		param := NewRecordParam(
 			0,
 			"",
@@ -739,7 +739,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 }
 
 func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_取得した記録にパラメータを反映して保存する", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
 
@@ -784,7 +784,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 		require.Equal(t, ret, record)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
 		id, _ := generateId()
 
 		param := NewRecordParam(
@@ -810,7 +810,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 		require.Empty(t, ret)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
 
@@ -857,7 +857,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 }
 
 func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_記録を取得してから削除する", func(t *testing.T) {
 		id, _ := generateId()
 
 		record := entity.NewRecord(
@@ -885,7 +885,7 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 		require.NoError(t, err)
 	})
 
-	t.Run("異常系_#01_FindByIdが失敗する場合", func(t *testing.T) {
+	t.Run("異常系_FindByIdが失敗する場合", func(t *testing.T) {
 		id, _ := generateId()
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
@@ -895,7 +895,7 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 		require.Equal(t, err, apperror.ErrRecordNotFound)
 	})
 
-	t.Run("異常系_#02_Deleteが失敗する場合", func(t *testing.T) {
+	t.Run("異常系_Deleteが失敗する場合", func(t *testing.T) {
 		id, _ := generateId()
 
 		record := entity.NewRecord(

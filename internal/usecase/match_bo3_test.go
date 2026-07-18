@@ -26,9 +26,9 @@ func TestMatchUsecaseBO3(t *testing.T) {
 		mockRecordRepository *mock_repository.MockRecordInterface,
 		usecase MatchInterface,
 	){
-		"Create_BO3は3ゲームがそのまま永続化される":     test_MatchUsecaseBO3_Create,
-		"Update_3ゲームから2ゲームへ減らせる":        test_MatchUsecaseBO3_UpdateShrink,
-		"Update_1ゲームから3ゲームへ増やせる":        test_MatchUsecaseBO3_UpdateGrow,
+		"Create_BO3は3ゲームがそのまま永続化される":      test_MatchUsecaseBO3_Create,
+		"Update_3ゲームから2ゲームへ減らせる":          test_MatchUsecaseBO3_UpdateShrink,
+		"Update_1ゲームから3ゲームへ増やせる":          test_MatchUsecaseBO3_UpdateGrow,
 		"Update_既存GameのIDとCreatedAtを引き継ぐ": test_MatchUsecaseBO3_UpdateKeepsIdentity,
 	} {
 		t.Run(scenario, func(t *testing.T) {

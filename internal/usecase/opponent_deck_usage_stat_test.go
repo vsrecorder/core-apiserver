@@ -34,7 +34,7 @@ func TestOpponentDeckUsageStatUsecase(t *testing.T) {
 }
 
 func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mockRepository *mock_repository.MockOpponentDeckUsageStatInterface, usecase OpponentDeckUsageStatInterface) {
-	t.Run("正常系_#01_deck_id指定時はそのままrepositoryに渡される", func(t *testing.T) {
+	t.Run("正常系_deck_id指定時はそのままrepositoryに渡される", func(t *testing.T) {
 		userId := "user-01"
 		yearMonth := "2026-06"
 		environmentId := ""
@@ -54,7 +54,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		require.Equal(t, stat, ret)
 	})
 
-	t.Run("正常系_#02_deck_id未指定でも空文字のまま渡される", func(t *testing.T) {
+	t.Run("正常系_deck_id未指定でも空文字のまま渡される", func(t *testing.T) {
 		userId := "user-02"
 		yearMonth := "2026-06"
 		environmentId := ""
@@ -77,7 +77,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 	// 「全期間」フィルタはyear_month等のクエリパラメータを一切送らないため、
 	// この場合に当月だけへ絞り込んでしまう不具合の再発防止テスト。
 	// fromDate/toDateがゼロ値のままrepositoryに渡され、event_dateによる絞り込みが行われないことを確認する。
-	t.Run("正常系_#03_フィルタ未指定時はfromDate_toDateがゼロ値のまま渡される(全期間)", func(t *testing.T) {
+	t.Run("正常系_フィルタ未指定時はfromDate_toDateがゼロ値のまま渡される(全期間)", func(t *testing.T) {
 		userId := "user-03"
 		yearMonth := ""
 		environmentId := ""

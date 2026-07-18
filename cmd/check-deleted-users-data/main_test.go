@@ -96,14 +96,14 @@ func TestDeleteTargets(t *testing.T) {
 		{name: "matches.opponents_user_id", category: categoryReference},
 	}
 
-	t.Run("既定では削除漏れのみを対象にする", func(t *testing.T) {
+	t.Run("正常系_既定では削除漏れのみを対象にする", func(t *testing.T) {
 		targets := deleteTargets(specs, false)
 
 		assert.Len(t, targets, 1)
 		assert.Equal(t, "records", targets[0].name)
 	})
 
-	t.Run("includeUnhandledなら未対応も対象にする", func(t *testing.T) {
+	t.Run("正常系_includeUnhandledなら未対応も対象にする", func(t *testing.T) {
 		targets := deleteTargets(specs, true)
 
 		assert.Len(t, targets, 2)
@@ -111,7 +111,7 @@ func TestDeleteTargets(t *testing.T) {
 		assert.Equal(t, "notifications", targets[1].name)
 	})
 
-	t.Run("参照はどちらの場合も対象にしない", func(t *testing.T) {
+	t.Run("正常系_参照はどちらの場合も対象にしない", func(t *testing.T) {
 		for _, includeUnhandled := range []bool{false, true} {
 			for _, target := range deleteTargets(specs, includeUnhandled) {
 				assert.NotEqual(t, categoryReference, target.category, "他人のデータを削除対象にしてはいけない")
@@ -127,7 +127,7 @@ func TestSpecs(t *testing.T) {
 
 	names := make(map[string]bool)
 	for _, spec := range specs {
-		t.Run(spec.name, func(t *testing.T) {
+		t.Run("正常系_"+spec.name, func(t *testing.T) {
 			assert.False(t, names[spec.name], "テーブル定義が重複している")
 			names[spec.name] = true
 

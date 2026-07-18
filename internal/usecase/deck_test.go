@@ -64,7 +64,7 @@ func test_DeckUsecase_Find(
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	usecase DeckInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_デッキ一覧をそのまま返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 
@@ -83,7 +83,7 @@ func test_DeckUsecase_Find(
 		require.Equal(t, id, ret[0].ID)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 
@@ -97,7 +97,7 @@ func test_DeckUsecase_Find(
 		require.Equal(t, len(decks), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 
@@ -116,7 +116,7 @@ func test_DeckUsecase_FindAll(
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	usecase DeckInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定ユーザの全デッキを返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 		id, err := generateId()
@@ -135,7 +135,7 @@ func test_DeckUsecase_FindAll(
 		require.Equal(t, uid, ret[0].UserId)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 		decks := []*entity.Deck{}
@@ -148,7 +148,7 @@ func test_DeckUsecase_FindAll(
 		require.Equal(t, len(decks), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 		mockRepository.EXPECT().FindAll(context.Background(), uid).Return(nil, errors.New(""))
@@ -166,7 +166,7 @@ func test_DeckUsecase_FindOnCursor(
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	usecase DeckInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_カーソル以降のデッキ一覧を返す", func(t *testing.T) {
 		limit := 10
 		cursor := time.Now().Local()
 
@@ -185,7 +185,7 @@ func test_DeckUsecase_FindOnCursor(
 		require.Equal(t, id, ret[0].ID)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		limit := 10
 		cursor := time.Now().Local()
 
@@ -199,7 +199,7 @@ func test_DeckUsecase_FindOnCursor(
 		require.Equal(t, len(decks), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		limit := 10
 		cursor := time.Now().Local()
 
@@ -218,7 +218,7 @@ func test_DeckUsecase_FindById(
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	usecase DeckInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのデッキを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -232,7 +232,7 @@ func test_DeckUsecase_FindById(
 		require.Equal(t, id, ret.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -244,7 +244,7 @@ func test_DeckUsecase_FindById(
 		require.Empty(t, ret)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -263,7 +263,7 @@ func test_DeckUsecase_FindByUserId(
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	usecase DeckInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_未アーカイブのデッキ一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -286,7 +286,7 @@ func test_DeckUsecase_FindByUserId(
 		require.Empty(t, ret[0].ArchivedAt)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_アーカイブ済み指定でアーカイブ日時付きのデッキを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -310,7 +310,7 @@ func test_DeckUsecase_FindByUserId(
 		require.Equal(t, archivedAt, ret[0].ArchivedAt)
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		archivedFlg := false
 		limit := 10
@@ -326,7 +326,7 @@ func test_DeckUsecase_FindByUserId(
 		require.Equal(t, len(decks), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		archivedFlg := false
 		limit := 10
@@ -347,7 +347,7 @@ func test_DeckUsecase_FindByUserIdOnCursor(
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	usecase DeckInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_カーソル以降の未アーカイブデッキ一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -370,7 +370,7 @@ func test_DeckUsecase_FindByUserIdOnCursor(
 		require.Empty(t, ret[0].ArchivedAt)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_アーカイブ済み指定でアーカイブ日時付きのデッキを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -394,7 +394,7 @@ func test_DeckUsecase_FindByUserIdOnCursor(
 		require.Equal(t, archivedAt, ret[0].ArchivedAt)
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		archivedFlg := false
 		limit := 10
@@ -410,7 +410,7 @@ func test_DeckUsecase_FindByUserIdOnCursor(
 		require.Equal(t, len(decks), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 		archivedFlg := false
 		limit := 10
@@ -435,7 +435,7 @@ func test_DeckUsecase_Create(
 	deckCode := "5dbFbk-uBwjqP-VVk5Vv"
 
 	// デッキコードを指定しない場合、外部リソース(HTML・画像)のアップロードは行われない
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_デッキコード未指定なら外部アップロードなしで保存される", func(t *testing.T) {
 		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil)
 
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -454,7 +454,7 @@ func test_DeckUsecase_Create(
 	})
 
 	// デッキコードを指定した場合、HTML→画像の順にアップロードした上でデッキが保存される
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_デッキコード指定時はHTMLと画像をアップロードして保存される", func(t *testing.T) {
 		param := NewDeckCreateParam(uid, "テストデッキ", true, deckCode, true, nil)
 
 		gomock.InOrder(
@@ -475,7 +475,7 @@ func test_DeckUsecase_Create(
 	})
 
 	// 指定されたポケモンスプライトがエンティティへ引き継がれる
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_指定したポケモンスプライトがエンティティへ引き継がれる", func(t *testing.T) {
 		pokemonSprites := []*PokemonSpriteParam{
 			NewPokemonSpriteParam("pikachu"),
 			NewPokemonSpriteParam("raichu"),
@@ -494,7 +494,7 @@ func test_DeckUsecase_Create(
 
 	// デッキコードのHTMLアップロードに失敗した場合(=不正なデッキコード)、
 	// 画像アップロードもデッキ保存も行わずに中止する
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_HTMLアップロード失敗時は画像アップロードも保存も行わない", func(t *testing.T) {
 		param := NewDeckCreateParam(uid, "テストデッキ", false, deckCode, false, nil)
 
 		mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), deckCode).Return(errors.New(""))
@@ -506,7 +506,7 @@ func test_DeckUsecase_Create(
 	})
 
 	// デッキ画像のアップロードに失敗した場合もデッキ保存は行わずに中止する
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_画像アップロード失敗時は保存を行わない", func(t *testing.T) {
 		param := NewDeckCreateParam(uid, "テストデッキ", false, deckCode, false, nil)
 
 		gomock.InOrder(
@@ -520,7 +520,7 @@ func test_DeckUsecase_Create(
 		require.Empty(t, ret)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
 		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil)
 
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(errors.New(""))
@@ -532,7 +532,7 @@ func test_DeckUsecase_Create(
 	})
 
 	// 称号評価に失敗した場合はエラーを返す
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_称号評価失敗時はエラーを返す", func(t *testing.T) {
 		usecase := NewDeck(mockRepository, mockDeckAsset, errBadgeEvaluation{})
 		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil)
 
@@ -555,7 +555,7 @@ func test_DeckUsecase_Update(
 
 	// 名前・公開設定・ポケモンスプライトのみが更新され、
 	// ID・作成日時・ユーザID・デッキコードは更新前の値が引き継がれる
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_名前と公開設定とスプライトのみ更新され他は維持される", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -593,7 +593,7 @@ func test_DeckUsecase_Update(
 	})
 
 	// アーカイブ済みのデッキを更新してもアーカイブ日時は維持される
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_アーカイブ済みデッキを更新してもアーカイブ日時は維持される", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -612,7 +612,7 @@ func test_DeckUsecase_Update(
 		require.Equal(t, archivedAt, ret.ArchivedAt)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -626,7 +626,7 @@ func test_DeckUsecase_Update(
 		require.Empty(t, ret)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -652,7 +652,7 @@ func test_DeckUsecase_Archive(
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 	// アーカイブ日時が設定され、その他の値は維持される
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_アーカイブ日時が設定され他の値は維持される", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -671,7 +671,7 @@ func test_DeckUsecase_Archive(
 		require.Equal(t, "テストデッキ", ret.Name)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -683,7 +683,7 @@ func test_DeckUsecase_Archive(
 		require.Empty(t, ret)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -700,7 +700,7 @@ func test_DeckUsecase_Archive(
 
 	// DB接続エラーなど ErrRecordNotFound 以外のエラーもそのまま返す
 	// (取得できていないDeckを参照してnilパニックを起こさないこと)
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_NotFound以外の取得エラーもそのまま返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -722,7 +722,7 @@ func test_DeckUsecase_Unarchive(
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 	// アーカイブ日時がクリアされ、その他の値は維持される
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_アーカイブ日時がクリアされ他の値は維持される", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -741,7 +741,7 @@ func test_DeckUsecase_Unarchive(
 		require.Equal(t, "テストデッキ", ret.Name)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -753,7 +753,7 @@ func test_DeckUsecase_Unarchive(
 		require.Empty(t, ret)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -770,7 +770,7 @@ func test_DeckUsecase_Unarchive(
 
 	// DB接続エラーなど ErrRecordNotFound 以外のエラーもそのまま返す
 	// (取得できていないDeckを参照してnilパニックを起こさないこと)
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_NotFound以外の取得エラーもそのまま返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -789,7 +789,7 @@ func test_DeckUsecase_Delete(
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	usecase DeckInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_リポジトリのDeleteを呼び出す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -798,7 +798,7 @@ func test_DeckUsecase_Delete(
 		require.NoError(t, usecase.Delete(context.Background(), id))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 

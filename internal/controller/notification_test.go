@@ -79,7 +79,7 @@ func test_NotificationController_GetByUID(t *testing.T) {
 		require.Equal(t, "n-1", res.Notifications[0].ID)
 	})
 
-	t.Run("未認証は401", func(t *testing.T) {
+	t.Run("異常系_未認証は401", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", NotificationsPath, nil)
 		c.router.ServeHTTP(w, req)
@@ -135,7 +135,7 @@ func test_NotificationController_MarkAsRead(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, w.Code)
 	})
 
-	t.Run("他人の通知や存在しないIDは404", func(t *testing.T) {
+	t.Run("異常系_他人の通知や存在しないIDは404", func(t *testing.T) {
 		mockUsecase.EXPECT().MarkAsRead(context.Background(), uid, "n-2").Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
@@ -146,7 +146,7 @@ func test_NotificationController_MarkAsRead(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("その他のエラーは500", func(t *testing.T) {
+	t.Run("異常系_その他のエラーは500", func(t *testing.T) {
 		mockUsecase.EXPECT().MarkAsRead(context.Background(), uid, "n-3").Return(errors.New("db error"))
 
 		w := httptest.NewRecorder()

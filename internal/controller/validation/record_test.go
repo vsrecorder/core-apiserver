@@ -34,7 +34,7 @@ func TestRecordValidation(t *testing.T) {
 }
 
 func test_RecordGetMiddleware(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_クエリ未指定ならデフォルトのlimitとoffsetを設定して通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -55,7 +55,7 @@ func test_RecordGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedOffset, helper.GetOffset(ginContext))
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_limitとoffset指定を受け付ける", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -76,7 +76,7 @@ func test_RecordGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedOffset, helper.GetOffset(ginContext))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_limitが数値でなければ400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -92,7 +92,7 @@ func test_RecordGetMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_offsetが数値でなければ400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -110,7 +110,7 @@ func test_RecordGetMiddleware(t *testing.T) {
 }
 
 func test_RecordCreateMiddleware(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_公式イベント指定のリクエストを受理する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -146,7 +146,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_Tonamelイベント指定のリクエストを受理する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -182,7 +182,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_フレンド対戦指定のリクエストを受理する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -218,7 +218,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("正常系_#04_自由形式", func(t *testing.T) {
+	t.Run("正常系_自由形式", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -256,7 +256,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_JSONとして不正なボディなら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -272,7 +272,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_公式イベントとTonamelイベントの併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -308,7 +308,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_公式イベントとフレンド対戦の併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -344,7 +344,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_Tonamelイベントとフレンド対戦の併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -380,7 +380,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#05", func(t *testing.T) {
+	t.Run("異常系_3種のイベントすべての併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -416,7 +416,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#06", func(t *testing.T) {
+	t.Run("異常系_イベント未指定は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -452,7 +452,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#07_自由形式と公式イベントの併用", func(t *testing.T) {
+	t.Run("異常系_自由形式と公式イベントの併用", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -497,7 +497,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		// ホストを持たない値
 		"https:/tour.asp",
 	} {
-		t.Run("異常系_#08_危険なTCGマイスターURL_"+tcgMeisterURL, func(t *testing.T) {
+		t.Run("異常系_危険なTCGマイスターURL_"+tcgMeisterURL, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			ginContext, _ := gin.CreateTestContext(w)
 
@@ -535,7 +535,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		"https://tcg.sfc-jpn.jp/tour.asp?tid=123456",
 		"http://tcg.sfc-jpn.jp/tour.asp?tid=123456",
 	} {
-		t.Run("正常系_#08_正規のTCGマイスターURL_"+tcgMeisterURL, func(t *testing.T) {
+		t.Run("正常系_正規のTCGマイスターURL_"+tcgMeisterURL, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			ginContext, _ := gin.CreateTestContext(w)
 
@@ -570,7 +570,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 }
 
 func test_RecordUpdateMiddleware(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_公式イベント指定のリクエストを受理する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -606,7 +606,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_Tonamelイベント指定のリクエストを受理する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -642,7 +642,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_フレンド対戦指定のリクエストを受理する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -678,7 +678,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_JSONとして不正なボディなら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -694,7 +694,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_公式イベントとTonamelイベントの併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -730,7 +730,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_公式イベントとフレンド対戦の併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -766,7 +766,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_Tonamelイベントとフレンド対戦の併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -802,7 +802,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#05", func(t *testing.T) {
+	t.Run("異常系_3種のイベントすべての併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -838,7 +838,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#06", func(t *testing.T) {
+	t.Run("異常系_イベント未指定は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -878,7 +878,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 // 更新経路にも同じ検証が効いていることを担保する。
 // 危険なURLは作成で弾いても、更新で入れられれば同じことになる。
 func test_RecordUpdateMiddlewareTCGMeisterURL(t *testing.T) {
-	t.Run("異常系_#07_TCGマイスターURLにjavascriptスキーム", func(t *testing.T) {
+	t.Run("異常系_TCGマイスターURLにjavascriptスキーム", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -909,7 +909,7 @@ func test_RecordUpdateMiddlewareTCGMeisterURL(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("正常系_#07_正規のTCGマイスターURL", func(t *testing.T) {
+	t.Run("正常系_正規のTCGマイスターURL", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 

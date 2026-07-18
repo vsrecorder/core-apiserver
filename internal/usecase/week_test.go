@@ -9,12 +9,12 @@ import (
 
 func TestWeekRange(t *testing.T) {
 	for scenario, fn := range map[string]func(t *testing.T){
-		"MondayStartsTheWeek":       test_weekRange_MondayStartsTheWeek,
-		"AnyDayResolvesToItsMonday": test_weekRange_AnyDayResolvesToItsMonday,
-		"SundayBelongsToSameWeek":   test_weekRange_SundayBelongsToSameWeek,
-		"EmptyUsesNow":              test_weekRange_EmptyUsesNow,
-		"InvalidFormatReturnsError": test_weekRange_InvalidFormatReturnsError,
-		"RangeIsSevenDaysHalfOpen":  test_weekRange_RangeIsSevenDaysHalfOpen,
+		"正常系_月曜日が週の起点になる":        test_weekRange_MondayStartsTheWeek,
+		"正常系_任意の日はその週の月曜日に解決される": test_weekRange_AnyDayResolvesToItsMonday,
+		"正常系_日曜日は同じ週に属する":        test_weekRange_SundayBelongsToSameWeek,
+		"正常系_未指定なら現在時刻の週を使う":     test_weekRange_EmptyUsesNow,
+		"異常系_形式が不正ならエラーを返す":      test_weekRange_InvalidFormatReturnsError,
+		"正常系_期間は7日間の半開区間になる":     test_weekRange_RangeIsSevenDaysHalfOpen,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)

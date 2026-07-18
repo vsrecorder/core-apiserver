@@ -98,10 +98,10 @@ func newBO3Match(matchId string, victoryFlg bool, games []*entity.Game) *entity.
 
 func TestMatchBO3(t *testing.T) {
 	for scenario, fn := range map[string]func(t *testing.T){
-		"Create_3ゲームのBO3を作成して取得できる":       test_MatchBO3_Create3Games,
-		"Create_2ゲームのBO3(2-0決着)を作成して取得できる": test_MatchBO3_Create2Games,
-		"Update_ゲーム数を3から2に減らすと2ゲームになる":     test_MatchBO3_UpdateShrink,
-		"Update_ゲーム数を1から3に増やすと3ゲームになる":     test_MatchBO3_UpdateGrow,
+		"Create_3ゲームのBO3を作成して取得できる":         test_MatchBO3_Create3Games,
+		"Create_2ゲームのBO3(2-0決着)を作成して取得できる":  test_MatchBO3_Create2Games,
+		"Update_ゲーム数を3から2に減らすと2ゲームになる":      test_MatchBO3_UpdateShrink,
+		"Update_ゲーム数を1から3に増やすと3ゲームになる":      test_MatchBO3_UpdateGrow,
 		"Update_ゲーム内容の上書きが順序どおり反映される":       test_MatchBO3_UpdateOverwrite,
 		"FindByRecordId_ゲーム数を減らした後も2ゲームになる": test_MatchBO3_FindByRecordIdAfterShrink,
 	} {

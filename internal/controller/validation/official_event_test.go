@@ -29,7 +29,7 @@ func TestOfficialEventValidation(t *testing.T) {
 }
 
 func test_OfficialEventGetMiddleware(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_開始日と終了日が同日の期間指定を受け付ける", func(t *testing.T) {
 		startDate := "2025-02-15"
 		endDate := "2025-02-15"
 
@@ -59,7 +59,7 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedEndDate, helper.GetEndDate(ginContext))
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_開始日より後の終了日の期間指定を受け付ける", func(t *testing.T) {
 		startDate := "2025-02-15"
 		endDate := "2025-02-16"
 
@@ -89,7 +89,7 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedEndDate, helper.GetEndDate(ginContext))
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_date単独指定を受け付ける", func(t *testing.T) {
 		date := "2025-02-15"
 
 		w := httptest.NewRecorder()
@@ -114,7 +114,7 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedDate, helper.GetDate(ginContext))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_start_dateがend_dateより後なら400を返す", func(t *testing.T) {
 		startDate := "2025-02-16"
 		endDate := "2025-02-15"
 
@@ -134,7 +134,7 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 }
 
 func test_OfficialEventGetByIdMiddleware(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_数値のIDをパスパラメータから設定する", func(t *testing.T) {
 		id := uint(10000)
 
 		w := httptest.NewRecorder()
@@ -156,7 +156,7 @@ func test_OfficialEventGetByIdMiddleware(t *testing.T) {
 		require.Equal(t, id, helper.GetOfficialEventId(ginContext))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_IDが数値でなければ400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -175,7 +175,7 @@ func test_OfficialEventGetByIdMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_IDが0なら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -194,7 +194,7 @@ func test_OfficialEventGetByIdMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_IDが負数なら400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 

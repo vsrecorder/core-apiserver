@@ -76,7 +76,7 @@ func test_UserController_GetById(t *testing.T) {
 
 	c, _, mockUsecase := setup4TestUserController(t, l, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのユーザを返す", func(t *testing.T) {
 		id, _ := generateId()
 
 		user := &entity.User{
@@ -98,7 +98,7 @@ func test_UserController_GetById(t *testing.T) {
 		require.Equal(t, id, res.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユーザが存在しなければ404を返す", func(t *testing.T) {
 		id, _ := generateId()
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
@@ -110,7 +110,7 @@ func test_UserController_GetById(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id, _ := generateId()
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
@@ -124,7 +124,7 @@ func test_UserController_GetById(t *testing.T) {
 }
 
 func test_UserController_Create(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_認証済みユーザを作成する", func(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
@@ -183,7 +183,7 @@ func test_UserController_Create(t *testing.T) {
 		require.Equal(t, imageURL, res.ImageURL)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_既存ユーザなら409を返す", func(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
@@ -220,7 +220,7 @@ func test_UserController_Create(t *testing.T) {
 		require.Equal(t, http.StatusConflict, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
@@ -259,7 +259,7 @@ func test_UserController_Create(t *testing.T) {
 }
 
 func test_UserController_Update(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_本人の情報を更新する", func(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
@@ -320,7 +320,7 @@ func test_UserController_Update(t *testing.T) {
 		require.Equal(t, imageURL, res.ImageURL)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 		id, _ := generateId()
 
@@ -369,7 +369,7 @@ func test_UserController_Delete(t *testing.T) {
 	require.NoError(t, err)
 	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_本人のアカウントを削除する", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -388,7 +388,7 @@ func test_UserController_Delete(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, w.Code)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_削除対象が存在しなければ400を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -406,7 +406,7 @@ func test_UserController_Delete(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 

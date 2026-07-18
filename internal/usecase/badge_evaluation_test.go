@@ -56,7 +56,7 @@ func newBadgeEvaluationTestUsecase(mockCtrl *gomock.Controller) (
 }
 
 func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
-	t.Run("初回記録は1週目として作成される", func(t *testing.T) {
+	t.Run("正常系_初回記録は1週目として作成される", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -77,7 +77,7 @@ func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
 		require.Equal(t, 1, streak.CurrentWeeks)
 	})
 
-	t.Run("翌週の記録は連続数が1増える", func(t *testing.T) {
+	t.Run("正常系_翌週の記録は連続数が1増える", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -101,7 +101,7 @@ func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
 		require.Equal(t, 3, streak.CurrentWeeks)
 	})
 
-	t.Run("同じ週内の記録は連続数に影響しない", func(t *testing.T) {
+	t.Run("正常系_同じ週内の記録は連続数に影響しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -118,7 +118,7 @@ func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
 		require.Equal(t, 2, streak.CurrentWeeks)
 	})
 
-	t.Run("1週分の空白はフリーズ枠を消費して連続扱いになる", func(t *testing.T) {
+	t.Run("正常系_1週分の空白はフリーズ枠を消費して連続扱いになる", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -142,7 +142,7 @@ func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
 		require.Equal(t, 5, streak.CurrentWeeks)
 	})
 
-	t.Run("フリーズ枠を使い切った状態で2週空くとリセットされる", func(t *testing.T) {
+	t.Run("正常系_フリーズ枠を使い切った状態で2週空くとリセットされる", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -166,7 +166,7 @@ func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
 		require.Equal(t, 1, streak.CurrentWeeks)
 	})
 
-	t.Run("3週間以上空くとリセットされる", func(t *testing.T) {
+	t.Run("正常系_3週間以上空くとリセットされる", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -192,7 +192,7 @@ func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
 }
 
 func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
-	t.Run("閾値に到達したバッジのみ新規付与する", func(t *testing.T) {
+	t.Run("正常系_閾値に到達したバッジのみ新規付与する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -239,7 +239,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.Equal(t, "def-first-record", awarded[0].BadgeDefinitionId)
 	})
 
-	t.Run("既に獲得済みのバッジは再付与しない", func(t *testing.T) {
+	t.Run("正常系_既に獲得済みのバッジは再付与しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, _, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -272,7 +272,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.Empty(t, awarded)
 	})
 
-	t.Run("backfill等で過去日のrecordを再生した場合でも、achieved_atはcreated_at(記録した日時)になりevent_dateにならない", func(t *testing.T) {
+	t.Run("正常系_backfill等で過去日のrecordを再生した場合でも、achieved_atはcreated_at(記録した日時)になりevent_dateにならない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -306,7 +306,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("マイルストーン系(record_count)は今回の記録でシーズン内の閾値をまたいだ場合のみ通知する", func(t *testing.T) {
+	t.Run("正常系_マイルストーン系(record_count)は今回の記録でシーズン内の閾値をまたいだ場合のみ通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -352,7 +352,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.Empty(t, awarded) // マイルストーン系はuser_badgesに永続化されない
 	})
 
-	t.Run("マイルストーン系(record_count)は閾値をまたいでいなければ通知しない", func(t *testing.T) {
+	t.Run("正常系_マイルストーン系(record_count)は閾値をまたいでいなければ通知しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, _, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -382,7 +382,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.Empty(t, awarded)
 	})
 
-	t.Run("週次ストリーク系はその週で最初の記録が閾値週数と一致する場合のみ通知する", func(t *testing.T) {
+	t.Run("正常系_週次ストリーク系はその週で最初の記録が閾値週数と一致する場合のみ通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -425,7 +425,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("onboarding系とマイルストーン系が同時に達成した場合、onboarding系の通知が先(=通知一覧では下)になる", func(t *testing.T) {
+	t.Run("正常系_onboarding系とマイルストーン系が同時に達成した場合、onboarding系の通知が先(=通知一覧では下)になる", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -473,7 +473,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.Equal(t, []string{NotificationCategoryBadge, NotificationCategoryStreak}, savedCategories)
 	})
 
-	t.Run("同じ週の2件目の記録では週次ストリーク通知が重複しない", func(t *testing.T) {
+	t.Run("正常系_同じ週の2件目の記録では週次ストリーク通知が重複しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, _, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -514,7 +514,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 }
 
 func TestBadgeEvaluation_EvaluateOnMatchCreated(t *testing.T) {
-	t.Run("勝敗によらず初対戦バッジが付与される", func(t *testing.T) {
+	t.Run("正常系_勝敗によらず初対戦バッジが付与される", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, _, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -540,7 +540,7 @@ func TestBadgeEvaluation_EvaluateOnMatchCreated(t *testing.T) {
 		require.Equal(t, "def-first-match", awarded[0].BadgeDefinitionId)
 	})
 
-	t.Run("既に獲得済みなら再付与しない", func(t *testing.T) {
+	t.Run("正常系_既に獲得済みなら再付与しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, _, badgeStatsRepo, _, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -569,7 +569,7 @@ func TestBadgeEvaluation_EvaluateOnMatchCreated(t *testing.T) {
 }
 
 func TestBadgeEvaluation_EvaluateOnDeckCreated(t *testing.T) {
-	t.Run("初デッキバッジが付与される(デッキコード無し)", func(t *testing.T) {
+	t.Run("正常系_初デッキバッジが付与される(デッキコード無し)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, _, badgeStatsRepo, notificationRepo, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -602,7 +602,7 @@ func TestBadgeEvaluation_EvaluateOnDeckCreated(t *testing.T) {
 		require.Equal(t, "def-first-deck", awarded[0].BadgeDefinitionId)
 	})
 
-	t.Run("デッキコード付きで作成した場合はマイルストーン系(deck_code_count)も判定する", func(t *testing.T) {
+	t.Run("正常系_デッキコード付きで作成した場合はマイルストーン系(deck_code_count)も判定する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, _, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -632,7 +632,7 @@ func TestBadgeEvaluation_EvaluateOnDeckCreated(t *testing.T) {
 }
 
 func TestBadgeEvaluation_EvaluateOnUserCreated(t *testing.T) {
-	t.Run("ユーザー登録バッジが付与される", func(t *testing.T) {
+	t.Run("正常系_ユーザー登録バッジが付与される", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, _, _, notificationRepo, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -659,7 +659,7 @@ func TestBadgeEvaluation_EvaluateOnUserCreated(t *testing.T) {
 		require.Equal(t, "def-signup", awarded[0].BadgeDefinitionId)
 	})
 
-	t.Run("既に獲得済みなら再付与しない", func(t *testing.T) {
+	t.Run("正常系_既に獲得済みなら再付与しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, _, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -684,7 +684,7 @@ func TestBadgeEvaluation_EvaluateOnUserCreated(t *testing.T) {
 }
 
 func TestBadgeEvaluation_EvaluateOnRecordDeleted(t *testing.T) {
-	t.Run("残っている記録の日付からストリークを作り直す", func(t *testing.T) {
+	t.Run("正常系_残っている記録の日付からストリークを作り直す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, badgeStatsRepo, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -710,7 +710,7 @@ func TestBadgeEvaluation_EvaluateOnRecordDeleted(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("最後の記録を削除すると連続数0で保存される", func(t *testing.T) {
+	t.Run("正常系_最後の記録を削除すると連続数0で保存される", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, badgeStatsRepo, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
@@ -733,7 +733,7 @@ func TestBadgeEvaluation_EvaluateOnRecordDeleted(t *testing.T) {
 }
 
 func TestComputeStreakState(t *testing.T) {
-	t.Run("記録が無ければ全てゼロ値", func(t *testing.T) {
+	t.Run("正常系_記録が無ければ全てゼロ値", func(t *testing.T) {
 		currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := ComputeStreakState(nil)
 		require.Equal(t, 0, currentWeeks)
 		require.Equal(t, 0, longestWeeks)
@@ -741,7 +741,7 @@ func TestComputeStreakState(t *testing.T) {
 		require.True(t, lastRecordedWeek.IsZero())
 	})
 
-	t.Run("連続した週なら最長連続数もそのまま反映される", func(t *testing.T) {
+	t.Run("正常系_連続した週なら最長連続数もそのまま反映される", func(t *testing.T) {
 		dates := []time.Time{
 			time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
 			time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local),
@@ -754,7 +754,7 @@ func TestComputeStreakState(t *testing.T) {
 		require.Equal(t, mondayOf(dates[2]), lastRecordedWeek)
 	})
 
-	t.Run("途中で途切れても最長記録は過去の値を保持する", func(t *testing.T) {
+	t.Run("正常系_途中で途切れても最長記録は過去の値を保持する", func(t *testing.T) {
 		dates := []time.Time{
 			time.Date(2026, 5, 4, 0, 0, 0, 0, time.Local),
 			time.Date(2026, 5, 11, 0, 0, 0, 0, time.Local),
@@ -769,11 +769,11 @@ func TestComputeStreakState(t *testing.T) {
 }
 
 func TestStreakWeeksAchievedAt(t *testing.T) {
-	t.Run("記録が無ければnil", func(t *testing.T) {
+	t.Run("正常系_記録が無ければnil", func(t *testing.T) {
 		require.Nil(t, StreakWeeksAchievedAt(nil))
 	})
 
-	t.Run("連続した週は週数ごとに初めて到達した日を返す", func(t *testing.T) {
+	t.Run("正常系_連続した週は週数ごとに初めて到達した日を返す", func(t *testing.T) {
 		dates := []time.Time{
 			time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
 			time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local),
@@ -785,7 +785,7 @@ func TestStreakWeeksAchievedAt(t *testing.T) {
 		require.Equal(t, dates[2], achievedAt[3])
 	})
 
-	t.Run("途切れてリセットされても最初に到達した日はそのまま残る", func(t *testing.T) {
+	t.Run("正常系_途切れてリセットされても最初に到達した日はそのまま残る", func(t *testing.T) {
 		dates := []time.Time{
 			time.Date(2026, 5, 4, 0, 0, 0, 0, time.Local),
 			time.Date(2026, 5, 11, 0, 0, 0, 0, time.Local),
@@ -800,7 +800,7 @@ func TestStreakWeeksAchievedAt(t *testing.T) {
 		require.NotContains(t, achievedAt, 4)
 	})
 
-	t.Run("同じ週内の複数記録はその週で最も早い日付を使う", func(t *testing.T) {
+	t.Run("正常系_同じ週内の複数記録はその週で最も早い日付を使う", func(t *testing.T) {
 		monday := time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local)
 		dates := []time.Time{
 			monday.AddDate(0, 0, 3), // 同じ週の木曜

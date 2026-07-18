@@ -60,7 +60,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 	r := gin.Default()
 	c, mockUsecase := setup4TestOfficialEventController(t, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_クエリ未指定なら当日のイベント一覧を返す", func(t *testing.T) {
 		officialEvents := []*entity.OfficialEvent{
 			{
 				ID: uint(606466),
@@ -95,7 +95,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		require.Equal(t, uint(630879), res.OfficialEvents[1].ID)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_type_id指定で絞り込める", func(t *testing.T) {
 		officialEvents := []*entity.OfficialEvent{
 			{
 				ID: uint(606466),
@@ -130,7 +130,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		require.Equal(t, uint(630879), res.OfficialEvents[1].ID)
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_type_idとleague_type指定で絞り込める", func(t *testing.T) {
 		officialEvents := []*entity.OfficialEvent{
 			{
 				ID: uint(606466),
@@ -165,7 +165,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		require.Equal(t, uint(630879), res.OfficialEvents[1].ID)
 	})
 
-	t.Run("正常系_#04", func(t *testing.T) {
+	t.Run("正常系_期間指定で絞り込める", func(t *testing.T) {
 		officialEvents := []*entity.OfficialEvent{
 			{
 				ID: uint(606466),
@@ -203,7 +203,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		require.Equal(t, uint(630879), res.OfficialEvents[1].ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		typeId := uint(0)
 		leagueType := uint(0)
 		now := time.Now()
@@ -227,7 +227,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 	r := gin.Default()
 	c, mockUsecase := setup4TestOfficialEventController(t, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのイベントを返す", func(t *testing.T) {
 		id := uint(606466)
 
 		officialEvent := &entity.OfficialEvent{
@@ -247,7 +247,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 		require.Equal(t, id, res.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_イベントが存在しなければ404を返す", func(t *testing.T) {
 		id := uint(606466)
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
@@ -262,7 +262,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id := uint(606466)
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))

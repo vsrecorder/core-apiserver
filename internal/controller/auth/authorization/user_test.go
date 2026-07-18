@@ -35,7 +35,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockUserInterface(mockCtrl)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_本人なら通過する", func(t *testing.T) {
 		// パスパラメータで使用するid
 		id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -70,7 +70,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 	})
 
 	// uidが空の場合のテスト
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_未認証なら403を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -81,7 +81,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 	})
 
 	// idに対応するユーザーが存在しない場合のテスト
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユーザが存在しなければ404を返す", func(t *testing.T) {
 		// パスパラメータで使用するid
 		id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -112,7 +112,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 	})
 
 	// idに対応するユーザーの取得に失敗した場合のテスト
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_取得エラーなら500を返す", func(t *testing.T) {
 		// パスパラメータで使用するid
 		id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
@@ -143,7 +143,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 	})
 
 	// 認証されたユーザーがidに対応するユーザーと異なる場合のテスト
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_他人のユーザIDなら403を返す", func(t *testing.T) {
 		// パスパラメータで使用するid
 		id := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 

@@ -683,7 +683,7 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 }
 
 func test_RecordInfrastructure_Delete(t *testing.T) {
-	t.Run("matchesなし", func(t *testing.T) {
+	t.Run("正常系_マッチなしの記録を論理削除する", func(t *testing.T) {
 		r, mock, err := setup4RecordInfrastructure()
 		require.NoError(t, err)
 
@@ -727,7 +727,7 @@ func test_RecordInfrastructure_Delete(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("matchesあり", func(t *testing.T) {
+	t.Run("正常系_紐づくマッチも併せて論理削除する", func(t *testing.T) {
 		r, mock, err := setup4RecordInfrastructure()
 		require.NoError(t, err)
 
@@ -844,7 +844,7 @@ func test_RecordInfrastructure_Delete(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("自由形式イベント_参照なしで削除", func(t *testing.T) {
+	t.Run("正常系_自由形式イベント_参照なしで削除", func(t *testing.T) {
 		r, mock, err := setup4RecordInfrastructure()
 		require.NoError(t, err)
 

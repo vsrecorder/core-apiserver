@@ -35,7 +35,7 @@ func test_TonamelEventUsecase_FindById(
 	mockRepository *mock_repository.MockTonamelEventInterface,
 	usecase TonamelEventInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのTonamelイベントを返す", func(t *testing.T) {
 		id := "61ozP"
 
 		tonamelEvent := &entity.TonamelEvent{
@@ -50,7 +50,7 @@ func test_TonamelEventUsecase_FindById(
 		require.Equal(t, id, ret.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		id := "61ozP"
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))

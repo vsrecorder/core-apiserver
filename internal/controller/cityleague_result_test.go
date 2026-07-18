@@ -50,7 +50,7 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 	eventDate, err := time.Parse(DateLayout, "2026-04-30")
 	require.NoError(t, err)
 
-	t.Run("正常系_#01_クエリパラメータ無しの場合は全リーグ・全期間が対象になる", func(t *testing.T) {
+	t.Run("正常系_クエリパラメータ無しの場合は全リーグ・全期間が対象になる", func(t *testing.T) {
 		cityleagueResultEvents := []*entity.CityleagueResultEvent{
 			{OfficialEventId: uint(952749), LeagueType: uint(1), EventDate: eventDate},
 			{OfficialEventId: uint(952750), LeagueType: uint(2), EventDate: eventDate},
@@ -83,7 +83,7 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 		require.NotContains(t, w.Body.String(), "deck_code")
 	})
 
-	t.Run("正常系_#02_league_typeと期間で絞り込める", func(t *testing.T) {
+	t.Run("正常系_league_typeと期間で絞り込める", func(t *testing.T) {
 		// helper のクエリパースは日付をローカルタイム（JST）として解釈するため、期待値もそれに合わせる
 		fromDate := time.Date(2026, 4, 1, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2026, 4, 30, 0, 0, 0, 0, time.Local)
@@ -117,7 +117,7 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 		require.Equal(t, uint(952749), res.Events[0].OfficialEventId)
 	})
 
-	t.Run("異常系_#01_from_dateのみ指定した場合は400を返す", func(t *testing.T) {
+	t.Run("異常系_from_dateのみ指定した場合は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest(
 			http.MethodGet,
@@ -129,7 +129,7 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02_from_dateがto_dateより後の場合は400を返す", func(t *testing.T) {
+	t.Run("異常系_from_dateがto_dateより後の場合は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest(
 			http.MethodGet,
@@ -141,7 +141,7 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#03_ユースケースがエラーを返した場合は500を返す", func(t *testing.T) {
+	t.Run("異常系_ユースケースがエラーを返した場合は500を返す", func(t *testing.T) {
 		mockUsecase.EXPECT().FindEvents(
 			context.Background(),
 			uint(0),

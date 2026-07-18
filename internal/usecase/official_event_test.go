@@ -41,7 +41,7 @@ func test_OfficialEventUsecase_Find(
 	mockRepository *mock_repository.MockOfficialEventInterface,
 	usecase OfficialEventInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_条件に合致する公式イベント一覧を返す", func(t *testing.T) {
 		typeId := uint(1)
 		leagueType := uint(0)
 		startDate, _ := time.Parse(DateLayout, "2025-02-15T00:00:00Z")
@@ -64,7 +64,18 @@ func test_OfficialEventUsecase_Find(
 		require.Equal(t, uint(630879), ret[1].ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
+		typeId := uint(1)
+		leagueType := uint(0)
+		startDate, _ := time.Parse(DateLayout, "2025-02-15")
+		endDate, _ := time.Parse(DateLayout, "2025-02-15")
+
+		mockRepository.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(nil, errors.New(""))
+
+		ret, err := usecase.Find(context.Background(), typeId, leagueType, startDate, endDate)
+
+		require.Equal(t, err, errors.New(""))
+		require.Empty(t, ret)
 	})
 }
 
@@ -73,7 +84,7 @@ func test_OfficialEventUsecase_FindById(
 	mockRepository *mock_repository.MockOfficialEventInterface,
 	usecase OfficialEventInterface,
 ) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDの公式イベントを返す", func(t *testing.T) {
 		// https://players.pokemon-card.com/event_detail_search?event_holding_id=606466
 		id := uint(606466)
 
@@ -89,7 +100,7 @@ func test_OfficialEventUsecase_FindById(
 		require.Equal(t, id, ret.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		// https://players.pokemon-card.com/event_detail_search?event_holding_id=606466
 		id := uint(606466)
 

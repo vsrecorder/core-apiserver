@@ -13,7 +13,7 @@ import (
 )
 
 func TestCurrentSeasonLabel(t *testing.T) {
-	t.Run("championship_seriesでnowを含む行のIDからseason識別子を返す", func(t *testing.T) {
+	t.Run("正常系_championship_seriesでnowを含む行のIDからseason識別子を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
@@ -31,7 +31,7 @@ func TestCurrentSeasonLabel(t *testing.T) {
 		require.Equal(t, "2027", label)
 	})
 
-	t.Run("該当するシーズンがchampionship_seriesに無ければエラーを返す", func(t *testing.T) {
+	t.Run("異常系_該当するシーズンがchampionship_seriesに無ければエラーを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
@@ -47,7 +47,7 @@ func TestCurrentSeasonLabel(t *testing.T) {
 func TestSeasonRange(t *testing.T) {
 	now := time.Date(2026, 1, 10, 0, 0, 0, 0, time.Local)
 
-	t.Run("season空文字ならFindByDateでnowが属する現在のシーズンの期間を返す", func(t *testing.T) {
+	t.Run("正常系_season空文字ならFindByDateでnowが属する現在のシーズンの期間を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
@@ -65,7 +65,7 @@ func TestSeasonRange(t *testing.T) {
 		require.Equal(t, time.Date(2026, 9, 1, 0, 0, 0, 0, time.Local), toDate)
 	})
 
-	t.Run("season指定時はFindByIdで series_+season の期間を返す", func(t *testing.T) {
+	t.Run("正常系_season指定時はFindByIdで series_+season の期間を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
@@ -83,7 +83,7 @@ func TestSeasonRange(t *testing.T) {
 		require.Equal(t, time.Date(2024, 9, 1, 0, 0, 0, 0, time.Local), toDate)
 	})
 
-	t.Run("championship_seriesに該当行が無ければエラーを返す", func(t *testing.T) {
+	t.Run("異常系_championship_seriesに該当行が無ければエラーを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
@@ -98,7 +98,7 @@ func TestSeasonRange(t *testing.T) {
 func TestPreviousSeasonRange(t *testing.T) {
 	now := time.Date(2026, 1, 10, 0, 0, 0, 0, time.Local)
 
-	t.Run("season空文字なら現在のシーズンのひとつ前の期間を返す", func(t *testing.T) {
+	t.Run("正常系_season空文字なら現在のシーズンのひとつ前の期間を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
@@ -123,7 +123,7 @@ func TestPreviousSeasonRange(t *testing.T) {
 		require.Equal(t, time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), toDate)
 	})
 
-	t.Run("season指定時はその年のひとつ前のシーズン期間を返す", func(t *testing.T) {
+	t.Run("正常系_season指定時はその年のひとつ前のシーズン期間を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
@@ -148,7 +148,7 @@ func TestPreviousSeasonRange(t *testing.T) {
 		require.Equal(t, time.Date(2023, 9, 1, 0, 0, 0, 0, time.Local), toDate)
 	})
 
-	t.Run("championship_seriesに該当行が無ければエラーを返す", func(t *testing.T) {
+	t.Run("異常系_championship_seriesに該当行が無ければエラーを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 

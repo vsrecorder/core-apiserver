@@ -52,7 +52,7 @@ func test_TonamelEventController_GetById(t *testing.T) {
 	r := gin.Default()
 	c, mockUsecase := setup4TestTonamelEventController(t, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのTonamelイベントを返す", func(t *testing.T) {
 		id := "61ozP"
 
 		tonamelEvent := &entity.TonamelEvent{
@@ -72,7 +72,7 @@ func test_TonamelEventController_GetById(t *testing.T) {
 		require.Equal(t, id, res.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id := "61ozP"
 
 		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))

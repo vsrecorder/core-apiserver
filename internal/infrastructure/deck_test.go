@@ -99,7 +99,7 @@ func TestDeckInfrastructure(t *testing.T) {
 
 func test_DeckInfrastructure_Find(t *testing.T) {
 	// 公開・未アーカイブのデッキが、最新のデッキコードとスプライトを伴って返る
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_公開かつ未アーカイブのデッキをデッキコードとスプライト付きで返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -156,7 +156,7 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 	})
 
 	// 該当デッキが無い場合、スプライトの取得は行わず空のスライスを返す
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしならスプライト取得を行わず空スライスを返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -180,7 +180,7 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 
 func test_DeckInfrastructure_FindAll(t *testing.T) {
 	// 指定ユーザの未アーカイブのデッキが、非公開のものも含めて全件返る
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定ユーザの未アーカイブデッキを非公開含め全件返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -230,7 +230,7 @@ func test_DeckInfrastructure_FindAll(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -253,7 +253,7 @@ func test_DeckInfrastructure_FindAll(t *testing.T) {
 
 func test_DeckInfrastructure_FindOnCursor(t *testing.T) {
 	// カーソル(作成日時)より古いデッキのみが返る
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_カーソルより古いデッキのみ返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -302,7 +302,7 @@ func test_DeckInfrastructure_FindOnCursor(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -325,7 +325,7 @@ func test_DeckInfrastructure_FindOnCursor(t *testing.T) {
 }
 
 func test_DeckInfrastructure_FindById(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのデッキをデッキコードとスプライト付きで返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -392,7 +392,7 @@ func test_DeckInfrastructure_FindById(t *testing.T) {
 	})
 
 	// 存在しないidの場合、gormのエラーはドメインエラーへ変換される
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundへ変換する", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -418,7 +418,7 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
 	// archivedFlg = false の場合、未アーカイブのデッキが返る
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_未アーカイブ指定でarchived_atがNULLの条件になる", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -454,7 +454,7 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 	})
 
 	// archivedFlg = true の場合、アーカイブ済みのデッキが返る
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_アーカイブ済み指定でarchived_atがNOTNULLの条件になる", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -489,7 +489,7 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -517,7 +517,7 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	uid := "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
 	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_カーソルと未アーカイブ条件で絞り込む", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -552,7 +552,7 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_カーソルとアーカイブ済み条件で絞り込む", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -587,7 +587,7 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -613,7 +613,7 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 
 func test_DeckInfrastructure_FindIdsByUserId(t *testing.T) {
 	// 退会時の連鎖削除で使うため、アーカイブ済みのデッキも対象になる
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_アーカイブ済み含む全デッキのIDを返す", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -643,7 +643,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 
 	// デッキコードを持たない場合、deck_codes への保存は行わない。
 	// スプライトは入れ替えのため、一度削除してから保存する。
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_デッキコードなしならdecksとスプライト削除のみ保存する", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -683,7 +683,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 	})
 
 	// アーカイブ日時を持つ場合、archived_at が有効値として保存される
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_アーカイブ日時が有効値として保存される", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -725,7 +725,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 	})
 
 	// FK制約を満たすため、decks → deck_pokemon_sprites → deck_codes の順に保存する
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_decksスプライトdeck_codesの順に保存する", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -784,7 +784,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 	})
 
 	// デッキコードのIDが空の場合(=デッキコード未登録)、deck_codes への保存は行わない
-	t.Run("正常系_#04", func(t *testing.T) {
+	t.Run("正常系_デッキコードID空ならdeck_codesへは保存しない", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -824,7 +824,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 	})
 
 	// decks の保存に失敗した場合はロールバックされる
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_decks保存失敗時はロールバックする", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -845,7 +845,7 @@ func test_DeckInfrastructure_Delete(t *testing.T) {
 	id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
 	// デッキに紐づくデッキコードも併せて削除される
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_紐づくデッキコードも併せて論理削除する", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
@@ -877,7 +877,7 @@ func test_DeckInfrastructure_Delete(t *testing.T) {
 	})
 
 	// デッキコードが無い場合はデッキのみ削除される
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_デッキコードがなければデッキのみ論理削除する", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 

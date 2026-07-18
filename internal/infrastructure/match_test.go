@@ -162,7 +162,7 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 	matchId := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
 	// 対局が複数ある場合、1つのMatchにまとめられる
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_複数の対局が1つのMatchにまとめられる", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -206,7 +206,7 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 	})
 
 	// 不戦勝/不戦敗の場合、対局が存在しないためgamesは空になる
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_不戦勝や不戦敗ならGamesは空になる", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -233,7 +233,7 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundへ変換する", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -255,7 +255,7 @@ func test_MatchInfrastructure_FindByRecordId(t *testing.T) {
 	matchId2 := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
 	// 複数のMatchがposition順に返り、同一Matchの対局はまとめられる
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_複数Matchがposition順に返り対局がまとめられる", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -299,7 +299,7 @@ func test_MatchInfrastructure_FindByRecordId(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_該当なしはErrRecordNotFoundを返す", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -320,7 +320,7 @@ func test_MatchInfrastructure_FindByUserId(t *testing.T) {
 	matchId2 := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
 	// 副問い合わせで対象ユーザの最新Matchを絞り込んだ上で、作成日時の降順に返る
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定ユーザの最新Matchを作成日時降順で返す", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -354,7 +354,7 @@ func test_MatchInfrastructure_FindByUserId(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_該当なしはErrRecordNotFoundを返す", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -375,7 +375,7 @@ func test_MatchInfrastructure_FindLatest(t *testing.T) {
 	matchId := "01HD7Y3K8D6FDHMHTZ2GT41TN1"
 
 	// ユーザを問わず最新のMatchが返る
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_全ユーザの最新Matchを返す", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -404,7 +404,7 @@ func test_MatchInfrastructure_FindLatest(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_該当なしはErrRecordNotFoundを返す", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -478,7 +478,7 @@ func test_MatchInfrastructure_Create(t *testing.T) {
 	recordId := "01HD7Y3K8D6FDHMHTZ2GT41TR1"
 
 	// 同一record内の最大position+1が採番され、match・game・スプライトが保存される
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_最大position加算で採番しゲームとスプライトも保存する", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -509,7 +509,7 @@ func test_MatchInfrastructure_Create(t *testing.T) {
 	})
 
 	// record内に既存のmatchが無い場合、positionは1から始まる
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_既存Matchがなければpositionは1から始まる", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -535,7 +535,7 @@ func test_MatchInfrastructure_Create(t *testing.T) {
 	})
 
 	// position採番に失敗した場合はトランザクションを開始せずに終了する
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_position採番失敗時はトランザクションを開始しない", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -557,7 +557,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 	uid := "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
 
 	// 既存と同数の対局を更新する場合、既存のGameのID・作成日時を維持して上書きする
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_同数の対局は既存GameのIDと作成日時を維持して上書きする", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -605,7 +605,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 	})
 
 	// 対局が増えた場合、既存分は上書きし、超過分は新規に追加する
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_対局が増えた分は新規Gameとして追加する", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -649,7 +649,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 	})
 
 	// 対局が減った場合、余った既存のGameは削除される
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_対局が減った分の既存Gameは削除する", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -692,7 +692,7 @@ func test_MatchInfrastructure_Update(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_既存Game取得失敗時はエラーを返す", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -713,7 +713,7 @@ func test_MatchInfrastructure_Delete(t *testing.T) {
 	matchId := "01HD7Y3K8D6FDHMHTZ2GT41TN1"
 
 	// 紐づくgameも併せて論理削除される
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_紐づくGameも併せて論理削除する", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -737,7 +737,7 @@ func test_MatchInfrastructure_Delete(t *testing.T) {
 	})
 
 	// gameの削除に失敗した場合、matchは削除されずロールバックされる
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_Game削除失敗時はロールバックする", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -756,7 +756,7 @@ func test_MatchInfrastructure_Reorder(t *testing.T) {
 	matchId2 := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
 	// 指定された順に position が 0 から振り直される
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定順にpositionを0から振り直す", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -793,7 +793,7 @@ func test_MatchInfrastructure_Reorder(t *testing.T) {
 	})
 
 	// リクエストの件数がrecord内のmatch数と一致しない場合は不正な並び順として扱う
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_件数がrecord内のMatch数と不一致ならErrInvalidMatchOrder", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 
@@ -812,7 +812,7 @@ func test_MatchInfrastructure_Reorder(t *testing.T) {
 	})
 
 	// 他のrecordのmatchが混ざっている場合など、更新対象が存在しない場合も不正として扱う
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_更新対象が存在しない場合もErrInvalidMatchOrder", func(t *testing.T) {
 		r, mock, err := setup4MatchInfrastructure()
 		require.NoError(t, err)
 

@@ -36,7 +36,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_所有者なら通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -75,7 +75,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_未認証なら403を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -91,7 +91,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_記録が存在しなければ404を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -125,7 +125,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_取得エラーなら500を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -159,7 +159,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_他人の記録なら403を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -203,7 +203,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_所有者なら通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -242,7 +242,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_公開記録なら未認証でも通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -279,7 +279,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_id未指定で該当記録がなければ404を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -297,7 +297,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_記録が存在しなければ404を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -331,7 +331,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_取得エラーなら500を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -365,7 +365,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_非公開の他人の記録は未認証なら403を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -401,7 +401,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
-	t.Run("異常系_#05", func(t *testing.T) {
+	t.Run("異常系_非公開の他人の記録は認証済みでも403を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 

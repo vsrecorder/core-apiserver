@@ -60,7 +60,7 @@ func expectRecordCriteriaCounts(
 }
 
 func TestDesignationEvaluation_CurrentTier(t *testing.T) {
-	t.Run("集計値から現在のtierを返す", func(t *testing.T) {
+	t.Run("正常系_集計値から現在のtierを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -75,7 +75,7 @@ func TestDesignationEvaluation_CurrentTier(t *testing.T) {
 		require.Equal(t, 2, tier) // 見習い(記録5件以上)
 	})
 
-	t.Run("称号未達成なら0を返す", func(t *testing.T) {
+	t.Run("正常系_称号未達成なら0を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -90,7 +90,7 @@ func TestDesignationEvaluation_CurrentTier(t *testing.T) {
 		require.Equal(t, 0, tier)
 	})
 
-	t.Run("シーズンが見つからない場合はエラーを返す", func(t *testing.T) {
+	t.Run("異常系_シーズンが見つからない場合はエラーを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, _, championshipSeriesRepo, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
 
@@ -105,7 +105,7 @@ func TestDesignationEvaluation_CurrentTier(t *testing.T) {
 }
 
 func TestDesignationEvaluation_TierAsOf(t *testing.T) {
-	t.Run("asOfをtoDateの上限として使う", func(t *testing.T) {
+	t.Run("正常系_asOfをtoDateの上限として使う", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -132,7 +132,7 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 		require.Equal(t, asOf, capturedToDate)
 	})
 
-	t.Run("asOfがシーズン終了日より後ならシーズン終了日を上限として使う", func(t *testing.T) {
+	t.Run("正常系_asOfがシーズン終了日より後ならシーズン終了日を上限として使う", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -162,7 +162,7 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 		require.Equal(t, seasonToDate, capturedToDate)
 	})
 
-	t.Run("cityleague_results起因のティア(ベテラン)にも到達できる", func(t *testing.T) {
+	t.Run("正常系_cityleague_results起因のティア(ベテラン)にも到達できる", func(t *testing.T) {
 		// backfill-notificationsがベテラン・ハイパーボール級の実際の達成日を
 		// 遡って特定できるようにする回帰テスト。cityleague_results起因のcriteria_typeも
 		// 含めて判定しなければならない(含めないとcurrentDesignation()がtier5未満で判定を
@@ -220,7 +220,7 @@ func expectVeteranCriteria(
 // beforeTierが最大4に丸められ、ベテラン・熟練の獲得/剥奪/ランク変動の通知が一度も飛ばなかった。
 // 表示側(usecase/designation.go)と判定を揃えたことの回帰テスト。
 func TestDesignationEvaluation_CityLeagueResultTiersAreEvaluatedOnNotifyPath(t *testing.T) {
-	t.Run("CurrentTierがベテラン(tier5)を返す", func(t *testing.T) {
+	t.Run("正常系_CurrentTierがベテラン(tier5)を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -235,7 +235,7 @@ func TestDesignationEvaluation_CityLeagueResultTiersAreEvaluatedOnNotifyPath(t *
 		require.Equal(t, 5, tier) // 修正前は4(レギュラー)に丸められていた
 	})
 
-	t.Run("ベテラン(tier5)からレギュラー(tier4)へ後退すると称号喪失を通知する", func(t *testing.T) {
+	t.Run("正常系_ベテラン(tier5)からレギュラー(tier4)へ後退すると称号喪失を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -263,7 +263,7 @@ func TestDesignationEvaluation_CityLeagueResultTiersAreEvaluatedOnNotifyPath(t *
 }
 
 func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
-	t.Run("初めて称号(tier1)に到達すると称号獲得とランクアップの両方を通知する", func(t *testing.T) {
+	t.Run("正常系_初めて称号(tier1)に到達すると称号獲得とランクアップの両方を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -290,7 +290,7 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 		}
 	})
 
-	t.Run("同じランク区分内でtierが上がった場合は称号獲得のみ通知する", func(t *testing.T) {
+	t.Run("正常系_同じランク区分内でtierが上がった場合は称号獲得のみ通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -317,7 +317,7 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 		require.True(t, saved.CreatedAt.Equal(achievedAt)) // 通知の作成日時は実際の達成日時を使う
 	})
 
-	t.Run("ランク区分をまたいでtierが上がった場合は称号獲得とランクアップの両方を通知する", func(t *testing.T) {
+	t.Run("正常系_ランク区分をまたいでtierが上がった場合は称号獲得とランクアップの両方を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -340,7 +340,7 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 		require.Len(t, bodies, 2)
 	})
 
-	t.Run("tierが変化していなければ何も通知しない", func(t *testing.T) {
+	t.Run("正常系_tierが変化していなければ何も通知しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -353,7 +353,7 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 		u.NotifyIfTierChanged(context.Background(), "user-1", 2, now)
 	})
 
-	t.Run("1回の評価で複数tierを一気に飛び越えた場合は通過した各tierをすべて通知する", func(t *testing.T) {
+	t.Run("正常系_1回の評価で複数tierを一気に飛び越えた場合は通過した各tierをすべて通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -399,7 +399,7 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 		require.True(t, foundBeginner, "途中で通過したtier1(駆け出し)の通知も欠落してはいけない")
 	})
 
-	t.Run("tierが下がった場合(シーズン切り替え等)は何も通知しない", func(t *testing.T) {
+	t.Run("正常系_tierが下がった場合(シーズン切り替え等)は何も通知しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -412,7 +412,7 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 		u.NotifyIfTierChanged(context.Background(), "user-1", 3, now)
 	})
 
-	t.Run("シーズンが見つからない場合は何もせず終了する", func(t *testing.T) {
+	t.Run("異常系_シーズンが見つからない場合は何もせず終了する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, _, championshipSeriesRepo, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
 
@@ -426,7 +426,7 @@ func TestDesignationEvaluation_NotifyIfTierChanged(t *testing.T) {
 }
 
 func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
-	t.Run("同じランク区分内でtierが下がった場合は称号喪失のみ通知する", func(t *testing.T) {
+	t.Run("正常系_同じランク区分内でtierが下がった場合は称号喪失のみ通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -451,7 +451,7 @@ func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 		require.Contains(t, saved.Body, "見習い")
 	})
 
-	t.Run("ランク区分をまたいでtierが下がった場合は称号喪失とランクダウンの両方を通知する", func(t *testing.T) {
+	t.Run("正常系_ランク区分をまたいでtierが下がった場合は称号喪失とランクダウンの両方を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -474,7 +474,7 @@ func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 		require.Len(t, bodies, 2)
 	})
 
-	t.Run("称号が何もない状態まで失うと称号喪失とランクダウンの両方を通知する", func(t *testing.T) {
+	t.Run("正常系_称号が何もない状態まで失うと称号喪失とランクダウンの両方を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, notificationRepo, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -496,7 +496,7 @@ func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 		require.Len(t, bodies, 2)
 	})
 
-	t.Run("tierが変化していなければ何も通知しない", func(t *testing.T) {
+	t.Run("正常系_tierが変化していなければ何も通知しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _, userPlayerRepo := newDesignationEvaluationTestUsecase(mockCtrl)
 		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
@@ -509,7 +509,7 @@ func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 		u.NotifyIfTierLost(context.Background(), "user-1", 2)
 	})
 
-	t.Run("削除前のtierが0(称号未達成)なら何もしない", func(t *testing.T) {
+	t.Run("正常系_削除前のtierが0(称号未達成)なら何もしない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, _, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
 		// beforeTier<=0で即returnするため、designationRepo等は一切呼ばれない
@@ -517,7 +517,7 @@ func TestDesignationEvaluation_NotifyIfTierLost(t *testing.T) {
 		u.NotifyIfTierLost(context.Background(), "user-1", 0)
 	})
 
-	t.Run("シーズンが見つからない場合は何もせず終了する", func(t *testing.T) {
+	t.Run("異常系_シーズンが見つからない場合は何もせず終了する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, designationRepo, _, championshipSeriesRepo, _, _ := newDesignationEvaluationTestUsecase(mockCtrl)
 

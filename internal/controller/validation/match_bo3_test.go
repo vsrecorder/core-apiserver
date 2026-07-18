@@ -64,7 +64,7 @@ func TestMatchValidationBO3(t *testing.T) {
 	}{
 		// --- BO3: 2ゲームで決着(2-0 / 0-2) ---
 		{
-			name: "BO3_2ゲーム_2連勝で勝利",
+			name: "正常系_BO3_2ゲーム_2連勝で勝利",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true), game(true)},
@@ -72,7 +72,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO3_2ゲーム_2連敗で敗北",
+			name: "正常系_BO3_2ゲーム_2連敗で敗北",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: false,
 				Games: []*dto.GameRequest{game(false), game(false)},
@@ -80,7 +80,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO3_2ゲーム_2連勝なのに敗北になっている",
+			name: "異常系_BO3_2ゲーム_2連勝なのに敗北になっている",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: false,
 				Games: []*dto.GameRequest{game(true), game(true)},
@@ -88,7 +88,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "BO3_2ゲーム_1勝1敗なのに2ゲームで決着している",
+			name: "異常系_BO3_2ゲーム_1勝1敗なのに2ゲームで決着している",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true), game(false)},
@@ -98,7 +98,7 @@ func TestMatchValidationBO3(t *testing.T) {
 
 		// --- BO3: 3ゲームで決着(2-1 / 1-2) ---
 		{
-			name: "BO3_3ゲーム_勝敗勝で勝利",
+			name: "正常系_BO3_3ゲーム_勝敗勝で勝利",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true), game(false), game(true)},
@@ -106,7 +106,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO3_3ゲーム_敗勝勝で勝利",
+			name: "正常系_BO3_3ゲーム_敗勝勝で勝利",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(false), game(true), game(true)},
@@ -114,7 +114,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO3_3ゲーム_勝敗敗で敗北",
+			name: "正常系_BO3_3ゲーム_勝敗敗で敗北",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: false,
 				Games: []*dto.GameRequest{game(true), game(false), game(false)},
@@ -122,7 +122,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO3_3ゲーム_敗勝敗で敗北",
+			name: "正常系_BO3_3ゲーム_敗勝敗で敗北",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: false,
 				Games: []*dto.GameRequest{game(false), game(true), game(false)},
@@ -130,7 +130,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO3_3ゲーム_2連勝で決着済みなのに3ゲーム目がある",
+			name: "異常系_BO3_3ゲーム_2連勝で決着済みなのに3ゲーム目がある",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true), game(true), game(true)},
@@ -138,7 +138,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "BO3_3ゲーム_2連敗で決着済みなのに3ゲーム目がある",
+			name: "異常系_BO3_3ゲーム_2連敗で決着済みなのに3ゲーム目がある",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: false,
 				Games: []*dto.GameRequest{game(false), game(false), game(false)},
@@ -146,7 +146,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "BO3_3ゲーム_3ゲーム目に勝ったのに敗北になっている",
+			name: "異常系_BO3_3ゲーム_3ゲーム目に勝ったのに敗北になっている",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: false,
 				Games: []*dto.GameRequest{game(true), game(false), game(true)},
@@ -154,7 +154,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "BO3_3ゲーム_3ゲーム目に負けたのに勝利になっている",
+			name: "異常系_BO3_3ゲーム_3ゲーム目に負けたのに勝利になっている",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true), game(false), game(false)},
@@ -164,7 +164,7 @@ func TestMatchValidationBO3(t *testing.T) {
 
 		// --- BO3: ゲーム数が不正 ---
 		{
-			name: "BO3_0ゲーム(不戦勝でもないのにゲームが無い)",
+			name: "異常系_BO3_0ゲーム(不戦勝でもないのにゲームが無い)",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{},
@@ -172,7 +172,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "BO3_1ゲーム(2本先取に達していない)",
+			name: "異常系_BO3_1ゲーム(2本先取に達していない)",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true)},
@@ -180,7 +180,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "BO3_4ゲーム(3ゲームを超えている)",
+			name: "異常系_BO3_4ゲーム(3ゲームを超えている)",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true), game(false), game(true), game(true)},
@@ -190,7 +190,7 @@ func TestMatchValidationBO3(t *testing.T) {
 
 		// --- BO3: 不戦勝/不戦敗 ---
 		{
-			name: "BO3_不戦勝はゲーム0件でよい",
+			name: "正常系_BO3_不戦勝はゲーム0件でよい",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				DefaultVictoryFlg: true,
@@ -199,7 +199,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO3_不戦敗はゲーム0件でよい",
+			name: "正常系_BO3_不戦敗はゲーム0件でよい",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: false,
 				DefaultDefeatFlg: true,
@@ -208,7 +208,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO3_不戦勝なのにゲームが存在する",
+			name: "異常系_BO3_不戦勝なのにゲームが存在する",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				DefaultVictoryFlg: true,
@@ -219,7 +219,7 @@ func TestMatchValidationBO3(t *testing.T) {
 
 		// --- BO1 ---
 		{
-			name: "BO1_1ゲームで勝利",
+			name: "正常系_BO1_1ゲームで勝利",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: false, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true)},
@@ -227,7 +227,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "BO1_0ゲーム(不戦勝でもないのにゲームが無い)",
+			name: "異常系_BO1_0ゲーム(不戦勝でもないのにゲームが無い)",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: false, VictoryFlg: true,
 				Games: []*dto.GameRequest{},
@@ -235,7 +235,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "BO1_2ゲーム(1本勝負なのに複数ゲームある)",
+			name: "異常系_BO1_2ゲーム(1本勝負なのに複数ゲームある)",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: false, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true), game(true)},
@@ -243,7 +243,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "BO1_ゲームの勝敗と対戦の勝敗が食い違う",
+			name: "異常系_BO1_ゲームの勝敗と対戦の勝敗が食い違う",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: false, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(false)},
@@ -253,7 +253,7 @@ func TestMatchValidationBO3(t *testing.T) {
 
 		// --- チーム戦(GroupMatch)との組み合わせ ---
 		{
-			name: "チーム戦_BO1ならチームの勝敗を持てる",
+			name: "正常系_チーム戦_BO1ならチームの勝敗を持てる",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: false, VictoryFlg: true,
 				GroupMatchFlg: true, GroupMatchVictoryFlg: true,
@@ -262,7 +262,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: true,
 		},
 		{
-			name: "チーム戦_BO3はチームの勝敗を持てない",
+			name: "異常系_チーム戦_BO3はチームの勝敗を持てない",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: true, VictoryFlg: true,
 				GroupMatchFlg: true, GroupMatchVictoryFlg: true,
@@ -271,7 +271,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "チーム戦でないのにチームの勝敗が立っている",
+			name: "異常系_チーム戦でないのにチームの勝敗が立っている",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: false, VictoryFlg: true,
 				GroupMatchFlg: false, GroupMatchVictoryFlg: true,
@@ -282,7 +282,7 @@ func TestMatchValidationBO3(t *testing.T) {
 
 		// --- その他 ---
 		{
-			name: "RecordIdが空",
+			name: "異常系_RecordIdが空",
 			req: dto.MatchRequest{
 				RecordId: "", BO3Flg: true, VictoryFlg: true,
 				Games: []*dto.GameRequest{game(true), game(true)},
@@ -290,7 +290,7 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 		{
-			name: "不戦勝と不戦敗の両方が立っている",
+			name: "異常系_不戦勝と不戦敗の両方が立っている",
 			req: dto.MatchRequest{
 				RecordId: recordId, BO3Flg: false, VictoryFlg: true,
 				DefaultVictoryFlg: true, DefaultDefeatFlg: true,

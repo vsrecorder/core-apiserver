@@ -51,7 +51,7 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 	userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 	// 正常系のテスト
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_有効なトークンならUIDを設定して通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -76,7 +76,7 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 	})
 
 	// JWTトークンの署名に使用するシークレットキーが間違っている場合のテスト
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_署名キーが異なるトークンは401を返す", func(t *testing.T) {
 		wrongSecretKey, err := GenerateJWTSecret()
 		require.NoError(t, err)
 
@@ -105,7 +105,7 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 	})
 
 	// JWTトークンがない場合のテスト
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_トークンがなければ401を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -127,7 +127,7 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 	})
 
 	// userIdが空のJWTトークンの場合のテスト
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_UIDが空のトークンは401を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -152,7 +152,7 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 	})
 
 	// JWTトークンのissuerが不正な場合のテスト
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_issuerが不正なトークンは401を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -188,7 +188,7 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 	userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 	// 正常系のテスト
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_有効なトークンならUIDを設定して通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -213,7 +213,7 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 	})
 
 	// 正常系のテスト(JWTトークンがない場合)
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_トークンなしでもUID空のまま通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -235,7 +235,7 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 	})
 
 	// JWTトークンの署名に使用するシークレットキーが間違っている場合のテスト
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_署名キーが異なるトークンは401を返す", func(t *testing.T) {
 		wrongSecretKey, err := GenerateJWTSecret()
 		require.NoError(t, err)
 
@@ -263,7 +263,7 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 	})
 
 	// userIdが空のJWTトークンの場合のテスト
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_UIDが空のトークンは401を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -288,7 +288,7 @@ func test_OptionalAuthenticationMiddleware(t *testing.T) {
 	})
 
 	// JWTトークンのissuerが不正な場合のテスト
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_issuerが不正なトークンは401を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 

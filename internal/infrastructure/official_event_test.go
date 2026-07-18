@@ -123,7 +123,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	endedAt := time.Date(2025, 2, 15, 20, 50, 0, 0, time.UTC)
 
 	// 大会の種類の指定なし・リーグの指定あり(マスター)
-	t.Run("クエリパターン_#01", func(t *testing.T) {
+	t.Run("正常系_リーグ指定のみならリーグ名で絞り込む", func(t *testing.T) {
 		r, mock, err := setup4OfficialEventInfrastructure()
 		require.NoError(t, err)
 
@@ -150,7 +150,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	})
 
 	// 大会の種類・リーグともに指定なし
-	t.Run("クエリパターン_#02", func(t *testing.T) {
+	t.Run("正常系_指定なしなら日付範囲のみで絞り込む", func(t *testing.T) {
 		r, mock, err := setup4OfficialEventInfrastructure()
 		require.NoError(t, err)
 
@@ -169,7 +169,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	})
 
 	// 大会の種類の指定あり(大型大会)・リーグの指定あり(マスター)
-	t.Run("クエリパターン_#03", func(t *testing.T) {
+	t.Run("正常系_種類とリーグ両指定で絞り込む", func(t *testing.T) {
 		r, mock, err := setup4OfficialEventInfrastructure()
 		require.NoError(t, err)
 
@@ -192,7 +192,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	})
 
 	// 大会の種類の指定あり(大型大会)・リーグの指定なし
-	t.Run("クエリパターン_#04", func(t *testing.T) {
+	t.Run("正常系_種類指定のみで絞り込む", func(t *testing.T) {
 		r, mock, err := setup4OfficialEventInfrastructure()
 		require.NoError(t, err)
 
@@ -214,7 +214,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	})
 
 	// リーグの指定は1〜4のみ有効で、範囲外は指定なしとして扱われる
-	t.Run("クエリパターン_#05", func(t *testing.T) {
+	t.Run("正常系_範囲外のリーグ指定は指定なしとして扱う", func(t *testing.T) {
 		r, mock, err := setup4OfficialEventInfrastructure()
 		require.NoError(t, err)
 
@@ -233,7 +233,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	})
 
 	// リーグの指定値ごとに、対応するリーグ名で絞り込む
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_リーグ指定値ごとに対応するリーグ名で絞り込む", func(t *testing.T) {
 		for leagueType, leagueTitle := range map[uint]string{
 			1: "オープン",
 			2: "ジュニア",
@@ -259,7 +259,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	})
 
 	// 該当イベントが無い場合
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		r, mock, err := setup4OfficialEventInfrastructure()
 		require.NoError(t, err)
 
@@ -283,7 +283,7 @@ func test_OfficialEventInfrastructure_FindById(t *testing.T) {
 	startedAt := time.Date(2025, 2, 15, 7, 30, 0, 0, time.UTC)
 	endedAt := time.Date(2025, 2, 15, 20, 50, 0, 0, time.UTC)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのイベントを全項目マッピングして返す", func(t *testing.T) {
 		r, mock, err := setup4OfficialEventInfrastructure()
 		require.NoError(t, err)
 

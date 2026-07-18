@@ -35,7 +35,7 @@ func test_DeckAuthorizationMiddleware(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockDeckInterface(mockCtrl)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_所有者なら通過する", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -74,7 +74,7 @@ func test_DeckAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_未認証なら403を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -90,7 +90,7 @@ func test_DeckAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_デッキが存在しなければ404を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -124,7 +124,7 @@ func test_DeckAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#03", func(t *testing.T) {
+	t.Run("異常系_取得エラーなら500を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 
@@ -158,7 +158,7 @@ func test_DeckAuthorizationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
-	t.Run("異常系_#04", func(t *testing.T) {
+	t.Run("異常系_他人のデッキなら403を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
 

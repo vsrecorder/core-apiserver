@@ -31,7 +31,7 @@ func TestOldestRecordUsecase(t *testing.T) {
 }
 
 func test_OldestRecordUsecase_GetOldestRecord(t *testing.T, mockRepository *mock_repository.MockOldestRecordInterface, usecase OldestRecordInterface) {
-	t.Run("正常系_#01_deck_id指定時はそのままrepositoryに渡される", func(t *testing.T) {
+	t.Run("正常系_deck_id指定時はそのままrepositoryに渡される", func(t *testing.T) {
 		userId := "user-01"
 		deckId := "deck-01"
 		eventDate := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
@@ -48,7 +48,7 @@ func test_OldestRecordUsecase_GetOldestRecord(t *testing.T, mockRepository *mock
 		require.Equal(t, record, ret)
 	})
 
-	t.Run("正常系_#02_該当記録が無い場合はEventDateがnilのまま返る", func(t *testing.T) {
+	t.Run("正常系_該当記録が無い場合はEventDateがnilのまま返る", func(t *testing.T) {
 		userId := "user-02"
 		deckId := ""
 

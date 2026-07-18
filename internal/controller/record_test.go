@@ -79,7 +79,7 @@ func test_RecordController_Get(t *testing.T) {
 	r := gin.Default()
 	c, _, mockUsecase := setup4TestRecordController(t, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_limitとoffset指定で記録一覧を返す", func(t *testing.T) {
 		record := entity.Record{}
 		records := []*entity.Record{
 			&record,
@@ -107,7 +107,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, len(records), len(res.Records))
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_クエリ未指定ならデフォルト値で記録一覧を返す", func(t *testing.T) {
 		record := entity.Record{}
 		records := []*entity.Record{
 			&record,
@@ -135,7 +135,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, len(records), len(res.Records))
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_該当なしでも空の記録一覧と空カーソルを返す", func(t *testing.T) {
 		records := []*entity.Record{}
 
 		limit := 10
@@ -162,7 +162,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"records\":[]}", w.Body.String())
 	})
 
-	t.Run("正常系_#04", func(t *testing.T) {
+	t.Run("正常系_カーソル指定時はFindOnCursorで取得しカーソルを返す", func(t *testing.T) {
 		record := entity.Record{}
 		records := []*entity.Record{
 			&record,
@@ -197,7 +197,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, compositeCursor, res.Cursor)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		mockUsecase.EXPECT().Find(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
@@ -210,7 +210,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_カーソル取得のエラーで500を返す", func(t *testing.T) {
 		cursorEventDate, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
@@ -235,7 +235,7 @@ func test_RecordController_GetById(t *testing.T) {
 	r := gin.Default()
 	c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDの記録を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -271,7 +271,7 @@ func test_RecordController_GetById(t *testing.T) {
 		require.Equal(t, privateFlg, res.PrivateFlg)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_記録が存在しなければ404を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -286,7 +286,7 @@ func test_RecordController_GetById(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -313,7 +313,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 
 	c, _, mockUsecase := setup4TestRecordController(t, r)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_認証済みなら自分の記録一覧を返す", func(t *testing.T) {
 		record := entity.Record{
 			UserId: uid,
 		}
@@ -346,7 +346,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, uid, res.Records[0].Data.UserId)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_クエリ未指定ならデフォルト値で自分の記録一覧を返す", func(t *testing.T) {
 		record := entity.Record{
 			UserId: uid,
 		}
@@ -379,7 +379,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, uid, res.Records[0].Data.UserId)
 	})
 
-	t.Run("正常系_#03", func(t *testing.T) {
+	t.Run("正常系_該当なしでも空の記録一覧と空カーソルを返す", func(t *testing.T) {
 		records := []*entity.Record{}
 
 		limit := 10
@@ -407,7 +407,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"records\":[]}", w.Body.String())
 	})
 
-	t.Run("正常系_#04", func(t *testing.T) {
+	t.Run("正常系_カーソル指定時はFindByUserIdOnCursorで取得する", func(t *testing.T) {
 		record := entity.Record{
 			UserId: uid,
 		}
@@ -447,7 +447,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, compositeCursor, res.Cursor)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		limit := 10
 		offset := 0
 		eventType := ""
@@ -465,7 +465,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_カーソル取得のエラーで500を返す", func(t *testing.T) {
 		cursorEventDate, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
@@ -488,7 +488,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 }
 
 func test_RecordController_Create(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_公式イベントの記録を作成する", func(t *testing.T) {
 		r := gin.Default()
 
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -567,87 +567,7 @@ func test_RecordController_Create(t *testing.T) {
 		require.Equal(t, uid, res.UserId)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
-		r := gin.Default()
-
-		// 認証済みとするためにJWTを生成
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		secretKey, err := testutil.GenerateJWTSecret()
-		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
-
-		c, _, mockUsecase := setup4TestRecordController(t, r)
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		createdAt := time.Now().Local()
-		officialEventId := uint(10000)
-		privateFlg := false
-
-		record := &entity.Record{
-			ID:              id,
-			CreatedAt:       createdAt,
-			OfficialEventId: officialEventId,
-			UserId:          uid,
-			PrivateFlg:      privateFlg,
-		}
-
-		param := usecase.NewRecordParam(
-			officialEventId,
-			"",
-			"",
-			"",
-			uid,
-			"",
-			"",
-			time.Time{},
-			privateFlg,
-			false,
-			"",
-			"",
-		)
-
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
-
-		data := dto.RecordCreateRequest{
-			RecordRequest: dto.RecordRequest{
-				OfficialEventId:   officialEventId,
-				TonamelEventId:    "",
-				FriendId:          "",
-				UnofficialEventId: "",
-				DeckId:            "",
-				DeckCodeId:        "",
-				EventDate:         time.Time{},
-				PrivateFlg:        privateFlg,
-				TCGMeisterURL:     "",
-				Memo:              "",
-			},
-		}
-
-		dataBytes, err := json.Marshal(data)
-		require.NoError(t, err)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
-		setJWTAuthHeader(t, req, uid, secretKey)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.RecordCreateResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusCreated, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, officialEventId, res.OfficialEventId)
-		require.Equal(t, privateFlg, res.PrivateFlg)
-		require.Equal(t, uid, res.UserId)
-	})
-
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -693,7 +613,7 @@ func test_RecordController_Create(t *testing.T) {
 }
 
 func test_RecordController_Update(t *testing.T) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_本人の記録を更新する", func(t *testing.T) {
 		r := gin.Default()
 
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -775,90 +695,7 @@ func test_RecordController_Update(t *testing.T) {
 		require.Equal(t, uid, res.UserId)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
-		r := gin.Default()
-
-		// 認証済みとするためにJWTを生成
-		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-		secretKey, err := testutil.GenerateJWTSecret()
-		require.NoError(t, err)
-		os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
-
-		c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		createdAt := time.Now().Local()
-		officialEventId := uint(10000)
-		privateFlg := false
-
-		record := &entity.Record{
-			ID:              id,
-			CreatedAt:       createdAt,
-			OfficialEventId: officialEventId,
-			UserId:          uid,
-			PrivateFlg:      privateFlg,
-		}
-
-		// RecordUpdateAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
-
-		param := usecase.NewRecordParam(
-			officialEventId,
-			"",
-			"",
-			"",
-			uid,
-			"",
-			"",
-			time.Time{},
-			privateFlg,
-			false,
-			"",
-			"",
-		)
-
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
-
-		data := dto.RecordCreateRequest{
-			RecordRequest: dto.RecordRequest{
-				OfficialEventId:   officialEventId,
-				TonamelEventId:    "",
-				FriendId:          "",
-				UnofficialEventId: "",
-				DeckId:            "",
-				DeckCodeId:        "",
-				EventDate:         time.Time{},
-				PrivateFlg:        privateFlg,
-				TCGMeisterURL:     "",
-				Memo:              "",
-			},
-		}
-
-		dataBytes, err := json.Marshal(data)
-		require.NoError(t, err)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
-		setJWTAuthHeader(t, req, uid, secretKey)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.RecordCreateResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, id, res.ID)
-		//require.Equal(t, createdAt, res.CreatedAt)
-		require.Equal(t, officialEventId, res.OfficialEventId)
-		require.Equal(t, privateFlg, res.PrivateFlg)
-		require.Equal(t, uid, res.UserId)
-	})
-
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		r := gin.Default()
 
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -935,7 +772,7 @@ func test_RecordController_Delete(t *testing.T) {
 	require.NoError(t, err)
 	os.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_本人の記録を削除する", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -954,7 +791,7 @@ func test_RecordController_Delete(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, w.Code)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_削除対象が存在しなければ400を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -972,7 +809,7 @@ func test_RecordController_Delete(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 

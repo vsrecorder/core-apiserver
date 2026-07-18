@@ -53,7 +53,7 @@ func findView(views []*UserBadgeView, id string) *UserBadgeView {
 }
 
 func TestBadge_GetByUserId(t *testing.T) {
-	t.Run("オンボーディング系は永続化された獲得記録をそのまま参照する(シーズン集計値は使わない)", func(t *testing.T) {
+	t.Run("正常系_オンボーディング系は永続化された獲得記録をそのまま参照する(シーズン集計値は使わない)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
@@ -88,7 +88,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		require.Equal(t, now.Unix(), view.AchievedAt.Unix())
 	})
 
-	t.Run("マイルストーン系は今シーズンの集計値のみでライブ判定する(過去の獲得記録は見ない)", func(t *testing.T) {
+	t.Run("正常系_マイルストーン系は今シーズンの集計値のみでライブ判定する(過去の獲得記録は見ない)", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
@@ -129,7 +129,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		require.True(t, view.AchievedAt.IsZero(), "日付一覧が閾値に満たない場合はachieved_atを求めない")
 	})
 
-	t.Run("マイルストーン系は今シーズン内でcriteria_value番目に到達した日付をachieved_atとして返す", func(t *testing.T) {
+	t.Run("正常系_マイルストーン系は今シーズン内でcriteria_value番目に到達した日付をachieved_atとして返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
@@ -186,7 +186,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		require.True(t, matchView.AchievedAt.Equal(matchDate2), "2番目に古い対戦日がachieved_atになる")
 	})
 
-	t.Run("週次ストリーク系は今シーズンの記録日から連続週数を計算して判定する", func(t *testing.T) {
+	t.Run("正常系_週次ストリーク系は今シーズンの記録日から連続週数を計算して判定する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
@@ -224,7 +224,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		require.True(t, view.AchievedAt.Equal(week3), "3週連続に初めて到達した週の記録日がachieved_atになる")
 	})
 
-	t.Run("週次ストリーク系はストリークが途切れても、シーズン内で最初に到達した日付を保持する", func(t *testing.T) {
+	t.Run("正常系_週次ストリーク系はストリークが途切れても、シーズン内で最初に到達した日付を保持する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
@@ -263,7 +263,7 @@ func TestBadge_GetByUserId(t *testing.T) {
 		require.True(t, view.AchievedAt.Equal(week2), "途切れていても、シーズン内で最初に2週連続に到達した日付は残る")
 	})
 
-	t.Run("season指定時はそのシーズンの期間で集計する", func(t *testing.T) {
+	t.Run("正常系_season指定時はそのシーズンの期間で集計する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
 
@@ -305,11 +305,11 @@ func TestBadge_GetByUserId(t *testing.T) {
 }
 
 func TestSeasonStreakWeeks(t *testing.T) {
-	t.Run("記録が無ければ0", func(t *testing.T) {
+	t.Run("正常系_記録が無ければ0", func(t *testing.T) {
 		require.Equal(t, 0, seasonStreakWeeks(nil))
 	})
 
-	t.Run("連続した週なら連続数がそのまま返る", func(t *testing.T) {
+	t.Run("正常系_連続した週なら連続数がそのまま返る", func(t *testing.T) {
 		dates := []time.Time{
 			time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
 			time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local),
@@ -318,7 +318,7 @@ func TestSeasonStreakWeeks(t *testing.T) {
 		require.Equal(t, 3, seasonStreakWeeks(dates))
 	})
 
-	t.Run("1週空いてもフリーズ枠で連続扱いになる", func(t *testing.T) {
+	t.Run("正常系_1週空いてもフリーズ枠で連続扱いになる", func(t *testing.T) {
 		dates := []time.Time{
 			time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
 			time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local), // 2週間後(1週間の空白)
@@ -326,7 +326,7 @@ func TestSeasonStreakWeeks(t *testing.T) {
 		require.Equal(t, 2, seasonStreakWeeks(dates))
 	})
 
-	t.Run("フリーズ枠を超えて空くと直近の連続数だけが残る", func(t *testing.T) {
+	t.Run("正常系_フリーズ枠を超えて空くと直近の連続数だけが残る", func(t *testing.T) {
 		dates := []time.Time{
 			time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
 			time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local), // 大きく空白

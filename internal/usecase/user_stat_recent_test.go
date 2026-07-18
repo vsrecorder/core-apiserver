@@ -39,7 +39,7 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 	mockEnvironmentRepository *mock_repository.MockEnvironmentInterface,
 	usecase UserStatRecentInterface,
 ) {
-	t.Run("正常系_#01_表示件数の半分をウィンドウ幅としたローリング勝率が計算される", func(t *testing.T) {
+	t.Run("正常系_表示件数の半分をウィンドウ幅としたローリング勝率が計算される", func(t *testing.T) {
 		userId := "user-01"
 		count := 4
 		deckId := ""
@@ -90,7 +90,7 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 		require.InDelta(t, 0.5, ret.Matches[3].RollingWinRate, 0.0001)
 	})
 
-	t.Run("正常系_#02_実際の対戦数がcountに満たない場合は取得できた分だけ表示する", func(t *testing.T) {
+	t.Run("正常系_実際の対戦数がcountに満たない場合は取得できた分だけ表示する", func(t *testing.T) {
 		userId := "user-02"
 		count := 4
 		deckId := ""
@@ -118,7 +118,7 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 		require.Equal(t, 2, ret.Matches[1].Sequence)
 	})
 
-	t.Run("正常系_#03_試合が0件の場合は空配列と勝率0を返す", func(t *testing.T) {
+	t.Run("正常系_試合が0件の場合は空配列と勝率0を返す", func(t *testing.T) {
 		userId := "user-03"
 		count := 10
 		deckId := "deck-99"
@@ -134,7 +134,7 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 		require.Empty(t, ret.Matches)
 	})
 
-	t.Run("異常系_#01_repositoryがエラーを返した場合はそのまま伝播する", func(t *testing.T) {
+	t.Run("異常系_repositoryがエラーを返した場合はそのまま伝播する", func(t *testing.T) {
 		userId := "user-04"
 		count := 10
 		deckId := ""

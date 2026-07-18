@@ -32,7 +32,7 @@ func TestGameUsecase(t *testing.T) {
 }
 
 func test_GameUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockGameInterface, usecase GameInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのゲームを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -48,7 +48,7 @@ func test_GameUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 		require.Equal(t, id, ret.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -62,7 +62,7 @@ func test_GameUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 }
 
 func test_GameUsecase_FindByMatchId(t *testing.T, mockRepository *mock_repository.MockGameInterface, usecase GameInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定マッチIDのゲーム一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -87,7 +87,7 @@ func test_GameUsecase_FindByMatchId(t *testing.T, mockRepository *mock_repositor
 		require.Equal(t, matchId, ret[0].MatchId)
 	})
 
-	t.Run("正常系_#02", func(t *testing.T) {
+	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
 		matchId, err := generateId()
 		require.NoError(t, err)
 
@@ -101,7 +101,7 @@ func test_GameUsecase_FindByMatchId(t *testing.T, mockRepository *mock_repositor
 		require.Equal(t, len(games), len(ret))
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		matchId, err := generateId()
 		require.NoError(t, err)
 

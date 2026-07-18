@@ -50,7 +50,7 @@ func TestUserUsecase(t *testing.T) {
 }
 
 func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_指定IDのユーザを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -66,7 +66,7 @@ func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 		require.Equal(t, id, ret.ID)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
@@ -80,7 +80,7 @@ func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 }
 
 func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_未登録IDならユーザを作成する", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
 		name := "test"
@@ -104,7 +104,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 		require.Equal(t, imageURL, ret.ImageURL)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_既存IDならErrAlreadyExistsを返す", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
 		name := "test"
@@ -131,7 +131,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 		require.Empty(t, ret)
 	})
 
-	t.Run("異常系_#02", func(t *testing.T) {
+	t.Run("異常系_存在確認でNotFound以外のエラーはそのまま返す", func(t *testing.T) {
 		id, _ := generateId()
 		name := "test"
 		imageURL := "http://example.com/image.png"
@@ -152,7 +152,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 }
 
 func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
-	t.Run("正常系_#01", func(t *testing.T) {
+	t.Run("正常系_取得したユーザにパラメータを反映して保存する", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
 		name := "test"
@@ -182,7 +182,7 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 		require.Equal(t, imageURL, ret.ImageURL)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
 		id, _ := generateId()
 		name := "test"
 		imageURL := "http://example.com/image.png"
@@ -200,7 +200,7 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 		require.Empty(t, ret)
 	})
 
-	t.Run("異常系_#01", func(t *testing.T) {
+	t.Run("異常系_NotFound以外の取得エラーもそのまま返す", func(t *testing.T) {
 		id, _ := generateId()
 		name := "test"
 		imageURL := "http://example.com/image.png"
@@ -220,7 +220,7 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 }
 
 func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockUserInterface, mockRecordRepository *mock_repository.MockRecordInterface, mockDeckRepository *mock_repository.MockDeckInterface, mockDeckCodeRepository *mock_repository.MockDeckCodeInterface, mockUserPlayerRepository *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
-	t.Run("正常系_#01_プレイヤーIDの紐付けがある場合", func(t *testing.T) {
+	t.Run("正常系_プレイヤーIDの紐付けがある場合", func(t *testing.T) {
 		id, _ := generateId()
 		recordId, _ := generateId()
 		deckId, _ := generateId()
@@ -243,7 +243,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 		require.NoError(t, err)
 	})
 
-	t.Run("正常系_#02_プレイヤーIDの紐付けがない場合", func(t *testing.T) {
+	t.Run("正常系_プレイヤーIDの紐付けがない場合", func(t *testing.T) {
 		id, _ := generateId()
 
 		mockRecordRepository.EXPECT().FindIdsByUserId(context.Background(), id).Return([]string{}, nil)

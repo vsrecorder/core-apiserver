@@ -33,7 +33,7 @@ func TestStreak_GetByUserId(t *testing.T) {
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		u := NewStreak(userStreakRepo)
 
-		stored := entity.NewUserStreak("user-1", 3, 5, 0, mondayOf(time.Now()), time.Now())
+		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, mondayOf(time.Now()), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 
 		streak, err := u.GetByUserId(context.Background(), "user-1")
@@ -49,7 +49,7 @@ func TestStreak_GetByUserId(t *testing.T) {
 		u := NewStreak(userStreakRepo)
 
 		lastWeek := mondayOf(time.Now()).AddDate(0, 0, -14)
-		stored := entity.NewUserStreak("user-1", 4, 4, 0, lastWeek, time.Now())
+		stored := entity.NewUserStreak("user-1", 4, 4, 0, 0, lastWeek, time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 
 		streak, err := u.GetByUserId(context.Background(), "user-1")
@@ -66,7 +66,7 @@ func TestStreak_GetByUserId(t *testing.T) {
 		// 5ヶ月前に最後の記録があり、以来新規記録も削除も無いまま user_streaks が
 		// 更新されていない状態を再現する(本番で実際に観測された事例)。
 		lastRecordedWeek := time.Date(2026, 2, 9, 0, 0, 0, 0, time.Local)
-		stored := entity.NewUserStreak("user-1", 1, 8, 0, lastRecordedWeek, time.Now())
+		stored := entity.NewUserStreak("user-1", 1, 8, 0, 0, lastRecordedWeek, time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 
 		streak, err := u.GetByUserId(context.Background(), "user-1")
@@ -84,7 +84,7 @@ func TestStreak_GetByUserId(t *testing.T) {
 		u := NewStreak(userStreakRepo)
 
 		lastWeek := mondayOf(time.Now()).AddDate(0, 0, -21)
-		stored := entity.NewUserStreak("user-1", 2, 2, 1, lastWeek, time.Now())
+		stored := entity.NewUserStreak("user-1", 2, 2, 1, 0, lastWeek, time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 
 		streak, err := u.GetByUserId(context.Background(), "user-1")

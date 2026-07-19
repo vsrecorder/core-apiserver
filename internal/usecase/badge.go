@@ -271,6 +271,6 @@ func (u *Badge) seasonAggregateByCriteriaType(
 // 週次記録の連続週数を求める。ComputeStreakState(badge_evaluation.go)と同じロジックを
 // 共有し、シーズン内の期間に絞った dates を渡して連続週数だけを取り出す。
 func seasonStreakWeeks(dates []time.Time) int {
-	currentWeeks, _, _, _ := ComputeStreakState(dates)
+	currentWeeks, _, _, _, _ := ComputeStreakState(dates)
 	return currentWeeks
 }

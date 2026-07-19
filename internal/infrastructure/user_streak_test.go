@@ -14,7 +14,7 @@ import (
 )
 
 var userStreakColumns = []string{
-	"user_id", "current_weeks", "longest_weeks", "freeze_used_count", "last_recorded_week", "updated_at",
+	"user_id", "current_weeks", "longest_weeks", "freeze_used_count", "freeze_regen_progress", "last_recorded_week", "updated_at",
 }
 
 func TestUserStreakInfrastructure(t *testing.T) {
@@ -30,7 +30,7 @@ func TestUserStreakInfrastructure(t *testing.T) {
 			mock.ExpectQuery(regexp.QuoteMeta(
 				`SELECT * FROM "user_streaks" WHERE user_id = $1 ORDER BY "user_streaks"."user_id" LIMIT $2`,
 			)).WithArgs(uid, 1).WillReturnRows(
-				sqlmock.NewRows(userStreakColumns).AddRow(uid, 3, 5, 1, lastRecordedWeek, updatedAt),
+				sqlmock.NewRows(userStreakColumns).AddRow(uid, 3, 5, 1, 2, lastRecordedWeek, updatedAt),
 			)
 
 			ret, err := r.FindByUserId(context.Background(), uid)
@@ -40,6 +40,7 @@ func TestUserStreakInfrastructure(t *testing.T) {
 			require.Equal(t, 3, ret.CurrentWeeks)
 			require.Equal(t, 5, ret.LongestWeeks)
 			require.Equal(t, 1, ret.FreezeUsedCount)
+			require.Equal(t, 2, ret.FreezeRegenProgress)
 			require.Equal(t, lastRecordedWeek, ret.LastRecordedWeek)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
@@ -67,13 +68,13 @@ func TestUserStreakInfrastructure(t *testing.T) {
 			mock.ExpectBegin()
 			// updated_atはGORMが保存時刻で上書きするためAnyTimeで検証する
 			mock.ExpectExec(regexp.QuoteMeta(
-				`UPDATE "user_streaks" SET "current_weeks"=$1,"longest_weeks"=$2,"freeze_used_count"=$3,"last_recorded_week"=$4,"updated_at"=$5 WHERE "user_id" = $6`,
+				`UPDATE "user_streaks" SET "current_weeks"=$1,"longest_weeks"=$2,"freeze_used_count"=$3,"freeze_regen_progress"=$4,"last_recorded_week"=$5,"updated_at"=$6 WHERE "user_id" = $7`,
 			)).WithArgs(
-				4, 5, 1, lastRecordedWeek, AnyTime{}, uid,
+				4, 5, 1, 2, lastRecordedWeek, AnyTime{}, uid,
 			).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectCommit()
 
-			streak := entity.NewUserStreak(uid, 4, 5, 1, lastRecordedWeek, updatedAt)
+			streak := entity.NewUserStreak(uid, 4, 5, 1, 2, lastRecordedWeek, updatedAt)
 
 			require.NoError(t, r.Save(context.Background(), streak))
 			require.NoError(t, mock.ExpectationsWereMet())

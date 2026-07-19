@@ -37,7 +37,7 @@ func TestStreakController_GetByUserId(t *testing.T) {
 	t.Run("正常系_指定ユーザのストリークを返す", func(t *testing.T) {
 		c, mockUsecase := setup4TestStreakController(t)
 
-		streak := entity.NewUserStreak(uid, 3, 5, 1, time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local), time.Now().Local())
+		streak := entity.NewUserStreak(uid, 3, 5, 1, 0, time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local), time.Now().Local())
 
 		mockUsecase.EXPECT().GetByUserId(context.Background(), uid).Return(streak, nil)
 

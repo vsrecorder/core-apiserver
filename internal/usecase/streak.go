@@ -35,7 +35,7 @@ func (u *Streak) GetByUserId(
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			// まだ一度も記録していないユーザーは0件のストリークとして返す
-			return entity.NewUserStreak(userId, 0, 0, 0, time.Time{}, time.Time{}), nil
+			return entity.NewUserStreak(userId, 0, 0, 0, 0, time.Time{}, time.Time{}), nil
 		}
 
 		return nil, err
@@ -48,7 +48,7 @@ func (u *Streak) GetByUserId(
 	// 表示上のストリークを終了扱いにする。DB上の値自体は書き換えない(新規記録作成時は
 	// updateStreak が本来のLastRecordedWeekを基準に正しく判定するため)。
 	if isStreakExpired(streak.LastRecordedWeek, streak.FreezeUsedCount) {
-		return entity.NewUserStreak(userId, 0, streak.LongestWeeks, 0, streak.LastRecordedWeek, streak.UpdatedAt), nil
+		return entity.NewUserStreak(userId, 0, streak.LongestWeeks, 0, 0, streak.LastRecordedWeek, streak.UpdatedAt), nil
 	}
 
 	return streak, nil

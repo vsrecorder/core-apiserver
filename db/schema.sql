@@ -520,12 +520,13 @@ CREATE TABLE deck_pokemon_sprites (
 
 
 CREATE TABLE user_streaks (
-    user_id             VARCHAR(32) PRIMARY KEY,
-    current_weeks       INT NOT NULL DEFAULT 0,
-    longest_weeks       INT NOT NULL DEFAULT 0,
-    freeze_used_count   INT NOT NULL DEFAULT 0,
-    last_recorded_week  DATE NOT NULL,
-    updated_at          TIMESTAMP NOT NULL
+    user_id               VARCHAR(32) PRIMARY KEY,
+    current_weeks         INT NOT NULL DEFAULT 0,
+    longest_weeks         INT NOT NULL DEFAULT 0,
+    freeze_used_count     INT NOT NULL DEFAULT 0,
+    freeze_regen_progress INT NOT NULL DEFAULT 0,  -- フリーズ枠回復に向けたクリーン連続週数(streakFreezeRegenWeeks 週ごとに1枠回復)
+    last_recorded_week    DATE NOT NULL,
+    updated_at            TIMESTAMP NOT NULL
 );
 
 

@@ -162,12 +162,13 @@ func repairUser(
 		return false, err
 	}
 
-	currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := usecase.ComputeStreakState(dates)
+	currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek := usecase.ComputeStreakState(dates)
 
 	changed := before == nil ||
 		before.CurrentWeeks != currentWeeks ||
 		before.LongestWeeks != longestWeeks ||
 		before.FreezeUsedCount != freezeUsedCount ||
+		before.FreezeRegenProgress != freezeRegenProgress ||
 		!before.LastRecordedWeek.Equal(lastRecordedWeek)
 
 	if !changed {
@@ -185,7 +186,7 @@ func repairUser(
 		return true, nil
 	}
 
-	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek, time.Now().Local())
+	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek, time.Now().Local())
 	if err := userStreakRepo.Save(ctx, streak); err != nil {
 		return false, err
 	}

@@ -41,9 +41,20 @@ const notificationLinkUrlForBadge = "/users"
 // (BADGE_STREAK_PLAN.md 2-4)。
 const streakFreezeMaxGapWeeks = 2
 
-// StreakMaxFreezeCount は1回の連続記録(ストリーク)につき使えるフリーズの上限回数。
-// ストリークがリセットされると再び上限までフリーズを使えるようになる。
-const StreakMaxFreezeCount = 1
+// StreakMaxFreezeCount は同時に保持できるフリーズ枠の上限回数。
+// ストリークがリセットされると再び上限までフリーズを使えるようになる。また、フリーズを
+// 使わずに streakFreezeRegenWeeks 週連続で記録するごとに使用済み枠が1つ回復する
+// (下記 streakFreezeRegenWeeks 参照)。
+const StreakMaxFreezeCount = 2
+
+// streakFreezeRegenWeeks は、フリーズを使わずに連続記録した週数がこの数に達するごとに
+// 使用済みフリーズ枠を1つ回復する(回復後はカウンタを0に戻し、次の回復まで再び数え直す)。
+// 1度の中断でフリーズを使い切ったユーザーが、以降ずっとフリーズ無しになってしまうのを防ぎ、
+// 継続しているほど猶予が戻る設計にする。ストリークが途切れる・フリーズを消費すると
+// 進捗(FreezeRegenProgress)は0に戻る。
+// フリーズ猶予(streakFreezeMaxGapWeeks)と同じ2週にし、1回サボっても2週まじめに続ければ
+// 枠が戻る軽めのテンポにしている。
+const streakFreezeRegenWeeks = 2
 
 type BadgeEvaluationInterface interface {
 	// EvaluateOnRecordCreated は記録作成時にストリーク状態(user_streaks、StreakPanel用)を
@@ -133,6 +144,25 @@ func mondayOf(t time.Time) time.Time {
 	return t.AddDate(0, 0, -(weekday - 1))
 }
 
+// advanceFreezeRegen はクリーンな週(フリーズ未使用で前週から途切れず継続した週)を
+// 1週進めた際のフリーズ回復進捗を計算し、回復後の (freezeUsedCount, regenProgress) を返す。
+// 回復間隔(streakFreezeRegenWeeks)に達し、かつ使用済み枠が残っていれば1枠回復して進捗を
+// 0に戻す。回復対象が無い(freezeUsedCount<=0)場合は進捗を溜めない。updateStreak(増分更新)と
+// ComputeStreakState等(記録日付からの再計算)の双方で同じ回復ルールを使うために切り出している。
+func advanceFreezeRegen(freezeUsedCount, regenProgress int) (int, int) {
+	if freezeUsedCount <= 0 {
+		return freezeUsedCount, 0
+	}
+
+	regenProgress++
+	if regenProgress >= streakFreezeRegenWeeks {
+		freezeUsedCount--
+		regenProgress = 0
+	}
+
+	return freezeUsedCount, regenProgress
+}
+
 // RecordBasisTime は record の日時判定の基準となる時刻を返す。
 // event_date が未入力の場合は記録作成日時を代わりに使う。
 func RecordBasisTime(eventDate time.Time, createdAt time.Time) time.Time {
@@ -160,7 +190,7 @@ func (u *BadgeEvaluation) updateStreak(
 	}
 
 	if current == nil {
-		streak := entity.NewUserStreak(userId, 1, 1, 0, week, time.Now().Local())
+		streak := entity.NewUserStreak(userId, 1, 1, 0, 0, week, time.Now().Local())
 		if err := u.userStreakRepo.Save(ctx, streak); err != nil {
 			return nil, err
 		}
@@ -170,7 +200,9 @@ func (u *BadgeEvaluation) updateStreak(
 	diffDays := int(week.Sub(current.LastRecordedWeek).Hours() / 24)
 	diffWeeks := diffDays / 7
 
-	var currentWeeks, freezeUsedCount int
+	currentWeeks := current.CurrentWeeks
+	freezeUsedCount := current.FreezeUsedCount
+	freezeRegenProgress := current.FreezeRegenProgress
 	lastRecordedWeek := current.LastRecordedWeek
 
 	switch {
@@ -181,18 +213,22 @@ func (u *BadgeEvaluation) updateStreak(
 		// 過去日付をまとめて後入力した場合も連続数に影響させない
 		return current, nil
 	case diffWeeks == 1:
-		currentWeeks = current.CurrentWeeks + 1
-		freezeUsedCount = current.FreezeUsedCount
+		// フリーズを使わず途切れずに継続した「クリーンな週」。回復進捗を1つ進め、
+		// 回復間隔に達したら使用済みフリーズ枠を1つ戻して進捗をリセットする。
+		currentWeeks++
+		freezeUsedCount, freezeRegenProgress = advanceFreezeRegen(freezeUsedCount, freezeRegenProgress)
 		lastRecordedWeek = week
-	case diffWeeks <= streakFreezeMaxGapWeeks && current.FreezeUsedCount < StreakMaxFreezeCount:
-		// 2週間分の空白まではフリーズ枠を消費して連続扱いにする
-		currentWeeks = current.CurrentWeeks + 1
-		freezeUsedCount = current.FreezeUsedCount + 1
+	case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
+		// 2週間分の空白まではフリーズ枠を消費して連続扱いにする。フリーズ消費で回復進捗は0に戻る。
+		currentWeeks++
+		freezeUsedCount++
+		freezeRegenProgress = 0
 		lastRecordedWeek = week
 	default:
 		// 猶予を超えて途切れた場合はストリークをリセットする
 		currentWeeks = 1
 		freezeUsedCount = 0
+		freezeRegenProgress = 0
 		lastRecordedWeek = week
 	}
 
@@ -201,7 +237,7 @@ func (u *BadgeEvaluation) updateStreak(
 		longestWeeks = currentWeeks
 	}
 
-	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek, time.Now().Local())
+	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek, time.Now().Local())
 	if err := u.userStreakRepo.Save(ctx, streak); err != nil {
 		return nil, err
 	}
@@ -215,9 +251,9 @@ func (u *BadgeEvaluation) updateStreak(
 // だけから毎回作り直すため、記録削除等で過去の記録が減っても正しい状態に戻せる。
 // cmd/repair-streaks のような、既存の user_streaks を全件再計算するツールから
 // 再利用できるようexportしている。
-func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, freezeUsedCount int, lastRecordedWeek time.Time) {
+func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, freezeUsedCount int, freezeRegenProgress int, lastRecordedWeek time.Time) {
 	if len(dates) == 0 {
-		return 0, 0, 0, time.Time{}
+		return 0, 0, 0, 0, time.Time{}
 	}
 
 	weekSet := make(map[time.Time]struct{}, len(dates))
@@ -240,12 +276,15 @@ func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, 
 		switch {
 		case diffWeeks == 1:
 			currentWeeks++
+			freezeUsedCount, freezeRegenProgress = advanceFreezeRegen(freezeUsedCount, freezeRegenProgress)
 		case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
 			currentWeeks++
 			freezeUsedCount++
+			freezeRegenProgress = 0
 		default:
 			currentWeeks = 1
 			freezeUsedCount = 0
+			freezeRegenProgress = 0
 		}
 
 		if currentWeeks > longestWeeks {
@@ -284,6 +323,7 @@ func StreakWeeksAchievedAt(dates []time.Time) map[int]time.Time {
 
 	currentWeeks := 1
 	freezeUsedCount := 0
+	freezeRegenProgress := 0
 	achievedAt := map[int]time.Time{currentWeeks: firstDateOfWeek[mondays[0]]}
 
 	for i := 1; i < len(mondays); i++ {
@@ -292,12 +332,15 @@ func StreakWeeksAchievedAt(dates []time.Time) map[int]time.Time {
 		switch {
 		case diffWeeks == 1:
 			currentWeeks++
+			freezeUsedCount, freezeRegenProgress = advanceFreezeRegen(freezeUsedCount, freezeRegenProgress)
 		case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
 			currentWeeks++
 			freezeUsedCount++
+			freezeRegenProgress = 0
 		default:
 			currentWeeks = 1
 			freezeUsedCount = 0
+			freezeRegenProgress = 0
 		}
 
 		if _, exists := achievedAt[currentWeeks]; !exists {
@@ -341,6 +384,7 @@ func ComputeStreakMilestoneDates(dates []time.Time) map[int]time.Time {
 
 	currentWeeks := 1
 	freezeUsedCount := 0
+	freezeRegenProgress := 0
 	recordIfNew(currentWeeks, earliestDateInWeek[weeks[0]])
 
 	for i := 1; i < len(weeks); i++ {
@@ -349,12 +393,15 @@ func ComputeStreakMilestoneDates(dates []time.Time) map[int]time.Time {
 		switch {
 		case diffWeeks == 1:
 			currentWeeks++
+			freezeUsedCount, freezeRegenProgress = advanceFreezeRegen(freezeUsedCount, freezeRegenProgress)
 		case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
 			currentWeeks++
 			freezeUsedCount++
+			freezeRegenProgress = 0
 		default:
 			currentWeeks = 1
 			freezeUsedCount = 0
+			freezeRegenProgress = 0
 		}
 
 		recordIfNew(currentWeeks, earliestDateInWeek[weeks[i]])
@@ -506,7 +553,7 @@ func (u *BadgeEvaluation) notifySeasonalStreakMilestones(
 	createdAt time.Time,
 	seasonLabel string,
 ) error {
-	currentWeeks, _, _, _ := ComputeStreakState(seasonRecordDates)
+	currentWeeks, _, _, _, _ := ComputeStreakState(seasonRecordDates)
 
 	thisWeek := mondayOf(thisRecordBasis)
 	for _, d := range seasonRecordDates {
@@ -724,9 +771,9 @@ func (u *BadgeEvaluation) EvaluateOnRecordDeleted(
 		return err
 	}
 
-	currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek := ComputeStreakState(dates)
+	currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek := ComputeStreakState(dates)
 
-	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek, time.Now().Local())
+	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek, time.Now().Local())
 	return u.userStreakRepo.Save(ctx, streak)
 }
 

@@ -35,6 +35,7 @@ func (i *UserStreak) FindByUserId(
 		model.CurrentWeeks,
 		model.LongestWeeks,
 		model.FreezeUsedCount,
+		model.FreezeRegenProgress,
 		model.LastRecordedWeek,
 		model.UpdatedAt,
 	), nil
@@ -45,12 +46,13 @@ func (i *UserStreak) Save(
 	entity *entity.UserStreak,
 ) error {
 	model := &model.UserStreak{
-		UserId:           entity.UserId,
-		CurrentWeeks:     entity.CurrentWeeks,
-		LongestWeeks:     entity.LongestWeeks,
-		FreezeUsedCount:  entity.FreezeUsedCount,
-		LastRecordedWeek: entity.LastRecordedWeek,
-		UpdatedAt:        entity.UpdatedAt,
+		UserId:              entity.UserId,
+		CurrentWeeks:        entity.CurrentWeeks,
+		LongestWeeks:        entity.LongestWeeks,
+		FreezeUsedCount:     entity.FreezeUsedCount,
+		FreezeRegenProgress: entity.FreezeRegenProgress,
+		LastRecordedWeek:    entity.LastRecordedWeek,
+		UpdatedAt:           entity.UpdatedAt,
 	}
 
 	if tx := i.db.Save(model); tx.Error != nil {

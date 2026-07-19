@@ -14,7 +14,8 @@ func NewRecentMatchStatResponse(
 		pokemonSprites := make([]*dto.PokemonSpriteResponse, 0, len(m.PokemonSprites))
 		for _, sprite := range m.PokemonSprites {
 			pokemonSprites = append(pokemonSprites, &dto.PokemonSpriteResponse{
-				ID: sprite.ID,
+				ID:       sprite.ID,
+				Position: sprite.Position,
 			})
 		}
 

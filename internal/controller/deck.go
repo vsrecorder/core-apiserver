@@ -221,7 +221,10 @@ func (c *Deck) Create(ctx *gin.Context) {
 
 	var pokemonSprites []*usecase.PokemonSpriteParam
 	for _, pokemonSprite := range req.PokemonSprites {
-		pokemonSprites = append(pokemonSprites, usecase.NewPokemonSpriteParam(pokemonSprite.ID))
+		pokemonSprites = append(
+			pokemonSprites,
+			usecase.NewPokemonSpriteParamWithPosition(pokemonSprite.ID, pokemonSprite.Position),
+		)
 	}
 
 	param := usecase.NewDeckCreateParam(
@@ -256,7 +259,10 @@ func (c *Deck) Update(ctx *gin.Context) {
 
 	var pokemonSprites []*usecase.PokemonSpriteParam
 	for _, pokemonSprite := range req.PokemonSprites {
-		pokemonSprites = append(pokemonSprites, usecase.NewPokemonSpriteParam(pokemonSprite.ID))
+		pokemonSprites = append(
+			pokemonSprites,
+			usecase.NewPokemonSpriteParamWithPosition(pokemonSprite.ID, pokemonSprite.Position),
+		)
 	}
 
 	param := usecase.NewDeckUpdateParam(

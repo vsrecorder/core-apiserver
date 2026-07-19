@@ -55,7 +55,7 @@ func findMatchPokemonSpritesByMatchIds(
 	for _, m := range spriteModels {
 		spritesByMatchId[m.MatchId] = append(
 			spritesByMatchId[m.MatchId],
-			entity.NewPokemonSprite(m.PokemonSpriteId),
+			entity.NewPokemonSpriteWithPosition(m.PokemonSpriteId, m.Position),
 		)
 	}
 
@@ -101,7 +101,7 @@ func findDeckPokemonSpritesByDeckIds(
 	for _, m := range spriteModels {
 		spritesByDeckId[m.DeckId] = append(
 			spritesByDeckId[m.DeckId],
-			entity.NewPokemonSprite(m.PokemonSpriteId),
+			entity.NewPokemonSpriteWithPosition(m.PokemonSpriteId, m.Position),
 		)
 	}
 

@@ -252,7 +252,10 @@ func (u *Match) Create(
 
 	var pokemonSprites []*entity.PokemonSprite
 	for _, pokemonSprite := range param.PokemonSprites {
-		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(pokemonSprite.ID))
+		pokemonSprites = append(
+			pokemonSprites,
+			entity.NewPokemonSpriteWithPosition(pokemonSprite.ID, pokemonSprite.Position),
+		)
 	}
 
 	match := entity.NewMatch(
@@ -390,7 +393,10 @@ func (u *Match) Update(
 
 	var pokemonSprites []*entity.PokemonSprite
 	for _, pokemonSprite := range param.PokemonSprites {
-		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(pokemonSprite.ID))
+		pokemonSprites = append(
+			pokemonSprites,
+			entity.NewPokemonSpriteWithPosition(pokemonSprite.ID, pokemonSprite.Position),
+		)
 	}
 
 	match := entity.NewMatch(

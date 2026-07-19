@@ -119,7 +119,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 
 		var pokemonSprites []*entity.PokemonSprite
 		for _, m := range deckPokemonSpriteModels {
-			pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(m.PokemonSpriteId))
+			pokemonSprites = append(pokemonSprites, entity.NewPokemonSpriteWithPosition(m.PokemonSpriteId, m.Position))
 		}
 
 		name := r.Name
@@ -177,7 +177,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 
 			var pokemonSprites []*entity.PokemonSprite
 			for _, m := range deckPokemonSpriteModels {
-				pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(m.PokemonSpriteId))
+				pokemonSprites = append(pokemonSprites, entity.NewPokemonSpriteWithPosition(m.PokemonSpriteId, m.Position))
 			}
 
 			deckUsage := entity.NewDeckUsage(

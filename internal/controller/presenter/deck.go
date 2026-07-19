@@ -20,7 +20,8 @@ func NewDeckGetResponse(
 		pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 		for _, pokemonSprite := range deck.PokemonSprites {
 			pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-				ID: pokemonSprite.ID,
+				ID:       pokemonSprite.ID,
+				Position: pokemonSprite.Position,
 			})
 		}
 
@@ -63,7 +64,8 @@ func NewDeckGetAllResponse(
 		pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 		for _, pokemonSprite := range deck.PokemonSprites {
 			pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-				ID: pokemonSprite.ID,
+				ID:       pokemonSprite.ID,
+				Position: pokemonSprite.Position,
 			})
 		}
 
@@ -96,7 +98,8 @@ func NewDeckGetByIdResponse(
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range deck.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 
@@ -135,7 +138,8 @@ func NewDeckGetByUserIdResponse(
 		pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 		for _, pokemonSprite := range deck.PokemonSprites {
 			pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-				ID: pokemonSprite.ID,
+				ID:       pokemonSprite.ID,
+				Position: pokemonSprite.Position,
 			})
 		}
 
@@ -177,7 +181,8 @@ func NewDeckCreateResponse(
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range deck.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 
@@ -209,7 +214,8 @@ func NewDeckUpdateResponse(
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range deck.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 
@@ -241,7 +247,8 @@ func NewDeckArchiveResponse(
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range deck.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 
@@ -273,7 +280,8 @@ func NewDeckUnarchiveResponse(
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range deck.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 

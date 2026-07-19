@@ -18,7 +18,8 @@ func NewOpponentDeckUsageStatResponse(
 		pokemonSprites := []*dto.PokemonSpriteResponse{}
 		for _, pokemonSprite := range deck.PokemonSprites {
 			pokemonSprites = append(pokemonSprites, &dto.PokemonSpriteResponse{
-				ID: pokemonSprite.ID,
+				ID:       pokemonSprite.ID,
+				Position: pokemonSprite.Position,
 			})
 		}
 

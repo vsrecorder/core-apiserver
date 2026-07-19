@@ -783,6 +783,113 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
+	// 2枠目のみのスプライトは position=2 のまま保存され、1枠目へ詰められない
+	t.Run("正常系_position指定のスプライトは指定スロットで保存する", func(t *testing.T) {
+		r, mock, err := setup4DeckInfrastructure()
+		require.NoError(t, err)
+
+		datetime := time.Now().Local()
+
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "decks" SET`)).WithArgs(
+			datetime,
+			AnyTime{},
+			gorm.DeletedAt{},
+			sql.NullTime{},
+			uid,
+			"テストデッキ",
+			false,
+			id,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(regexp.QuoteMeta(
+			`DELETE FROM "deck_pokemon_sprites" WHERE deck_id = $1`,
+		)).WithArgs(
+			id,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "deck_pokemon_sprites" SET "pokemon_sprite_id"=$1 WHERE "deck_id" = $2 AND "position" = $3`,
+		)).WithArgs(
+			"raichu",
+			id,
+			2,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
+
+		deck := entity.NewDeck(
+			id,
+			datetime,
+			time.Time{},
+			uid,
+			"テストデッキ",
+			false,
+			nil,
+			[]*entity.PokemonSprite{entity.NewPokemonSpriteWithPosition("raichu", 2)},
+		)
+
+		require.NoError(t, r.Save(context.Background(), deck))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 読み取りでは DB の position が entity へ引き継がれ、2枠目のみでも枠が保たれる
+	t.Run("正常系_スプライトのpositionが読み取りでentityへ引き継がれる", func(t *testing.T) {
+		r, mock, err := setup4DeckInfrastructure()
+		require.NoError(t, err)
+
+		datetime := time.Now().Local()
+		id := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
+
+		// idの存在確認
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "decks" WHERE id = $1 AND "decks"."deleted_at" IS NULL ORDER BY "decks"."id" LIMIT $2`,
+		)).WithArgs(
+			id,
+			1,
+		).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(id))
+
+		rows := sqlmock.NewRows(deckJoinDeckCodeColumns).AddRow(
+			id,
+			datetime,
+			datetime,
+			gorm.DeletedAt{},
+			sql.NullTime{},
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			"テストデッキ",
+			false,
+			"01HD7Y3K8D6FDHMHTZ2GT41TN3",
+			datetime,
+			datetime,
+			gorm.DeletedAt{},
+			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
+			id,
+			"5dbFbk-uBwjqP-VVk5Vv",
+			true,
+			"メモ",
+		)
+
+		mock.ExpectQuery(deckJoinDeckCodeQuery(
+			`WHERE decks.id = $2 AND decks.deleted_at IS NULL`,
+		)).WithArgs(
+			id,
+			id,
+		).WillReturnRows(rows)
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id = $1`,
+		)).WithArgs(
+			id,
+		).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns).AddRow(
+			id, 2, "raichu",
+		))
+
+		deck, err := r.FindById(context.Background(), id)
+
+		require.NoError(t, err)
+		require.Len(t, deck.PokemonSprites, 1)
+		require.Equal(t, "raichu", deck.PokemonSprites[0].ID)
+		require.Equal(t, uint(2), deck.PokemonSprites[0].Position)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
 	// デッキコードのIDが空の場合(=デッキコード未登録)、deck_codes への保存は行わない
 	t.Run("正常系_デッキコードID空ならdeck_codesへは保存しない", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()

@@ -200,7 +200,10 @@ func (c *Match) Create(ctx *gin.Context) {
 
 	var pokemonSprites []*usecase.PokemonSpriteParam
 	for _, pokemonSprite := range req.PokemonSprites {
-		pokemonSprites = append(pokemonSprites, usecase.NewPokemonSpriteParam(pokemonSprite.ID))
+		pokemonSprites = append(
+			pokemonSprites,
+			usecase.NewPokemonSpriteParamWithPosition(pokemonSprite.ID, pokemonSprite.Position),
+		)
 	}
 
 	var games []*usecase.GameParam
@@ -255,7 +258,10 @@ func (c *Match) Update(ctx *gin.Context) {
 
 	var pokemonSprites []*usecase.PokemonSpriteParam
 	for _, pokemonSprite := range req.PokemonSprites {
-		pokemonSprites = append(pokemonSprites, usecase.NewPokemonSpriteParam(pokemonSprite.ID))
+		pokemonSprites = append(
+			pokemonSprites,
+			usecase.NewPokemonSpriteParamWithPosition(pokemonSprite.ID, pokemonSprite.Position),
+		)
 	}
 
 	var games []*usecase.GameParam

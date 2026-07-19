@@ -14,7 +14,8 @@ func newCalendarPokemonSpriteResponses(
 
 	for _, pokemonSprite := range pokemonSprites {
 		ret = append(ret, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 

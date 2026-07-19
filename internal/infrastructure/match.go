@@ -103,13 +103,13 @@ func (i *Match) FindById(
 	}
 
 	var matchPokemonSpriteModels []*model.MatchPokemonSprite
-	if tx := i.db.Where("match_id = ?", id).Find(&matchPokemonSpriteModels); tx.Error != nil {
+	if tx := i.db.Where("match_id = ?", id).Order("position ASC").Find(&matchPokemonSpriteModels); tx.Error != nil {
 		return nil, tx.Error
 	}
 
 	var pokemonSprites []*entity.PokemonSprite
 	for _, matchPokemonSpriteModel := range matchPokemonSpriteModels {
-		entity := entity.NewPokemonSprite(matchPokemonSpriteModel.PokemonSpriteId)
+		entity := entity.NewPokemonSpriteWithPosition(matchPokemonSpriteModel.PokemonSpriteId, matchPokemonSpriteModel.Position)
 		pokemonSprites = append(pokemonSprites, entity)
 	}
 
@@ -632,7 +632,13 @@ func (i *Match) Create(
 
 	var matchPokemonSpriteModals []*model.MatchPokemonSprite
 	for i, pokemonSprite := range entity.PokemonSprites {
-		matchPokemonSpriteModals = append(matchPokemonSpriteModals, model.NewMatchPokemonSprite(entity.ID, uint(i+1), pokemonSprite.ID))
+		// position が指定されていればスロットとして使う。
+		// 未指定(0)は後方互換のため配列インデックスから採番する。
+		position := pokemonSprite.Position
+		if position == 0 {
+			position = uint(i + 1)
+		}
+		matchPokemonSpriteModals = append(matchPokemonSpriteModals, model.NewMatchPokemonSprite(entity.ID, position, pokemonSprite.ID))
 	}
 
 	return i.db.Transaction(func(tx *gorm.DB) error {
@@ -690,7 +696,13 @@ func (i *Match) Update(
 
 	var matchPokemonSpriteModals []*model.MatchPokemonSprite
 	for i, pokemonSprite := range entity.PokemonSprites {
-		matchPokemonSpriteModals = append(matchPokemonSpriteModals, model.NewMatchPokemonSprite(entity.ID, uint(i+1), pokemonSprite.ID))
+		// position が指定されていればスロットとして使う。
+		// 未指定(0)は後方互換のため配列インデックスから採番する。
+		position := pokemonSprite.Position
+		if position == 0 {
+			position = uint(i + 1)
+		}
+		matchPokemonSpriteModals = append(matchPokemonSpriteModals, model.NewMatchPokemonSprite(entity.ID, position, pokemonSprite.ID))
 	}
 
 	return i.db.Transaction(func(tx *gorm.DB) error {

@@ -30,10 +30,11 @@ type opponentMatchResult struct {
 }
 
 type opponentDeckGroup struct {
-	deckInfo  string
-	spriteIds []string
-	count     int
-	wins      int
+	deckInfo string
+	// position ASC 順のスプライト。表示スロット固定のため position も保持する。
+	sprites []*model.MatchPokemonSprite
+	count   int
+	wins    int
 }
 
 func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
@@ -89,9 +90,10 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 		return nil, tx.Error
 	}
 
-	spritesByMatch := make(map[string][]string, len(rows))
+	// position ASC 順でスプライトモデルを保持する(表示スロット固定に position を使う)
+	spritesByMatch := make(map[string][]*model.MatchPokemonSprite, len(rows))
 	for _, s := range spriteModels {
-		spritesByMatch[s.MatchId] = append(spritesByMatch[s.MatchId], s.PokemonSpriteId)
+		spritesByMatch[s.MatchId] = append(spritesByMatch[s.MatchId], s)
 	}
 
 	// デッキ名が同じでも、対戦相手デッキのスプライト構成が異なれば別デッキとして扱う。
@@ -101,12 +103,17 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	totalMatches := 0
 
 	for _, r := range rows {
-		spriteIds := spritesByMatch[r.MatchId]
+		sprites := spritesByMatch[r.MatchId]
+		// グループキーは position ASC 順のスプライトID列で作る(順序=構成の違いを区別する)
+		spriteIds := make([]string, len(sprites))
+		for idx, s := range sprites {
+			spriteIds[idx] = s.PokemonSpriteId
+		}
 		key := r.DeckInfo + "|" + strings.Join(spriteIds, ",")
 
 		g, ok := groups[key]
 		if !ok {
-			g = &opponentDeckGroup{deckInfo: r.DeckInfo, spriteIds: spriteIds}
+			g = &opponentDeckGroup{deckInfo: r.DeckInfo, sprites: sprites}
 			groups[key] = g
 			order = append(order, key)
 		}
@@ -138,9 +145,9 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 			winRate = float64(g.wins) / float64(g.count)
 		}
 
-		pokemonSprites := make([]*entity.PokemonSprite, 0, len(g.spriteIds))
-		for _, spriteId := range g.spriteIds {
-			pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(spriteId))
+		pokemonSprites := make([]*entity.PokemonSprite, 0, len(g.sprites))
+		for _, s := range g.sprites {
+			pokemonSprites = append(pokemonSprites, entity.NewPokemonSpriteWithPosition(s.PokemonSpriteId, s.Position))
 		}
 
 		decks = append(decks, entity.NewOpponentDeckUsage(g.deckInfo, g.count, usageRate, g.wins, losses, winRate, pokemonSprites))

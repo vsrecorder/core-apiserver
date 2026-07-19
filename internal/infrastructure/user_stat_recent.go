@@ -76,7 +76,7 @@ func (i *UserStatRecent) FindRecentMatches(
 
 	spritesByMatch := make(map[string][]*entity.PokemonSprite, len(results))
 	for _, s := range spriteModels {
-		spritesByMatch[s.MatchId] = append(spritesByMatch[s.MatchId], entity.NewPokemonSprite(s.PokemonSpriteId))
+		spritesByMatch[s.MatchId] = append(spritesByMatch[s.MatchId], entity.NewPokemonSpriteWithPosition(s.PokemonSpriteId, s.Position))
 	}
 
 	// 対戦日の古い順に並び替える（取得はDESC・LIMITのため逆順になっている）

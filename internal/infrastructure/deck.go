@@ -361,13 +361,13 @@ func (i *Deck) FindById(
 	}
 
 	var deckPokemonSpriteModels []*model.DeckPokemonSprite
-	if tx := i.db.Where("deck_id = ?", deckJoinDeckCodes.DeckID).Find(&deckPokemonSpriteModels); tx.Error != nil {
+	if tx := i.db.Where("deck_id = ?", deckJoinDeckCodes.DeckID).Order("position ASC").Find(&deckPokemonSpriteModels); tx.Error != nil {
 		return nil, tx.Error
 	}
 
 	var pokemonSprites []*entity.PokemonSprite
 	for _, deckPokemonSpriteModel := range deckPokemonSpriteModels {
-		entity := entity.NewPokemonSprite(deckPokemonSpriteModel.PokemonSpriteId)
+		entity := entity.NewPokemonSpriteWithPosition(deckPokemonSpriteModel.PokemonSpriteId, deckPokemonSpriteModel.Position)
 		pokemonSprites = append(pokemonSprites, entity)
 	}
 
@@ -731,7 +731,13 @@ func (i *Deck) Save(
 
 	var deckPokemonSpriteModals []*model.DeckPokemonSprite
 	for i, pokemonSprite := range entity.PokemonSprites {
-		deckPokemonSpriteModals = append(deckPokemonSpriteModals, model.NewDeckPokemonSprite(entity.ID, uint(i+1), pokemonSprite.ID))
+		// position が指定されていればスロットとして使う。
+		// 未指定(0)は後方互換のため配列インデックスから採番する。
+		position := pokemonSprite.Position
+		if position == 0 {
+			position = uint(i + 1)
+		}
+		deckPokemonSpriteModals = append(deckPokemonSpriteModals, model.NewDeckPokemonSprite(entity.ID, position, pokemonSprite.ID))
 	}
 
 	if entity.LatestDeckCode != nil {

@@ -30,7 +30,8 @@ func NewMatchGetByIdResponse(
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range match.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 
@@ -86,7 +87,8 @@ func NewMatchGetByRecordIdResponse(
 		pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 		for _, pokemonSprite := range match.PokemonSprites {
 			pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-				ID: pokemonSprite.ID,
+				ID:       pokemonSprite.ID,
+				Position: pokemonSprite.Position,
 			})
 		}
 
@@ -144,7 +146,8 @@ func NewMatchCreateResponse(
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range match.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 
@@ -198,7 +201,8 @@ func NewMatchUpdateResponse(
 	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
 	for _, pokemonSprite := range match.PokemonSprites {
 		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
-			ID: pokemonSprite.ID,
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
 		})
 	}
 

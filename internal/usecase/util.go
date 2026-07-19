@@ -21,6 +21,8 @@ var timeNow = time.Now
 
 type PokemonSpriteParam struct {
 	ID string
+	// 表示枠の位置(1 or 2)。省略時(0)は保存側で配列インデックスから採番する。
+	Position uint
 }
 
 func NewPokemonSpriteParam(
@@ -28,6 +30,17 @@ func NewPokemonSpriteParam(
 ) *PokemonSpriteParam {
 	return &PokemonSpriteParam{
 		ID: id,
+	}
+}
+
+// NewPokemonSpriteParamWithPosition は表示枠の位置(position)付きで生成する。
+func NewPokemonSpriteParamWithPosition(
+	id string,
+	position uint,
+) *PokemonSpriteParam {
+	return &PokemonSpriteParam{
+		ID:       id,
+		Position: position,
 	}
 }
 

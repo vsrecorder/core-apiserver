@@ -268,7 +268,10 @@ func (u *Deck) Create(
 
 	var pokemonSprites []*entity.PokemonSprite
 	for _, pokemonSprite := range param.PokemonSprites {
-		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(pokemonSprite.ID))
+		pokemonSprites = append(
+			pokemonSprites,
+			entity.NewPokemonSpriteWithPosition(pokemonSprite.ID, pokemonSprite.Position),
+		)
 	}
 
 	deck := entity.NewDeck(
@@ -308,7 +311,10 @@ func (u *Deck) Update(
 
 	var pokemonSprites []*entity.PokemonSprite
 	for _, pokemonSprite := range param.PokemonSprites {
-		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(pokemonSprite.ID))
+		pokemonSprites = append(
+			pokemonSprites,
+			entity.NewPokemonSpriteWithPosition(pokemonSprite.ID, pokemonSprite.Position),
+		)
 	}
 
 	deck := entity.NewDeck(

@@ -40,9 +40,16 @@ type weeklyMatchRow struct {
 }
 
 // variantGroup は正規化済みスプライト指紋ごとの集計状態。
+// spritePos は表示用スプライトを position 付きで保持する。
+// position ASC 順で並び、表示スロット固定(1枠目/2枠目)に使う。
+type spritePos struct {
+	id       string
+	position uint
+}
+
 type variantGroup struct {
 	key     string
-	sprites []string // 表示用スプライト列（重複排除のみ。並び順は元データのまま）
+	sprites []spritePos // 表示用スプライト列（重複排除のみ。並び順は position ASC）
 	count   int
 	wins    int
 }
@@ -106,19 +113,19 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 
 	// 相手デッキの指紋（match_pokemon_sprites）を取得する。順番は集計に使わないため
 	// position でのソートは不要だが、既存の取得パターンに合わせて指定しておく。
-	spritesByMatch := make(map[string][]string, len(matchIds))
+	spritesByMatch := make(map[string][]spritePos, len(matchIds))
 	{
 		var spriteModels []*model.MatchPokemonSprite
 		if tx := i.db.Where("match_id IN ?", matchIds).Order("position ASC").Find(&spriteModels); tx.Error != nil {
 			return nil, tx.Error
 		}
 		for _, s := range spriteModels {
-			spritesByMatch[s.MatchId] = append(spritesByMatch[s.MatchId], s.PokemonSpriteId)
+			spritesByMatch[s.MatchId] = append(spritesByMatch[s.MatchId], spritePos{id: s.PokemonSpriteId, position: s.Position})
 		}
 	}
 
 	// 自分デッキの指紋（deck_pokemon_sprites）を取得する。
-	spritesByDeck := make(map[string][]string, len(deckIdSet))
+	spritesByDeck := make(map[string][]spritePos, len(deckIdSet))
 	if len(deckIdSet) > 0 {
 		deckIds := make([]string, 0, len(deckIdSet))
 		for id := range deckIdSet {
@@ -130,7 +137,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 			return nil, tx.Error
 		}
 		for _, s := range spriteModels {
-			spritesByDeck[s.DeckId] = append(spritesByDeck[s.DeckId], s.PokemonSpriteId)
+			spritesByDeck[s.DeckId] = append(spritesByDeck[s.DeckId], spritePos{id: s.PokemonSpriteId, position: s.Position})
 		}
 	}
 
@@ -141,8 +148,13 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 
 	// addVote は1票を該当する指紋グループへ加算する。
 	// won はその指紋（デッキ）が勝ったかどうか。
-	addVote := func(spriteIds []string, won bool, userId string) {
-		key, ordered := NormalizeFingerprint(spriteIds)
+	addVote := func(sprites []spritePos, won bool, userId string) {
+		// 指紋キーは順序非依存(ID集合)で作る。ordered は元の position ASC 順(重複排除済み)。
+		spriteIds := make([]string, len(sprites))
+		for i, s := range sprites {
+			spriteIds[i] = s.id
+		}
+		key, _ := NormalizeFingerprint(spriteIds)
 		if key == "" {
 			// スプライト未付与は集計不能として除外する。
 			return
@@ -150,6 +162,16 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 
 		g, ok := groups[key]
 		if !ok {
+			// 表示用は position ASC 順のまま ID 重複だけ排除する(gap も保持)
+			seen := make(map[string]struct{}, len(sprites))
+			ordered := make([]spritePos, 0, len(sprites))
+			for _, s := range sprites {
+				if _, dup := seen[s.id]; dup {
+					continue
+				}
+				seen[s.id] = struct{}{}
+				ordered = append(ordered, s)
+			}
 			g = &variantGroup{
 				key:     key,
 				sprites: ordered,
@@ -224,8 +246,8 @@ func newVariantEntity(g *variantGroup, totalVotes int) *entity.DeckUsageVariant 
 	losses := g.count - g.wins
 
 	pokemonSprites := make([]*entity.PokemonSprite, 0, len(g.sprites))
-	for _, spriteId := range g.sprites {
-		pokemonSprites = append(pokemonSprites, entity.NewPokemonSprite(spriteId))
+	for _, s := range g.sprites {
+		pokemonSprites = append(pokemonSprites, entity.NewPokemonSpriteWithPosition(s.id, s.position))
 	}
 
 	return entity.NewDeckUsageVariant(

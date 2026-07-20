@@ -177,9 +177,9 @@ func repairUser(
 
 	beforeState := "(なし)"
 	if before != nil {
-		beforeState = formatStreak(before.CurrentWeeks, before.LongestWeeks, before.FreezeUsedCount, before.LastRecordedWeek)
+		beforeState = formatStreak(before.CurrentWeeks, before.LongestWeeks, before.FreezeUsedCount, before.FreezeRegenProgress, before.LastRecordedWeek)
 	}
-	afterState := formatStreak(currentWeeks, longestWeeks, freezeUsedCount, lastRecordedWeek)
+	afterState := formatStreak(currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek)
 
 	if dryRun {
 		log.Printf("[dry-run] user=%s MISMATCH before=%s after=%s live_records=%d\n", userId, beforeState, afterState, len(dates))
@@ -195,10 +195,10 @@ func repairUser(
 	return true, nil
 }
 
-func formatStreak(currentWeeks, longestWeeks, freezeUsedCount int, lastRecordedWeek time.Time) string {
+func formatStreak(currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress int, lastRecordedWeek time.Time) string {
 	week := "なし"
 	if !lastRecordedWeek.IsZero() {
 		week = lastRecordedWeek.Format("2006-01-02")
 	}
-	return "current=" + strconv.Itoa(currentWeeks) + " longest=" + strconv.Itoa(longestWeeks) + " freeze=" + strconv.Itoa(freezeUsedCount) + " last_week=" + week
+	return "current=" + strconv.Itoa(currentWeeks) + " longest=" + strconv.Itoa(longestWeeks) + " freeze=" + strconv.Itoa(freezeUsedCount) + " regen=" + strconv.Itoa(freezeRegenProgress) + " last_week=" + week
 }

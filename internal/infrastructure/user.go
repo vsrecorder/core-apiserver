@@ -55,7 +55,7 @@ func (i *User) IsWithdrawn(
 ) (bool, error) {
 	var count int64
 
-	if tx := i.db.Unscoped().Model(&model.User{}).
+	if tx := dbFromContext(ctx, i.db).Unscoped().Model(&model.User{}).
 		Where("id = ? AND deleted_at IS NOT NULL", id).
 		Count(&count); tx.Error != nil {
 		return false, tx.Error

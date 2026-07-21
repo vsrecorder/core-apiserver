@@ -48,9 +48,10 @@ func TestUserInfrastructure(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 	){
-		"FindById": test_UserInfrastructure_FindById,
-		"Save":     test_UserInfrastructure_Save,
-		"Delete":   test_UserInfrastructure_Delete,
+		"FindById":    test_UserInfrastructure_FindById,
+		"IsWithdrawn": test_UserInfrastructure_IsWithdrawn,
+		"Save":        test_UserInfrastructure_Save,
+		"Delete":      test_UserInfrastructure_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -131,6 +132,45 @@ func test_UserInfrastructure_Save(t *testing.T) {
 		require.NoError(t, r.Save(context.Background(), user))
 		require.NoError(t, mock.ExpectationsWereMet())
 	}
+}
+
+// 退会済み判定は Unscoped で論理削除済みの行を見に行く必要がある。
+// Unscoped が外れると deleted_at IS NULL が自動で付いて常に0件になり、
+// 退会済みユーザの再登録を検知できなくなるため、生成SQLごと固定して守る。
+func test_UserInfrastructure_IsWithdrawn(t *testing.T) {
+	t.Run("正常系_退会済みの行があればtrueを返す", func(t *testing.T) {
+		r, mock, err := setup4UserInfrastructure()
+		require.NoError(t, err)
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT count(*) FROM "users" WHERE id = $1 AND deleted_at IS NOT NULL`,
+		)).WithArgs(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+		ret, err := r.IsWithdrawn(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+
+		require.NoError(t, err)
+		require.True(t, ret)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("正常系_退会済みの行が無ければfalseを返す", func(t *testing.T) {
+		r, mock, err := setup4UserInfrastructure()
+		require.NoError(t, err)
+
+		mock.ExpectQuery(regexp.QuoteMeta(
+			`SELECT count(*) FROM "users" WHERE id = $1 AND deleted_at IS NOT NULL`,
+		)).WithArgs(
+			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+		).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+		ret, err := r.IsWithdrawn(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TN2")
+
+		require.NoError(t, err)
+		require.False(t, ret)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }
 
 func test_UserInfrastructure_Delete(t *testing.T) {

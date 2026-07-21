@@ -102,6 +102,12 @@ func (c *User) Create(ctx *gin.Context) {
 			return
 		}
 
+		// 退会済みのユーザーによる再登録。未登録(404)と区別できるよう410で返す。
+		if errors.Is(err, apperror.ErrWithdrawn) {
+			apierror.ErrGone.JSON(ctx)
+			return
+		}
+
 		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}

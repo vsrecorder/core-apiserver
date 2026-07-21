@@ -120,6 +120,16 @@ func (u *User) Create(
 		return nil, err
 	}
 
+	// 退会済みのユーザーはFindByIdからは見えないため、ここまで到達してしまう。
+	// そのままSaveするとUPDATEにdeleted_at IS NULLが付いて0件更新になり、
+	// 実体が無いまま作成に成功したことになってしまうので、明示的に弾く。
+	withdrawn, err := u.repository.IsWithdrawn(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	} else if withdrawn {
+		return nil, apperror.ErrWithdrawn
+	}
+
 	if err := u.repository.Save(ctx, user); err != nil {
 		return nil, err
 	}

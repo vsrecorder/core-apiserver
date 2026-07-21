@@ -43,6 +43,27 @@ func (i *User) FindById(
 	return user, nil
 }
 
+// IsWithdrawn は退会済み(論理削除済み)のユーザーが残っているかを返す。
+//
+// gorm のソフトデリートにより FindById には deleted_at IS NULL が自動で付くため、
+// 退会済みのユーザーは「存在しない」ものとして扱われる。
+// 一方 Save の UPDATE にも同じ条件が付くので、退会済みの行に対する作成は
+// 0件更新のまま成功してしまう。それを検知できるようにするための確認用。
+func (i *User) IsWithdrawn(
+	ctx context.Context,
+	id string,
+) (bool, error) {
+	var count int64
+
+	if tx := i.db.Unscoped().Model(&model.User{}).
+		Where("id = ? AND deleted_at IS NOT NULL", id).
+		Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}
+
 func (i *User) Save(
 	ctx context.Context,
 	user *entity.User,

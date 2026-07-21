@@ -70,6 +70,21 @@ func (mr *MockUserInterfaceMockRecorder) FindById(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockUserInterface)(nil).FindById), ctx, id)
 }
 
+// IsWithdrawn mocks base method.
+func (m *MockUserInterface) IsWithdrawn(ctx context.Context, id string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsWithdrawn", ctx, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsWithdrawn indicates an expected call of IsWithdrawn.
+func (mr *MockUserInterfaceMockRecorder) IsWithdrawn(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsWithdrawn", reflect.TypeOf((*MockUserInterface)(nil).IsWithdrawn), ctx, id)
+}
+
 // Save mocks base method.
 func (m *MockUserInterface) Save(ctx context.Context, entity *entity.User) error {
 	m.ctrl.T.Helper()

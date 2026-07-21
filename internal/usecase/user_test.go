@@ -92,6 +92,7 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().IsWithdrawn(context.Background(), id).Return(false, nil)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
 		ret, err := usecase.Create(context.Background(), param)
@@ -142,6 +143,49 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+
+		ret, err := usecase.Create(context.Background(), param)
+
+		require.Error(t, err)
+		require.Empty(t, ret)
+	})
+
+	// 退会済みのユーザはFindByIdからは見えないため、そのままSaveすると
+	// UPDATEがdeleted_at IS NULLに阻まれて0件更新のまま成功扱いになってしまう。
+	// Saveまで到達せずErrWithdrawnで弾かれることを確認する。
+	t.Run("異常系_退会済みIDならErrWithdrawnを返す", func(t *testing.T) {
+		id, _ := generateId()
+		name := "test"
+		imageURL := "http://example.com/image.png"
+
+		param := NewUserCreateParam(
+			id,
+			name,
+			imageURL,
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().IsWithdrawn(context.Background(), id).Return(true, nil)
+
+		ret, err := usecase.Create(context.Background(), param)
+
+		require.ErrorIs(t, err, apperror.ErrWithdrawn)
+		require.Empty(t, ret)
+	})
+
+	t.Run("異常系_退会済み確認でエラーならそのまま返す", func(t *testing.T) {
+		id, _ := generateId()
+		name := "test"
+		imageURL := "http://example.com/image.png"
+
+		param := NewUserCreateParam(
+			id,
+			name,
+			imageURL,
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().IsWithdrawn(context.Background(), id).Return(false, errors.New(""))
 
 		ret, err := usecase.Create(context.Background(), param)
 

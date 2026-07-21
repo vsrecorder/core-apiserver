@@ -71,6 +71,11 @@ var (
 	// ErrConflict は作成しようとしたリソースが既に存在する場合(409)。
 	ErrConflict = New(http.StatusConflict, errors.New("already exists"))
 
+	// ErrGone は対象が退会済みで、恒久的に失われている場合(410)。
+	// 404 と区別することで、クライアントは「未登録なので作成してよい」のか
+	// 「退会済みなので作成してはいけない」のかを判断できる。
+	ErrGone = New(http.StatusGone, errors.New("withdrawn"))
+
 	// ErrDeckHasRecords は紐づく Record があり Deck を削除できない場合(409)。
 	ErrDeckHasRecords = New(http.StatusConflict, errors.New("cannot delete deck with records"))
 

@@ -19,6 +19,11 @@ var (
 	// HTTP では 409 Conflict に対応する。
 	ErrAlreadyExists = errors.New("already exists")
 
+	// ErrWithdrawn は退会済み(論理削除済み)のユーザーに対する操作を拒否する場合に返す。
+	// 「まだ存在しない(404)」ではなく「かつて存在したが失われた」ことを表すため、
+	// HTTP では 410 Gone に対応する。
+	ErrWithdrawn = errors.New("withdrawn")
+
 	// ErrUnderMaintenance は依存する外部サイトがメンテナンス中で、
 	// 処理を継続できない場合に返す。HTTP では 503 Service Unavailable に対応する。
 	ErrUnderMaintenance = errors.New("under maintenance")

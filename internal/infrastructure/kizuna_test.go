@@ -77,14 +77,14 @@ func insertKizunaFixtures(t *testing.T, db *gorm.DB, userId string) {
 		 ('deck-02', ?, ?, ?, '未使用')`,
 		now, now, userId, now, now, userId).Error)
 
-	// 記録：同じ日に2件（同行日数は日付の種類で数えるので1日と数える）＋別日に1件
+	// 記録：同じ日に2件（同行日数は日付の種類で数えるので1日と数える）＋別日に2件
 	require.NoError(t, db.Exec(
 		`INSERT INTO records (id, created_at, updated_at, user_id, deck_id, official_event_id, event_date, memo, ignore_stats_flg) VALUES
 		 ('rec-01', ?, ?, ?, 'deck-01', 2001, '2026-03-01', 'よく回った', false),
 		 ('rec-02', ?, ?, ?, 'deck-01', 2002, '2026-03-01', '', false),
 		 ('rec-03', ?, ?, ?, 'deck-01', 2002, '2026-03-05', 'あああ', false),
-		 -- 集計対象外の記録は数えない
-		 ('rec-04', ?, ?, ?, 'deck-01', 2002, '2026-03-09', 'これは無視される', true)`,
+		 -- 集計対象外の記録も数える（きずなは勝率を見ないため、除外する理由がない）
+		 ('rec-04', ?, ?, ?, 'deck-01', 2002, '2026-03-09', 'これも数える', true)`,
 		now, now, userId, now, now, userId, now, now, userId, now, now, userId).Error)
 
 	// デッキコード：3件。うち1件はシティリーグ(3/1)の前日＝大会に向けた調整とみなす
@@ -97,14 +97,16 @@ func insertKizunaFixtures(t *testing.T, db *gorm.DB, userId string) {
 		time.Date(2020, 1, 2, 0, 0, 0, 0, time.Local), now, userId,
 		time.Date(2026, 2, 28, 22, 0, 0, 0, time.Local), now, userId).Error)
 
-	// 対戦：3戦1勝。match-01 は BO3 で games が2行付く（match 単位で数えられること）
+	// 対戦：4戦1勝。match-01 は BO3 で games が2行付く（match 単位で数えられること）
+	// match-04 は集計対象外の記録(rec-04)に紐づく対戦で、これも数える
 	require.NoError(t, db.Exec(
 		`INSERT INTO matches (id, created_at, updated_at, user_id, record_id, deck_id,
 		                      bo3_flg, qualifying_round_flg, final_tournament_flg, victory_flg) VALUES
 		 ('match-01', ?, ?, ?, 'rec-01', 'deck-01', true,  true, false, true),
 		 ('match-02', ?, ?, ?, 'rec-01', 'deck-01', false, true, false, false),
-		 ('match-03', ?, ?, ?, 'rec-03', 'deck-01', false, true, false, false)`,
-		now, now, userId, now, now, userId, now, now, userId).Error)
+		 ('match-03', ?, ?, ?, 'rec-03', 'deck-01', false, true, false, false),
+		 ('match-04', ?, ?, ?, 'rec-04', 'deck-01', false, true, false, false)`,
+		now, now, userId, now, now, userId, now, now, userId, now, now, userId).Error)
 
 	require.NoError(t, db.Exec(
 		`INSERT INTO games (id, created_at, updated_at, user_id, match_id, go_first, winning_flg) VALUES
@@ -133,22 +135,25 @@ func TestIntegrationKizunaRepository(t *testing.T) {
 		a := byDeck["deck-01"]
 		require.NotNil(t, a)
 
-		// 3/1 に2件・3/5 に1件。集計対象外(rec-04)は数えない
-		require.Equal(t, 2, a.EventDayCount)
-		require.Equal(t, 3, a.RecordCount)
-		// メモがあるのは rec-01 と rec-03
-		require.Equal(t, 2, a.MemoCount)
-		require.Equal(t, len([]rune("よく回った"))+len([]rune("あああ")), a.MemoTotalLength)
+		// 3/1 に2件・3/5 に1件・3/9 に1件。集計対象外(rec-04)も数える
+		require.Equal(t, 3, a.EventDayCount)
+		require.Equal(t, 4, a.RecordCount)
+		// メモがあるのは rec-01・rec-03 と、集計対象外の rec-04
+		require.Equal(t, 3, a.MemoCount)
+		require.Equal(t,
+			len([]rune("よく回った"))+len([]rune("あああ"))+len([]rune("これも数える")),
+			a.MemoTotalLength)
 
-		// シティリーグ1件・ジムバトル1件（rec-04 は対象外なのでジムは1件のまま）
+		// シティリーグ1件・ジムバトル3件（rec-02, rec-03 と集計対象外の rec-04）
 		require.Equal(t, 1, a.StageCounts[entity.KizunaStageCityLeague])
-		require.Equal(t, 2, a.StageCounts[entity.KizunaStageGymBattle])
+		require.Equal(t, 3, a.StageCounts[entity.KizunaStageGymBattle])
 
 		require.Equal(t, 3, a.DeckCodeCount)
 		// 3/1 のシティリーグの前日に作った code-03 だけが該当する
 		require.Equal(t, 1, a.EveCodeCount)
 
-		require.Equal(t, 3, a.MatchCount)
+		// 集計対象外の記録(rec-04)に紐づく match-04 も含めて4戦1勝
+		require.Equal(t, 4, a.MatchCount)
 		require.Equal(t, 1, a.Wins)
 	})
 

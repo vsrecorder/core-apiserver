@@ -31,10 +31,19 @@ func NewKizuna(
  * SQL に点数を書くと、算出方法を調整するたびにクエリを触ることになる。
  */
 
-// きずなLv.の集計で共通して除外する記録の条件。
-// 論理削除済みと、ユーザーが集計対象外に指定した記録は数えない
-// （deck_usage_stat など既存の集計と同じ方針）。
-const kizunaRecordCondition = "records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND records.deck_id IS NOT NULL AND records.deck_id != ''"
+/*
+ * きずなLv.の集計で共通して除外する記録の条件。
+ *
+ * 除くのは論理削除済みの記録だけで、集計対象外(ignore_stats_flg)の記録も数える。
+ * deck_usage_stat など勝率まわりの集計とは、ここだけ方針が違う。
+ *
+ * 集計対象外は「この記録で勝率を歪めたくない」という意思表示であって、
+ * そのデッキを連れて行った事実まで取り消すものではない。きずなは勝率を一切見ず
+ * 「どう歩んできたか」だけを見る指標なので、除外する理由がない
+ * （むしろ、握った回数が多いデッキほど集計対象外の記録も溜まりやすく、
+ * 除外すると一緒に過ごした分だけ数値が下がるという逆転が起きる）。
+ */
+const kizunaRecordCondition = "records.user_id = ? AND records.deleted_at IS NULL AND records.deck_id IS NOT NULL AND records.deck_id != ''"
 
 /*
  * 記録を「どの格の舞台か」に分類する式。

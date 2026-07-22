@@ -71,6 +71,7 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 | `/tonamel_events`        | Tonamelイベント            |
 | `/stats`                 | ユーザー統計               |
 | `/deck_usage`, `/opponent_deck_usage`, `/weekly_usage` | デッキ使用率統計 |
+| `/kizuna`                | デッキごとのきずなLv.      |
 | `/badges`, `/environment_badges` | バッジ / 環境バッジ |
 | `/streak`                | 連勝記録                   |
 | `/designations`          | 称号                       |

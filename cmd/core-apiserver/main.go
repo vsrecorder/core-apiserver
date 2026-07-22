@@ -418,6 +418,13 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	controller.NewKizuna(
+		r,
+		usecase.NewKizuna(
+			infrastructure.NewKizuna(db),
+		),
+	).RegisterRoute(relativePath)
+
 	controller.NewOpponentDeckUsageStat(
 		r,
 		usecase.NewOpponentDeckUsageStat(

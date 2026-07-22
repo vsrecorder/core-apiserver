@@ -131,6 +131,9 @@ CREATE TABLE decks (
 
 CREATE INDEX idx_decks_created_at ON decks(created_at);
 CREATE INDEX idx_decks_deleted_at ON decks(deleted_at);
+-- ユーザー単位の集計(きずなLv.・デッキ使用率統計)は必ず user_id で絞る。
+-- 索引が無いとサービス全体の行数に比例して遅くなる。
+CREATE INDEX idx_decks_user_id ON decks(user_id);
 
 CREATE TABLE deck_codes (
     id                    VARCHAR(26) PRIMARY KEY, 
@@ -147,6 +150,7 @@ CREATE TABLE deck_codes (
 
 CREATE INDEX idx_deck_codes_created_at ON deck_codes(created_at);
 CREATE INDEX idx_deck_codes_deleted_at ON deck_codes(deleted_at);
+CREATE INDEX idx_deck_codes_user_id ON deck_codes(user_id);
 
 CREATE TABLE records (
     id                        VARCHAR(26) PRIMARY KEY,
@@ -183,6 +187,7 @@ CREATE TABLE records (
 
 CREATE INDEX idx_records_created_at ON records(created_at);
 CREATE INDEX idx_records_deleted_at ON records(deleted_at);
+CREATE INDEX idx_records_user_id ON records(user_id);
 
 CREATE TABLE matches (
     id                        VARCHAR(26) PRIMARY KEY,
@@ -207,6 +212,11 @@ CREATE TABLE matches (
     position                  INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (record_id)   REFERENCES records (id)
 );
+
+-- matches は集計の中心にあるが索引が無く、ユーザー単位の集計でも全件走査になっていた。
+-- user_id は絞り込み用、record_id は records との結合用。
+CREATE INDEX idx_matches_user_id ON matches(user_id);
+CREATE INDEX idx_matches_record_id ON matches(record_id);
 
 CREATE TABLE games (
     id                       VARCHAR(26) PRIMARY KEY,

@@ -151,6 +151,12 @@ CREATE TABLE deck_codes (
 CREATE INDEX idx_deck_codes_created_at ON deck_codes(created_at);
 CREATE INDEX idx_deck_codes_deleted_at ON deck_codes(deleted_at);
 CREATE INDEX idx_deck_codes_user_id ON deck_codes(user_id);
+-- デッキ一覧は「デッキごとに最新のデッキコード1件」を DISTINCT ON で引く(deck.go)。
+-- 索引が無いと LIMIT 20 の一覧でも deck_codes 全件をソートしてから結合するため、
+-- サービス全体のデッキコード数に比例して遅くなる。実測で 1176ms → 2ms(10万件時)。
+-- DISTINCT ON / ORDER BY の並びと一致させる必要があるので、created_at・updated_at の
+-- DESC まで含めた複合索引にする(deck_id 単独の索引ではソートを省けず効果が無い)。
+CREATE INDEX idx_deck_codes_deck_id_created_at ON deck_codes(deck_id, created_at DESC, updated_at DESC);
 
 CREATE TABLE records (
     id                        VARCHAR(26) PRIMARY KEY,
@@ -232,6 +238,11 @@ CREATE TABLE games (
     memo                     TEXT,
     FOREIGN KEY (match_id)   REFERENCES matches (id)
 );
+
+-- games は勝率・先攻/後攻率の集計で matches に必ず結合されるが、PostgreSQL は
+-- 外部キーに索引を自動作成しないため、1ユーザーぶんの集計でも games 全件走査になっていた。
+-- 実測で 863ms → 4.7ms(対局30万件時)。差はサービス全体の対局数に比例して開く。
+CREATE INDEX idx_games_match_id ON games(match_id);
 
 CREATE TABLE users (
     id          VARCHAR(32) PRIMARY KEY,
@@ -374,6 +385,11 @@ CREATE TABLE cityleague_results (
 );
 
 CREATE UNIQUE INDEX cityleague_results_unique ON cityleague_results (cityleague_schedule_id, official_event_id, player_id);
+
+-- 称号判定(designation_stats.go)はプレイヤーIDで入賞・決勝進出を何度も引くが、
+-- 上の複合索引は player_id が先頭ではないため使えず、毎回全件走査になっていた。
+-- 実測で 4.98ms → 0.19ms(6.9万件時)。この表は毎シーズン増え続ける。
+CREATE INDEX idx_cityleague_results_player_id ON cityleague_results (player_id);
 
 
 

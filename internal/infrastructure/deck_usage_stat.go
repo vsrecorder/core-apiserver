@@ -8,7 +8,6 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
-	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 )
 
 type DeckUsageStat struct {
@@ -108,19 +107,39 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	// 後段で追加する際に、重複を避けるために使う。
 	seen := make(map[string]bool, len(results))
 
+	// スプライトはデッキごとに引くとデッキ数に比例してクエリが増える(N+1)ため、
+	// 後段のループで使う分をここで1クエリにまとめて取得しておく。
+	// 集計対象外のみのデッキは全期間集計のときだけ一覧に加わるので、その場合だけ含める。
+	// 同じデッキが集計対象・集計対象外の両方に現れるため、IDは重複を除いて渡す。
+	spriteDeckIds := make([]string, 0, len(results)+len(ignoredResults))
+	spriteDeckIdSeen := make(map[string]struct{}, len(results)+len(ignoredResults))
+
+	appendSpriteDeckId := func(deckId string) {
+		if _, ok := spriteDeckIdSeen[deckId]; ok {
+			return
+		}
+		spriteDeckIdSeen[deckId] = struct{}{}
+		spriteDeckIds = append(spriteDeckIds, deckId)
+	}
+
+	for _, r := range results {
+		appendSpriteDeckId(r.DeckId)
+	}
+	if fromDate.IsZero() && toDate.IsZero() {
+		for _, r := range ignoredResults {
+			appendSpriteDeckId(r.DeckId)
+		}
+	}
+
+	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, spriteDeckIds)
+	if err != nil {
+		return nil, err
+	}
+
 	decks := []*entity.DeckUsage{}
 	for _, r := range results {
 		seen[r.DeckId] = true
-		// デッキに設定されたポケモンスプライトを取得する
-		var deckPokemonSpriteModels []*model.DeckPokemonSprite
-		if tx := i.db.Where("deck_id = ?", r.DeckId).Order("position ASC").Find(&deckPokemonSpriteModels); tx.Error != nil {
-			return nil, tx.Error
-		}
-
-		var pokemonSprites []*entity.PokemonSprite
-		for _, m := range deckPokemonSpriteModels {
-			pokemonSprites = append(pokemonSprites, entity.NewPokemonSpriteWithPosition(m.PokemonSpriteId, m.Position))
-		}
+		pokemonSprites := spritesByDeckId[r.DeckId]
 
 		name := r.Name
 
@@ -170,18 +189,8 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 				continue
 			}
 
-			var deckPokemonSpriteModels []*model.DeckPokemonSprite
-			if tx := i.db.Where("deck_id = ?", r.DeckId).Order("position ASC").Find(&deckPokemonSpriteModels); tx.Error != nil {
-				return nil, tx.Error
-			}
-
-			var pokemonSprites []*entity.PokemonSprite
-			for _, m := range deckPokemonSpriteModels {
-				pokemonSprites = append(pokemonSprites, entity.NewPokemonSpriteWithPosition(m.PokemonSpriteId, m.Position))
-			}
-
 			deckUsage := entity.NewDeckUsage(
-				r.DeckId, r.Name, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, pokemonSprites,
+				r.DeckId, r.Name, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, spritesByDeckId[r.DeckId],
 			)
 			deckUsage.IgnoredCount = r.IgnoredCount
 			decks = append(decks, deckUsage)

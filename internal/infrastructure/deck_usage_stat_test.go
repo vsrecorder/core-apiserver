@@ -71,7 +71,7 @@ func test_DeckUsageStatInfrastructure_AggregatesWinsAndGoFirstCountsPerDeck(t *t
 		WillReturnRows(sqlmock.NewRows(deckUsageIgnoredColumns))
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id = $1 ORDER BY position ASC`,
+		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
 	)).WithArgs("deck-01").WillReturnRows(sqlmock.NewRows([]string{"deck_id", "position", "pokemon_sprite_id"}))
 
 	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{})
@@ -146,15 +146,11 @@ func test_DeckUsageStatInfrastructure_IncludesIgnoredCounts(t *testing.T) {
 		WithArgs(userId).
 		WillReturnRows(ignoredRows)
 
-	// 集計対象デッキ(deck-01)のスプライト取得
+	// スプライトはデッキごとに引かず1クエリでまとめて取得する。
+	// deck-01 は集計対象・集計対象外の両方に現れるが、IDは重複を除いて渡される。
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id = $1 ORDER BY position ASC`,
-	)).WithArgs("deck-01").WillReturnRows(sqlmock.NewRows([]string{"deck_id", "position", "pokemon_sprite_id"}))
-
-	// 集計対象外のみのデッキ(deck-02)のスプライト取得
-	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id = $1 ORDER BY position ASC`,
-	)).WithArgs("deck-02").WillReturnRows(sqlmock.NewRows([]string{"deck_id", "position", "pokemon_sprite_id"}))
+		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1,$2) ORDER BY position ASC`,
+	)).WithArgs("deck-01", "deck-02").WillReturnRows(sqlmock.NewRows([]string{"deck_id", "position", "pokemon_sprite_id"}))
 
 	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{})
 

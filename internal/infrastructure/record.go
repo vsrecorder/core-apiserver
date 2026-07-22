@@ -556,16 +556,16 @@ func (i *Record) Delete(
 		return wrapError(tx.Error)
 	}
 
-	var matches []*model.Match
-	if tx := db.Where("record_id = ?", id).Order("created_at ASC").Find(&matches); tx.Error != nil {
-		return tx.Error
-	}
-
 	return db.Transaction(func(tx *gorm.DB) error {
-		for _, match := range matches {
-			if tx := tx.Where("match_id = ?", match.ID).Delete(&model.Game{}); tx.Error != nil {
-				return tx.Error
-			}
+		// 対局(games)は、マッチを1件ずつ引いてから消すとマッチ数に比例してクエリが増える。
+		// 消す対象はサブクエリで指定できるため、マッチ数によらず1文で済ませる。
+		// 退会処理(usecase.User.Delete)は記録の数だけこの削除を呼ぶので、
+		// ここが記録数×マッチ数に膨らむと1トランザクションの保持時間がそのまま延びる。
+		if tx := tx.Where(
+			"match_id IN (?)",
+			tx.Model(&model.Match{}).Select("id").Where("record_id = ?", id),
+		).Delete(&model.Game{}); tx.Error != nil {
+			return tx.Error
 		}
 
 		if tx := tx.Where("record_id = ?", id).Delete(&model.Match{}); tx.Error != nil {

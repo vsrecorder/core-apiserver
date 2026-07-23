@@ -302,9 +302,12 @@ func main() {
 		r,
 		infrastructure.NewRecord(db, logger),
 		usecase.NewRecord(
+			logger,
 			infrastructure.NewRecord(db, logger),
 			badgeEvaluation,
 			designationEvaluation,
+			infrastructure.NewTonamelEvent(logger),
+			infrastructure.NewTonamelEventStore(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -449,7 +452,7 @@ func main() {
 		usecase.NewCalendar(
 			logger,
 			infrastructure.NewCalendar(db),
-			infrastructure.NewTonamelEvent(logger),
+			infrastructure.NewTonamelEventStore(db),
 		),
 	).RegisterRoute(relativePath)
 

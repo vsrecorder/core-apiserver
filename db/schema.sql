@@ -706,6 +706,25 @@ CREATE TABLE pokemon_avatars (
 
 
 
+-- Tonamel の大会情報(タイトル・説明・画像)を保持するキャッシュテーブル。
+-- id は records.tonamel_event_id と同じ Tonamel の大会ID。
+--
+-- これらは tonamel.com の大会ページをスクレイピングして得るが、一括取得APIが無いため
+-- 大会ごとに1リクエストかかる。カレンダー表示のたびに参照中の全大会を取り直すと、
+-- 記録数に比例して外部サイトへのリクエストが増える(N+1)。大会情報はほぼ不変で
+-- 全ユーザー共通なので、記録作成時に1度だけ取得してここへ保存し、以降は参照しない。
+-- 既存記録ぶんは cmd/backfill-tonamel-events でまとめて投入する。
+CREATE TABLE tonamel_events (
+    id          VARCHAR(8) NOT NULL PRIMARY KEY,
+    title       VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    image       TEXT NOT NULL DEFAULT '',
+    created_at  TIMESTAMP NOT NULL,
+    updated_at  TIMESTAMP NOT NULL
+);
+
+
+
 
 
 CREATE TABLE player_rankings (
@@ -749,6 +768,7 @@ GRANT SELECT ON unofficial_events       TO grafana;
 
 GRANT SELECT ON pokemon_sprites         TO grafana;
 GRANT SELECT ON pokemon_avatars         TO grafana;
+GRANT SELECT ON tonamel_events          TO grafana;
 
 GRANT SELECT ON users                   TO grafana;
 GRANT SELECT ON users_players           TO grafana;

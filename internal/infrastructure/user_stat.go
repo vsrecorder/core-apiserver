@@ -64,9 +64,9 @@ func (i *UserStat) FindUserStat(
 	// （COUNT は NULL を数えないので、絞り込んでから DISTINCT するのと同じ結果になる）。
 	var recordResult recordStatsResult
 	recordQuery := i.db.Table("records").
-		Select("COUNT(*) AS record_count, " +
-			"COUNT(DISTINCT CASE WHEN official_event_id != 0 THEN official_event_id END) AS official_event_count, " +
-			"COUNT(DISTINCT CASE WHEN tonamel_event_id != '' THEN tonamel_event_id END) AS tonamel_event_count, " +
+		Select("COUNT(*) AS record_count, "+
+			"COUNT(DISTINCT CASE WHEN official_event_id != 0 THEN official_event_id END) AS official_event_count, "+
+			"COUNT(DISTINCT CASE WHEN tonamel_event_id != '' THEN tonamel_event_id END) AS tonamel_event_count, "+
 			"COUNT(DISTINCT CASE WHEN unofficial_event_id != '' THEN unofficial_event_id END) AS unofficial_event_count").
 		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId)
 

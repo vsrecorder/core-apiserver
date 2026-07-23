@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -156,6 +158,47 @@ func (s spyDesignationEvaluation) NotifyIfTierLost(ctx context.Context, userId s
 	*s.notifyIfTierLostCalled = true
 }
 
+// testLogger はテストで使う破棄用ロガー。
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+// stubTonamelEventFetcher は tonamel.com からの取得(TonamelEventInterface)のスタブ。
+// events に登録したIDだけ返し、それ以外は ErrRecordNotFound を返す。
+// err が設定されていれば常にそれを返す。呼び出されたIDを calledIds に記録する。
+type stubTonamelEventFetcher struct {
+	events    map[string]*entity.TonamelEvent
+	err       error
+	calledIds []string
+}
+
+func (s *stubTonamelEventFetcher) FindById(ctx context.Context, id string) (*entity.TonamelEvent, error) {
+	s.calledIds = append(s.calledIds, id)
+	if s.err != nil {
+		return nil, s.err
+	}
+	if e, ok := s.events[id]; ok {
+		return e, nil
+	}
+	return nil, apperror.ErrRecordNotFound
+}
+
+// newRecordUsecaseForTest は Tonamel永続化を伴わない一般的なテスト用に Record usecase を組む。
+func newRecordUsecaseForTest(
+	repo *mock_repository.MockRecordInterface,
+	badgeEval BadgeEvaluationInterface,
+	designationEval DesignationEvaluationInterface,
+) RecordInterface {
+	return NewRecord(
+		testLogger(),
+		repo,
+		badgeEval,
+		designationEval,
+		&stubTonamelEventFetcher{},
+		&stubTonamelEventStore{},
+	)
+}
+
 // デッキ未登録のまま作成した記録に、あとからデッキを登録するケースでは、
 // Update経由で称号のtierが変化しうる。この変化がUpdateからも通知されることを保証する
 // (Createのみ通知していた過去のバグの再発防止)。
@@ -164,7 +207,7 @@ func TestRecordUsecase_Update_NotifiesDesignationChange(t *testing.T) {
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
 
 	var notifyIfTierChangedCalled, notifyIfTierLostCalled bool
-	usecase := NewRecord(
+	usecase := newRecordUsecaseForTest(
 		mockRepository,
 		stubBadgeEvaluation{},
 		spyDesignationEvaluation{
@@ -196,10 +239,87 @@ func TestRecordUsecase_Update_NotifiesDesignationChange(t *testing.T) {
 	require.True(t, notifyIfTierLostCalled)
 }
 
+// Tonamel記録を作成すると、大会情報を1度だけ取得して tonamel_events へ保存する。
+func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+
+	t.Run("正常系_未保存のTonamel記録は取得して保存する", func(t *testing.T) {
+		fetcher := &stubTonamelEventFetcher{events: map[string]*entity.TonamelEvent{
+			"61ozP": entity.NewTonamelEvent("61ozP", "テスト大会", "説明", "https://example.com/i.png"),
+		}}
+		store := &stubTonamelEventStore{} // 事前に保存済みのものは無い
+
+		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+
+		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		_, err := usecase.Create(context.Background(), param)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{"61ozP"}, fetcher.calledIds)
+		require.Len(t, store.savedByCalls, 1)
+		require.Equal(t, "61ozP", store.savedByCalls[0].ID)
+		require.Equal(t, "テスト大会", store.savedByCalls[0].Title)
+	})
+
+	t.Run("正常系_既に保存済みのTonamel記録は取得しない", func(t *testing.T) {
+		fetcher := &stubTonamelEventFetcher{}
+		store := &stubTonamelEventStore{events: map[string]*entity.TonamelEvent{
+			"61ozP": {ID: "61ozP"}, // 既に保存済み
+		}}
+
+		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+
+		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		_, err := usecase.Create(context.Background(), param)
+
+		require.NoError(t, err)
+		require.Empty(t, fetcher.calledIds) // 外部取得しない
+		require.Empty(t, store.savedByCalls)
+	})
+
+	t.Run("正常系_Tonamel記録でなければ取得も保存もしない", func(t *testing.T) {
+		fetcher := &stubTonamelEventFetcher{}
+		store := &stubTonamelEventStore{}
+
+		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+
+		param := NewRecordParam(0, "", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		_, err := usecase.Create(context.Background(), param)
+
+		require.NoError(t, err)
+		require.Empty(t, store.queriedIds)
+		require.Empty(t, fetcher.calledIds)
+		require.Empty(t, store.savedByCalls)
+	})
+
+	t.Run("正常系_大会情報の取得に失敗しても記録作成は成功する", func(t *testing.T) {
+		fetcher := &stubTonamelEventFetcher{err: errors.New("")} // tonamel.com取得に失敗
+		store := &stubTonamelEventStore{}
+
+		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+
+		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		ret, err := usecase.Create(context.Background(), param)
+
+		require.NoError(t, err) // 記録作成自体は失敗させない
+		require.NotNil(t, ret)
+		require.Empty(t, store.savedByCalls) // 取得失敗のため保存されない
+	})
+}
+
 func TestRecordUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewRecord(mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{})
+	usecase := newRecordUsecaseForTest(mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

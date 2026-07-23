@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
@@ -148,17 +149,33 @@ type RecordInterface interface {
 }
 
 type Record struct {
+	logger                *slog.Logger
 	repository            repository.RecordInterface
 	badgeEvaluation       BadgeEvaluationInterface
 	designationEvaluation DesignationEvaluationInterface
+	// tonamelEventRepo は tonamel.com から大会情報を取得する(HTTP)。
+	// tonamelEventStore は取得結果をDBへ保存・参照する。
+	// 記録作成時に一度だけ取得して保存し、カレンダー等の参照を外部通信なしにする。
+	tonamelEventRepo  repository.TonamelEventInterface
+	tonamelEventStore repository.TonamelEventStoreInterface
 }
 
 func NewRecord(
+	logger *slog.Logger,
 	repository repository.RecordInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	designationEvaluation DesignationEvaluationInterface,
+	tonamelEventRepo repository.TonamelEventInterface,
+	tonamelEventStore repository.TonamelEventStoreInterface,
 ) RecordInterface {
-	return &Record{repository, badgeEvaluation, designationEvaluation}
+	return &Record{
+		logger:                logger,
+		repository:            repository,
+		badgeEvaluation:       badgeEvaluation,
+		designationEvaluation: designationEvaluation,
+		tonamelEventRepo:      tonamelEventRepo,
+		tonamelEventStore:     tonamelEventStore,
+	}
 }
 
 func (u *Record) FindById(
@@ -355,6 +372,10 @@ func (u *Record) Create(
 		return nil, err
 	}
 
+	// Tonamel記録なら、大会情報をこの時点で一度だけ取得してDBへ保存しておく。
+	// カレンダー等はこれを参照するだけで済み、表示のたびに外部サイトを引かずに済む。
+	u.persistTonamelEvent(ctx, param.tonamelEventId)
+
 	// 通知一覧はcreated_at DESC(新しい順、同値時はid DESC)で表示されるため、後から
 	// 生成した通知ほど上に表示される。作成順序を「ユーザバッジ→称号/ランクアップ」に
 	// することで、表示順序は下から「ユーザバッジ→称号/ランクアップ」(=上から称号/
@@ -371,6 +392,54 @@ func (u *Record) Create(
 	}
 
 	return record, nil
+}
+
+// persistTonamelEvent は Tonamel の大会情報を tonamel_events へ保存する。
+//
+// すべてベストエフォートで、失敗しても記録作成自体は成功させる(大会情報が
+// 無くてもタイトル不明として扱えるため。カレンダー側と同じ寛容な方針)。
+//   - tonamelEventId が空なら何もしない。
+//   - 既に保存済みなら再取得しない(大会情報は不変で全ユーザー共通のため、
+//     別のユーザーや過去の記録作成で保存済みなら外部通信を省ける)。
+//   - 未保存なら tonamel.com から取得して保存する。
+func (u *Record) persistTonamelEvent(
+	ctx context.Context,
+	tonamelEventId string,
+) {
+	if tonamelEventId == "" {
+		return
+	}
+
+	existing, err := u.tonamelEventStore.FindByIds(ctx, []string{tonamelEventId})
+	if err != nil {
+		u.logger.Warn(
+			"failed to look up tonamel event before persisting",
+			slog.String("tonamel_event_id", tonamelEventId),
+			slog.String("error_message", err.Error()),
+		)
+		return
+	}
+	if len(existing) > 0 {
+		return
+	}
+
+	tonamelEvent, err := u.tonamelEventRepo.FindById(ctx, tonamelEventId)
+	if err != nil {
+		u.logger.Warn(
+			"failed to fetch tonamel event for persisting",
+			slog.String("tonamel_event_id", tonamelEventId),
+			slog.String("error_message", err.Error()),
+		)
+		return
+	}
+
+	if err := u.tonamelEventStore.Save(ctx, tonamelEvent); err != nil {
+		u.logger.Warn(
+			"failed to save tonamel event",
+			slog.String("tonamel_event_id", tonamelEventId),
+			slog.String("error_message", err.Error()),
+		)
+	}
 }
 
 func (u *Record) Update(
@@ -419,6 +488,10 @@ func (u *Record) Update(
 	if err := u.repository.Save(ctx, record); err != nil {
 		return nil, err
 	}
+
+	// 編集で Tonamel記録に変わった/別の大会に付け替えられたケースに追随する。
+	// 既に保存済みの大会なら再取得しない(persistTonamelEvent 内で判定)。
+	u.persistTonamelEvent(ctx, param.tonamelEventId)
 
 	if tierErr == nil {
 		u.designationEvaluation.NotifyIfTierChanged(ctx, param.userId, beforeTier, time.Now().Local())

@@ -153,6 +153,52 @@ func TestIntegrationUnofficialEventRepository(t *testing.T) {
 	})
 }
 
+// Tonamel大会情報のキャッシュ(tonamel_events)への保存・バッチ参照を実DBで確認する。
+// sqlmockではSQL文字列しか見られず、schema.sqlとの整合(TEXT型・upsert)は保証されない。
+func TestIntegrationTonamelEventStore(t *testing.T) {
+	db := setupIntegrationDB(t, "tonamel_events")
+	r := NewTonamelEventStore(db)
+	ctx := context.Background()
+
+	t.Run("正常系_保存した大会をFindByIdsでまとめて取得できる", func(t *testing.T) {
+		require.NoError(t, r.Save(ctx, entity.NewTonamelEvent("61ozP", "大会A", "説明A", "https://example.com/a.png")))
+		require.NoError(t, r.Save(ctx, entity.NewTonamelEvent("OakZc", "大会B", "", "")))
+
+		// 存在しないIDを混ぜても、あるものだけ返る(無いものはエラーにしない)
+		ret, err := r.FindByIds(ctx, []string{"61ozP", "OakZc", "nothere"})
+
+		require.NoError(t, err)
+		require.Len(t, ret, 2)
+
+		byId := map[string]*entity.TonamelEvent{}
+		for _, e := range ret {
+			byId[e.ID] = e
+		}
+		require.Equal(t, "大会A", byId["61ozP"].Title)
+		require.Equal(t, "説明A", byId["61ozP"].Description)
+		require.Equal(t, "https://example.com/a.png", byId["61ozP"].Image)
+		require.Equal(t, "大会B", byId["OakZc"].Title)
+	})
+
+	t.Run("正常系_同じIDのSaveは上書きになる", func(t *testing.T) {
+		require.NoError(t, r.Save(ctx, entity.NewTonamelEvent("61ozP", "大会A改", "説明A改", "https://example.com/a2.png")))
+
+		ret, err := r.FindByIds(ctx, []string{"61ozP"})
+
+		require.NoError(t, err)
+		require.Len(t, ret, 1)
+		require.Equal(t, "大会A改", ret[0].Title)
+		require.Equal(t, "説明A改", ret[0].Description)
+	})
+
+	t.Run("正常系_空スライスは空を返す", func(t *testing.T) {
+		ret, err := r.FindByIds(ctx, []string{})
+
+		require.NoError(t, err)
+		require.Empty(t, ret)
+	})
+}
+
 // 退会時の一括削除(DeleteByUserId)が、退会者の関連データを漏れなく消し、かつ
 // 他ユーザのデータを巻き込まないことを実DBで確認する。
 // 一括削除はサブクエリで対象を絞るため、条件を1つ間違えると他人のデータまで

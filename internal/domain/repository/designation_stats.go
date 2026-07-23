@@ -196,4 +196,47 @@ type DesignationStatsInterface interface {
 		fromDate time.Time,
 		toDate time.Time,
 	) (bool, error)
+
+	// ExistsCityLeagueRecordWithoutPlacementByPlayerId は、userId 自身のシティリーグ記録
+	// (records、指定期間内)のうち、その official_event_id に対応する playerId の入賞結果
+	// (cityleague_results)が存在しないものが1件以上あるかを返す。名人
+	// (official_city_league_grandmaster)の「常に入賞以上」条件の判定に使う:
+	// このメソッドが false(= 入賞を逃したシティリーグ記録が1件も無い)であることが、
+	// 名人の到達条件の一部となる(もう一方は達人=優勝の達成)。
+	// 「入賞」の定義はベテラン(ExistsCityLeagueResultByPlayerId)と同じく cityleague_results
+	// にそのプレイヤーIDの結果が存在することで、rank のしきい値は持たない。
+	// なお公式サイトに結果が公開されていない(または未取り込みの)大会の記録は、入賞結果が
+	// 見つからないため「入賞を逃した」扱いになる点に注意(cityleague_results を正とする既存の
+	// 判定方針に従う)。
+	ExistsCityLeagueRecordWithoutPlacementByPlayerId(
+		ctx context.Context,
+		userId string,
+		playerId string,
+		fromDate time.Time,
+		toDate time.Time,
+	) (bool, error)
+
+	// ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId は
+	// ExistsCityLeagueRecordWithoutPlacementByPlayerId と同様だが、records.created_at < asOf
+	// も要求し、asOf 時点でまだ作成されていなかった記録を除外する
+	// (ExistsCityLeagueResultAsOfByPlayerId と同じ理由。TierAsOf/backfill-notifications 専用)。
+	ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId(
+		ctx context.Context,
+		userId string,
+		playerId string,
+		fromDate time.Time,
+		asOf time.Time,
+	) (bool, error)
+
+	// ExistsCityLeagueRecordWithoutPlacementGroupByUserId は
+	// ExistsCityLeagueRecordWithoutPlacementByPlayerId のユーザー横断版。
+	// users_players(プレイヤーズクラブ連携。deleted_at IS NULL のもののみ)を介して
+	// 各ユーザーの連携プレイヤーIDを解決し、指定期間内に「入賞を逃したシティリーグ記録」を
+	// 1件以上持つユーザーを user_id をキーに返す(該当なしのユーザーはキーに含まれない。値は常に1)。
+	// GetRankStats で名人の「常に入賞以上」条件(このマップに含まれない=常に入賞)を判定するために使う。
+	ExistsCityLeagueRecordWithoutPlacementGroupByUserId(
+		ctx context.Context,
+		fromDate time.Time,
+		toDate time.Time,
+	) (map[string]int, error)
 }

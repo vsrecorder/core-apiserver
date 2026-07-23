@@ -94,6 +94,24 @@ func sixTierDefinitions(now time.Time) []*entity.Designation {
 	)
 }
 
+// sevenTierDefinitions は sixTierDefinitions に、達人(tier7。連携プレイヤーIDで選択中シーズンの
+// シティリーグに優勝(rank1)の結果が1件以上あること)を加えた7ティア。
+func sevenTierDefinitions(now time.Time) []*entity.Designation {
+	return append(
+		sixTierDefinitions(now),
+		entity.NewDesignation("designation-07", 7, "master", "🏆", "達人", "", DesignationCriteriaTypeOfficialCityLeagueChampion, 1, now, now),
+	)
+}
+
+// eightTierDefinitions は sevenTierDefinitions に、名人(tier8。優勝を含み、かつ入賞を逃した
+// シティリーグ記録が1件も無いこと)を加えた8ティア。
+func eightTierDefinitions(now time.Time) []*entity.Designation {
+	return append(
+		sevenTierDefinitions(now),
+		entity.NewDesignation("designation-08", 8, "grandmaster", "👑", "名人", "", DesignationCriteriaTypeOfficialCityLeagueGrandmaster, 1, now, now),
+	)
+}
+
 func TestDesignation_GetByUserId(t *testing.T) {
 	t.Run("正常系_今シーズンの集計値が条件を満たすと現在の称号として返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
@@ -345,6 +363,8 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」を必ず引く(このテストでは入賞漏れ記録なし=false)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -379,6 +399,8 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」を必ず引く(このテストでは入賞漏れ記録なし=false)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -411,6 +433,8 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」を必ず引く(このテストでは入賞漏れ記録なし=false)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -469,6 +493,8 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」を必ず引く(このテストでは入賞漏れ記録なし=false)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -502,6 +528,8 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」を必ず引く(このテストでは入賞漏れ記録なし=false)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -533,6 +561,8 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」を必ず引く(このテストでは入賞漏れ記録なし=false)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -573,10 +603,103 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」を必ず引く(このテストでは入賞漏れ記録なし=false)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 
 		_, err := u.GetByUserId(t.Context(), "user-1", "")
 
 		require.NoError(t, err)
+	})
+}
+
+// expectVeteranToChampionCriteria は tier5〜7(ベテラン・熟練・達人)の判定に必要な
+// records系の集計とプレイヤー連携、および入賞・決勝トーナメント・優勝の存在確認モックをまとめて設定する。
+// finalTournament(=熟練)と champion(=達人)はいずれも達成済み(true)として扱う。
+func expectVeteranToChampionCriteria(
+	designationStatsRepo *mock_repository.MockDesignationStatsInterface,
+	userPlayerRepo *mock_repository.MockUserPlayerInterface,
+	now time.Time,
+) {
+	userPlayer := entity.NewUserPlayer("user-player-1", now, "user-1", "player-1")
+	userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
+	designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+	designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+	// 今シーズン・前シーズンともに1件でレギュラー(tier4)の継続条件を満たす。
+	designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
+	// 入賞(ベテラン)・決勝トーナメント進出(熟練)・優勝(達人)をすべて達成。
+	designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+	designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+	designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+}
+
+func TestDesignation_GetByUserId_ChampionAndGrandmaster(t *testing.T) {
+	t.Run("正常系_連携済みで優勝の結果があれば達人(tier7)まで到達する", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(sevenTierDefinitions(now), nil)
+		expectVeteranToChampionCriteria(designationStatsRepo, userPlayerRepo, now)
+		// 名人判定用の呼び出し(sevenTierDefinitionsにtier8は無いので結果は達人までの判定に影響しない)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-07", view.Current.ID)
+
+		item07 := findDesignationLadderItem(view.Ladder, "designation-07")
+		require.NotNil(t, item07)
+		require.True(t, item07.Achieved)
+		require.Equal(t, 1, item07.CurrentValue)
+	})
+
+	t.Run("正常系_連携済みで優勝を含み常に入賞以上(入賞を逃した記録が無い)なら名人(tier8)まで到達する", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(eightTierDefinitions(now), nil)
+		expectVeteranToChampionCriteria(designationStatsRepo, userPlayerRepo, now)
+		// 入賞を逃したシティリーグ記録が無い(false)=「常に入賞以上」を満たす。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-08", view.Current.ID)
+
+		item08 := findDesignationLadderItem(view.Ladder, "designation-08")
+		require.NotNil(t, item08)
+		require.True(t, item08.Achieved)
+		require.Equal(t, 1, item08.CurrentValue)
+	})
+
+	t.Run("正常系_連携済みで優勝はあるが入賞を逃したシティリーグ記録があると名人(tier8)には到達しない", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(eightTierDefinitions(now), nil)
+		expectVeteranToChampionCriteria(designationStatsRepo, userPlayerRepo, now)
+		// 入賞を逃したシティリーグ記録がある(true)=「常に入賞以上」を満たさない。優勝はあるが名人には到達しない。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-07", view.Current.ID) // 達人どまり
+
+		item08 := findDesignationLadderItem(view.Ladder, "designation-08")
+		require.NotNil(t, item08)
+		require.False(t, item08.Achieved)
+		require.Equal(t, 0, item08.CurrentValue)
 	})
 }
 
@@ -620,6 +743,11 @@ func TestDesignation_GetRankStats(t *testing.T) {
 		designationStatsRepo.EXPECT().
 			ExistsCityLeagueFinalTournamentResultGroupByUserId(gomock.Any(), DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).
 			Return(map[string]int{}, nil)
+		// 名人(常に入賞以上)。入賞を逃したシティリーグ記録を持つユーザーを取得する呼び出しも期待する。
+		// sixTierDefinitionsにtier8(名人)は無いので、この集計値もランク分布の結果には影響しない。
+		designationStatsRepo.EXPECT().
+			ExistsCityLeagueRecordWithoutPlacementGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{}, nil)
 
 		view, err := u.GetRankStats(t.Context(), "")
 
@@ -636,6 +764,51 @@ func TestDesignation_GetRankStats(t *testing.T) {
 		require.Equal(t, 0, tierCounts[4])
 		require.Equal(t, 0, tierCounts[5])
 		require.Equal(t, 1, tierCounts[6])
+	})
+
+	t.Run("正常系_優勝を含み常に入賞以上のユーザーは名人(tier8)として集計される", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _ := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(eightTierDefinitions(now), nil)
+
+		// user-2: 優勝あり(champion)かつ入賞を逃した記録なし -> 名人(tier8)
+		// user-4: 優勝あり(champion)だが入賞を逃した記録あり -> 達人(tier7)どまり
+		designationStatsRepo.EXPECT().CountRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 5, "user-4": 5}, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 1, "user-4": 1}, nil)
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 4, "user-4": 4}, nil) // 今シーズン
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 4, "user-4": 4}, nil) // 前シーズン(継続条件)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 1, "user-4": 1}, nil)
+		designationStatsRepo.EXPECT().
+			ExistsCityLeagueFinalTournamentResultGroupByUserId(gomock.Any(), DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 1, "user-4": 1}, nil)
+		// 優勝(rank1)は user-2・user-4 とも達成。
+		designationStatsRepo.EXPECT().
+			ExistsCityLeagueFinalTournamentResultGroupByUserId(gomock.Any(), DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-2": 1, "user-4": 1}, nil)
+		// 入賞を逃したシティリーグ記録を持つのは user-4 のみ。user-2 は常に入賞以上のため名人。
+		designationStatsRepo.EXPECT().
+			ExistsCityLeagueRecordWithoutPlacementGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-4": 1}, nil)
+
+		view, err := u.GetRankStats(t.Context(), "")
+
+		require.NoError(t, err)
+		require.Equal(t, 2, view.TotalUsers)
+
+		tierCounts := make(map[int]int)
+		for _, tier := range view.Tiers {
+			tierCounts[tier.Tier] = tier.UserCount
+		}
+		require.Equal(t, 1, tierCounts[7]) // user-4(達人どまり)
+		require.Equal(t, 1, tierCounts[8]) // user-2(名人)
 	})
 }
 

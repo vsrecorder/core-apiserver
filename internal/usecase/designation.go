@@ -41,6 +41,18 @@ const (
 	// リポジトリは熟練と同じ ExistsCityLeagueFinalTournamentResult 系メソッドを流用する。
 	DesignationCriteriaTypeOfficialCityLeagueChampion = "official_city_league_champion"
 
+	// DesignationCriteriaTypeOfficialCityLeagueGrandmaster は、プレイヤーズクラブ連携済みの
+	// プレイヤーIDで、今シーズンのシティリーグにおいて「1回以上の優勝(rank=1)を含み、かつ
+	// 常に入賞以上の成績を収めた」ことを条件とするティア(名人)に使う。
+	// 具体的には次の2つをともに満たすことを value=1 とする(いずれか欠ければ0):
+	//   1. 優勝(達人=official_city_league_champion)の条件を満たす
+	//   2. 今シーズンのシティリーグ記録(records)がすべて入賞(cityleague_results に該当あり)
+	//      している。すなわち「入賞を逃したシティリーグ記録が1件も存在しない」
+	//      (= ExistsCityLeagueRecordWithoutPlacementByPlayerId が false)。
+	// 入賞の定義はベテラン(official_city_league_placement)と同じく「cityleague_results に
+	// そのプレイヤーIDの結果が存在すること」で、rank のしきい値は持たない。
+	DesignationCriteriaTypeOfficialCityLeagueGrandmaster = "official_city_league_grandmaster"
+
 	// DesignationCityLeagueFinalTournamentMaxRank は熟練(criteria_type=
 	// official_city_league_playoff)の判定に使う、決勝トーナメント進出とみなす
 	// cityleague_results.rank の上限値。
@@ -190,7 +202,8 @@ func (u *Designation) GetByUserId(
 		cityLeagueRecordWithoutPlayerLink := false
 		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeaguePlacement ||
 			def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueFinalTournament ||
-			def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueChampion {
+			def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueChampion ||
+			def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueGrandmaster {
 			cityLeagueRecordWithoutPlayerLink = hints.CityLeagueRecordWithoutPlayerLink
 		}
 
@@ -312,6 +325,13 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
+	// 名人の「常に入賞以上」条件用に、「入賞を逃したシティリーグ記録」を1件以上持つユーザーを取得。
+	// このマップに含まれない(=入賞を逃した記録が無い)ことが「常に入賞以上」を意味する。
+	cityLeagueRecordsWithoutPlacement, err := u.designationStatsRepo.ExistsCityLeagueRecordWithoutPlacementGroupByUserId(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
 	// いずれかの記録を持つユーザーのみが称号判定の対象になりうる(記録が全く無ければ
 	// 必ず tier=0 のため、集計に含める意味が無い)。
 	userIds := make(map[string]struct{})
@@ -328,6 +348,13 @@ func (u *Designation) GetRankStats(
 	tierCounts := make(map[int]int)
 	totalUsers := 0
 	for userId := range userIds {
+		// 名人(優勝を含み、常に入賞以上)。優勝(達人)を満たし、かつ入賞を逃した
+		// シティリーグ記録が無い(このマップに含まれない)ユーザーのみ value=1。
+		cityLeagueGrandmaster := 0
+		if cityLeagueChampions[userId] == 1 && cityLeagueRecordsWithoutPlacement[userId] == 0 {
+			cityLeagueGrandmaster = 1
+		}
+
 		values := map[string]int{
 			DesignationCriteriaTypeRecord:                            recordCounts[userId],
 			DesignationCriteriaTypeOfficialLeagueRecord:              leagueCounts[userId],
@@ -335,6 +362,7 @@ func (u *Designation) GetRankStats(
 			DesignationCriteriaTypeOfficialCityLeaguePlacement:       cityLeaguePlacements[userId],
 			DesignationCriteriaTypeOfficialCityLeagueFinalTournament: cityLeagueFinalTournaments[userId],
 			DesignationCriteriaTypeOfficialCityLeagueChampion:        cityLeagueChampions[userId],
+			DesignationCriteriaTypeOfficialCityLeagueGrandmaster:     cityLeagueGrandmaster,
 		}
 
 		current := currentDesignation(definitions, values, previousCityLeagueCounts[userId])
@@ -404,6 +432,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 	cityLeaguePlacement := 0
 	cityLeagueFinalTournament := 0
 	cityLeagueChampion := 0
+	cityLeagueGrandmaster := 0
 	hints := &designationSeasonHints{
 		MissingOfficialEventRecord: make(map[string]bool, 3),
 	}
@@ -461,6 +490,19 @@ func (u *Designation) seasonValuesByCriteriaType(
 			}
 			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeagueChampion] = missingRecord
 		}
+
+		// 名人(優勝を含み、常に入賞以上)。「優勝(達人)を達成」かつ「入賞を逃した
+		// シティリーグ記録が1件も無い」の両方を満たすときに value=1 とする。
+		// 優勝も条件に含めておくことで、進捗値(current_value)と達成状態が食い違わないようにする
+		// (常に入賞していても優勝が無ければ0のまま)。ExistsCityLeagueRecordWithoutPlacementは
+		// 「入賞を逃した記録があるか」なので、falseであることが「常に入賞以上」を意味する。
+		existsRecordWithoutPlacement, err := u.designationStatsRepo.ExistsCityLeagueRecordWithoutPlacementByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+		if err != nil {
+			return nil, nil, err
+		}
+		if cityLeagueChampion == 1 && !existsRecordWithoutPlacement {
+			cityLeagueGrandmaster = 1
+		}
 	}
 
 	values := map[string]int{
@@ -470,6 +512,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 		DesignationCriteriaTypeOfficialCityLeaguePlacement:       cityLeaguePlacement,
 		DesignationCriteriaTypeOfficialCityLeagueFinalTournament: cityLeagueFinalTournament,
 		DesignationCriteriaTypeOfficialCityLeagueChampion:        cityLeagueChampion,
+		DesignationCriteriaTypeOfficialCityLeagueGrandmaster:     cityLeagueGrandmaster,
 	}
 
 	return values, hints, nil

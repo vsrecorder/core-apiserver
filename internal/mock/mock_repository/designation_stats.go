@@ -206,6 +206,51 @@ func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueFinalTourna
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId), ctx, userId, playerId, maxRank, fromDate, toDate)
 }
 
+// ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId mocks base method.
+func (m *MockDesignationStatsInterface) ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId(ctx context.Context, userId, playerId string, fromDate, asOf time.Time) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId", ctx, userId, playerId, fromDate, asOf)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId indicates an expected call of ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId(ctx, userId, playerId, fromDate, asOf any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId), ctx, userId, playerId, fromDate, asOf)
+}
+
+// ExistsCityLeagueRecordWithoutPlacementByPlayerId mocks base method.
+func (m *MockDesignationStatsInterface) ExistsCityLeagueRecordWithoutPlacementByPlayerId(ctx context.Context, userId, playerId string, fromDate, toDate time.Time) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsCityLeagueRecordWithoutPlacementByPlayerId", ctx, userId, playerId, fromDate, toDate)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsCityLeagueRecordWithoutPlacementByPlayerId indicates an expected call of ExistsCityLeagueRecordWithoutPlacementByPlayerId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueRecordWithoutPlacementByPlayerId(ctx, userId, playerId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueRecordWithoutPlacementByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueRecordWithoutPlacementByPlayerId), ctx, userId, playerId, fromDate, toDate)
+}
+
+// ExistsCityLeagueRecordWithoutPlacementGroupByUserId mocks base method.
+func (m *MockDesignationStatsInterface) ExistsCityLeagueRecordWithoutPlacementGroupByUserId(ctx context.Context, fromDate, toDate time.Time) (map[string]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsCityLeagueRecordWithoutPlacementGroupByUserId", ctx, fromDate, toDate)
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsCityLeagueRecordWithoutPlacementGroupByUserId indicates an expected call of ExistsCityLeagueRecordWithoutPlacementGroupByUserId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) ExistsCityLeagueRecordWithoutPlacementGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsCityLeagueRecordWithoutPlacementGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).ExistsCityLeagueRecordWithoutPlacementGroupByUserId), ctx, fromDate, toDate)
+}
+
 // ExistsCityLeagueResultAsOfByPlayerId mocks base method.
 func (m *MockDesignationStatsInterface) ExistsCityLeagueResultAsOfByPlayerId(ctx context.Context, userId, playerId string, fromDate, asOf time.Time) (bool, error) {
 	m.ctrl.T.Helper()

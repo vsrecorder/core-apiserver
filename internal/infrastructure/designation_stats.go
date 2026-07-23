@@ -483,3 +483,100 @@ func (i *DesignationStats) CountLeagueRecordsGroupByUserId(
 
 	return scanUserRecordCounts(query)
 }
+
+// existsCityLeagueResultForRecordCondition は、records.official_event_id と同じ
+// official_event_id を持つ、指定プレイヤーIDの入賞結果(cityleague_results)が存在することを
+// 求める条件。名人(official_city_league_grandmaster)の「入賞を逃したシティリーグ記録が
+// 無いか」を NOT 付きで判定するのに使う。入賞の定義はベテランと同じく cityleague_results への
+// 掲載有無で、rank のしきい値は持たない。
+const existsCityLeagueResultForRecordCondition = "EXISTS (" +
+	"SELECT 1 FROM cityleague_results " +
+	"WHERE cityleague_results.official_event_id = records.official_event_id AND cityleague_results.player_id = ?" +
+	")"
+
+func (i *DesignationStats) ExistsCityLeagueRecordWithoutPlacementByPlayerId(
+	ctx context.Context,
+	userId string,
+	playerId string,
+	fromDate time.Time,
+	toDate time.Time,
+) (bool, error) {
+	var count int64
+
+	query := i.db.Table("records").
+		Joins("JOIN official_events ON official_events.id = records.official_event_id").
+		Where(
+			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id = ?",
+			userId, cityLeagueTypeId,
+		).
+		Where("NOT "+existsCityLeagueResultForRecordCondition, playerId)
+	if !fromDate.IsZero() {
+		query = query.Where("records.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("records.event_date < ?", toDate)
+	}
+
+	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}
+
+func (i *DesignationStats) ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId(
+	ctx context.Context,
+	userId string,
+	playerId string,
+	fromDate time.Time,
+	asOf time.Time,
+) (bool, error) {
+	var count int64
+
+	query := i.db.Table("records").
+		Joins("JOIN official_events ON official_events.id = records.official_event_id").
+		Where(
+			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id = ?",
+			userId, cityLeagueTypeId,
+		).
+		Where("records.created_at < ?", asOf).
+		Where("records.event_date < ?", asOf).
+		Where("NOT "+existsCityLeagueResultForRecordCondition, playerId)
+	if !fromDate.IsZero() {
+		query = query.Where("records.event_date >= ?", fromDate)
+	}
+
+	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}
+
+func (i *DesignationStats) ExistsCityLeagueRecordWithoutPlacementGroupByUserId(
+	ctx context.Context,
+	fromDate time.Time,
+	toDate time.Time,
+) (map[string]int, error) {
+	query := i.db.Table("records").
+		Select("DISTINCT records.user_id AS user_id, 1 AS count").
+		Joins("JOIN official_events ON official_events.id = records.official_event_id").
+		Joins("JOIN users_players ON users_players.user_id = records.user_id AND users_players.deleted_at IS NULL").
+		Where(
+			"records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id = ?",
+			cityLeagueTypeId,
+		).
+		Where(
+			"NOT EXISTS (SELECT 1 FROM cityleague_results " +
+				"WHERE cityleague_results.official_event_id = records.official_event_id " +
+				"AND cityleague_results.player_id = users_players.player_id)",
+		)
+	if !fromDate.IsZero() {
+		query = query.Where("records.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("records.event_date < ?", toDate)
+	}
+
+	return scanUserRecordCounts(query)
+}

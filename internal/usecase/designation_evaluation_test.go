@@ -186,6 +186,8 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		// 達人(優勝=rank1)。熟練と同じAsOfメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する。
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」のAsOf版も必ず引く(このテストでは入賞漏れ記録なし=false)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 
 		asOf := time.Date(2026, 1, 15, 0, 0, 0, 0, time.Local)
 		tier, err := u.TierAsOf(context.Background(), "user-1", asOf)
@@ -217,6 +219,8 @@ func expectVeteranCriteria(
 	designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
 	// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する。
 	designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
+	// 名人(常に入賞以上)。連携済みなら「入賞を逃したシティリーグ記録があるか」を必ず引く(このテストでは入賞漏れ記録なし=false)。
+	designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
 }
 
 // 通知経路(CurrentTier/NotifyIfTierChanged/NotifyIfTierLost)がcityleague_results起因の

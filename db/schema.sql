@@ -702,7 +702,7 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 ('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '称号:【🎫 レギュラー】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで入賞した', 'official_city_league_placement', 1, now(), now()),
 ('designation-06', 6,  'expert',       '🎖️', '熟練',     '称号:【💪 ベテラン】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで決勝トーナメントに進出した', 'official_city_league_playoff', 1, now(), now()),
 ('designation-07', 7,  'master',       '🏆', '達人',       '称号:【🎖️ 熟練】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン、シティリーグで優勝した', 'official_city_league_champion', 1, now(), now()),
-('designation-08', 8,  'grandmaster',  '👑', '名人',       '準備中', 'unimplemented', 0, now(), now()),
+('designation-08', 8,  'grandmaster',  '👑', '名人',       '称号:【🏆 達人】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン、シティリーグで1回以上の優勝を含み、常に入賞以上の成績を収めた', 'official_city_league_grandmaster', 1, now(), now()),
 ('designation-09', 9,  'legend',       '💎', 'レジェンド', '準備中', 'unimplemented', 0, now(), now()),
 ('designation-10', 10, 'hall_of_fame', '🏛️', '殿堂入り',   '準備中', 'unimplemented', 0, now(), now());
 
@@ -720,6 +720,15 @@ UPDATE designations SET
     criteria_type = 'official_city_league_champion',
     criteria_value = 1
 WHERE id = 'designation-07';
+
+-- 名人(tier8): 「準備中(unimplemented)」から、連携したプレイヤーズクラブのプレイヤーIDで
+-- 今シーズンにシティリーグで「1回以上の優勝を含み、常に入賞以上(参加した全大会で入賞)」を
+-- 達成条件とするティアへ変更。既存の本番DBは INSERT 済みのため UPDATE で更新する。冪等。
+UPDATE designations SET
+    description = '称号:【🏆 達人】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン、シティリーグで1回以上の優勝を含み、常に入賞以上の成績を収めた',
+    criteria_type = 'official_city_league_grandmaster',
+    criteria_value = 1
+WHERE id = 'designation-08';
 
 
 

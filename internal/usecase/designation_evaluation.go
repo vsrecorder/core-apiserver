@@ -67,17 +67,17 @@ func MinTierForRank(rankName string) int {
 // DesignationEvaluationInterface は記録作成時に称号(designation)のtierが上がったか
 // 判定し、上がっていれば称号獲得・ランクアップの通知を作成する。
 //
-// 称号のtierは6種類のcriteria_type(record/official_league_record/
+// 称号のtierは7種類のcriteria_type(record/official_league_record/
 // official_city_league_record/official_city_league_placement/official_city_league_playoff/
-// official_city_league_champion)の組み合わせで判定されるが、CurrentTier/NotifyIfTierChanged/
-// NotifyIfTierLost(record作成・削除のイベント駆動で呼ばれるもの)が対象とするのはrecords起因の
-// 最初の3つのみ(usecase/designation.goのDesignationCriteriaType*定数を参照)。残り3つ
-// (ベテラン・熟練・達人)は連携済みプレイヤーIDでの公式サイト結果(cityleague_results)の有無で
-// 判定され、これは import-cityleague-result-job(別リポジトリ、日次バッチ)がデータを取り込んだ
-// 瞬間に変化しうるものであり、core-apiserverの書き込みイベントと無関係なため対象外とする。
+// official_city_league_champion/official_city_league_grandmaster)の組み合わせで判定されるが、
+// CurrentTier/NotifyIfTierChanged/NotifyIfTierLost(record作成・削除のイベント駆動で呼ばれるもの)が
+// 対象とするのはrecords起因の最初の3つのみ(usecase/designation.goのDesignationCriteriaType*定数を
+// 参照)。残り4つ(ベテラン・熟練・達人・名人)は連携済みプレイヤーIDでの公式サイト結果
+// (cityleague_results)の有無で判定され、これは import-cityleague-result-job(別リポジトリ、日次バッチ)が
+// データを取り込んだ瞬間に変化しうるものであり、core-apiserverの書き込みイベントと無関係なため対象外とする。
 // currentDesignation()はvaluesマップに無いcriteria_typeに到達すると判定を打ち切る
 // ため、この3つだけを渡しても後続tier(5以降)を誤って達成扱いにすることはない。
-// ただし TierAsOf のみ、この3つも含めて判定する(TierAsOfのコメント参照)。
+// ただし TierAsOf のみ、この4つも含めて判定する(TierAsOfのコメント参照)。
 type DesignationEvaluationInterface interface {
 	// CurrentTier は現在のシーズンにおける現在のtier(称号未達成なら0)を返す。
 	// record作成の前後で比較するため、呼び出し側は保存前に一度呼んでおく。
@@ -274,10 +274,10 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteria(
 // asOf がゼロ値の場合はシーズン終了日まで(=currentDesignationForRecordCriteriaと同じ)集計する。
 //
 // includeCityLeagueResultCriteria が true の場合のみ、ベテラン(official_city_league_placement)・
-// 熟練(official_city_league_playoff)・達人(official_city_league_champion)の3criteria_typeも
-// valuesに含める。
+// 熟練(official_city_league_playoff)・達人(official_city_league_champion)・
+// 名人(official_city_league_grandmaster)の4criteria_typeもvaluesに含める。
 //
-// currentDesignation() は values に無い criteria_type に当たると判定を打ち切るため、この3つを
+// currentDesignation() は values に無い criteria_type に当たると判定を打ち切るため、この4つを
 // 除外すると tier5 以降には決して到達できず、返る tier は最大4(レギュラー)で頭打ちになる。
 // かつて CurrentTier/NotifyIfTierChanged/NotifyIfTierLost は false で呼んでいたが、その結果
 // ベテラン・熟練のユーザーで beforeTier が 4 と誤計算され、称号の獲得・剥奪・ランクアップ/
@@ -356,6 +356,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 		cityLeaguePlacement := 0
 		cityLeagueFinalTournament := 0
 		cityLeagueChampion := 0
+		cityLeagueGrandmaster := 0
 
 		userPlayer, err := u.userPlayerRepo.FindByUserId(ctx, userId)
 		if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
@@ -412,11 +413,28 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 			if existsChampion {
 				cityLeagueChampion = 1
 			}
+
+			// 名人(優勝を含み、常に入賞以上)。優勝(達人)を満たし、かつ入賞を逃した
+			// シティリーグ記録が無い(ExistsCityLeagueRecordWithoutPlacementがfalse)ときに1。
+			// asOf/非asOfの使い分けの理由は上の熟練・ベテランと同じ。
+			var existsRecordWithoutPlacement bool
+			if !asOf.IsZero() {
+				existsRecordWithoutPlacement, err = u.designationStatsRepo.ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+			} else {
+				existsRecordWithoutPlacement, err = u.designationStatsRepo.ExistsCityLeagueRecordWithoutPlacementByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+			}
+			if err != nil {
+				return nil, nil, "", err
+			}
+			if cityLeagueChampion == 1 && !existsRecordWithoutPlacement {
+				cityLeagueGrandmaster = 1
+			}
 		}
 
 		values[DesignationCriteriaTypeOfficialCityLeaguePlacement] = cityLeaguePlacement
 		values[DesignationCriteriaTypeOfficialCityLeagueFinalTournament] = cityLeagueFinalTournament
 		values[DesignationCriteriaTypeOfficialCityLeagueChampion] = cityLeagueChampion
+		values[DesignationCriteriaTypeOfficialCityLeagueGrandmaster] = cityLeagueGrandmaster
 	}
 
 	return currentDesignation(definitions, values, previousCityLeagueCount), definitions, seasonLabel, nil

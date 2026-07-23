@@ -216,6 +216,18 @@ CREATE INDEX idx_records_created_at ON records(created_at);
 CREATE INDEX idx_records_deleted_at ON records(deleted_at);
 CREATE INDEX idx_records_user_id ON records(user_id);
 
+-- 称号判定(designation_stats.go)の高速化用インデックス。records には user_id 索引しか無く、
+-- official_event_id / event_date が未索引だったため、以下が records の全件走査になっていた:
+--   1. cityleague_results と同じ official_event_id を持つ本人の記録の存在確認
+--      (ベテラン〜名人の内部条件、および GetRankStats のユーザー横断集計での records 結合)。
+--      → (official_event_id, user_id) の複合索引で直接シークにする。official_event_id は
+--        Tonamel/記入形式の記録では NULL のため、部分索引で公式イベントの記録のみを対象にする
+--        (対象クエリは常に official_event_id = ? で NOT NULL が含意されるため部分索引を利用できる)。
+--   2. シーズン期間(event_date 範囲)でのユーザー横断集計(GetRankStats)。
+--      → event_date の索引で範囲スキャンにする。
+CREATE INDEX IF NOT EXISTS idx_records_official_event_id_user_id ON records (official_event_id, user_id) WHERE official_event_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_records_event_date ON records (event_date);
+
 CREATE TABLE matches (
     id                        VARCHAR(26) PRIMARY KEY,
     created_at                TIMESTAMP NOT NULL,
@@ -411,6 +423,13 @@ CREATE UNIQUE INDEX cityleague_results_unique ON cityleague_results (cityleague_
 -- 上の複合索引は player_id が先頭ではないため使えず、毎回全件走査になっていた。
 -- 実測で 4.98ms → 0.19ms(6.9万件時)。この表は毎シーズン増え続ける。
 CREATE INDEX idx_cityleague_results_player_id ON cityleague_results (player_id);
+
+-- 称号ランク分布(GetRankStats)のユーザー横断集計は、シーズン期間(event_date 範囲)で
+-- cityleague_results を絞り込み、そこを起点に users_players・records と結合する。event_date が
+-- 未索引だと結果側から駆動できず、悪い結合順序で全件走査になっていた。実測(records 20万件・
+-- cityleague_results 6万件・8000ユーザー)で ExistsCityLeagueResultGroupByUserId が
+-- 約26秒 → 0.4秒。この表は毎シーズン増え続けるため索引で駆動できるようにする。
+CREATE INDEX IF NOT EXISTS idx_cityleague_results_event_date ON cityleague_results (event_date);
 
 
 

@@ -553,6 +553,75 @@ func (i *DesignationStats) ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId(
 	return count > 0, nil
 }
 
+// existsCityLeagueResultWithinRankForRecordCondition は existsCityLeagueResultForRecordCondition と
+// 同様だが、入賞結果を rank が maxRank 以下のものに限定する。名人の称号詳細モーダルの
+// 「優勝 N/1」表示用に、優勝(rank<=1)の記録件数を数えるのに使う。
+const existsCityLeagueResultWithinRankForRecordCondition = "EXISTS (" +
+	"SELECT 1 FROM cityleague_results " +
+	"WHERE cityleague_results.official_event_id = records.official_event_id AND cityleague_results.player_id = ? AND cityleague_results.rank <= ?" +
+	")"
+
+func (i *DesignationStats) CountCityLeaguePlacementRecordsByPlayerId(
+	ctx context.Context,
+	userId string,
+	playerId string,
+	fromDate time.Time,
+	toDate time.Time,
+) (int, error) {
+	var count int64
+
+	query := i.db.Table("records").
+		Joins("JOIN official_events ON official_events.id = records.official_event_id").
+		Where(
+			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id = ?",
+			userId, cityLeagueTypeId,
+		).
+		Where(existsCityLeagueResultForRecordCondition, playerId)
+	if !fromDate.IsZero() {
+		query = query.Where("records.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("records.event_date < ?", toDate)
+	}
+
+	if tx := query.Count(&count); tx.Error != nil {
+		return 0, tx.Error
+	}
+
+	return int(count), nil
+}
+
+func (i *DesignationStats) CountCityLeagueRecordsWithinRankByPlayerId(
+	ctx context.Context,
+	userId string,
+	playerId string,
+	maxRank int,
+	fromDate time.Time,
+	toDate time.Time,
+) (int, error) {
+	var count int64
+
+	query := i.db.Table("records").
+		Joins("JOIN official_events ON official_events.id = records.official_event_id").
+		Where(
+			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND official_events.type_id = ?",
+			userId, cityLeagueTypeId,
+		).
+		Where(existsCityLeagueResultWithinRankForRecordCondition, playerId, maxRank)
+	if !fromDate.IsZero() {
+		query = query.Where("records.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("records.event_date < ?", toDate)
+	}
+
+	if tx := query.Count(&count); tx.Error != nil {
+		return 0, tx.Error
+	}
+
+	return int(count), nil
+}
+
 func (i *DesignationStats) ExistsCityLeagueRecordWithoutPlacementGroupByUserId(
 	ctx context.Context,
 	fromDate time.Time,

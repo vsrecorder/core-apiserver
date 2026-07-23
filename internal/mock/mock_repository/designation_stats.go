@@ -41,6 +41,21 @@ func (m *MockDesignationStatsInterface) EXPECT() *MockDesignationStatsInterfaceM
 	return m.recorder
 }
 
+// CountCityLeaguePlacementRecordsByPlayerId mocks base method.
+func (m *MockDesignationStatsInterface) CountCityLeaguePlacementRecordsByPlayerId(ctx context.Context, userId, playerId string, fromDate, toDate time.Time) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountCityLeaguePlacementRecordsByPlayerId", ctx, userId, playerId, fromDate, toDate)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountCityLeaguePlacementRecordsByPlayerId indicates an expected call of CountCityLeaguePlacementRecordsByPlayerId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) CountCityLeaguePlacementRecordsByPlayerId(ctx, userId, playerId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountCityLeaguePlacementRecordsByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountCityLeaguePlacementRecordsByPlayerId), ctx, userId, playerId, fromDate, toDate)
+}
+
 // CountCityLeagueRecordsByUserId mocks base method.
 func (m *MockDesignationStatsInterface) CountCityLeagueRecordsByUserId(ctx context.Context, userId string, fromDate, toDate time.Time) (int, error) {
 	m.ctrl.T.Helper()
@@ -69,6 +84,21 @@ func (m *MockDesignationStatsInterface) CountCityLeagueRecordsGroupByUserId(ctx 
 func (mr *MockDesignationStatsInterfaceMockRecorder) CountCityLeagueRecordsGroupByUserId(ctx, fromDate, toDate any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountCityLeagueRecordsGroupByUserId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountCityLeagueRecordsGroupByUserId), ctx, fromDate, toDate)
+}
+
+// CountCityLeagueRecordsWithinRankByPlayerId mocks base method.
+func (m *MockDesignationStatsInterface) CountCityLeagueRecordsWithinRankByPlayerId(ctx context.Context, userId, playerId string, maxRank int, fromDate, toDate time.Time) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountCityLeagueRecordsWithinRankByPlayerId", ctx, userId, playerId, maxRank, fromDate, toDate)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountCityLeagueRecordsWithinRankByPlayerId indicates an expected call of CountCityLeagueRecordsWithinRankByPlayerId.
+func (mr *MockDesignationStatsInterfaceMockRecorder) CountCityLeagueRecordsWithinRankByPlayerId(ctx, userId, playerId, maxRank, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountCityLeagueRecordsWithinRankByPlayerId", reflect.TypeOf((*MockDesignationStatsInterface)(nil).CountCityLeagueRecordsWithinRankByPlayerId), ctx, userId, playerId, maxRank, fromDate, toDate)
 }
 
 // CountLeagueRecordsByUserId mocks base method.

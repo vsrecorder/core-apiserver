@@ -98,6 +98,15 @@ type DesignationLadderItem struct {
 	// という、より具体的な案内を出し分けるためのヒント用途であり、それ以外の
 	// criteria_type や、プレイヤーズクラブ連携済みの場合は常にfalse。
 	CityLeagueRecordWithoutPlayerLink bool
+	// CityLeagueWinCount / CityLeaguePlacementCount / CityLeagueRecordCount は、名人
+	// (official_city_league_grandmaster)の称号詳細モーダルで「優勝 N/1」「入賞 N/参加数」の
+	// プログレスバーを表示するための集計値。名人以外の criteria_type では常に0。
+	//   - CityLeagueWinCount: 今シーズンの優勝(rank1)回数(=優勝バーの分子。分母は criteria_value=1)
+	//   - CityLeaguePlacementCount: 今シーズンの入賞回数(=入賞バーの分子)
+	//   - CityLeagueRecordCount: 今シーズンのシティリーグ記録数=参加数(=入賞バーの分母)
+	CityLeagueWinCount       int
+	CityLeaguePlacementCount int
+	CityLeagueRecordCount    int
 }
 
 // UserDesignationView はユーザーの現在の称号と、称号ロードマップ全体を表す。
@@ -207,6 +216,17 @@ func (u *Designation) GetByUserId(
 			cityLeagueRecordWithoutPlayerLink = hints.CityLeagueRecordWithoutPlayerLink
 		}
 
+		// 名人の「優勝 N/1」「入賞 N/参加数」プログレスバー用の集計値(名人以外は0のまま)。
+		// 参加数(入賞バーの分母)は currentValues のシティリーグ記録数(=official_city_league_record)を使う。
+		cityLeagueWinCount := 0
+		cityLeaguePlacementCount := 0
+		cityLeagueRecordCount := 0
+		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueGrandmaster {
+			cityLeagueWinCount = hints.CityLeagueWinCount
+			cityLeaguePlacementCount = hints.CityLeaguePlacementCount
+			cityLeagueRecordCount = currentValues[DesignationCriteriaTypeOfficialCityLeagueRecord]
+		}
+
 		ladder = append(ladder, &DesignationLadderItem{
 			Designation: def,
 			Achieved:    def.Tier <= currentTier,
@@ -215,6 +235,9 @@ func (u *Designation) GetByUserId(
 			PreviousValue:                     previousValue,
 			MissingOfficialEventRecord:        hints.MissingOfficialEventRecord[def.CriteriaType],
 			CityLeagueRecordWithoutPlayerLink: cityLeagueRecordWithoutPlayerLink,
+			CityLeagueWinCount:                cityLeagueWinCount,
+			CityLeaguePlacementCount:          cityLeaguePlacementCount,
+			CityLeagueRecordCount:             cityLeagueRecordCount,
 		})
 	}
 
@@ -398,6 +421,11 @@ type designationSeasonHints struct {
 	// と同じ意味を持つ値。プレイヤーズクラブの連携有無は criteria_type によらずユーザー単位で
 	// 決まるため、ベテラン・熟練・達人のいずれでも共通の値をそのまま使う。
 	CityLeagueRecordWithoutPlayerLink bool
+	// CityLeagueWinCount / CityLeaguePlacementCount は名人の称号詳細モーダルの
+	// 「優勝 N/1」「入賞 N/参加数」プログレスバー表示用の集計値
+	// (DesignationLadderItem の同名フィールドの元になる)。プレイヤーズクラブ未連携なら0。
+	CityLeagueWinCount       int
+	CityLeaguePlacementCount int
 }
 
 // seasonValuesByCriteriaType は判定ロジックが実装済みの criteria_type についてのみ、
@@ -502,6 +530,18 @@ func (u *Designation) seasonValuesByCriteriaType(
 		}
 		if cityLeagueChampion == 1 && !existsRecordWithoutPlacement {
 			cityLeagueGrandmaster = 1
+		}
+
+		// 名人の称号詳細モーダルの「優勝 N/1」「入賞 N/参加数」プログレスバー表示用に、
+		// 優勝回数(rank1の記録数)と入賞回数(入賞した記録数)を数える。参加数(分母)は
+		// 上で取得済みの cityLeagueCount を使う。
+		hints.CityLeagueWinCount, err = u.designationStatsRepo.CountCityLeagueRecordsWithinRankByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
+		if err != nil {
+			return nil, nil, err
+		}
+		hints.CityLeaguePlacementCount, err = u.designationStatsRepo.CountCityLeaguePlacementRecordsByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
+		if err != nil {
+			return nil, nil, err
 		}
 	}
 

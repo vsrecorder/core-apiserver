@@ -239,4 +239,29 @@ type DesignationStatsInterface interface {
 		fromDate time.Time,
 		toDate time.Time,
 	) (map[string]int, error)
+
+	// CountCityLeaguePlacementRecordsByPlayerId は、userId 自身のシティリーグ記録(records、指定
+	// 期間内)のうち、その official_event_id に対応する playerId の入賞結果(cityleague_results、
+	// rank を問わない)が存在するものの件数(=入賞回数)を返す。名人の称号詳細モーダルで
+	// 「入賞 N/参加数」のプログレスバーを表示するために使う(入賞の定義はベテランと同じく
+	// cityleague_results への掲載有無)。参加数(分母)は CountCityLeagueRecordsByUserId で得る。
+	CountCityLeaguePlacementRecordsByPlayerId(
+		ctx context.Context,
+		userId string,
+		playerId string,
+		fromDate time.Time,
+		toDate time.Time,
+	) (int, error)
+
+	// CountCityLeagueRecordsWithinRankByPlayerId は CountCityLeaguePlacementRecordsByPlayerId と
+	// 同様だが、入賞結果のうち rank が maxRank 以下のものに限定して件数を返す。名人の称号詳細
+	// モーダルで「優勝 N/1」のプログレスバーを表示するために maxRank=1(=優勝)で使う。
+	CountCityLeagueRecordsWithinRankByPlayerId(
+		ctx context.Context,
+		userId string,
+		playerId string,
+		maxRank int,
+		fromDate time.Time,
+		toDate time.Time,
+	) (int, error)
 }

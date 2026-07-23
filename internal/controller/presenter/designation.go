@@ -57,6 +57,9 @@ func NewUserDesignationResponse(
 			PreviousValue:                     item.PreviousValue,
 			MissingOfficialEventRecord:        item.MissingOfficialEventRecord,
 			CityLeagueRecordWithoutPlayerLink: item.CityLeagueRecordWithoutPlayerLink,
+			CityLeagueWinCount:                item.CityLeagueWinCount,
+			CityLeaguePlacementCount:          item.CityLeaguePlacementCount,
+			CityLeagueRecordCount:             item.CityLeagueRecordCount,
 		})
 	}
 

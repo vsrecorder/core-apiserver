@@ -21,7 +21,9 @@ func TestCalculateKizuna(t *testing.T) {
 		// deckId → 指標ごとの獲得点
 		wantPoints map[string]map[KizunaMetricKey]int
 	}{
-		"ジムバトルだけの初心者": {
+		// 6戦しかないため、他指標が積み上がっても「出会ったばかり」(49)に留まる。
+		// 内訳は 49 に按分し直される（合計＝きずなLv.）。ガードが無ければ 67 だった。
+		"ジムバトルだけの初心者_9戦未満は出会ったばかりに留まる": {
 			aggregates: []*KizunaDeckAggregate{
 				{
 					DeckId:        "d1",
@@ -33,14 +35,14 @@ func TestCalculateKizuna(t *testing.T) {
 					Wins:          3,
 				},
 			},
-			wantLevels: map[string]int{"d1": 67},
+			wantLevels: map[string]int{"d1": 49},
 			wantPoints: map[string]map[KizunaMetricKey]int{
 				"d1": {
-					KizunaMetricLoyalty:   16,
-					KizunaMetricDevotion:  24,
+					KizunaMetricLoyalty:   12,
+					KizunaMetricDevotion:  18,
 					KizunaMetricCare:      0,
-					KizunaMetricDays:      21,
-					KizunaMetricTrust:     6,
+					KizunaMetricDays:      15,
+					KizunaMetricTrust:     4,
 					KizunaMetricNarrative: 0,
 				},
 			},
@@ -220,6 +222,45 @@ func TestCalculateKizunaMaxPointsSumsTo255(t *testing.T) {
 		sum += m.MaxPoints
 	}
 	require.Equal(t, KizunaMaxLevel, sum)
+}
+
+// 9戦に満たないデッキは、他指標が高くても「出会ったばかり」(49以下)に留まる。
+// 9戦に達するとガードが外れ、49を超えられる。
+func TestCalculateKizunaMinMatchesGate(t *testing.T) {
+	// 対戦数に依らない指標（同行日数・手入れ度・託し度・語り度）を高く積んだデッキ。
+	// これだけで 49 を大きく超えるので、対戦数の閾値だけを検証できる。
+	build := func(matches int) []*KizunaDeckAggregate {
+		return []*KizunaDeckAggregate{
+			{
+				DeckId:        "d1",
+				EventDayCount: 30,
+				StageCounts: map[KizunaStageKind]int{
+					KizunaStageCityLeague: 6,
+					KizunaStageGymBattle:  20,
+				},
+				RecordCount:     26,
+				MemoCount:       20,
+				MemoTotalLength: 20 * 40,
+				DeckCodeCount:   13,
+				EveCodeCount:    4,
+				MatchCount:      matches,
+				Wins:            matches / 2,
+			},
+		}
+	}
+
+	// 8戦：ガードが効き、ちょうど 49 に抑えられる。内訳の合計も 49 のまま。
+	gated := CalculateKizuna(build(8))
+	require.Equal(t, kizunaMeetingLevelMax, gated[0].Level)
+	sum := 0
+	for _, m := range gated[0].Metrics {
+		sum += m.Points
+	}
+	require.Equal(t, gated[0].Level, sum, "ガード後も内訳の合計＝きずなLv.")
+
+	// 9戦：ガードが外れ、49 を超える。
+	escaped := CalculateKizuna(build(9))
+	require.Greater(t, escaped[0].Level, kizunaMeetingLevelMax)
 }
 
 // 勝率はきずなLv.に加点されない。それどころか、負けているほど逆境ロイヤルティは上がる。

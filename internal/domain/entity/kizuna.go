@@ -1,6 +1,9 @@
 package entity
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 /*
  * きずなLv.（0〜255）。デッキとどう歩んできたかを数値化したもの。
@@ -88,6 +91,13 @@ const (
 
 	// きずなLv.の上限（なつき度と同じ）
 	KizunaMaxLevel = 255
+
+	// 「出会ったばかり」を抜け出すのに必要な最低対戦数。
+	// これ未満のデッキは、同行日数・手入れ度など対戦数に依らない指標だけで
+	// 高く出ても、出会ったばかりに留める（ほとんど握っていないのに深い、を防ぐ）。
+	kizunaMinMatchesToEscape = 9
+	// 「出会ったばかり」の上限。webapp の KIZUNA_TIERS（50 から次段）に対応する。
+	kizunaMeetingLevelMax = 49
 )
 
 // KizunaMetricKey は指標の識別子。表示名は webapp 側が持つ（UIの文言はUIの責務）。
@@ -350,5 +360,58 @@ func calculateKizunaDeck(
 		})
 	}
 
+	// 9戦に満たないデッキは「出会ったばかり」に留める。
+	// 内訳の「合計＝きずなLv.」を保つため、各指標の点も 49 に按分し直す。
+	if a.MatchCount < kizunaMinMatchesToEscape && level > kizunaMeetingLevelMax {
+		level = apportionKizunaPoints(metrics, kizunaMeetingLevelMax)
+	}
+
 	return &KizunaDeck{DeckId: a.DeckId, Level: level, Metrics: metrics}
+}
+
+// apportionKizunaPoints は各指標の Points を、合計が target になるよう按分し直す。
+// floor で配ったうえで、余りを小数部の大きい順（同点はキー昇順）に1点ずつ配る
+// 最大剰余法。合計はちょうど target になり、TS 実装（webapp/utils/kizuna.ts の
+// 同名関数）とビット単位で一致する。Value も Points/MaxPoints に合わせ、内訳の
+// バー（Value）と数値（Points）がずれないようにする。
+func apportionKizunaPoints(metrics []*KizunaMetric, target int) int {
+	total := 0
+	for _, m := range metrics {
+		total += m.Points
+	}
+	if total <= target {
+		return total
+	}
+
+	type frac struct {
+		idx  int
+		frac float64
+	}
+	fracs := make([]frac, len(metrics))
+	assigned := 0
+	for i, m := range metrics {
+		exact := float64(m.Points) * float64(target) / float64(total)
+		floor := math.Floor(exact)
+		metrics[i].Points = int(floor)
+		assigned += int(floor)
+		fracs[i] = frac{idx: i, frac: exact - floor}
+	}
+
+	sort.SliceStable(fracs, func(a, b int) bool {
+		if fracs[a].frac != fracs[b].frac {
+			return fracs[a].frac > fracs[b].frac
+		}
+		return fracs[a].idx < fracs[b].idx
+	})
+	for k := 0; k < target-assigned; k++ {
+		metrics[fracs[k].idx].Points++
+	}
+
+	for _, m := range metrics {
+		if m.MaxPoints > 0 {
+			m.Value = float64(m.Points) / float64(m.MaxPoints)
+		}
+	}
+
+	return target
 }

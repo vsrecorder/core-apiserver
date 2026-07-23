@@ -163,6 +163,23 @@ func advanceFreezeRegen(freezeUsedCount, regenProgress int) (int, int) {
 	return freezeUsedCount, regenProgress
 }
 
+// FreezeRegenRemainingWeeks は、使用済みフリーズ枠が1つ回復するまでに、あと何週の
+// クリーン記録(フリーズ未使用で前週から途切れず継続)が必要かを返す。回復対象が無い
+// (freezeUsedCount<=0)場合は0を返す。回復間隔(streakFreezeRegenWeeks)を外部へ露出せず、
+// StreakPanel等の表示でフリーズ回復の目安をユーザーに示すために使う。
+func FreezeRegenRemainingWeeks(freezeUsedCount, freezeRegenProgress int) int {
+	if freezeUsedCount <= 0 {
+		return 0
+	}
+
+	remaining := streakFreezeRegenWeeks - freezeRegenProgress
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	return remaining
+}
+
 // RecordBasisTime は record の日時判定の基準となる時刻を返す。
 // event_date が未入力の場合は記録作成日時を代わりに使う。
 func RecordBasisTime(eventDate time.Time, createdAt time.Time) time.Time {

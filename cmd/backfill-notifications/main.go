@@ -173,6 +173,21 @@ func main() {
 		}
 	}
 
+	// 退会済み・存在しないユーザーを除外し、有効なユーザー(usersに存在し deleted_at IS NULL)
+	// だけを対象にする。findTargetUserIds は user_badges からもユーザーを集めるが、退会
+	// (usecase.User.Delete)では records・decks・deck_codes・user_players と users 本体は
+	// 削除される一方、user_badges・user_environment_badges は残るため、退会済みユーザーが
+	// 対象に混ざりうる。退会後は本人が通知を閲覧できないため除外する。
+	beforeFilter := len(userIds)
+	userIds, err = filterValidUserIds(db, userIds)
+	if err != nil {
+		log.Printf("failed to filter valid users: %v\n", err)
+		os.Exit(ExitCodeNG)
+	}
+	if skipped := beforeFilter - len(userIds); skipped > 0 {
+		log.Printf("skipped %d withdrawn/non-existent users\n", skipped)
+	}
+
 	if *dryRun {
 		log.Printf("[dry-run] checking notification history for %d users (書き込みは行いません)\n", len(userIds))
 	} else {
@@ -238,6 +253,42 @@ func findTargetUserIds(db *gorm.DB) ([]string, error) {
 	}
 
 	return userIds, nil
+}
+
+// filterValidUserIds は与えられたユーザーIDのうち、有効なユーザー(usersテーブルに存在し
+// 退会していない=deleted_at IS NULL)のものだけを、渡された順序を保って返す。
+//
+// findTargetUserIds は user_badges からもユーザーを集めるが、退会(usecase.User.Delete)では
+// records・decks・deck_codes・user_players と users 本体は削除される一方、user_badges・
+// user_environment_badges は削除されずに残る。そのため退会済みユーザーが対象に混ざりうるが、
+// 退会後は本人が通知を閲覧できないため、ここで有効なユーザーだけに絞り込む。
+func filterValidUserIds(db *gorm.DB, userIds []string) ([]string, error) {
+	if len(userIds) == 0 {
+		return userIds, nil
+	}
+
+	// db.Model(&model.User{}) には gorm のソフトデリートにより deleted_at IS NULL が
+	// 自動で付くため、退会済み(および存在しない)ユーザーはここに含まれない。
+	var validIds []string
+	if tx := db.Model(&model.User{}).
+		Where("id IN ?", userIds).
+		Pluck("id", &validIds); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	valid := make(map[string]struct{}, len(validIds))
+	for _, id := range validIds {
+		valid[id] = struct{}{}
+	}
+
+	filtered := make([]string, 0, len(userIds))
+	for _, id := range userIds {
+		if _, ok := valid[id]; ok {
+			filtered = append(filtered, id)
+		}
+	}
+
+	return filtered, nil
 }
 
 // backfillUser は1ユーザー分の通知履歴を作成する。作成した(dry-runなら作成予定の)件数を返す。

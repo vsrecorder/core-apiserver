@@ -33,8 +33,8 @@ type rankRange struct {
 var rankRanges = []rankRange{
 	{1, 2, "モンスターボール級"},
 	{3, 4, "スーパーボール級"},
-	{5, 5, "ハイパーボール級"},
-	{6, 8, "マスターボール級"},
+	{5, 6, "ハイパーボール級"},
+	{7, 8, "マスターボール級"},
 	{9, 10, "ウルトラボール級"},
 }
 
@@ -67,17 +67,17 @@ func MinTierForRank(rankName string) int {
 // DesignationEvaluationInterface は記録作成時に称号(designation)のtierが上がったか
 // 判定し、上がっていれば称号獲得・ランクアップの通知を作成する。
 //
-// 称号のtierは5種類のcriteria_type(record/official_league_record/
-// official_city_league_record/official_city_league_placement/official_city_league_playoff)
-// の組み合わせで判定されるが、CurrentTier/NotifyIfTierChanged/NotifyIfTierLost(record作成・
-// 削除のイベント駆動で呼ばれるもの)が対象とするのはrecords起因の最初の3つのみ
-// (usecase/designation.goのDesignationCriteriaType*定数を参照)。残り2つは連携済み
-// プレイヤーIDでの公式サイト結果(cityleague_results)の有無で判定され、これは
-// import-cityleague-result-job(別リポジトリ、日次バッチ)がデータを取り込んだ瞬間に
-// 変化しうるものであり、core-apiserverの書き込みイベントと無関係なため対象外とする。
+// 称号のtierは6種類のcriteria_type(record/official_league_record/
+// official_city_league_record/official_city_league_placement/official_city_league_playoff/
+// official_city_league_champion)の組み合わせで判定されるが、CurrentTier/NotifyIfTierChanged/
+// NotifyIfTierLost(record作成・削除のイベント駆動で呼ばれるもの)が対象とするのはrecords起因の
+// 最初の3つのみ(usecase/designation.goのDesignationCriteriaType*定数を参照)。残り3つ
+// (ベテラン・熟練・達人)は連携済みプレイヤーIDでの公式サイト結果(cityleague_results)の有無で
+// 判定され、これは import-cityleague-result-job(別リポジトリ、日次バッチ)がデータを取り込んだ
+// 瞬間に変化しうるものであり、core-apiserverの書き込みイベントと無関係なため対象外とする。
 // currentDesignation()はvaluesマップに無いcriteria_typeに到達すると判定を打ち切る
 // ため、この3つだけを渡しても後続tier(5以降)を誤って達成扱いにすることはない。
-// ただし TierAsOf のみ、この2つも含めて判定する(TierAsOfのコメント参照)。
+// ただし TierAsOf のみ、この3つも含めて判定する(TierAsOfのコメント参照)。
 type DesignationEvaluationInterface interface {
 	// CurrentTier は現在のシーズンにおける現在のtier(称号未達成なら0)を返す。
 	// record作成の前後で比較するため、呼び出し側は保存前に一度呼んでおく。
@@ -274,13 +274,14 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteria(
 // asOf がゼロ値の場合はシーズン終了日まで(=currentDesignationForRecordCriteriaと同じ)集計する。
 //
 // includeCityLeagueResultCriteria が true の場合のみ、ベテラン(official_city_league_placement)・
-// 熟練(official_city_league_playoff)の2criteria_typeもvaluesに含める。
+// 熟練(official_city_league_playoff)・達人(official_city_league_champion)の3criteria_typeも
+// valuesに含める。
 //
-// currentDesignation() は values に無い criteria_type に当たると判定を打ち切るため、この2つを
+// currentDesignation() は values に無い criteria_type に当たると判定を打ち切るため、この3つを
 // 除外すると tier5 以降には決して到達できず、返る tier は最大4(レギュラー)で頭打ちになる。
 // かつて CurrentTier/NotifyIfTierChanged/NotifyIfTierLost は false で呼んでいたが、その結果
 // ベテラン・熟練のユーザーで beforeTier が 4 と誤計算され、称号の獲得・剥奪・ランクアップ/
-// ランクダウン通知がいずれも飛ばなかった。表示側(usecase/designation.go)はこの2つを含めて
+// ランクダウン通知がいずれも飛ばなかった。表示側(usecase/designation.go)はこれらを含めて
 // 判定するため、表示と通知で到達tierが食い違っていたのが原因。現在はリアルタイム評価・
 // TierAsOf(backfill-notifications)ともに true で呼び、表示側と判定を揃えている。
 func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
@@ -354,6 +355,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 	if includeCityLeagueResultCriteria {
 		cityLeaguePlacement := 0
 		cityLeagueFinalTournament := 0
+		cityLeagueChampion := 0
 
 		userPlayer, err := u.userPlayerRepo.FindByUserId(ctx, userId)
 		if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
@@ -394,10 +396,27 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 			if existsFinalTournament {
 				cityLeagueFinalTournament = 1
 			}
+
+			// 達人(優勝=rank1)。熟練(決勝トーナメント進出=rank5以下)と同じメソッドを
+			// しきい値 DesignationCityLeagueChampionMaxRank(=1)にして流用する。
+			// asOf/非asOfの使い分けの理由は上の熟練・ベテランと同じ。
+			var existsChampion bool
+			if !asOf.IsZero() {
+				existsChampion, err = u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
+			} else {
+				existsChampion, err = u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
+			}
+			if err != nil {
+				return nil, nil, "", err
+			}
+			if existsChampion {
+				cityLeagueChampion = 1
+			}
 		}
 
 		values[DesignationCriteriaTypeOfficialCityLeaguePlacement] = cityLeaguePlacement
 		values[DesignationCriteriaTypeOfficialCityLeagueFinalTournament] = cityLeagueFinalTournament
+		values[DesignationCriteriaTypeOfficialCityLeagueChampion] = cityLeagueChampion
 	}
 
 	return currentDesignation(definitions, values, previousCityLeagueCount), definitions, seasonLabel, nil

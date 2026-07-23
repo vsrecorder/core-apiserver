@@ -342,6 +342,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().ExistsCityLeagueResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -373,6 +376,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().ExistsCityLeagueResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -402,6 +408,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -457,6 +466,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -487,6 +499,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -515,6 +530,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
 		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		view, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -552,6 +570,9 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		designationStatsRepo.EXPECT().
 			ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, seasonFromDate, seasonToDate).
 			Return(true, nil)
+		// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する(未達成)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		_, err := u.GetByUserId(t.Context(), "user-1", "")
 
@@ -593,6 +614,12 @@ func TestDesignation_GetRankStats(t *testing.T) {
 		designationStatsRepo.EXPECT().
 			ExistsCityLeagueFinalTournamentResultGroupByUserId(gomock.Any(), DesignationCityLeagueFinalTournamentMaxRank, seasonFromDate, seasonToDate).
 			Return(map[string]int{"user-2": 1}, nil)
+		// 達人(優勝=rank1)。熟練と同じGroupByUserIdメソッドをしきい値1で流用するため、
+		// maxRank=1の呼び出しも期待する。sixTierDefinitionsにtier7(達人)は無いので、
+		// この集計値はランク分布の結果には影響しない。
+		designationStatsRepo.EXPECT().
+			ExistsCityLeagueFinalTournamentResultGroupByUserId(gomock.Any(), DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).
+			Return(map[string]int{}, nil)
 
 		view, err := u.GetRankStats(t.Context(), "")
 

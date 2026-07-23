@@ -1,0 +1,33 @@
+# core-apiserver 関連バッチの定期実行定義（ホストOSの cron。サーバ常駐で実行する）
+#
+# ■ 反映方法（どちらか）
+#   1) 実行ユーザーの crontab に取り込む:
+#        crontab core-apiserver/crontab
+#      ※ crontab コマンドは既存のエントリを丸ごと置き換える。同じユーザーに他の
+#         ジョブがある場合は、この内容を「追記」すること（crontab -l で現状を退避 →
+#         追記 → crontab で再登録）。
+#   2) システム cron として置く場合は /etc/cron.d/vsrecorder-core-apiserver に配置し、
+#      各ジョブ行の「時刻フィールドとコマンドの間」に実行ユーザー名を1つ追加する
+#      （/etc/cron.d 形式はユーザー指定が必須）。
+#
+# ■ 前提
+#   - core-apiserver 本体は distroless コンテナで動くため、バッチはコンテナ内では
+#     実行できない。ホスト上でビルドした Go バイナリを叩く（下記の事前ビルド）。
+#   - バイナリは実行ディレクトリの .env から DB 接続情報を読む（godotenv.Load）。
+#     cron はログインシェルと環境変数が異なるため、必ず作業ディレクトリへ cd してから
+#     実行し、.env を確実に読ませる。
+#   - 出力ログの保存先（/var/log/vsrecorder/）は事前に作成し書き込み権限を付与しておく。
+#
+# ■ 事前ビルド（デプロイ時に一度。パスは環境に合わせて読み替える）
+#   cd /opt/vsrecorder/core-apiserver \
+#     && go build -o /opt/vsrecorder/bin/notify-streak-nudge ./cmd/notify-streak-nudge
+
+# ── B-5 ストリーク途切れ防止 nudge（B5_STREAK_NUDGE_PLAN.md）──
+# 毎週日曜 20:00 JST。今週まだ記録がなく、今週書かないと連続が途切れる瀬戸際の
+# ユーザーへアプリ内通知を作成する。
+# 検証中は -dry-run=true（対象者をログ出力するだけ）。対象者数を確認できたら
+# 下の本番行に切り替える（この行はコメントアウトする）。
+0 20 * * 0 cd /home/ubuntu/vsrecorder/core-apiserver && /home/ubuntu/vsrecorder/core-apiserver/bin/notify-streak-nudge -dry-run=true  >> /var/log/vsrecorder/streak-nudge.log 2>&1
+
+# ── 本番切替時: 上をコメントアウトし、こちらを有効にする ──
+# 0 20 * * 0 cd /home/ubuntu/vsrecorder/core-apiserver && /home/ubuntu/vsrecorder/core-apiserver/bin/notify-streak-nudge -dry-run=false >> /var/log/vsrecorder/streak-nudge.log 2>&1

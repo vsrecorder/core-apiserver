@@ -33,10 +33,24 @@ const (
 	// レコードが選択中のシーズン内に1件以上あることを条件とするティア(熟練)に使う。
 	DesignationCriteriaTypeOfficialCityLeagueFinalTournament = "official_city_league_playoff"
 
+	// DesignationCriteriaTypeOfficialCityLeagueChampion は、プレイヤーズクラブ連携済みの
+	// プレイヤーIDで、公式サイトの結果(cityleague_results)にそのプレイヤーIDかつ rank が1
+	// (=優勝)のレコードが選択中のシーズン内に1件以上あることを条件とするティア(達人)に使う。
+	// 判定内容は決勝トーナメント進出(official_city_league_playoff, rank<=5)と同じ「rank<=しきい値」の
+	// 存在確認で、しきい値を DesignationCityLeagueChampionMaxRank(=1)にした特殊ケースであるため、
+	// リポジトリは熟練と同じ ExistsCityLeagueFinalTournamentResult 系メソッドを流用する。
+	DesignationCriteriaTypeOfficialCityLeagueChampion = "official_city_league_champion"
+
 	// DesignationCityLeagueFinalTournamentMaxRank は熟練(criteria_type=
 	// official_city_league_playoff)の判定に使う、決勝トーナメント進出とみなす
 	// cityleague_results.rank の上限値。
 	DesignationCityLeagueFinalTournamentMaxRank = 5
+
+	// DesignationCityLeagueChampionMaxRank は達人(criteria_type=
+	// official_city_league_champion)の判定に使う cityleague_results.rank の上限値。
+	// 優勝は rank=1 のみのため1(rank<=1)。決勝トーナメント進出(rank<=5)と同じクエリを
+	// この上限値で流用することで、優勝の存在確認を行う。
+	DesignationCityLeagueChampionMaxRank = 1
 
 	// DesignationCityLeagueStandaloneThreshold はレギュラー(criteria_type=
 	// official_city_league_record)の「前シーズンに引き続き」という継続条件を
@@ -57,14 +71,16 @@ type DesignationLadderItem struct {
 	// それ以外の criteria_type では常に0(継続条件が無いため意味を持たない)。
 	PreviousValue int
 	// MissingOfficialEventRecord は、ベテラン(official_city_league_placement)・
-	// 熟練(official_city_league_playoff)が未達成の場合に限り、その原因が
+	// 熟練(official_city_league_playoff)・達人(official_city_league_champion)が未達成の
+	// 場合に限り、その原因が
 	// 「公式サイトの結果(cityleague_results)は連携済みプレイヤーIDで存在するが、
 	// 対応する official_event_id の記録(records)をユーザー自身がまだ作成していないこと」
 	// であるかを表す。称号詳細モーダルで「対象の大会の記録を作成してください」という
 	// 案内を出し分けるためのヒント用途であり、それ以外の criteria_type では常にfalse。
 	MissingOfficialEventRecord bool
 	// CityLeagueRecordWithoutPlayerLink は、ベテラン(official_city_league_placement)・
-	// 熟練(official_city_league_playoff)についてのみ、プレイヤーズクラブ未連携で
+	// 熟練(official_city_league_playoff)・達人(official_city_league_champion)についてのみ、
+	// プレイヤーズクラブ未連携で
 	// あるにもかかわらず、対象シーズン内にシティリーグの記録(records)を既に
 	// 作成済みであるかを表す。称号詳細モーダルで「連携すれば達成できる可能性がある」
 	// という、より具体的な案内を出し分けるためのヒント用途であり、それ以外の
@@ -173,7 +189,8 @@ func (u *Designation) GetByUserId(
 
 		cityLeagueRecordWithoutPlayerLink := false
 		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeaguePlacement ||
-			def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueFinalTournament {
+			def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueFinalTournament ||
+			def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueChampion {
 			cityLeagueRecordWithoutPlayerLink = hints.CityLeagueRecordWithoutPlayerLink
 		}
 
@@ -288,6 +305,13 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
+	// 達人(優勝=rank1)。熟練と同じ ExistsCityLeagueFinalTournamentResultGroupByUserId を
+	// しきい値 DesignationCityLeagueChampionMaxRank(=1)で流用する。
+	cityLeagueChampions, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
 	// いずれかの記録を持つユーザーのみが称号判定の対象になりうる(記録が全く無ければ
 	// 必ず tier=0 のため、集計に含める意味が無い)。
 	userIds := make(map[string]struct{})
@@ -310,6 +334,7 @@ func (u *Designation) GetRankStats(
 			DesignationCriteriaTypeOfficialCityLeagueRecord:          cityLeagueCounts[userId],
 			DesignationCriteriaTypeOfficialCityLeaguePlacement:       cityLeaguePlacements[userId],
 			DesignationCriteriaTypeOfficialCityLeagueFinalTournament: cityLeagueFinalTournaments[userId],
+			DesignationCriteriaTypeOfficialCityLeagueChampion:        cityLeagueChampions[userId],
 		}
 
 		current := currentDesignation(definitions, values, previousCityLeagueCounts[userId])
@@ -339,18 +364,18 @@ func (u *Designation) GetRankStats(
 // モーダルの案内メッセージの出し分けにのみ使う補助情報(達成条件の判定そのものには使わない)。
 type designationSeasonHints struct {
 	// MissingOfficialEventRecord は DesignationLadderItem.MissingOfficialEventRecord と同じ
-	// 意味を持つ値を criteria_type(ベテラン・熟練)をキーに保持する。
+	// 意味を持つ値を criteria_type(ベテラン・熟練・達人)をキーに保持する。
 	MissingOfficialEventRecord map[string]bool
 	// CityLeagueRecordWithoutPlayerLink は DesignationLadderItem.CityLeagueRecordWithoutPlayerLink
 	// と同じ意味を持つ値。プレイヤーズクラブの連携有無は criteria_type によらずユーザー単位で
-	// 決まるため、ベテラン・熟練の両方で共通の値をそのまま使う。
+	// 決まるため、ベテラン・熟練・達人のいずれでも共通の値をそのまま使う。
 	CityLeagueRecordWithoutPlayerLink bool
 }
 
 // seasonValuesByCriteriaType は判定ロジックが実装済みの criteria_type についてのみ、
 // 指定シーズン(9月始まり。season空文字なら現在のシーズン)の集計値を返す。
 // ここに無い criteria_type(例: "unimplemented")は「準備中」として常に未達成のまま扱われる。
-// あわせて designationSeasonHints(ベテラン・熟練の案内メッセージ出し分け用の補助情報)も返す。
+// あわせて designationSeasonHints(ベテラン・熟練・達人の案内メッセージ出し分け用の補助情報)も返す。
 func (u *Designation) seasonValuesByCriteriaType(
 	ctx context.Context,
 	userId string,
@@ -378,8 +403,9 @@ func (u *Designation) seasonValuesByCriteriaType(
 
 	cityLeaguePlacement := 0
 	cityLeagueFinalTournament := 0
+	cityLeagueChampion := 0
 	hints := &designationSeasonHints{
-		MissingOfficialEventRecord: make(map[string]bool, 2),
+		MissingOfficialEventRecord: make(map[string]bool, 3),
 	}
 	userPlayer, err := u.userPlayerRepo.FindByUserId(ctx, userId)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
@@ -418,6 +444,23 @@ func (u *Designation) seasonValuesByCriteriaType(
 			}
 			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeagueFinalTournament] = missingRecord
 		}
+
+		// 達人(優勝=rank1)。判定は熟練(決勝トーナメント進出=rank5以下)と同じ
+		// ExistsCityLeagueFinalTournamentResult 系メソッドを、しきい値を
+		// DesignationCityLeagueChampionMaxRank(=1)にして流用する。
+		existsChampion, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
+		if err != nil {
+			return nil, nil, err
+		}
+		if existsChampion {
+			cityLeagueChampion = 1
+		} else {
+			missingRecord, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
+			if err != nil {
+				return nil, nil, err
+			}
+			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeagueChampion] = missingRecord
+		}
 	}
 
 	values := map[string]int{
@@ -426,6 +469,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 		DesignationCriteriaTypeOfficialCityLeagueRecord:          cityLeagueCount,
 		DesignationCriteriaTypeOfficialCityLeaguePlacement:       cityLeaguePlacement,
 		DesignationCriteriaTypeOfficialCityLeagueFinalTournament: cityLeagueFinalTournament,
+		DesignationCriteriaTypeOfficialCityLeagueChampion:        cityLeagueChampion,
 	}
 
 	return values, hints, nil

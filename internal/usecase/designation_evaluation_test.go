@@ -184,6 +184,8 @@ func TestDesignationEvaluation_TierAsOf(t *testing.T) {
 		userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueResultAsOfByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
+		// 達人(優勝=rank1)。熟練と同じAsOfメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する。
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil)
 
 		asOf := time.Date(2026, 1, 15, 0, 0, 0, 0, time.Local)
 		tier, err := u.TierAsOf(context.Background(), "user-1", asOf)
@@ -213,6 +215,8 @@ func expectVeteranCriteria(
 	userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
 	designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(cityLeagueResultExists, nil)
 	designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
+	// 達人(優勝=rank1)。熟練と同じメソッドをしきい値1で流用するため、maxRank=1の呼び出しも期待する。
+	designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
 }
 
 // 通知経路(CurrentTier/NotifyIfTierChanged/NotifyIfTierLost)がcityleague_results起因の
@@ -537,7 +541,8 @@ func TestRankNameForTier(t *testing.T) {
 	require.Equal(t, "スーパーボール級", RankNameForTier(3))
 	require.Equal(t, "スーパーボール級", RankNameForTier(4))
 	require.Equal(t, "ハイパーボール級", RankNameForTier(5))
-	require.Equal(t, "マスターボール級", RankNameForTier(6))
+	require.Equal(t, "ハイパーボール級", RankNameForTier(6)) // 熟練をマスターボール級からハイパーボール級へ移動
+	require.Equal(t, "マスターボール級", RankNameForTier(7))
 	require.Equal(t, "マスターボール級", RankNameForTier(8))
 	require.Equal(t, "ウルトラボール級", RankNameForTier(9))
 	require.Equal(t, "ウルトラボール級", RankNameForTier(10))

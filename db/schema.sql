@@ -701,7 +701,7 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 ('designation-04', 4,  'regular',      '🎫', 'レギュラー',  '称号：【👍 一人前】を持っており、前シーズンに引き続き今シーズンでもシティリーグの記録をしているか、今シーズンでシティリーグの記録を2つ以上作成した', 'official_city_league_record', 1, now(), now()),
 ('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '称号:【🎫 レギュラー】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで入賞した', 'official_city_league_placement', 1, now(), now()),
 ('designation-06', 6,  'expert',       '🎖️', '熟練',     '称号:【💪 ベテラン】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで決勝トーナメントに進出した', 'official_city_league_playoff', 1, now(), now()),
-('designation-07', 7,  'master',       '🏆', '達人',       '準備中', 'unimplemented', 0, now(), now()),
+('designation-07', 7,  'master',       '🏆', '達人',       '称号:【🎖️ 熟練】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン、シティリーグで優勝した', 'official_city_league_champion', 1, now(), now()),
 ('designation-08', 8,  'grandmaster',  '👑', '名人',       '準備中', 'unimplemented', 0, now(), now()),
 ('designation-09', 9,  'legend',       '💎', 'レジェンド', '準備中', 'unimplemented', 0, now(), now()),
 ('designation-10', 10, 'hall_of_fame', '🏛️', '殿堂入り',   '準備中', 'unimplemented', 0, now(), now());
@@ -710,6 +710,16 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 
 
 UPDATE designations SET description = '公式イベント/Tonamel/記入形式、いずれかの記録において使用したデッキを指定のうえで作成し、対戦結果を追加した' WHERE id = 'designation-01';
+
+-- 達人(tier7): 「準備中(unimplemented)」から、連携したプレイヤーズクラブのプレイヤーIDで
+-- 今シーズンにシティリーグで優勝(cityleague_results.rank=1)することを達成条件とするティアへ変更。
+-- 既存の本番DBは INSERT 済み(designation-07 は上の INSERT で作成された行が既に存在する)のため、
+-- criteria_type/criteria_value/description を UPDATE で更新する。冪等なので再実行しても安全。
+UPDATE designations SET
+    description = '称号:【🎖️ 熟練】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン、シティリーグで優勝した',
+    criteria_type = 'official_city_league_champion',
+    criteria_value = 1
+WHERE id = 'designation-07';
 
 
 

@@ -163,6 +163,13 @@ func advanceFreezeRegen(freezeUsedCount, regenProgress int) (int, int) {
 	return freezeUsedCount, regenProgress
 }
 
+// StreakFreezeRegenWeeks は、使用済みフリーズ枠を1つ回復するのに必要なクリーン継続週数
+// (streakFreezeRegenWeeks)を返す。定数自体は非公開のまま、StreakPanel等の表示で
+// 「何週続けるごとに1つ復活するか」を案内するために外部へ公開する。
+func StreakFreezeRegenWeeks() int {
+	return streakFreezeRegenWeeks
+}
+
 // FreezeRegenRemainingWeeks は、使用済みフリーズ枠が1つ回復するまでに、あと何週の
 // クリーン記録(フリーズ未使用で前週から途切れず継続)が必要かを返す。回復対象が無い
 // (freezeUsedCount<=0)場合は0を返す。回復間隔(streakFreezeRegenWeeks)を外部へ露出せず、

@@ -16,6 +16,7 @@ func NewUserStreakResponse(
 		FreezeUsedCount:           streak.FreezeUsedCount,
 		MaxFreezeCount:            usecase.StreakMaxFreezeCount,
 		FreezeRegenRemainingWeeks: usecase.FreezeRegenRemainingWeeks(streak.FreezeUsedCount, streak.FreezeRegenProgress),
+		FreezeRegenWeeks:          usecase.StreakFreezeRegenWeeks(),
 		LastRecordedWeek:          streak.LastRecordedWeek,
 	}
 }

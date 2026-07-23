@@ -60,6 +60,17 @@ func (u *UserStatRecent) GetRecentMatches(
 		displayStart = len(rawMatches) - count
 	}
 
+	// 各点のローリング勝率は、そのつどウィンドウ内を数え直すと O(count^2) になる。
+	// 勝利数の累積和を先に1本だけ作り、任意区間の勝利数を差分で引けるようにする。
+	// prefixWins[k] は rawMatches[0..k-1] の勝利数（prefixWins[0]=0）。
+	prefixWins := make([]int, len(rawMatches)+1)
+	for i, rm := range rawMatches {
+		prefixWins[i+1] = prefixWins[i]
+		if rm.VictoryFlg {
+			prefixWins[i+1]++
+		}
+	}
+
 	wins := 0
 	matches := make([]*entity.RecentMatch, 0, len(rawMatches)-displayStart)
 	for idx := displayStart; idx < len(rawMatches); idx++ {
@@ -69,13 +80,9 @@ func (u *UserStatRecent) GetRecentMatches(
 		if windowStart < 0 {
 			windowStart = 0
 		}
-		windowWins, windowTotal := 0, 0
-		for j := windowStart; j <= idx; j++ {
-			windowTotal++
-			if rawMatches[j].VictoryFlg {
-				windowWins++
-			}
-		}
+		// [windowStart, idx] の勝利数・試合数を累積和の差分で求める（O(1)）。
+		windowTotal := idx - windowStart + 1
+		windowWins := prefixWins[idx+1] - prefixWins[windowStart]
 		var rollingWinRate float64
 		if windowTotal > 0 {
 			rollingWinRate = float64(windowWins) / float64(windowTotal)

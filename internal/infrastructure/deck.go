@@ -693,18 +693,30 @@ func (i *Deck) FindByUserIdOnCursor(
 	return ret, nil
 }
 
-func (i *Deck) FindIdsByUserId(
+func (i *Deck) DeleteByUserId(
 	ctx context.Context,
 	uid string,
-) ([]string, error) {
-	var ids []string
+) error {
+	db := dbFromContext(ctx, i.db)
 
 	// アーカイブ済みデッキも含めて全件対象にする
-	if tx := dbFromContext(ctx, i.db).Model(&model.Deck{}).Where("user_id = ?", uid).Pluck("id", &ids); tx.Error != nil {
-		return nil, tx.Error
-	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		// デッキコードを先に消す。decks を先に消すとサブクエリが0件になり消し残る。
+		// ここで消えるのは「このユーザのデッキに紐づくコード」であり、
+		// 作成者が他人のものも含む(デッキが消える以上、残しても参照先が無い)。
+		if tx := tx.Where(
+			"deck_id IN (?)",
+			tx.Model(&model.Deck{}).Select("id").Where("user_id = ?", uid),
+		).Delete(&model.DeckCode{}); tx.Error != nil {
+			return tx.Error
+		}
 
-	return ids, nil
+		if tx := tx.Where("user_id = ?", uid).Delete(&model.Deck{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
 }
 
 func (i *Deck) Save(

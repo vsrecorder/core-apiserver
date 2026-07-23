@@ -46,7 +46,7 @@ func TestDeckCodeInfrastructure(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 	){
-		"FindIdsByUserId": test_DeckCodeInfrastructure_FindIdsByUserId,
+		"DeleteByUserId": test_DeckCodeInfrastructure_DeleteByUserId,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -54,24 +54,28 @@ func TestDeckCodeInfrastructure(t *testing.T) {
 	}
 }
 
-func test_DeckCodeInfrastructure_FindIdsByUserId(t *testing.T) {
+// 退会時の一括削除。作成者が本人であるデッキコードを、件数によらず1文で削除する。
+// (本人のデッキに紐づくものは Deck.DeleteByUserId 側で消える)
+func test_DeckCodeInfrastructure_DeleteByUserId(t *testing.T) {
 	r, mock, err := setup4DeckCodeInfrastructure()
 	require.NoError(t, err)
 
-	rows := sqlmock.NewRows([]string{
-		"id",
-	}).AddRow(
-		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-	)
+	uid := "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
 
-	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT "id" FROM "deck_codes" WHERE user_id = $1 AND "deck_codes"."deleted_at" IS NULL`,
+	// GORM は単発の書き込みも既定でトランザクションに包む
+	mock.ExpectBegin()
+
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "deck_codes" SET "deleted_at"=$1 WHERE user_id = $2 AND "deck_codes"."deleted_at" IS NULL`,
 	)).WithArgs(
-		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
-	).WillReturnRows(rows)
+		AnyTime{},
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 2))
 
-	ids, err := r.FindIdsByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1")
+	mock.ExpectCommit()
+
+	err = r.DeleteByUserId(context.Background(), uid)
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"01HD7Y3K8D6FDHMHTZ2GT41TN2"}, ids)
+	require.NoError(t, mock.ExpectationsWereMet())
 }

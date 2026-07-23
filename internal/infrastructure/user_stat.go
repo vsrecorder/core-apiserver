@@ -25,6 +25,15 @@ type matchStatsResult struct {
 	Wins         int
 }
 
+// recordStatsResult は records を1回走査して得る集計値。
+// 記録数と、公式/Tonamel/自由形式イベントの種類数を条件付き集計でまとめて数える。
+type recordStatsResult struct {
+	RecordCount          int
+	OfficialEventCount   int
+	TonamelEventCount    int
+	UnofficialEventCount int
+}
+
 func (i *UserStat) FindUserStat(
 	ctx context.Context,
 	userId string,
@@ -49,8 +58,16 @@ func (i *UserStat) FindUserStat(
 		return nil, tx.Error
 	}
 
-	var recordCount int64
+	// 記録数と各イベント種類数は、いずれも同じ records の同じ絞り込みに対する集計なので、
+	// 記録を4回走査せず1回にまとめる。イベント種類数は「その条件に当てはまる値だけを
+	// DISTINCT で数える」ため、CASE で条件外を NULL にして COUNT(DISTINCT ...) に渡す
+	// （COUNT は NULL を数えないので、絞り込んでから DISTINCT するのと同じ結果になる）。
+	var recordResult recordStatsResult
 	recordQuery := i.db.Table("records").
+		Select("COUNT(*) AS record_count, " +
+			"COUNT(DISTINCT CASE WHEN official_event_id != 0 THEN official_event_id END) AS official_event_count, " +
+			"COUNT(DISTINCT CASE WHEN tonamel_event_id != '' THEN tonamel_event_id END) AS tonamel_event_count, " +
+			"COUNT(DISTINCT CASE WHEN unofficial_event_id != '' THEN unofficial_event_id END) AS unofficial_event_count").
 		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId)
 
 	if !fromDate.IsZero() {
@@ -60,52 +77,7 @@ func (i *UserStat) FindUserStat(
 		recordQuery = recordQuery.Where("event_date < ?", toDate)
 	}
 
-	if tx := recordQuery.Count(&recordCount); tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	var officialEventCount int64
-	officialEventQuery := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false AND official_event_id != 0", userId)
-
-	if !fromDate.IsZero() {
-		officialEventQuery = officialEventQuery.Where("event_date >= ?", fromDate)
-	}
-	if !toDate.IsZero() {
-		officialEventQuery = officialEventQuery.Where("event_date < ?", toDate)
-	}
-
-	if tx := officialEventQuery.Distinct("official_event_id").Count(&officialEventCount); tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	var tonamelEventCount int64
-	tonamelEventQuery := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false AND tonamel_event_id != ''", userId)
-
-	if !fromDate.IsZero() {
-		tonamelEventQuery = tonamelEventQuery.Where("event_date >= ?", fromDate)
-	}
-	if !toDate.IsZero() {
-		tonamelEventQuery = tonamelEventQuery.Where("event_date < ?", toDate)
-	}
-
-	if tx := tonamelEventQuery.Distinct("tonamel_event_id").Count(&tonamelEventCount); tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	var unofficialEventCount int64
-	unofficialEventQuery := i.db.Table("records").
-		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false AND unofficial_event_id != ''", userId)
-
-	if !fromDate.IsZero() {
-		unofficialEventQuery = unofficialEventQuery.Where("event_date >= ?", fromDate)
-	}
-	if !toDate.IsZero() {
-		unofficialEventQuery = unofficialEventQuery.Where("event_date < ?", toDate)
-	}
-
-	if tx := unofficialEventQuery.Distinct("unofficial_event_id").Count(&unofficialEventCount); tx.Error != nil {
+	if tx := recordQuery.Scan(&recordResult); tx.Error != nil {
 		return nil, tx.Error
 	}
 
@@ -116,5 +88,5 @@ func (i *UserStat) FindUserStat(
 		winRate = float64(matchResult.Wins) / float64(matchResult.TotalMatches)
 	}
 
-	return entity.NewUserStat(userId, int(recordCount), int(officialEventCount), int(tonamelEventCount), int(unofficialEventCount), matchResult.TotalMatches, matchResult.Wins, losses, winRate), nil
+	return entity.NewUserStat(userId, recordResult.RecordCount, recordResult.OfficialEventCount, recordResult.TonamelEventCount, recordResult.UnofficialEventCount, matchResult.TotalMatches, matchResult.Wins, losses, winRate), nil
 }

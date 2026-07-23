@@ -55,6 +55,20 @@ func (mr *MockDeckCodeInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeckCodeInterface)(nil).Delete), ctx, id)
 }
 
+// DeleteByUserId mocks base method.
+func (m *MockDeckCodeInterface) DeleteByUserId(ctx context.Context, uid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUserId", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUserId indicates an expected call of DeleteByUserId.
+func (mr *MockDeckCodeInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockDeckCodeInterface)(nil).DeleteByUserId), ctx, uid)
+}
+
 // FindByDeckId mocks base method.
 func (m *MockDeckCodeInterface) FindByDeckId(ctx context.Context, deckId string) ([]*entity.DeckCode, error) {
 	m.ctrl.T.Helper()
@@ -83,21 +97,6 @@ func (m *MockDeckCodeInterface) FindById(ctx context.Context, id string) (*entit
 func (mr *MockDeckCodeInterfaceMockRecorder) FindById(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockDeckCodeInterface)(nil).FindById), ctx, id)
-}
-
-// FindIdsByUserId mocks base method.
-func (m *MockDeckCodeInterface) FindIdsByUserId(ctx context.Context, uid string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindIdsByUserId", ctx, uid)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindIdsByUserId indicates an expected call of FindIdsByUserId.
-func (mr *MockDeckCodeInterfaceMockRecorder) FindIdsByUserId(ctx, uid any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindIdsByUserId", reflect.TypeOf((*MockDeckCodeInterface)(nil).FindIdsByUserId), ctx, uid)
 }
 
 // Save mocks base method.

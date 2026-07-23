@@ -56,6 +56,20 @@ func (mr *MockRecordInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockRecordInterface)(nil).Delete), ctx, id)
 }
 
+// DeleteByUserId mocks base method.
+func (m *MockRecordInterface) DeleteByUserId(ctx context.Context, uid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUserId", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUserId indicates an expected call of DeleteByUserId.
+func (mr *MockRecordInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockRecordInterface)(nil).DeleteByUserId), ctx, uid)
+}
+
 // Find mocks base method.
 func (m *MockRecordInterface) Find(ctx context.Context, limit, offset int, eventType string) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()
@@ -189,21 +203,6 @@ func (m *MockRecordInterface) FindByUserIdOnCursor(ctx context.Context, uid stri
 func (mr *MockRecordInterfaceMockRecorder) FindByUserIdOnCursor(ctx, uid, limit, cursorEventDate, cursorCreatedAt, eventType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByUserIdOnCursor), ctx, uid, limit, cursorEventDate, cursorCreatedAt, eventType)
-}
-
-// FindIdsByUserId mocks base method.
-func (m *MockRecordInterface) FindIdsByUserId(ctx context.Context, uid string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindIdsByUserId", ctx, uid)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindIdsByUserId indicates an expected call of FindIdsByUserId.
-func (mr *MockRecordInterfaceMockRecorder) FindIdsByUserId(ctx, uid any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindIdsByUserId", reflect.TypeOf((*MockRecordInterface)(nil).FindIdsByUserId), ctx, uid)
 }
 
 // FindOnCursor mocks base method.

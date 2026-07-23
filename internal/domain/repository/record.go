@@ -83,11 +83,14 @@ type RecordInterface interface {
 		offset int,
 	) ([]*entity.Record, error)
 
-	// FindIdsByUserId は退会時の連鎖削除など、ID一覧だけを軽量に取得したい場合に使う。
-	FindIdsByUserId(
+	// DeleteByUserId は退会時に、そのユーザの記録と、記録に紐づく対戦結果・対局・
+	// 自由形式イベントをまとめて論理削除する。
+	// 記録を1件ずつ Delete すると記録数(と対戦数)に比例してクエリが増え、
+	// 1トランザクションの保持時間がそのまま延びるため、退会処理ではこちらを使う。
+	DeleteByUserId(
 		ctx context.Context,
 		uid string,
-	) ([]string, error)
+	) error
 
 	Save(
 		ctx context.Context,

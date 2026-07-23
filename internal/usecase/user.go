@@ -172,45 +172,27 @@ func (u *User) Delete(
 	id string,
 ) error {
 	// 退会にあたり、ユーザ本体を消す前に対戦記録・デッキ・デッキコードを連鎖削除する。
-	// Record.Delete / Deck.Delete は Match・Game・そのデッキ自身のDeckCode等の
-	// 関連レコードもあわせて削除するため、ここでは ID を洗い出して順に呼び出すだけでよい。
+	// DeleteByUserId は関連レコード(対戦結果・対局・自由形式イベント・デッキコード)も
+	// あわせて削除するため、ここでは種類ごとに1回ずつ呼び出すだけでよい。
 	// 全体を1つのDBトランザクションにまとめており、途中で失敗した場合はここまでの
 	// 削除もすべてロールバックされる。
+	//
+	// 記録やデッキを1件ずつ削除すると、記録数の多いユーザほどクエリ数と
+	// トランザクションの保持時間が線形に伸びるため、まとめて削除する。
 	return u.transactionManager.Do(ctx, func(ctx context.Context) error {
-		recordIds, err := u.recordRepository.FindIdsByUserId(ctx, id)
-		if err != nil {
+		if err := u.recordRepository.DeleteByUserId(ctx, id); err != nil {
 			return err
 		}
 
-		for _, recordId := range recordIds {
-			if err := u.recordRepository.Delete(ctx, recordId); err != nil {
-				return err
-			}
-		}
-
-		deckIds, err := u.deckRepository.FindIdsByUserId(ctx, id)
-		if err != nil {
+		if err := u.deckRepository.DeleteByUserId(ctx, id); err != nil {
 			return err
-		}
-
-		for _, deckId := range deckIds {
-			if err := u.deckRepository.Delete(ctx, deckId); err != nil {
-				return err
-			}
 		}
 
 		// DeckCode.DeckId は必ずしも本人が所有するデッキとは限らない(他人のデッキに
 		// 対して作成できてしまう)ため、上記のデッキ連鎖削除だけでは削除しきれない
-		// ケースがある。user_id で直接洗い出して個別に削除する。
-		deckCodeIds, err := u.deckCodeRepository.FindIdsByUserId(ctx, id)
-		if err != nil {
+		// ケースがある。user_id でも直接削除する。
+		if err := u.deckCodeRepository.DeleteByUserId(ctx, id); err != nil {
 			return err
-		}
-
-		for _, deckCodeId := range deckCodeIds {
-			if err := u.deckCodeRepository.Delete(ctx, deckCodeId); err != nil {
-				return err
-			}
 		}
 
 		// プレイヤーIDの紐付けは1ユーザーにつき有効な行が最大1件のため、

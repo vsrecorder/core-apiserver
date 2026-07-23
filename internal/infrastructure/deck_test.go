@@ -87,7 +87,7 @@ func TestDeckInfrastructure(t *testing.T) {
 		"FindById":             test_DeckInfrastructure_FindById,
 		"FindByUserId":         test_DeckInfrastructure_FindByUserId,
 		"FindByUserIdOnCursor": test_DeckInfrastructure_FindByUserIdOnCursor,
-		"FindIdsByUserId":      test_DeckInfrastructure_FindIdsByUserId,
+		"DeleteByUserId":       test_DeckInfrastructure_DeleteByUserId,
 		"Save":                 test_DeckInfrastructure_Save,
 		"Delete":               test_DeckInfrastructure_Delete,
 	} {
@@ -611,28 +611,36 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 	})
 }
 
-func test_DeckInfrastructure_FindIdsByUserId(t *testing.T) {
-	// 退会時の連鎖削除で使うため、アーカイブ済みのデッキも対象になる
-	t.Run("正常系_アーカイブ済み含む全デッキのIDを返す", func(t *testing.T) {
+func test_DeckInfrastructure_DeleteByUserId(t *testing.T) {
+	// 退会時の一括削除。デッキの件数によらずクエリは2文で、
+	// アーカイブ済みのデッキも対象になる(archived_at を条件に入れない)。
+	t.Run("正常系_デッキコードとデッキをまとめて削除する", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
 
 		uid := "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
 
-		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT "id" FROM "decks" WHERE user_id = $1 AND "decks"."deleted_at" IS NULL`,
-		)).WithArgs(
-			uid,
-		).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(
-			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-		).AddRow(
-			"01HD7Y3K8D6FDHMHTZ2GT41TN3",
-		))
+		mock.ExpectBegin()
 
-		ids, err := r.FindIdsByUserId(context.Background(), uid)
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "deck_codes" SET "deleted_at"=$1 WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $2 AND "decks"."deleted_at" IS NULL) AND "deck_codes"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			uid,
+		).WillReturnResult(sqlmock.NewResult(0, 2))
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`UPDATE "decks" SET "deleted_at"=$1 WHERE user_id = $2 AND "decks"."deleted_at" IS NULL`,
+		)).WithArgs(
+			AnyTime{},
+			uid,
+		).WillReturnResult(sqlmock.NewResult(0, 2))
+
+		mock.ExpectCommit()
+
+		err = r.DeleteByUserId(context.Background(), uid)
 
 		require.NoError(t, err)
-		require.Equal(t, []string{"01HD7Y3K8D6FDHMHTZ2GT41TN2", "01HD7Y3K8D6FDHMHTZ2GT41TN3"}, ids)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }

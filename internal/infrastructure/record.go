@@ -501,17 +501,56 @@ func (i *Record) FindByDeckCodeId(
 	return entities, nil
 }
 
-func (i *Record) FindIdsByUserId(
+func (i *Record) DeleteByUserId(
 	ctx context.Context,
 	uid string,
-) ([]string, error) {
-	var ids []string
+) error {
+	db := dbFromContext(ctx, i.db)
 
-	if tx := dbFromContext(ctx, i.db).Model(&model.Record{}).Where("user_id = ?", uid).Pluck("id", &ids); tx.Error != nil {
-		return nil, tx.Error
-	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		// 消す順序は「参照する側が先」。records を先に消すと、以降のサブクエリが
+		// deleted_at IS NULL で0件になり、対戦結果や対局が消し残る。
+		//
+		// 各サブクエリは毎回 tx.Model(...) から組み立てる。GORM の *gorm.DB は
+		// 条件を積んでいくため、同じインスタンスを使い回すと条件が混ざる。
 
-	return ids, nil
+		// 対局(games): このユーザの記録に紐づく対戦結果のもの
+		if tx := tx.Where(
+			"match_id IN (?)",
+			tx.Model(&model.Match{}).Select("id").Where(
+				"record_id IN (?)",
+				tx.Model(&model.Record{}).Select("id").Where("user_id = ?", uid),
+			),
+		).Delete(&model.Game{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		// 対戦結果(matches)
+		if tx := tx.Where(
+			"record_id IN (?)",
+			tx.Model(&model.Record{}).Select("id").Where("user_id = ?", uid),
+		).Delete(&model.Match{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		// 自由形式イベント(unofficial_events): 記録から参照されているものだけ
+		// (孤立行を残さないため。Delete 単体版と同じ方針)
+		if tx := tx.Where(
+			"id IN (?)",
+			tx.Model(&model.Record{}).Select("unofficial_event_id").Where(
+				"user_id = ? AND unofficial_event_id IS NOT NULL AND unofficial_event_id != ''", uid,
+			),
+		).Delete(&model.UnofficialEvent{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		// 記録(records)
+		if tx := tx.Where("user_id = ?", uid).Delete(&model.Record{}); tx.Error != nil {
+			return tx.Error
+		}
+
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelDefault})
 }
 
 func (i *Record) Save(

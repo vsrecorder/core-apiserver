@@ -59,7 +59,7 @@ func TestRecordInfrastructure(t *testing.T) {
 		"FindByOfficialEventId": test_RecordInfrastructure_FindByOfficialEventId,
 		"FindByTonamelEventId":  test_RecordInfrastructure_FindByTonamelEventId,
 		"FindByDeckId":          test_RecordInfrastructure_FindByDeckId,
-		"FindIdsByUserId":       test_RecordInfrastructure_FindIdsByUserId,
+		"DeleteByUserId":        test_RecordInfrastructure_DeleteByUserId,
 		"Save":                  test_RecordInfrastructure_Save,
 		"Delete":                test_RecordInfrastructure_Delete,
 	} {
@@ -602,26 +602,51 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	require.Equal(t, "01JHAKSVXZ4XW91TDQ8EDP1N8P", records[0].DeckId)
 }
 
-func test_RecordInfrastructure_FindIdsByUserId(t *testing.T) {
+// 退会時の一括削除。記録の件数によらず、対局→対戦結果→自由形式イベント→記録の
+// 順に1文ずつ発行することを確認する(記録ごとにクエリを撃たない)。
+func test_RecordInfrastructure_DeleteByUserId(t *testing.T) {
 	r, mock, err := setup4RecordInfrastructure()
 	require.NoError(t, err)
 
-	rows := sqlmock.NewRows([]string{
-		"id",
-	}).AddRow(
-		"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-	)
+	uid := "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
 
-	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT "id" FROM "records" WHERE user_id = $1 AND "records"."deleted_at" IS NULL`,
+	mock.ExpectBegin()
+
+	// 対局: このユーザの記録に紐づく対戦結果のものを、2段のサブクエリで指定する
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "games" SET "deleted_at"=$1 WHERE match_id IN (SELECT "id" FROM "matches" WHERE record_id IN (SELECT "id" FROM "records" WHERE user_id = $2 AND "records"."deleted_at" IS NULL) AND "matches"."deleted_at" IS NULL) AND "games"."deleted_at" IS NULL`,
 	)).WithArgs(
-		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
-	).WillReturnRows(rows)
+		AnyTime{},
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 3))
 
-	ids, err := r.FindIdsByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1")
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "matches" SET "deleted_at"=$1 WHERE record_id IN (SELECT "id" FROM "records" WHERE user_id = $2 AND "records"."deleted_at" IS NULL) AND "matches"."deleted_at" IS NULL`,
+	)).WithArgs(
+		AnyTime{},
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 2))
+
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "unofficial_events" SET "deleted_at"=$1 WHERE id IN (SELECT "unofficial_event_id" FROM "records" WHERE (user_id = $2 AND unofficial_event_id IS NOT NULL AND unofficial_event_id != '') AND "records"."deleted_at" IS NULL) AND "unofficial_events"."deleted_at" IS NULL`,
+	)).WithArgs(
+		AnyTime{},
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "records" SET "deleted_at"=$1 WHERE user_id = $2 AND "records"."deleted_at" IS NULL`,
+	)).WithArgs(
+		AnyTime{},
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 2))
+
+	mock.ExpectCommit()
+
+	err = r.DeleteByUserId(context.Background(), uid)
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"01HD7Y3K8D6FDHMHTZ2GT41TN2"}, ids)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func test_RecordInfrastructure_Save(t *testing.T) {

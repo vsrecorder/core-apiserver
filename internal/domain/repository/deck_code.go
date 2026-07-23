@@ -17,13 +17,13 @@ type DeckCodeInterface interface {
 		deckId string,
 	) ([]*entity.DeckCode, error)
 
-	// FindIdsByUserId は退会時の連鎖削除など、ID一覧だけを軽量に取得したい場合に使う。
+	// DeleteByUserId は退会時に、そのユーザが作成したデッキコードをまとめて論理削除する。
 	// DeckCode.DeckId は必ずしもそのユーザ自身が所有するデッキとは限らないため、
-	// Deck の連鎖削除とは別に user_id で直接洗い出す必要がある。
-	FindIdsByUserId(
+	// Deck の連鎖削除とは別に user_id で直接消す必要がある。
+	DeleteByUserId(
 		ctx context.Context,
 		uid string,
-	) ([]string, error)
+	) error
 
 	Save(
 		ctx context.Context,

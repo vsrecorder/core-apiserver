@@ -15,27 +15,18 @@ func TestUserStatInfrastructure(t *testing.T) {
 	fromDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local)
 	toDate := time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)
 
-	// FindUserStatは対戦成績→記録数→公式/Tonamel/自由形式イベント数の順に5つのクエリを発行する
+	// FindUserStatは対戦成績と、記録数・公式/Tonamel/自由形式イベント数(1本の条件付き集計)の
+	// 計2クエリを発行する。records は4種の集計をまとめて1回だけ走査する。
 	expectStatQueries := func(mock sqlmock.Sqlmock, totalMatches, wins int, records, official, tonamel, unofficial int) {
 		mock.ExpectQuery(`SELECT COUNT\(\*\) AS total_matches, SUM\(CASE WHEN matches\.victory_flg = true THEN 1 ELSE 0 END\) AS wins FROM "matches"`).
 			WithArgs(uid, fromDate, toDate).
 			WillReturnRows(sqlmock.NewRows([]string{"total_matches", "wins"}).AddRow(totalMatches, wins))
 
-		mock.ExpectQuery(`SELECT count\(\*\) FROM "records" WHERE \(user_id = \$1 AND deleted_at IS NULL AND ignore_stats_flg = false\) AND event_date`).
+		mock.ExpectQuery(`SELECT COUNT\(\*\) AS record_count, COUNT\(DISTINCT CASE WHEN official_event_id != 0 THEN official_event_id END\) AS official_event_count, COUNT\(DISTINCT CASE WHEN tonamel_event_id != '' THEN tonamel_event_id END\) AS tonamel_event_count, COUNT\(DISTINCT CASE WHEN unofficial_event_id != '' THEN unofficial_event_id END\) AS unofficial_event_count FROM "records"`).
 			WithArgs(uid, fromDate, toDate).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(records))
-
-		mock.ExpectQuery(`SELECT COUNT\(DISTINCT\("official_event_id"\)\) FROM "records"`).
-			WithArgs(uid, fromDate, toDate).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(official))
-
-		mock.ExpectQuery(`SELECT COUNT\(DISTINCT\("tonamel_event_id"\)\) FROM "records"`).
-			WithArgs(uid, fromDate, toDate).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(tonamel))
-
-		mock.ExpectQuery(`SELECT COUNT\(DISTINCT\("unofficial_event_id"\)\) FROM "records"`).
-			WithArgs(uid, fromDate, toDate).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(unofficial))
+			WillReturnRows(sqlmock.NewRows(
+				[]string{"record_count", "official_event_count", "tonamel_event_count", "unofficial_event_count"},
+			).AddRow(records, official, tonamel, unofficial))
 	}
 
 	t.Run("正常系_各集計値と勝率を組み立てて返す", func(t *testing.T) {

@@ -71,17 +71,15 @@ func (i *DeckCode) FindByDeckId(
 	return entities, nil
 }
 
-func (i *DeckCode) FindIdsByUserId(
+func (i *DeckCode) DeleteByUserId(
 	ctx context.Context,
 	uid string,
-) ([]string, error) {
-	var ids []string
-
-	if tx := dbFromContext(ctx, i.db).Model(&model.DeckCode{}).Where("user_id = ?", uid).Pluck("id", &ids); tx.Error != nil {
-		return nil, tx.Error
+) error {
+	if tx := dbFromContext(ctx, i.db).Where("user_id = ?", uid).Delete(&model.DeckCode{}); tx.Error != nil {
+		return tx.Error
 	}
 
-	return ids, nil
+	return nil
 }
 
 func (i *DeckCode) Save(

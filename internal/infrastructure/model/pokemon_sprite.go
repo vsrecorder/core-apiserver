@@ -1,10 +1,19 @@
 package model
 
+import "time"
+
 // PokemonSprite は pokemon_sprites マスタ(スプライトID・正式名)。
 type PokemonSprite struct {
 	ID   string `gorm:"primaryKey"`
 	Name string
 }
+
+// DeckNameAliasSourceManual は人が登録したエントリ。自動生成バッチは書き換えない。
+const DeckNameAliasSourceManual = "manual"
+
+// DeckNameAliasSourceAuto は共起マイニングで自動生成されたエントリ。
+// 生成バッチはこの source の行だけを全削除→再生成する。
+const DeckNameAliasSourceAuto = "auto"
 
 // DeckNameAlias はデッキ名エイリアス辞書の1行。
 // スプライト未設定のマッチ/デッキをデッキ名から代表スプライトへ解決するために使う。
@@ -12,6 +21,9 @@ type DeckNameAlias struct {
 	Alias           string `gorm:"primaryKey"`
 	Position        uint   `gorm:"primaryKey"`
 	PokemonSpriteId string
+	Source          string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // TableName は gorm の複数形推測("deck_name_alias"→不定形)に任せず明示する。

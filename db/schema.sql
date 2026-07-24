@@ -595,13 +595,20 @@ CREATE TABLE deck_name_aliases (
     alias             VARCHAR(256) NOT NULL,
     position          SMALLINT NOT NULL CHECK (position > 0),
     pokemon_sprite_id VARCHAR(128) NOT NULL,
+    -- source は登録元。
+    --   'manual': 人が登録したエントリ。自動生成バッチは読むだけで書き換えない。
+    --   'auto'  : cmd/generate-deck-name-aliases が共起マイニングで生成したエントリ。
+    --             バッチ実行のたびに source='auto' の行だけ全削除→再生成する(冪等)。
+    -- 突合時は manual が auto・正式名より優先される(同一正規化キーは先勝ち)。
+    source            VARCHAR(16) NOT NULL DEFAULT 'manual',
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (alias, position),
     FOREIGN KEY (pokemon_sprite_id) REFERENCES pokemon_sprites(id)
 );
 
-INSERT INTO deck_name_aliases VALUES ('リザ',    1, '0006');
-INSERT INTO deck_name_aliases VALUES ('ロスバレ', 1, '0487_origin');
-INSERT INTO deck_name_aliases VALUES ('ロスバレ', 2, '0225');
+-- 自動生成の全削除→再生成は source で絞るため索引を張る。
+CREATE INDEX idx_deck_name_aliases_source ON deck_name_aliases(source);
 
 
 

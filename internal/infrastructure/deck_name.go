@@ -65,12 +65,44 @@ type deckNameMatcher struct {
 // エイリアス数百件＋マスタ数千件程度を想定しており、リクエスト時の全ロードで足りる。
 // 辞書の更新(INSERT/UPDATE)は次リクエストから反映される。
 func loadDeckNameMatcher(ctx context.Context, db *gorm.DB) (*deckNameMatcher, error) {
+	byAlias, err := loadDeckNameAliasMap(ctx, db, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// 正式名はエイリアス辞書に無いキーだけ取り込む(辞書側の代表2体定義を優先する)。
+	var spriteModels []*model.PokemonSprite
+	if tx := db.WithContext(ctx).Order("id ASC").Find(&spriteModels); tx.Error != nil {
+		return nil, tx.Error
+	}
+	for _, s := range spriteModels {
+		key := NormalizeDeckName(s.Name)
+		if len([]rune(key)) < minAliasRunes {
+			continue
+		}
+		if _, ok := byAlias[key]; ok {
+			continue
+		}
+		byAlias[key] = []spritePos{{id: s.ID, position: 1}}
+	}
+
+	return buildDeckNameMatcher(byAlias), nil
+}
+
+// loadDeckNameAliasMap は deck_name_aliases を読み、正規化キー→スプライト列の対応を返す。
+// source が空文字なら全件、指定があればその source のエントリだけを対象にする。
+func loadDeckNameAliasMap(ctx context.Context, db *gorm.DB, source string) (map[string][]spritePos, error) {
+	query := db.WithContext(ctx).Order("alias ASC, position ASC")
+	if source != "" {
+		query = query.Where("source = ?", source)
+	}
+
 	var aliasModels []*model.DeckNameAlias
-	if tx := db.WithContext(ctx).Order("alias ASC, position ASC").Find(&aliasModels); tx.Error != nil {
+	if tx := query.Find(&aliasModels); tx.Error != nil {
 		return nil, tx.Error
 	}
 
-	// まず生エイリアス単位で position ASC のスプライト列に束ねる(1エイリアス最大2体)。
+	// まず生エイリアス単位で position ASC のスプライト列に束ねる。
 	spritesByRawAlias := make(map[string][]spritePos)
 	rawOrder := make([]string, 0)
 	for _, a := range aliasModels {
@@ -94,22 +126,11 @@ func loadDeckNameMatcher(ctx context.Context, db *gorm.DB) (*deckNameMatcher, er
 		byAlias[key] = spritesByRawAlias[raw]
 	}
 
-	// 正式名はエイリアス辞書に無いキーだけ取り込む(辞書側の代表2体定義を優先する)。
-	var spriteModels []*model.PokemonSprite
-	if tx := db.WithContext(ctx).Order("id ASC").Find(&spriteModels); tx.Error != nil {
-		return nil, tx.Error
-	}
-	for _, s := range spriteModels {
-		key := NormalizeDeckName(s.Name)
-		if len([]rune(key)) < minAliasRunes {
-			continue
-		}
-		if _, ok := byAlias[key]; ok {
-			continue
-		}
-		byAlias[key] = []spritePos{{id: s.ID, position: 1}}
-	}
+	return byAlias, nil
+}
 
+// buildDeckNameMatcher は正規化キー→スプライト列の対応からマッチャを組み立てる。
+func buildDeckNameMatcher(byAlias map[string][]spritePos) *deckNameMatcher {
 	entries := make([]deckNameAliasEntry, 0, len(byAlias))
 	for alias, sprites := range byAlias {
 		entries = append(entries, deckNameAliasEntry{alias: alias, sprites: sprites})
@@ -127,7 +148,7 @@ func loadDeckNameMatcher(ctx context.Context, db *gorm.DB) (*deckNameMatcher, er
 	return &deckNameMatcher{
 		entries: entries,
 		cache:   make(map[string][]spritePos),
-	}, nil
+	}
 }
 
 // findDeckNamesByDeckIds は decks.name を一括取得する(スプライト未設定デッキの名前推測用)。

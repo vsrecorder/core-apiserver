@@ -38,15 +38,16 @@ type DesignationLadderItemResponse struct {
 	// クラブ未連携であるにもかかわらず、対象シーズン内にシティリーグの記録を既に作成済み
 	// であるかを表す。それ以外、またはプレイヤーズクラブ連携済みの場合は常にfalse。
 	CityLeagueRecordWithoutPlayerLink bool `json:"city_league_record_without_player_link"`
-	// CityLeagueWinCount / CityLeaguePlacementCount / CityLeagueRecordCount は CriteriaType が
+	// CityLeagueWinCount / CityLeaguePlacementCount / CityLeagueParticipationCount は CriteriaType が
 	// "official_city_league_grandmaster"(名人)の場合のみ設定される、称号詳細モーダルの
 	// 「優勝 N/1」「入賞 N/参加数」プログレスバー用の集計値。それ以外は常に0。
-	//   - CityLeagueWinCount: 今シーズンの優勝(rank1)回数(優勝バーの分子。分母は CriteriaValue=1)
-	//   - CityLeaguePlacementCount: 今シーズンの入賞回数(入賞バーの分子)
-	//   - CityLeagueRecordCount: 今シーズンのシティリーグ記録数=参加数(入賞バーの分母)
-	CityLeagueWinCount       int `json:"city_league_win_count"`
-	CityLeaguePlacementCount int `json:"city_league_placement_count"`
-	CityLeagueRecordCount    int `json:"city_league_record_count"`
+	// ベテラン〜名人はいずれも「記録」と「公式結果」の両方が必須のため、いずれも記録ベースで数える。
+	//   - CityLeagueWinCount: 今シーズンの優勝(rank1)の記録数(優勝バーの分子。分母は CriteriaValue=1)
+	//   - CityLeaguePlacementCount: 今シーズンの、記録と公式結果がそろった入賞大会数(入賞バーの分子)
+	//   - CityLeagueParticipationCount: 今シーズンの参加大会数=シティリーグ記録数(入賞バーの分母)
+	CityLeagueWinCount           int `json:"city_league_win_count"`
+	CityLeaguePlacementCount     int `json:"city_league_placement_count"`
+	CityLeagueParticipationCount int `json:"city_league_participation_count"`
 }
 
 type UserDesignationResponse struct {

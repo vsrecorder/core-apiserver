@@ -242,9 +242,10 @@ type DesignationStatsInterface interface {
 
 	// CountCityLeaguePlacementRecordsByPlayerId は、userId 自身のシティリーグ記録(records、指定
 	// 期間内)のうち、その official_event_id に対応する playerId の入賞結果(cityleague_results、
-	// rank を問わない)が存在するものの件数(=入賞回数)を返す。名人の称号詳細モーダルで
-	// 「入賞 N/参加数」のプログレスバーを表示するために使う(入賞の定義はベテランと同じく
-	// cityleague_results への掲載有無)。参加数(分母)は CountCityLeagueRecordsByUserId で得る。
+	// rank を問わない)が存在する記録の件数(=記録と公式結果がそろった入賞回数)を返す。名人の
+	// 称号詳細モーダルの「入賞 N/参加数」プログレスバーの分子に使う。ベテラン〜名人はいずれも
+	// 「バトレコ記録」と「公式結果」の両方を必須とするため、記録が無い公式入賞や、公式結果が無い
+	// 記録はカウントしない。参加数(分母)は CountCityLeagueRecordsByUserId(シティリーグ記録数)で得る。
 	CountCityLeaguePlacementRecordsByPlayerId(
 		ctx context.Context,
 		userId string,
@@ -253,9 +254,11 @@ type DesignationStatsInterface interface {
 		toDate time.Time,
 	) (int, error)
 
-	// CountCityLeagueRecordsWithinRankByPlayerId は CountCityLeaguePlacementRecordsByPlayerId と
-	// 同様だが、入賞結果のうち rank が maxRank 以下のものに限定して件数を返す。名人の称号詳細
-	// モーダルで「優勝 N/1」のプログレスバーを表示するために maxRank=1(=優勝)で使う。
+	// CountCityLeagueRecordsWithinRankByPlayerId は、userId 自身のシティリーグ記録(records、指定
+	// 期間内)のうち、その official_event_id に対応する playerId の入賞結果(cityleague_results)で
+	// rank が maxRank 以下のものが存在する記録の件数を返す。名人の称号詳細モーダルの「優勝 N/1」
+	// プログレスバーを表示するために maxRank=1(=優勝)で使う。CountCityLeaguePlacementRecordsByPlayerId
+	// と同様、記録と公式結果の両方が必須(記録の無い優勝は数えない)。
 	CountCityLeagueRecordsWithinRankByPlayerId(
 		ctx context.Context,
 		userId string,

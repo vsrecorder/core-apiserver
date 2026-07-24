@@ -645,8 +645,9 @@ func expectVeteranToChampionCriteria(
 	userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
 	designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
 	designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
-	// 今シーズン・前シーズンともに1件でレギュラー(tier4)の継続条件を満たす。
-	designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
+	// 今シーズン・前シーズンともに4件。レギュラー(tier4)の継続条件を満たし、かつ名人の
+	// 「全4大会に参加(記録が4件以上)」も満たす(全4大会に参加したベテラン〜名人候補を表す)。
+	designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil).Times(2)
 	// 入賞(ベテラン)・決勝トーナメント進出(熟練)・優勝(達人)をすべて達成。
 	designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
 	designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
@@ -751,7 +752,8 @@ func TestDesignation_GetByUserId_ChampionAndGrandmaster(t *testing.T) {
 		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
 		// 入賞を逃した記録なし=常に入賞以上 -> 名人達成。
 		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
-		// 優勝1回、入賞4回(参加4件すべて入賞)。
+		// 優勝1回・入賞4大会(いずれも記録と公式結果がそろったもの、記録ベース)。
+		// 参加数(=4)は CountCityLeagueRecordsByUserId(シティリーグ記録数)から取得される。
 		designationStatsRepo.EXPECT().CountCityLeagueRecordsWithinRankByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(1, nil)
 		designationStatsRepo.EXPECT().CountCityLeaguePlacementRecordsByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(4, nil)
 
@@ -765,14 +767,89 @@ func TestDesignation_GetByUserId_ChampionAndGrandmaster(t *testing.T) {
 		require.True(t, item08.Achieved)
 		require.Equal(t, 1, item08.CityLeagueWinCount)
 		require.Equal(t, 4, item08.CityLeaguePlacementCount)
-		require.Equal(t, 4, item08.CityLeagueRecordCount)
+		require.Equal(t, 4, item08.CityLeagueParticipationCount)
 
 		// 名人以外(例: 達人)のアイテムにはバー用の集計値は設定されない(0)。
 		item07 := findDesignationLadderItem(view.Ladder, "designation-07")
 		require.NotNil(t, item07)
 		require.Equal(t, 0, item07.CityLeagueWinCount)
 		require.Equal(t, 0, item07.CityLeaguePlacementCount)
-		require.Equal(t, 0, item07.CityLeagueRecordCount)
+		require.Equal(t, 0, item07.CityLeagueParticipationCount)
+	})
+
+	t.Run("正常系_入賞は記録と公式結果がそろった大会のみ数える(入賞を逃した記録があると名人未達)", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		userPlayer := entity.NewUserPlayer("user-player-1", now, "user-1", "player-1")
+		userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
+
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(eightTierDefinitions(now), nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		// 参加数(シティリーグ記録数)=4。
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil).Times(2)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+		// 入賞を逃した記録がある=常に入賞以上を満たさない -> 名人には未到達(達人どまり)。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		// 優勝1回。入賞は記録と公式結果がそろった大会で3件(記録4件のうち1件は入賞を逃した)。
+		// 入賞(3)!=参加(4)なので名人未達。
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsWithinRankByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(1, nil)
+		designationStatsRepo.EXPECT().CountCityLeaguePlacementRecordsByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(3, nil)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-07", view.Current.ID) // 達人どまり(名人未達)
+
+		item08 := findDesignationLadderItem(view.Ladder, "designation-08")
+		require.NotNil(t, item08)
+		require.False(t, item08.Achieved)
+		require.Equal(t, 1, item08.CityLeagueWinCount)           // 優勝 1/1
+		require.Equal(t, 3, item08.CityLeaguePlacementCount)     // 入賞 3/...
+		require.Equal(t, 4, item08.CityLeagueParticipationCount) // .../4(参加数=シティリーグ記録数)
+	})
+
+	t.Run("正常系_シティリーグ記録が4件未満だと全大会入賞・優勝ありでも名人には到達せず、分母は4になる", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectCurrentAndPreviousChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		userPlayer := entity.NewUserPlayer("user-player-1", now, "user-1", "player-1")
+		userPlayerRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(userPlayer, nil)
+
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(eightTierDefinitions(now), nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		// シティリーグ記録は3件のみ(シーズン全4大会のうち1大会に未参加)。
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(3, nil).Times(2)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueFinalTournamentMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueFinalTournamentResultByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(true, nil)
+		// 3件の記録はすべて入賞している(入賞を逃した記録は無い)が、記録が4件未満なので名人には到達しない。
+		designationStatsRepo.EXPECT().ExistsCityLeagueRecordWithoutPlacementByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(false, nil)
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsWithinRankByPlayerId(gomock.Any(), "user-1", "player-1", DesignationCityLeagueChampionMaxRank, gomock.Any(), gomock.Any()).Return(1, nil)
+		designationStatsRepo.EXPECT().CountCityLeaguePlacementRecordsByPlayerId(gomock.Any(), "user-1", "player-1", gomock.Any(), gomock.Any()).Return(3, nil)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", "")
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-07", view.Current.ID) // 達人どまり(4大会目が未参加のため名人未達)
+
+		item08 := findDesignationLadderItem(view.Ladder, "designation-08")
+		require.NotNil(t, item08)
+		require.False(t, item08.Achieved)
+		require.Equal(t, 1, item08.CityLeagueWinCount)       // 優勝 1/1
+		require.Equal(t, 3, item08.CityLeaguePlacementCount) // 入賞 3/...
+		// 記録が3件でも分母は4(シーズンの開催回数)になり、4大会目の参加・入賞が必要と分かる。
+		require.Equal(t, DesignationCityLeagueSeasonEventCount, item08.CityLeagueParticipationCount)
 	})
 }
 

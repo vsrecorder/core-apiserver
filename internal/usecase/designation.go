@@ -43,12 +43,16 @@ const (
 
 	// DesignationCriteriaTypeOfficialCityLeagueGrandmaster は、プレイヤーズクラブ連携済みの
 	// プレイヤーIDで、今シーズンのシティリーグにおいて「1回以上の優勝(rank=1)を含み、かつ
-	// 常に入賞以上の成績を収めた」ことを条件とするティア(名人)に使う。
-	// 具体的には次の2つをともに満たすことを value=1 とする(いずれか欠ければ0):
+	// 全4大会で常に入賞以上の成績を収めた」ことを条件とするティア(名人)に使う。
+	// シティリーグはシーズンに DesignationCityLeagueSeasonEventCount(=4)回開催されるため、
+	// 「常に入賞以上」は今シーズンの全4大会で入賞していること=最低4件のシティリーグ記録が必要。
+	// 具体的には次の3つをすべて満たすことを value=1 とする(いずれか欠ければ0):
 	//   1. 優勝(達人=official_city_league_champion)の条件を満たす
 	//   2. 今シーズンのシティリーグ記録(records)がすべて入賞(cityleague_results に該当あり)
 	//      している。すなわち「入賞を逃したシティリーグ記録が1件も存在しない」
 	//      (= ExistsCityLeagueRecordWithoutPlacementByPlayerId が false)。
+	//   3. シティリーグ記録が DesignationCityLeagueSeasonEventCount(=4)件以上ある
+	//      (全4大会に参加=記録している)。
 	// 入賞の定義はベテラン(official_city_league_placement)と同じく「cityleague_results に
 	// そのプレイヤーIDの結果が存在すること」で、rank のしきい値は持たない。
 	DesignationCriteriaTypeOfficialCityLeagueGrandmaster = "official_city_league_grandmaster"
@@ -63,6 +67,12 @@ const (
 	// 優勝は rank=1 のみのため1(rank<=1)。決勝トーナメント進出(rank<=5)と同じクエリを
 	// この上限値で流用することで、優勝の存在確認を行う。
 	DesignationCityLeagueChampionMaxRank = 1
+
+	// DesignationCityLeagueSeasonEventCount はシティリーグがシーズンに開催される回数(=4)。
+	// 名人(official_city_league_grandmaster)の「常に入賞以上」は今シーズンの全4大会で入賞して
+	// いることを要件とするため、名人には最低この件数のシティリーグ記録が必要。加えて、名人の
+	// 称号詳細モーダルの「入賞 N/参加数」バーの分母(参加数)の下限にも使う(参加数=max(4, 記録数))。
+	DesignationCityLeagueSeasonEventCount = 4
 
 	// DesignationCityLeagueStandaloneThreshold はレギュラー(criteria_type=
 	// official_city_league_record)の「前シーズンに引き続き」という継続条件を
@@ -98,15 +108,17 @@ type DesignationLadderItem struct {
 	// という、より具体的な案内を出し分けるためのヒント用途であり、それ以外の
 	// criteria_type や、プレイヤーズクラブ連携済みの場合は常にfalse。
 	CityLeagueRecordWithoutPlayerLink bool
-	// CityLeagueWinCount / CityLeaguePlacementCount / CityLeagueRecordCount は、名人
+	// CityLeagueWinCount / CityLeaguePlacementCount / CityLeagueParticipationCount は、名人
 	// (official_city_league_grandmaster)の称号詳細モーダルで「優勝 N/1」「入賞 N/参加数」の
 	// プログレスバーを表示するための集計値。名人以外の criteria_type では常に0。
-	//   - CityLeagueWinCount: 今シーズンの優勝(rank1)回数(=優勝バーの分子。分母は criteria_value=1)
-	//   - CityLeaguePlacementCount: 今シーズンの入賞回数(=入賞バーの分子)
-	//   - CityLeagueRecordCount: 今シーズンのシティリーグ記録数=参加数(=入賞バーの分母)
-	CityLeagueWinCount       int
-	CityLeaguePlacementCount int
-	CityLeagueRecordCount    int
+	// ベテラン〜名人はいずれも「記録」と「公式結果」の両方を必須とするため、いずれも記録ベースで数える。
+	//   - CityLeagueWinCount: 今シーズンの優勝(rank1)の記録数。
+	//     優勝バーの分子で、分母は criteria_value=1(表示側で上限1に丸める)。
+	//   - CityLeaguePlacementCount: 今シーズンの、記録と公式結果がそろった入賞大会数。入賞バーの分子。
+	//   - CityLeagueParticipationCount: 今シーズンの参加大会数=シティリーグ記録数。入賞バーの分母。
+	CityLeagueWinCount           int
+	CityLeaguePlacementCount     int
+	CityLeagueParticipationCount int
 }
 
 // UserDesignationView はユーザーの現在の称号と、称号ロードマップ全体を表す。
@@ -217,14 +229,19 @@ func (u *Designation) GetByUserId(
 		}
 
 		// 名人の「優勝 N/1」「入賞 N/参加数」プログレスバー用の集計値(名人以外は0のまま)。
-		// 参加数(入賞バーの分母)は currentValues のシティリーグ記録数(=official_city_league_record)を使う。
+		// 優勝・入賞は hints の記録ベース集計値を使う。参加数(分母)は max(4, シティリーグ記録数)。
+		// シティリーグはシーズンに4回開催されるため、記録が3件以下でも分母は4となり、
+		// 「4大会目に参加・入賞する必要がある」ことが 3/4 のように表示される。
 		cityLeagueWinCount := 0
 		cityLeaguePlacementCount := 0
-		cityLeagueRecordCount := 0
+		cityLeagueParticipationCount := 0
 		if def.CriteriaType == DesignationCriteriaTypeOfficialCityLeagueGrandmaster {
 			cityLeagueWinCount = hints.CityLeagueWinCount
 			cityLeaguePlacementCount = hints.CityLeaguePlacementCount
-			cityLeagueRecordCount = currentValues[DesignationCriteriaTypeOfficialCityLeagueRecord]
+			cityLeagueParticipationCount = currentValues[DesignationCriteriaTypeOfficialCityLeagueRecord]
+			if cityLeagueParticipationCount < DesignationCityLeagueSeasonEventCount {
+				cityLeagueParticipationCount = DesignationCityLeagueSeasonEventCount
+			}
 		}
 
 		ladder = append(ladder, &DesignationLadderItem{
@@ -237,7 +254,7 @@ func (u *Designation) GetByUserId(
 			CityLeagueRecordWithoutPlayerLink: cityLeagueRecordWithoutPlayerLink,
 			CityLeagueWinCount:                cityLeagueWinCount,
 			CityLeaguePlacementCount:          cityLeaguePlacementCount,
-			CityLeagueRecordCount:             cityLeagueRecordCount,
+			CityLeagueParticipationCount:      cityLeagueParticipationCount,
 		})
 	}
 
@@ -371,10 +388,13 @@ func (u *Designation) GetRankStats(
 	tierCounts := make(map[int]int)
 	totalUsers := 0
 	for userId := range userIds {
-		// 名人(優勝を含み、常に入賞以上)。優勝(達人)を満たし、かつ入賞を逃した
-		// シティリーグ記録が無い(このマップに含まれない)ユーザーのみ value=1。
+		// 名人(優勝を含み、全4大会で常に入賞以上)。優勝(達人)を満たし、入賞を逃した
+		// シティリーグ記録が無く(このマップに含まれない)、かつシティリーグ記録が
+		// DesignationCityLeagueSeasonEventCount(=4)件以上あるユーザーのみ value=1。
 		cityLeagueGrandmaster := 0
-		if cityLeagueChampions[userId] == 1 && cityLeagueRecordsWithoutPlacement[userId] == 0 {
+		if cityLeagueChampions[userId] == 1 &&
+			cityLeagueRecordsWithoutPlacement[userId] == 0 &&
+			cityLeagueCounts[userId] >= DesignationCityLeagueSeasonEventCount {
 			cityLeagueGrandmaster = 1
 		}
 
@@ -422,8 +442,12 @@ type designationSeasonHints struct {
 	// 決まるため、ベテラン・熟練・達人のいずれでも共通の値をそのまま使う。
 	CityLeagueRecordWithoutPlayerLink bool
 	// CityLeagueWinCount / CityLeaguePlacementCount は名人の称号詳細モーダルの
-	// 「優勝 N/1」「入賞 N/参加数」プログレスバー表示用の集計値
-	// (DesignationLadderItem の同名フィールドの元になる)。プレイヤーズクラブ未連携なら0。
+	// 「優勝 N/1」「入賞 N/参加数」プログレスバー表示用の集計値(いずれも記録と公式結果が
+	// そろったもののみを数える記録ベース。DesignationLadderItem の同名フィールドの元になる)。
+	// プレイヤーズクラブ未連携なら0。参加数(入賞バーの分母)はシティリーグ記録数を使うため、
+	// ここではなく GetByUserId 側で currentValues から取得する。
+	//   - CityLeagueWinCount: 優勝の記録数(記録ベース、優勝バーの分子。表示側で上限1に丸める)
+	//   - CityLeaguePlacementCount: 記録と公式結果がそろった入賞大会数(記録ベース、入賞バーの分子)
 	CityLeagueWinCount       int
 	CityLeaguePlacementCount int
 }
@@ -519,22 +543,26 @@ func (u *Designation) seasonValuesByCriteriaType(
 			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeagueChampion] = missingRecord
 		}
 
-		// 名人(優勝を含み、常に入賞以上)。「優勝(達人)を達成」かつ「入賞を逃した
-		// シティリーグ記録が1件も無い」の両方を満たすときに value=1 とする。
-		// 優勝も条件に含めておくことで、進捗値(current_value)と達成状態が食い違わないようにする
-		// (常に入賞していても優勝が無ければ0のまま)。ExistsCityLeagueRecordWithoutPlacementは
-		// 「入賞を逃した記録があるか」なので、falseであることが「常に入賞以上」を意味する。
+		// 名人(優勝を含み、全4大会で常に入賞以上)。次の3つをすべて満たすときに value=1:
+		//   - 優勝(達人)を達成(cityLeagueChampion==1)
+		//   - 入賞を逃したシティリーグ記録が1件も無い(existsRecordWithoutPlacement==false=常に入賞以上)
+		//   - シティリーグ記録が DesignationCityLeagueSeasonEventCount(=4)件以上ある(全4大会に参加)
+		// 優勝も条件に含めておくことで、進捗値(current_value)と達成状態が食い違わないようにする。
 		existsRecordWithoutPlacement, err := u.designationStatsRepo.ExistsCityLeagueRecordWithoutPlacementByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
 		if err != nil {
 			return nil, nil, err
 		}
-		if cityLeagueChampion == 1 && !existsRecordWithoutPlacement {
+		if cityLeagueChampion == 1 && !existsRecordWithoutPlacement && cityLeagueCount >= DesignationCityLeagueSeasonEventCount {
 			cityLeagueGrandmaster = 1
 		}
 
-		// 名人の称号詳細モーダルの「優勝 N/1」「入賞 N/参加数」プログレスバー表示用に、
-		// 優勝回数(rank1の記録数)と入賞回数(入賞した記録数)を数える。参加数(分母)は
-		// 上で取得済みの cityLeagueCount を使う。
+		// 名人の称号詳細モーダルの「優勝 N/1」「入賞 N/参加数」プログレスバー表示用の集計。
+		// ベテラン〜名人はいずれも「記録」と「公式結果」の両方を必須とするため、入賞・優勝とも
+		// 記録ベース(記録と公式結果がそろったもののみ)で数える。参加数(分母)は
+		// max(4, シティリーグ記録数)(GetByUserId 側で currentValues と定数から算出)。
+		//   - 優勝(分子): 記録ベースの優勝数(rank1)。
+		//   - 入賞(分子): 記録と公式結果がそろった入賞大会数。
+		// これにより「入賞 == 参加(=max(4,記録数))」は「全4大会で常に入賞以上(名人条件)」と一致する。
 		hints.CityLeagueWinCount, err = u.designationStatsRepo.CountCityLeagueRecordsWithinRankByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
 		if err != nil {
 			return nil, nil, err

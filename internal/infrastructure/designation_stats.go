@@ -570,6 +570,8 @@ func (i *DesignationStats) CountCityLeaguePlacementRecordsByPlayerId(
 ) (int, error) {
 	var count int64
 
+	// 記録と公式結果の両方がそろった入賞回数。records を起点に、その official_event_id に
+	// playerId の入賞結果(cityleague_results、rank 問わず)が存在するものだけを数える。
 	query := i.db.Table("records").
 		Joins("JOIN official_events ON official_events.id = records.official_event_id").
 		Where(

@@ -582,6 +582,29 @@ CREATE TABLE deck_pokemon_sprites (
 
 
 
+-- デッキ名エイリアス辞書。スプライト未設定のマッチ/デッキを、
+-- デッキ名(自由入力)から代表スプライトへ解決するために使う(週次デッキ使用率の集計)。
+-- alias は人間可読のまま格納してよい(集計時に NormalizeDeckName で正規化して突合する)。
+-- 1エイリアスにつき代表スプライトは最大2体(position 1/2、UIの表示スロットに対応)。
+-- 推測で1体しか特定できないと実スプライト2体の変種と指紋が分裂するため、
+-- 有力アーキタイプには代表2体をここで定義して分裂を緩和する。
+-- エイリアスの追加・修正は INSERT/UPDATE のみで、次リクエストから反映される(デプロイ不要)。
+-- なお pokemon_sprites.name(正式名)は集計時に自動で突合対象へ取り込まれるため、
+-- ここには略称・通称のみ登録すればよい。同名エイリアスはこの辞書が正式名より優先される。
+CREATE TABLE deck_name_aliases (
+    alias             VARCHAR(256) NOT NULL,
+    position          SMALLINT NOT NULL CHECK (position > 0),
+    pokemon_sprite_id VARCHAR(128) NOT NULL,
+    PRIMARY KEY (alias, position),
+    FOREIGN KEY (pokemon_sprite_id) REFERENCES pokemon_sprites(id)
+);
+
+INSERT INTO deck_name_aliases VALUES ('リザ',    1, '0006');
+INSERT INTO deck_name_aliases VALUES ('ロスバレ', 1, '0487_origin');
+INSERT INTO deck_name_aliases VALUES ('ロスバレ', 2, '0225');
+
+
+
 
 
 
@@ -721,7 +744,7 @@ INSERT INTO designations (id, tier, code, emoji, name, description, criteria_typ
 ('designation-05', 5,  'veteran',      '💪', 'ベテラン',   '称号:【🎫 レギュラー】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで入賞した', 'official_city_league_placement', 1, now(), now()),
 ('designation-06', 6,  'expert',       '🎖️', '熟練',     '称号:【💪 ベテラン】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン1回以上、シティリーグで決勝トーナメントに進出した', 'official_city_league_playoff', 1, now(), now()),
 ('designation-07', 7,  'master',       '🏆', '達人',       '称号:【🎖️ 熟練】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン、シティリーグで優勝した', 'official_city_league_champion', 1, now(), now()),
-('designation-08', 8,  'grandmaster',  '👑', '名人',       '称号:【🏆 達人】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン、シティリーグで1回以上の優勝を含み、常に入賞以上の成績を収めた', 'official_city_league_grandmaster', 1, now(), now()),
+('designation-08', 8,  'grandmaster',  '👑', '名人',       '称号:【🏆 達人】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズンのシティリーグ全4大会で入賞し、うち1回以上優勝した', 'official_city_league_grandmaster', 1, now(), now()),
 ('designation-09', 9,  'legend',       '💎', 'レジェンド', '準備中', 'unimplemented', 0, now(), now()),
 ('designation-10', 10, 'hall_of_fame', '🏛️', '殿堂入り',   '準備中', 'unimplemented', 0, now(), now());
 
@@ -741,10 +764,10 @@ UPDATE designations SET
 WHERE id = 'designation-07';
 
 -- 名人(tier8): 「準備中(unimplemented)」から、連携したプレイヤーズクラブのプレイヤーIDで
--- 今シーズンにシティリーグで「1回以上の優勝を含み、常に入賞以上(参加した全大会で入賞)」を
--- 達成条件とするティアへ変更。既存の本番DBは INSERT 済みのため UPDATE で更新する。冪等。
+-- 今シーズンのシティリーグ全4大会(シティリーグはシーズンに4回開催)で入賞し、うち1回以上優勝した
+-- ことを達成条件とするティアへ変更。既存の本番DBは INSERT 済みのため UPDATE で更新する。冪等。
 UPDATE designations SET
-    description = '称号:【🏆 達人】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズン、シティリーグで1回以上の優勝を含み、常に入賞以上の成績を収めた',
+    description = '称号:【🏆 達人】を持っており、連携したプレイヤーズクラブのプレイヤーIDで今シーズンのシティリーグ全4大会で入賞し、うち1回以上優勝した',
     criteria_type = 'official_city_league_grandmaster',
     criteria_value = 1
 WHERE id = 'designation-08';
@@ -822,6 +845,7 @@ GRANT SELECT ON games                   TO grafana;
 GRANT SELECT ON decks                   TO grafana;
 GRANT SELECT ON deck_codes              TO grafana;
 GRANT SELECT ON deck_pokemon_sprites    TO grafana;
+GRANT SELECT ON deck_name_aliases       TO grafana;
 
 GRANT SELECT ON championship_series     TO grafana;
 GRANT SELECT ON standard_regulations    TO grafana;

@@ -414,8 +414,9 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 				cityLeagueChampion = 1
 			}
 
-			// 名人(優勝を含み、常に入賞以上)。優勝(達人)を満たし、かつ入賞を逃した
-			// シティリーグ記録が無い(ExistsCityLeagueRecordWithoutPlacementがfalse)ときに1。
+			// 名人(優勝を含み、全4大会で常に入賞以上)。優勝(達人)を満たし、入賞を逃した
+			// シティリーグ記録が無く(ExistsCityLeagueRecordWithoutPlacementがfalse)、かつ
+			// シティリーグ記録が DesignationCityLeagueSeasonEventCount(=4)件以上あるときに1。
 			// asOf/非asOfの使い分けの理由は上の熟練・ベテランと同じ。
 			var existsRecordWithoutPlacement bool
 			if !asOf.IsZero() {
@@ -426,7 +427,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 			if err != nil {
 				return nil, nil, "", err
 			}
-			if cityLeagueChampion == 1 && !existsRecordWithoutPlacement {
+			if cityLeagueChampion == 1 && !existsRecordWithoutPlacement && cityLeagueCount >= DesignationCityLeagueSeasonEventCount {
 				cityLeagueGrandmaster = 1
 			}
 		}

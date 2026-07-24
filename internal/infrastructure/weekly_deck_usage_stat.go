@@ -31,12 +31,14 @@ func NewWeeklyDeckUsageStat(
 }
 
 // weeklyMatchRow は集計対象週の1マッチ分の情報。
-// デッキ名・対戦相手デッキ名（フリーテキスト）は集計に使わないため保持しない。
+// opponents_deck_info（対戦相手デッキ名・フリーテキスト）は指紋計算には使わず、
+// スプライト未設定のマッチをデッキ名から推測するフォールバック（deck_name.go）にのみ使う。
 type weeklyMatchRow struct {
-	MatchId    string
-	UserId     string
-	DeckId     string
-	VictoryFlg bool
+	MatchId           string
+	UserId            string
+	DeckId            string
+	VictoryFlg        bool
+	OpponentsDeckInfo string
 }
 
 // variantGroup は正規化済みスプライト指紋ごとの集計状態。
@@ -73,13 +75,15 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	// - 論理削除は deleted_at IS NULL で除外。
 	// - private_flg は現状すべて true の予約フラグのため、フィルタ条件には入れない。
 	// - ignore_stats_flg が立っている記録は、個人の戦績だけでなくこの公開レポートからも除外する。
-	// - デッキ名・対戦相手デッキ名（フリーテキスト）は集計に使わないため取得しない。
+	// - 対戦相手デッキ名（フリーテキスト）は指紋計算には使わないが、スプライト未設定の
+	//   マッチをデッキ名から推測するフォールバック（deck_name.go）のために取得する。
 	query := i.db.Table("matches").
 		Select(
 			"matches.id AS match_id, " +
 				"records.user_id AS user_id, " +
 				"records.deck_id AS deck_id, " +
-				"matches.victory_flg AS victory_flg",
+				"matches.victory_flg AS victory_flg, " +
+				"matches.opponents_deck_info AS opponents_deck_info",
 		).
 		Joins("JOIN records ON matches.record_id = records.id").
 		Where("records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL")
@@ -141,6 +145,49 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		}
 	}
 
+	// スプライトが未設定の票はデッキ名からの推測にフォールバックする(deck_name.go)。
+	// 推測対象が1件も無い週では、デッキ名・辞書のクエリを一切発行しない。
+	deckNames := make(map[string]string)
+	var matcher *deckNameMatcher
+	{
+		needMatcher := false
+		nameDeckIds := make([]string, 0)
+		seenNameDeckIds := make(map[string]struct{})
+		for _, r := range rows {
+			if len(spritesByMatch[r.MatchId]) == 0 && r.OpponentsDeckInfo != "" {
+				needMatcher = true
+			}
+			if r.DeckId != "" && len(spritesByDeck[r.DeckId]) == 0 {
+				if _, ok := seenNameDeckIds[r.DeckId]; !ok {
+					seenNameDeckIds[r.DeckId] = struct{}{}
+					nameDeckIds = append(nameDeckIds, r.DeckId)
+				}
+			}
+		}
+
+		if len(nameDeckIds) > 0 {
+			names, err := findDeckNamesByDeckIds(ctx, i.db, nameDeckIds)
+			if err != nil {
+				return nil, err
+			}
+			deckNames = names
+			for _, name := range deckNames {
+				if name != "" {
+					needMatcher = true
+					break
+				}
+			}
+		}
+
+		if needMatcher {
+			m, err := loadDeckNameMatcher(ctx, i.db)
+			if err != nil {
+				return nil, err
+			}
+			matcher = m
+		}
+	}
+
 	groups := make(map[string]*variantGroup)
 	order := make([]string, 0)
 	contributors := make(map[string]struct{})
@@ -191,11 +238,21 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 
 	for _, r := range rows {
 		// 相手側の票: その指紋が勝った = 記録者が負けた（victory_flg=false）。
-		addVote(spritesByMatch[r.MatchId], !r.VictoryFlg, r.UserId)
+		// スプライト未設定なら対戦相手デッキ名からの推測にフォールバックする。
+		opponentSprites := spritesByMatch[r.MatchId]
+		if len(opponentSprites) == 0 && matcher != nil {
+			opponentSprites = matcher.guess(r.OpponentsDeckInfo)
+		}
+		addVote(opponentSprites, !r.VictoryFlg, r.UserId)
 
 		// 自分側の票: マッチ単位。記録者が勝てばその指紋の勝ち。
+		// スプライト未設定ならデッキ名からの推測にフォールバックする。
 		if r.DeckId != "" {
-			addVote(spritesByDeck[r.DeckId], r.VictoryFlg, r.UserId)
+			ownSprites := spritesByDeck[r.DeckId]
+			if len(ownSprites) == 0 && matcher != nil {
+				ownSprites = matcher.guess(deckNames[r.DeckId])
+			}
+			addVote(ownSprites, r.VictoryFlg, r.UserId)
 		}
 	}
 

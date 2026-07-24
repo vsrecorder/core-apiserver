@@ -59,7 +59,7 @@ func NewUserDesignationResponse(
 			CityLeagueRecordWithoutPlayerLink: item.CityLeagueRecordWithoutPlayerLink,
 			CityLeagueWinCount:                item.CityLeagueWinCount,
 			CityLeaguePlacementCount:          item.CityLeaguePlacementCount,
-			CityLeagueRecordCount:             item.CityLeagueRecordCount,
+			CityLeagueParticipationCount:      item.CityLeagueParticipationCount,
 		})
 	}
 

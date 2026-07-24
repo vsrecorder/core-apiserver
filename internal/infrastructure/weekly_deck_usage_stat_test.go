@@ -364,20 +364,24 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	// 前週を同じ規則で集計し、指紋の一致する変種に前週の順位・使用率・勝率を付与する
+	// 前週を同じ規則で集計し、指紋(スプライトの組み合わせ)で突き合わせて前週の
+	// 順位・使用率・勝率を付与する。前週「その他」の内訳にいた変種も NEW にしない。
 	t.Run("正常系_前週の順位と使用率勝率を変種に付与する", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 		r := NewWeeklyDeckUsageStat(db)
 
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
-		// 今週: 変種A(0006)が3票全勝、変種B(0025)が3票全敗 → Aが1位、Bが2位
+		// 今週: A(0006)3票全勝、B(0025)3票全敗、E(0150)3票全敗 → A/B/E の順
 		rows := sqlmock.NewRows(weeklyMatchRowColumns)
 		for i := 0; i < 3; i++ {
 			rows = rows.AddRow("cur-a-"+string(rune('1'+i)), uid, "", false, "")
 		}
 		for i := 0; i < 3; i++ {
 			rows = rows.AddRow("cur-b-"+string(rune('1'+i)), uid, "", true, "")
+		}
+		for i := 0; i < 3; i++ {
+			rows = rows.AddRow("cur-e-"+string(rune('1'+i)), uid, "", true, "")
 		}
 		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
 
@@ -388,16 +392,23 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			curSprites = curSprites.AddRow("cur-b-"+string(rune('1'+i)), 1, "0025")
 		}
+		for i := 0; i < 3; i++ {
+			curSprites = curSprites.AddRow("cur-e-"+string(rune('1'+i)), 1, "0150")
+		}
 		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
 			WillReturnRows(curSprites)
 
-		// 前週: 変種C(0018)が4票で1位、変種A(0006)が3票全勝で2位。Bは前週圏外(NEW)。
+		// 前週: C(0018)4票で1位、A(0006)3票全勝で2位、B(0025)2票は閾値未満で
+		// 「その他」の内訳(3番目の連番)に表示されていた。E は前週に存在しない。
 		prevRows := sqlmock.NewRows(weeklyMatchRowColumns)
 		for i := 0; i < 4; i++ {
 			prevRows = prevRows.AddRow("prev-c-"+string(rune('1'+i)), uid, "", true, "")
 		}
 		for i := 0; i < 3; i++ {
 			prevRows = prevRows.AddRow("prev-a-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		for i := 0; i < 2; i++ {
+			prevRows = prevRows.AddRow("prev-b-"+string(rune('1'+i)), uid, "", true, "")
 		}
 		expectPrevWeekQuery(mock).WillReturnRows(prevRows)
 
@@ -408,30 +419,43 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			prevSprites = prevSprites.AddRow("prev-a-"+string(rune('1'+i)), 1, "0006")
 		}
+		for i := 0; i < 2; i++ {
+			prevSprites = prevSprites.AddRow("prev-b-"+string(rune('1'+i)), 1, "0025")
+		}
 		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
 			WillReturnRows(prevSprites)
 
 		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
 
 		require.NoError(t, err)
-		require.Len(t, ret.Decks, 2)
+		require.Len(t, ret.Decks, 3)
 
-		// 変種A: 前週2位(4票のCに次ぐ) → 今週1位。使用率 3/7、勝率 1.0 が前週値として付く
+		// 変種A: 前週2位(4票のCに次ぐ) → 今週1位。使用率 3/9、勝率 1.0 が前週値として付く
 		a := ret.Decks[0]
 		require.Equal(t, "0006", a.Fingerprint)
 		require.NotNil(t, a.PreviousRank)
 		require.Equal(t, 2, *a.PreviousRank)
 		require.NotNil(t, a.PreviousUsageRate)
-		require.InDelta(t, float64(3)/7, *a.PreviousUsageRate, 1e-9)
+		require.InDelta(t, float64(3)/9, *a.PreviousUsageRate, 1e-9)
 		require.NotNil(t, a.PreviousWinRate)
 		require.InDelta(t, 1.0, *a.PreviousWinRate, 1e-9)
 
-		// 変種B: 前週圏外なので比較値は付かない(NEW)
+		// 変種B: 前週は「その他」の内訳にいた → NEW ではなく内訳の連番(3位)を引き継ぐ
 		b := ret.Decks[1]
 		require.Equal(t, "0025", b.Fingerprint)
-		require.Nil(t, b.PreviousRank)
-		require.Nil(t, b.PreviousUsageRate)
-		require.Nil(t, b.PreviousWinRate)
+		require.NotNil(t, b.PreviousRank)
+		require.Equal(t, 3, *b.PreviousRank)
+		require.NotNil(t, b.PreviousUsageRate)
+		require.InDelta(t, float64(2)/9, *b.PreviousUsageRate, 1e-9)
+		require.NotNil(t, b.PreviousWinRate)
+		require.InDelta(t, 0.0, *b.PreviousWinRate, 1e-9)
+
+		// 変種E: 前週に一度も現れていないので比較値は付かない(NEW)
+		e := ret.Decks[2]
+		require.Equal(t, "0150", e.Fingerprint)
+		require.Nil(t, e.PreviousRank)
+		require.Nil(t, e.PreviousUsageRate)
+		require.Nil(t, e.PreviousWinRate)
 
 		require.NoError(t, mock.ExpectationsWereMet())
 	})

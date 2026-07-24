@@ -338,13 +338,16 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	return entity.NewWeeklyDeckUsageStat(fromDate, totalVotes, len(contributors), decks), nil
 }
 
-// annotatePreviousWeek は前週の統計を指紋で突き合わせ、現在週の各変種に
-// 前週の順位・使用率・勝率を付与する。
+// annotatePreviousWeek は前週の統計を指紋(スプライトの組み合わせ)で突き合わせ、
+// 現在週の各変種に前週の順位・使用率・勝率を付与する。
 //
-//   - 順位は前週に個別表示された変種のみ(「その他」は順位を持たない)
-//   - 前週「その他」に集約されていた変種や圏外の変種は比較なし(NEW 扱い)のまま
-//   - 「その他」行同士は使用率・勝率のみ比較する
-//   - 内訳(Members)には付与しない(一覧の行にだけ意味がある)
+//   - 前週「その他」に集約されていた変種も指紋で比較する(前週のUIは内訳を
+//     「その他」行に続く連番で表示しているため、順位もその番号を引き継ぐ)。
+//     これが無いと、前週は内訳に表示されていた組み合わせが今週ランクインしたとき
+//     NEW と誤表示される
+//   - 前週に一度も現れなかった指紋だけが比較なし(NEW 扱い)になる
+//   - 「その他」行同士は使用率・勝率のみ比較する(順位を持たない)
+//   - 現在週の内訳(Members)には付与しない(一覧の行にだけ意味がある)
 func annotatePreviousWeek(current, prev *entity.WeeklyDeckUsageStat) {
 	type prevStat struct {
 		rank      int // 0 は「順位なし」(その他)
@@ -357,6 +360,15 @@ func annotatePreviousWeek(current, prev *entity.WeeklyDeckUsageStat) {
 	for _, d := range prev.Decks {
 		if d.Fingerprint == "" {
 			prevByFingerprint[""] = prevStat{usageRate: d.UsageRate, winRate: d.WinRate}
+			// 「その他」は常に末尾のため、ここで rank は個別表示された変種の数。
+			// 内訳の連番(その他行の次から)を引き継ぐ。
+			for i, m := range d.Members {
+				prevByFingerprint[m.Fingerprint] = prevStat{
+					rank:      rank + 1 + i,
+					usageRate: m.UsageRate,
+					winRate:   m.WinRate,
+				}
+			}
 			continue
 		}
 		rank++

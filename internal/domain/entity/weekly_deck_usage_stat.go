@@ -16,6 +16,14 @@ type DeckUsageVariant struct {
 	// 「その他」以外の変種では nil。UI ではアコーディオンで展開し、少数変種も
 	// 個別に一覧表示するために使う。
 	Members []*DeckUsageVariant
+	// PreviousRank は前週の同じ指紋の順位(個別表示された変種のみ・1始まり)。
+	// 前週に個別表示されていない(圏外・「その他」集約・新登場)場合は nil。
+	// 「その他」行は順位を持たないため常に nil。
+	PreviousRank *int
+	// PreviousUsageRate / PreviousWinRate は前週の同じ指紋の使用率・勝率。
+	// 前週に個別表示されていなければ nil。「その他」行は前週の「その他」と比較する。
+	PreviousUsageRate *float64
+	PreviousWinRate   *float64
 }
 
 func NewDeckUsageVariant(

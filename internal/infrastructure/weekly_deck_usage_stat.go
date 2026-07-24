@@ -68,6 +68,30 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	fromDate time.Time,
 	toDate time.Time,
 ) (*entity.WeeklyDeckUsageStat, error) {
+	stat, err := i.aggregateWeek(ctx, fromDate, toDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// 前週比較: 変種が1件でもあれば前週 [from-7d, from) を同じ規則で集計し、
+	// 指紋で突き合わせて前週の順位・使用率・勝率を付与する(UI の上昇/下降表示用)。
+	if len(stat.Decks) > 0 && !fromDate.IsZero() {
+		prev, err := i.aggregateWeek(ctx, fromDate.AddDate(0, 0, -7), fromDate)
+		if err != nil {
+			return nil, err
+		}
+		annotatePreviousWeek(stat, prev)
+	}
+
+	return stat, nil
+}
+
+// aggregateWeek は1週ぶんの使用率統計を集計する(前週比較の情報は付与しない)。
+func (i *WeeklyDeckUsageStat) aggregateWeek(
+	ctx context.Context,
+	fromDate time.Time,
+	toDate time.Time,
+) (*entity.WeeklyDeckUsageStat, error) {
 	var rows []weeklyMatchRow
 
 	// 対象週の全マッチを records と結合して取得する。
@@ -312,6 +336,47 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	}
 
 	return entity.NewWeeklyDeckUsageStat(fromDate, totalVotes, len(contributors), decks), nil
+}
+
+// annotatePreviousWeek は前週の統計を指紋で突き合わせ、現在週の各変種に
+// 前週の順位・使用率・勝率を付与する。
+//
+//   - 順位は前週に個別表示された変種のみ(「その他」は順位を持たない)
+//   - 前週「その他」に集約されていた変種や圏外の変種は比較なし(NEW 扱い)のまま
+//   - 「その他」行同士は使用率・勝率のみ比較する
+//   - 内訳(Members)には付与しない(一覧の行にだけ意味がある)
+func annotatePreviousWeek(current, prev *entity.WeeklyDeckUsageStat) {
+	type prevStat struct {
+		rank      int // 0 は「順位なし」(その他)
+		usageRate float64
+		winRate   float64
+	}
+
+	prevByFingerprint := make(map[string]prevStat, len(prev.Decks))
+	rank := 0
+	for _, d := range prev.Decks {
+		if d.Fingerprint == "" {
+			prevByFingerprint[""] = prevStat{usageRate: d.UsageRate, winRate: d.WinRate}
+			continue
+		}
+		rank++
+		prevByFingerprint[d.Fingerprint] = prevStat{rank: rank, usageRate: d.UsageRate, winRate: d.WinRate}
+	}
+
+	for _, d := range current.Decks {
+		p, ok := prevByFingerprint[d.Fingerprint]
+		if !ok {
+			continue
+		}
+
+		if p.rank > 0 {
+			rank := p.rank
+			d.PreviousRank = &rank
+		}
+		usageRate, winRate := p.usageRate, p.winRate
+		d.PreviousUsageRate = &usageRate
+		d.PreviousWinRate = &winRate
+	}
 }
 
 // newVariantEntity は集計済みの variantGroup を entity へ変換する。

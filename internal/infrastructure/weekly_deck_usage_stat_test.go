@@ -16,9 +16,20 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 	fromDate := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
 	toDate := time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local)
 
+	const weeklyMatchQueryPattern = `SELECT matches\.id AS match_id, records\.user_id AS user_id, records\.deck_id AS deck_id, matches\.victory_flg AS victory_flg, matches\.opponents_deck_info AS opponents_deck_info FROM "matches" JOIN records`
+
 	expectWeeklyMatchQuery := func(mock sqlmock.Sqlmock) *sqlmock.ExpectedQuery {
-		return mock.ExpectQuery(`SELECT matches\.id AS match_id, records\.user_id AS user_id, records\.deck_id AS deck_id, matches\.victory_flg AS victory_flg, matches\.opponents_deck_info AS opponents_deck_info FROM "matches" JOIN records`).
-			WithArgs(fromDate, toDate)
+		return mock.ExpectQuery(weeklyMatchQueryPattern).WithArgs(fromDate, toDate)
+	}
+
+	// 変種が1件でもあると前週 [from-7d, from) の比較集計が走る。
+	prevFromDate := fromDate.AddDate(0, 0, -7)
+	expectPrevWeekQuery := func(mock sqlmock.Sqlmock) *sqlmock.ExpectedQuery {
+		return mock.ExpectQuery(weeklyMatchQueryPattern).WithArgs(prevFromDate, fromDate)
+	}
+	// 前週にデータが無いケースの共通形(比較値はすべて nil になる)。
+	expectPrevWeekEmpty := func(mock sqlmock.Sqlmock) {
+		expectPrevWeekQuery(mock).WillReturnRows(sqlmock.NewRows(weeklyMatchRowColumns))
 	}
 
 	// 辞書ロード(deck_name_aliases → pokemon_sprites)の期待を積む共通ヘルパー。
@@ -66,6 +77,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		}
 		spriteRows = spriteRows.AddRow("match-6", 1, "eevee")
 		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
 
 		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
 
@@ -114,6 +126,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows(matchPokemonSpriteColumns))
 		mock.ExpectQuery(`SELECT \* FROM "deck_pokemon_sprites" WHERE deck_id IN`).
 			WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns).AddRow(deckId, 1, "gardevoir"))
+		expectPrevWeekEmpty(mock)
 
 		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
 
@@ -167,6 +180,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns).AddRow("リザ", 1, "0006"),
 			sqlmock.NewRows(pokemonSpriteColumns),
 		)
+		expectPrevWeekEmpty(mock)
 
 		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
 
@@ -209,6 +223,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 				AddRow("ロスバレ", 2, "0225"),
 			sqlmock.NewRows(pokemonSpriteColumns),
 		)
+		expectPrevWeekEmpty(mock)
 
 		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
 
@@ -275,6 +290,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns),
 			sqlmock.NewRows(pokemonSpriteColumns).AddRow("0006", "リザードン"),
 		)
+		expectPrevWeekEmpty(mock)
 
 		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
 
@@ -333,6 +349,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		}
 		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
 			WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
 
 		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
 
@@ -344,6 +361,78 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.Len(t, ret.Decks[0].PokemonSprites, 2)
 		require.Equal(t, "0006", ret.Decks[0].PokemonSprites[0].ID)
 		require.Equal(t, "0018", ret.Decks[0].PokemonSprites[1].ID)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 前週を同じ規則で集計し、指紋の一致する変種に前週の順位・使用率・勝率を付与する
+	t.Run("正常系_前週の順位と使用率勝率を変種に付与する", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// 今週: 変種A(0006)が3票全勝、変種B(0025)が3票全敗 → Aが1位、Bが2位
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 3; i++ {
+			rows = rows.AddRow("cur-a-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		for i := 0; i < 3; i++ {
+			rows = rows.AddRow("cur-b-"+string(rune('1'+i)), uid, "", true, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		curSprites := sqlmock.NewRows(matchPokemonSpriteColumns)
+		for i := 0; i < 3; i++ {
+			curSprites = curSprites.AddRow("cur-a-"+string(rune('1'+i)), 1, "0006")
+		}
+		for i := 0; i < 3; i++ {
+			curSprites = curSprites.AddRow("cur-b-"+string(rune('1'+i)), 1, "0025")
+		}
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(curSprites)
+
+		// 前週: 変種C(0018)が4票で1位、変種A(0006)が3票全勝で2位。Bは前週圏外(NEW)。
+		prevRows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 4; i++ {
+			prevRows = prevRows.AddRow("prev-c-"+string(rune('1'+i)), uid, "", true, "")
+		}
+		for i := 0; i < 3; i++ {
+			prevRows = prevRows.AddRow("prev-a-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		expectPrevWeekQuery(mock).WillReturnRows(prevRows)
+
+		prevSprites := sqlmock.NewRows(matchPokemonSpriteColumns)
+		for i := 0; i < 4; i++ {
+			prevSprites = prevSprites.AddRow("prev-c-"+string(rune('1'+i)), 1, "0018")
+		}
+		for i := 0; i < 3; i++ {
+			prevSprites = prevSprites.AddRow("prev-a-"+string(rune('1'+i)), 1, "0006")
+		}
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(prevSprites)
+
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+
+		require.NoError(t, err)
+		require.Len(t, ret.Decks, 2)
+
+		// 変種A: 前週2位(4票のCに次ぐ) → 今週1位。使用率 3/7、勝率 1.0 が前週値として付く
+		a := ret.Decks[0]
+		require.Equal(t, "0006", a.Fingerprint)
+		require.NotNil(t, a.PreviousRank)
+		require.Equal(t, 2, *a.PreviousRank)
+		require.NotNil(t, a.PreviousUsageRate)
+		require.InDelta(t, float64(3)/7, *a.PreviousUsageRate, 1e-9)
+		require.NotNil(t, a.PreviousWinRate)
+		require.InDelta(t, 1.0, *a.PreviousWinRate, 1e-9)
+
+		// 変種B: 前週圏外なので比較値は付かない(NEW)
+		b := ret.Decks[1]
+		require.Equal(t, "0025", b.Fingerprint)
+		require.Nil(t, b.PreviousRank)
+		require.Nil(t, b.PreviousUsageRate)
+		require.Nil(t, b.PreviousWinRate)
+
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 

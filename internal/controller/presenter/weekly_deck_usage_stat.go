@@ -49,13 +49,16 @@ func newWeeklyDeckUsageItemResponse(
 	}
 
 	return &dto.WeeklyDeckUsageItemResponse{
-		Fingerprint:    deck.Fingerprint,
-		Count:          deck.Count,
-		UsageRate:      deck.UsageRate,
-		Wins:           deck.Wins,
-		Losses:         deck.Losses,
-		WinRate:        deck.WinRate,
-		PokemonSprites: pokemonSprites,
-		Members:        members,
+		Fingerprint:       deck.Fingerprint,
+		Count:             deck.Count,
+		UsageRate:         deck.UsageRate,
+		Wins:              deck.Wins,
+		Losses:            deck.Losses,
+		WinRate:           deck.WinRate,
+		PokemonSprites:    pokemonSprites,
+		Members:           members,
+		PreviousRank:      deck.PreviousRank,
+		PreviousUsageRate: deck.PreviousUsageRate,
+		PreviousWinRate:   deck.PreviousWinRate,
 	}
 }

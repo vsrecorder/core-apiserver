@@ -349,8 +349,8 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		require.Len(t, rejected, 4)
 
 		// 票の多い順に、それぞれ想定どおりの理由で並ぶ。
-		// Alias は正規化済みの名前(「謎のデッキ」→「謎ノデッキ」)である点に注意。
-		require.Equal(t, "謎ノデッキ", rejected[0].Alias)
+		// Alias は正規化済みの名前(「謎のデッキ」→漢字除去で「ノデッキ」)である点に注意。
+		require.Equal(t, "ノデッキ", rejected[0].Alias)
 		require.Equal(t, DeckNameAliasRejectNoSupply, rejected[0].Reason)
 		require.Equal(t, 80, rejected[0].DemandVotes)
 		require.Zero(t, rejected[0].TotalSupply)

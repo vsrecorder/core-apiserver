@@ -23,22 +23,28 @@ const minAliasRunes = 2
 // 正規化ルール:
 //  1. 全角英数→半角、半角カナ→全角カナに統一する(width.Fold)。
 //     半角濁点・半濁点は結合文字(U+3099/U+309A)になるため NFC で「ﾊﾞ」→「バ」に合成する
-//  2. 英字は小文字に統一する
-//  3. ひらがなはカタカナに統一する
-//  4. 文字(かな・漢字・英字)と数字以外(空白・記号)は除去する。長音「ー」は文字扱いで残る
+//  2. ひらがなはカタカナに統一する
+//  3. 漢字とアルファベットは除去する。「改」「型」「〜版」「ex」のような修飾語のことが多く、
+//     残すと「バシャドラ改」と「バシャドラ」が別キーに割れて教師データが薄まるため
+//  4. 上記以外も文字(カナ)と数字だけ残し、空白・記号は除去する。長音「ー」は文字扱いで残る
+//
+// 既知の割り切り: アルファベットのみのデッキ名("Lost Box"等)は正規化後に空になり、
+// 突合・集計の対象外になる。
 func NormalizeDeckName(s string) string {
 	folded, _, err := transform.String(transform.Chain(width.Fold, norm.NFC), s)
 	if err != nil {
 		// 変換に失敗するのは不正なバイト列のみ。原文のまま後段の処理を続ける。
 		folded = s
 	}
-	folded = strings.ToLower(folded)
-
 	var b strings.Builder
 	b.Grow(len(folded))
 	for _, r := range folded {
 		if r >= 'ぁ' && r <= 'ゖ' {
 			r += 'ァ' - 'ぁ'
+		}
+		// 漢字(Han)とアルファベット(Latin)は「改」「型」「ex」などの修飾語のことが多いため落とす。
+		if unicode.Is(unicode.Han, r) || unicode.Is(unicode.Latin, r) {
+			continue
 		}
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			b.WriteRune(r)

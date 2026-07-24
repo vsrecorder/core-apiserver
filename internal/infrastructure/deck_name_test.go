@@ -14,23 +14,19 @@ var pokemonSpriteColumns = []string{"id", "name"}
 
 func TestNormalizeDeckName(t *testing.T) {
 	for scenario, fn := range map[string]func(t *testing.T){
-		"全角英数は半角小文字になる":   test_NormalizeDeckName_FoldsFullWidthAlnum,
-		"半角カナは全角カナになる":    test_NormalizeDeckName_FoldsHalfWidthKana,
-		"ひらがなはカタカナになる":    test_NormalizeDeckName_HiraganaToKatakana,
-		"英字大文字は小文字になる":    test_NormalizeDeckName_Lowercases,
-		"空白と記号は除去される":     test_NormalizeDeckName_StripsSpacesAndSymbols,
-		"長音と漢字は保持される":     test_NormalizeDeckName_KeepsChoonAndKanji,
-		"空文字は空文字のまま":      test_NormalizeDeckName_Empty,
-		"記号のみは空文字になる":     test_NormalizeDeckName_SymbolsOnly,
+		"半角カナは全角カナになる":     test_NormalizeDeckName_FoldsHalfWidthKana,
+		"ひらがなはカタカナになる":     test_NormalizeDeckName_HiraganaToKatakana,
+		"アルファベットは除去される":    test_NormalizeDeckName_StripsAlphabet,
+		"漢字は除去される":         test_NormalizeDeckName_StripsKanji,
+		"空白と記号は除去される":      test_NormalizeDeckName_StripsSpacesAndSymbols,
+		"長音と数字は保持される":      test_NormalizeDeckName_KeepsChoonAndDigits,
+		"空文字は空文字のまま":       test_NormalizeDeckName_Empty,
+		"記号のみは空文字になる":      test_NormalizeDeckName_SymbolsOnly,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
 		})
 	}
-}
-
-func test_NormalizeDeckName_FoldsFullWidthAlnum(t *testing.T) {
-	require.Equal(t, "リザードンex", NormalizeDeckName("リザードンＥＸ"))
 }
 
 func test_NormalizeDeckName_FoldsHalfWidthKana(t *testing.T) {
@@ -41,17 +37,29 @@ func test_NormalizeDeckName_HiraganaToKatakana(t *testing.T) {
 	require.Equal(t, "リザードン", NormalizeDeckName("りざーどん"))
 }
 
-func test_NormalizeDeckName_Lowercases(t *testing.T) {
-	require.Equal(t, "lostbox", NormalizeDeckName("Lost Box"))
+// 「ex」「EX」等の修飾語で同じデッキが別キーに割れないよう、アルファベットは
+// 半角/全角・大文字/小文字を問わず除去する。英字のみの名前は空になる(集計対象外)。
+func test_NormalizeDeckName_StripsAlphabet(t *testing.T) {
+	require.Equal(t, "シロナノガブリアス", NormalizeDeckName("シロナノガブリアスex"))
+	require.Equal(t, "リザードン", NormalizeDeckName("リザードンＥＸ"))
+	require.Equal(t, "", NormalizeDeckName("Lost Box"))
+}
+
+// 「改」「型」「〜版」等の修飾語で同じデッキが別キーに割れないよう、漢字は除去する。
+func test_NormalizeDeckName_StripsKanji(t *testing.T) {
+	require.Equal(t, "バシャドラ", NormalizeDeckName("バシャドラ改"))
+	require.Equal(t, "ゲコゾロ", NormalizeDeckName("ゲコゾロ宮古版"))
+	require.Equal(t, "オロチン", NormalizeDeckName("前オロチン"))
+	require.Equal(t, "", NormalizeDeckName("不明"))
 }
 
 func test_NormalizeDeckName_StripsSpacesAndSymbols(t *testing.T) {
 	require.Equal(t, "ロストバレット", NormalizeDeckName("ロスト・バレット"))
-	require.Equal(t, "リザードンexピジョット", NormalizeDeckName("リザードンex／ピジョット!"))
+	require.Equal(t, "リザードンピジョット", NormalizeDeckName("リザードンex／ピジョット!"))
 }
 
-func test_NormalizeDeckName_KeepsChoonAndKanji(t *testing.T) {
-	require.Equal(t, "ドラパルト軸", NormalizeDeckName("ドラパルト 軸"))
+func test_NormalizeDeckName_KeepsChoonAndDigits(t *testing.T) {
+	require.Equal(t, "サーフゴー2", NormalizeDeckName("サーフゴー 2"))
 }
 
 func test_NormalizeDeckName_Empty(t *testing.T) {
@@ -168,11 +176,11 @@ func TestDeckNameMatcher(t *testing.T) {
 	t.Run("正常系_正規化後2文字未満のエイリアスは無視される", func(t *testing.T) {
 		// 1文字エイリアスが全名にマッチする事故を防ぐ
 		m, _ := loadMatcher(t,
-			sqlmock.NewRows(deckNameAliasColumns).AddRow("x", 1, "0006"),
+			sqlmock.NewRows(deckNameAliasColumns).AddRow("リ", 1, "0006"),
 			sqlmock.NewRows(pokemonSpriteColumns),
 		)
 
-		require.Nil(t, m.guess("xデッキ"))
+		require.Nil(t, m.guess("リザードン"))
 	})
 
 	t.Run("異常系_辞書クエリのエラーをそのまま返す", func(t *testing.T) {

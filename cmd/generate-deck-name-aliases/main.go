@@ -49,10 +49,34 @@ func main() {
 	supplyWeeks := flag.Int("supply-weeks", 12, "教師データ(名前とスプライトが両方ある記録)を遡る週数")
 	demandWeeks := flag.Int("demand-weeks", 4, "救済対象(スプライト未設定の票)を遡る週数")
 	minSupport := flag.Int("min-support", defaults.MinSupport, "代表構成の支持件数の下限")
-	minRatio := flag.Float64("min-ratio", defaults.MinRatio, "代表構成の占有率の下限(0-1)")
+	minRatio := flag.Float64("min-ratio", defaults.MinRatio, "代表構成の占有率の下限。割合で指定する(60% なら 0.6)")
 	minContributors := flag.Int("min-contributors", defaults.MinContributors, "代表構成を使った実ユーザー数の下限")
 	minAliasRunes := flag.Int("min-alias-runes", defaults.MinAliasRunes, "生成するエイリアスの最小文字数")
 	flag.Parse()
+
+	// しきい値の指定ミスは「候補0件」という正常終了に紛れて気づけないため、ここで弾く。
+	// 特に占有率はログに % で出す一方で指定は割合(0.6)のため、60 と書かれやすい。
+	for _, v := range []struct {
+		name  string
+		value int
+		min   int
+	}{
+		{"-supply-weeks", *supplyWeeks, 1},
+		{"-demand-weeks", *demandWeeks, 1},
+		{"-min-support", *minSupport, 0},
+		{"-min-contributors", *minContributors, 0},
+		{"-min-alias-runes", *minAliasRunes, 1},
+	} {
+		if v.value < v.min {
+			log.Printf("%s は %d 以上で指定してください(指定値: %d)\n", v.name, v.min, v.value)
+			os.Exit(ExitCodeNG)
+		}
+	}
+
+	if *minRatio <= 0 || *minRatio > 1 {
+		log.Printf("-min-ratio は 0 より大きく 1 以下の割合で指定してください(60%% なら 0.6。指定値: %v)\n", *minRatio)
+		os.Exit(ExitCodeNG)
+	}
 
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load .env file: %v", err)

@@ -173,6 +173,22 @@ func TestDeckNameMatcher(t *testing.T) {
 		require.Nil(t, m.guess(""))
 	})
 
+	// 表示スロットは2枠のため、エイリアスの3体目以降(position>2)は読み込まない
+	t.Run("正常系_エイリアスの3体目以降は無視される", func(t *testing.T) {
+		m, _ := loadMatcher(t,
+			sqlmock.NewRows(deckNameAliasColumns).
+				AddRow("トリオデッキ", 1, "0006").
+				AddRow("トリオデッキ", 2, "0018").
+				AddRow("トリオデッキ", 3, "0400"),
+			sqlmock.NewRows(pokemonSpriteColumns),
+		)
+
+		sprites := m.guess("トリオデッキ")
+		require.Len(t, sprites, 2)
+		require.Equal(t, "0006", sprites[0].id)
+		require.Equal(t, "0018", sprites[1].id)
+	})
+
 	t.Run("正常系_正規化後2文字未満のエイリアスは無視される", func(t *testing.T) {
 		// 1文字エイリアスが全名にマッチする事故を防ぐ
 		m, _ := loadMatcher(t,

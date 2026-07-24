@@ -86,6 +86,12 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.Equal(t, 1, ret.Decks[1].Count)
 		require.Zero(t, ret.Decks[1].Wins)
 		require.Empty(t, ret.Decks[1].PokemonSprites)
+
+		// 「その他」には集約した個別変種の内訳(Members)が残り、アコーディオンで一覧表示できる。
+		require.Len(t, ret.Decks[1].Members, 1)
+		require.Equal(t, 1, ret.Decks[1].Members[0].Count)
+		require.Len(t, ret.Decks[1].Members[0].PokemonSprites, 1)
+		require.Equal(t, "eevee", ret.Decks[1].Members[0].PokemonSprites[0].ID)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -297,6 +303,47 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 
 		require.Error(t, err)
 		require.Nil(t, ret)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 表示スロットは position 1/2 の2枠のみ。3体目以降は画面に現れないのに指紋だけを
+	// 分けて「見た目が同じ行」が並ぶ原因になるため、指紋にも表示にも含めない。
+	t.Run("正常系_3体目以降のスプライトは指紋に含めず2体の変種に合流する", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// 5マッチ(デッキ未登録)。前半3マッチは2体登録、後半2マッチは同じ2体+3体目。
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 5; i++ {
+			rows = rows.AddRow("match-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		spriteRows := sqlmock.NewRows(matchPokemonSpriteColumns)
+		for i := 0; i < 3; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0006")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0018")
+		}
+		for i := 3; i < 5; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0006")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0018")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 3, "0400")
+		}
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(spriteRows)
+
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+
+		require.NoError(t, err)
+		require.Equal(t, 5, ret.TotalVotes)
+		// 3体目(0400)は指紋に含まれず、1つの変種(0006,0018)に合流する
+		require.Len(t, ret.Decks, 1)
+		require.Equal(t, 5, ret.Decks[0].Count)
+		require.Len(t, ret.Decks[0].PokemonSprites, 2)
+		require.Equal(t, "0006", ret.Decks[0].PokemonSprites[0].ID)
+		require.Equal(t, "0018", ret.Decks[0].PokemonSprites[1].ID)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 

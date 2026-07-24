@@ -196,6 +196,17 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	// addVote は1票を該当する指紋グループへ加算する。
 	// won はその指紋（デッキ）が勝ったかどうか。
 	addVote := func(sprites []spritePos, won bool, userId string) {
+		// 表示は position 1/2 の2枠に限られるため、指紋も同じ範囲で計算する。
+		// 3体目以降(position>2)を含めると、画面に現れないスプライトが指紋だけを分けて
+		// 「見た目が同じ行」が複数並んでしまう(表示と集計の単位を一致させる)。
+		visible := make([]spritePos, 0, len(sprites))
+		for _, s := range sprites {
+			if s.position <= 2 {
+				visible = append(visible, s)
+			}
+		}
+		sprites = visible
+
 		// 指紋キーは順序非依存(ID集合)で作る。ordered は元の position ASC 順(重複排除済み)。
 		spriteIds := make([]string, len(sprites))
 		for i, s := range sprites {
@@ -272,7 +283,9 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	decks := make([]*entity.DeckUsageVariant, 0, len(order))
 
 	// minVariantCount 未満の変種は「その他」に集約する。
+	// 集約した個別変種は otherMembers に保持し、UI のアコーディオンで一覧表示できるようにする。
 	var otherCount, otherWins int
+	var otherMembers []*entity.DeckUsageVariant
 
 	for _, key := range order {
 		g := groups[key]
@@ -280,6 +293,8 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 		if g.count < minVariantCount {
 			otherCount += g.count
 			otherWins += g.wins
+			// order は使用率降順・同数は勝率降順に整列済みなので、内訳もその順序を引き継ぐ。
+			otherMembers = append(otherMembers, newVariantEntity(g, totalVotes))
 			continue
 		}
 
@@ -289,9 +304,11 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	if otherCount > 0 {
 		usageRate := float64(otherCount) / float64(totalVotes)
 		winRate := float64(otherWins) / float64(otherCount)
-		decks = append(decks, entity.NewDeckUsageVariant(
+		other := entity.NewDeckUsageVariant(
 			"", otherCount, usageRate, otherWins, otherCount-otherWins, winRate, []*entity.PokemonSprite{},
-		))
+		)
+		other.Members = otherMembers
+		decks = append(decks, other)
 	}
 
 	return entity.NewWeeklyDeckUsageStat(fromDate, totalVotes, len(contributors), decks), nil

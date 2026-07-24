@@ -109,9 +109,13 @@ func loadDeckNameAliasMap(ctx context.Context, db *gorm.DB, source string) (map[
 	}
 
 	// まず生エイリアス単位で position ASC のスプライト列に束ねる。
+	// 代表スプライトは表示スロットに合わせて position 1/2 のみ使う(3体目以降は無視)。
 	spritesByRawAlias := make(map[string][]spritePos)
 	rawOrder := make([]string, 0)
 	for _, a := range aliasModels {
+		if a.Position > 2 {
+			continue
+		}
 		if _, ok := spritesByRawAlias[a.Alias]; !ok {
 			rawOrder = append(rawOrder, a.Alias)
 		}

@@ -12,6 +12,10 @@ type DeckUsageVariant struct {
 	Losses         int
 	WinRate        float64
 	PokemonSprites []*PokemonSprite
+	// Members は「その他」枠に集約された個別変種の内訳。
+	// 「その他」以外の変種では nil。UI ではアコーディオンで展開し、少数変種も
+	// 個別に一覧表示するために使う。
+	Members []*DeckUsageVariant
 }
 
 func NewDeckUsageVariant(

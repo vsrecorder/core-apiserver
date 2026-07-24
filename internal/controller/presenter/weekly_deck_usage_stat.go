@@ -13,23 +13,7 @@ func NewWeeklyDeckUsageStatResponse(
 ) *dto.WeeklyDeckUsageStatResponse {
 	decks := []*dto.WeeklyDeckUsageItemResponse{}
 	for _, deck := range stat.Decks {
-		pokemonSprites := []*dto.PokemonSpriteResponse{}
-		for _, pokemonSprite := range deck.PokemonSprites {
-			pokemonSprites = append(pokemonSprites, &dto.PokemonSpriteResponse{
-				ID:       pokemonSprite.ID,
-				Position: pokemonSprite.Position,
-			})
-		}
-
-		decks = append(decks, &dto.WeeklyDeckUsageItemResponse{
-			Fingerprint:    deck.Fingerprint,
-			Count:          deck.Count,
-			UsageRate:      deck.UsageRate,
-			Wins:           deck.Wins,
-			Losses:         deck.Losses,
-			WinRate:        deck.WinRate,
-			PokemonSprites: pokemonSprites,
-		})
+		decks = append(decks, newWeeklyDeckUsageItemResponse(deck))
 	}
 
 	// WeekStart は月曜0時。WeekEnd は表示用に週末（日曜）を返す。
@@ -43,5 +27,35 @@ func NewWeeklyDeckUsageStatResponse(
 		TotalVotes:       stat.TotalVotes,
 		ContributorCount: stat.ContributorCount,
 		Decks:            decks,
+	}
+}
+
+// newWeeklyDeckUsageItemResponse は変種 1 件を DTO へ変換する。
+// 「その他」枠の内訳（Members）も同じ構造で再帰的に変換する。
+func newWeeklyDeckUsageItemResponse(
+	deck *entity.DeckUsageVariant,
+) *dto.WeeklyDeckUsageItemResponse {
+	pokemonSprites := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range deck.PokemonSprites {
+		pokemonSprites = append(pokemonSprites, &dto.PokemonSpriteResponse{
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
+		})
+	}
+
+	var members []*dto.WeeklyDeckUsageItemResponse
+	for _, member := range deck.Members {
+		members = append(members, newWeeklyDeckUsageItemResponse(member))
+	}
+
+	return &dto.WeeklyDeckUsageItemResponse{
+		Fingerprint:    deck.Fingerprint,
+		Count:          deck.Count,
+		UsageRate:      deck.UsageRate,
+		Wins:           deck.Wins,
+		Losses:         deck.Losses,
+		WinRate:        deck.WinRate,
+		PokemonSprites: pokemonSprites,
+		Members:        members,
 	}
 }

@@ -602,6 +602,11 @@ func parseDeckNameLayout(layout string) []DeckNameAliasSprite {
 		if err != nil || position == 0 {
 			continue
 		}
+		if position > 2 {
+			// 表示スロットは2枠。3体目以降は教師データの指紋にも代表構成にも含めない
+			// (週次集計側の「指紋は position 1/2 のみ」と揃える)。
+			continue
+		}
 
 		sprites = append(sprites, DeckNameAliasSprite{PokemonSpriteId: id, Position: uint(position)})
 	}

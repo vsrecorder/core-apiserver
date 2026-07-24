@@ -21,6 +21,7 @@ func TestParseDeckNameLayout(t *testing.T) {
 		"2体はposition順": test_parseDeckNameLayout_SortedByPosition,
 		"空文字はnil":       test_parseDeckNameLayout_Empty,
 		"壊れた要素は読み飛ばす":   test_parseDeckNameLayout_SkipsBroken,
+		"3体目以降は落とす":    test_parseDeckNameLayout_CapsAtTwoSlots,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -49,6 +50,15 @@ func test_parseDeckNameLayout_SkipsBroken(t *testing.T) {
 	// 区切り無し・position が数値でない・position が 0 の要素は落とす
 	sprites := parseDeckNameLayout("0006,x:0018,0:0025,1:0006")
 	require.Equal(t, []DeckNameAliasSprite{{PokemonSpriteId: "0006", Position: 1}}, sprites)
+}
+
+func test_parseDeckNameLayout_CapsAtTwoSlots(t *testing.T) {
+	// 表示スロットは2枠。3体目以降は教師データの指紋にも代表構成にも含めない
+	sprites := parseDeckNameLayout("1:0006,2:0018,3:0400")
+	require.Equal(t, []DeckNameAliasSprite{
+		{PokemonSpriteId: "0006", Position: 1},
+		{PokemonSpriteId: "0018", Position: 2},
+	}, sprites)
 }
 
 func TestGenerateDeckNameAliasCandidates(t *testing.T) {

@@ -41,6 +41,34 @@ type DeckNameAliasCandidate struct {
 	DemandVotes  int                   // 現在スプライト未設定で除外されている票数
 }
 
+// 落選理由(DeckNameAliasRejection.Reason)。
+const (
+	// DeckNameAliasRejectTooShort は正規化後の名前が MinAliasRunes 未満で誤爆を避けて除外。
+	DeckNameAliasRejectTooShort = "too_short"
+	// DeckNameAliasRejectManualExists は手動辞書で既に解決できるため生成不要。
+	DeckNameAliasRejectManualExists = "manual_exists"
+	// DeckNameAliasRejectNoSupply は教師データ(名前とスプライトが両方ある記録)が無い。
+	DeckNameAliasRejectNoSupply = "no_supply"
+	// DeckNameAliasRejectLowSupport は代表構成の支持件数が MinSupport 未満。
+	DeckNameAliasRejectLowSupport = "low_support"
+	// DeckNameAliasRejectLowRatio は代表構成の占有率が MinRatio 未満(名前が曖昧)。
+	DeckNameAliasRejectLowRatio = "low_ratio"
+	// DeckNameAliasRejectFewContributors は代表構成を使った実ユーザー数が MinContributors 未満。
+	DeckNameAliasRejectFewContributors = "few_contributors"
+)
+
+// DeckNameAliasRejection は候補にならなかったデッキ名1件と、その理由・診断値。
+// しきい値のチューニングに使う(教師データが無い名前は手動登録の候補にもなる)。
+type DeckNameAliasRejection struct {
+	Alias        string  // 正規化済みデッキ名
+	DemandVotes  int     // この名前で現在除外されている票数(救済し損ねた票)
+	Reason       string  // 落選理由(上記定数)
+	Support      int     // 最頻構成の支持件数(教師データが無ければ 0)
+	TotalSupply  int     // その名前の教師データ総件数(無ければ 0)
+	Ratio        float64 // 最頻構成の占有率(無ければ 0)
+	Contributors int     // 最頻構成を使った実ユーザー数(無ければ 0)
+}
+
 // DeckNameAliasGeneratorConfig は候補生成のしきい値と集計期間。
 type DeckNameAliasGeneratorConfig struct {
 	// SupplyFrom/SupplyTo は教師データ(名前とスプライトが両方ある記録)の集計期間 [from, to)。
@@ -107,20 +135,22 @@ type deckNameSupplyStat struct {
 }
 
 // GenerateDeckNameAliasCandidates は共起マイニングでエイリアス候補を生成する。
+// 候補にならなかった需要側の名前は、理由つきで rejected に返す(しきい値調整・手動登録の材料)。
 // DB への書き込みは行わない(書き込みは ReplaceAutoDeckNameAliases)。
+// candidates・rejected はいずれも救済見込み票の多い順(同数は名前昇順)で決定的に並ぶ。
 func GenerateDeckNameAliasCandidates(
 	ctx context.Context,
 	db *gorm.DB,
 	cfg DeckNameAliasGeneratorConfig,
-) ([]*DeckNameAliasCandidate, error) {
+) ([]*DeckNameAliasCandidate, []*DeckNameAliasRejection, error) {
 	supply, err := aggregateDeckNameSupply(ctx, db, cfg.SupplyFrom, cfg.SupplyTo)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	demand, err := aggregateDeckNameDemand(ctx, db, cfg.DemandFrom, cfg.DemandTo)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// 人が登録したエントリで既に解決できる名前は生成しない(手動の意図を尊重する)。
@@ -128,7 +158,7 @@ func GenerateDeckNameAliasCandidates(
 	// 正式名の解決は1体止まりで実構成と指紋が分裂しがちなため、代表構成で上書きする。
 	manualAliases, err := loadDeckNameAliasMap(ctx, db, model.DeckNameAliasSourceManual)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	manualMatcher := buildDeckNameMatcher(manualAliases)
 
@@ -145,31 +175,65 @@ func GenerateDeckNameAliasCandidates(
 	})
 
 	candidates := make([]*DeckNameAliasCandidate, 0, len(names))
+	rejected := make([]*DeckNameAliasRejection, 0)
+
+	reject := func(name, reason string, best *deckNameVariantStat, total int) {
+		r := &DeckNameAliasRejection{
+			Alias:       name,
+			DemandVotes: demand[name],
+			Reason:      reason,
+			TotalSupply: total,
+		}
+		if best != nil {
+			r.Support = best.count
+			r.Contributors = len(best.users)
+			if total > 0 {
+				r.Ratio = float64(best.count) / float64(total)
+			}
+		}
+		rejected = append(rejected, r)
+	}
+
 	for _, name := range names {
 		if len([]rune(name)) < cfg.MinAliasRunes {
+			reject(name, DeckNameAliasRejectTooShort, nil, 0)
 			continue
 		}
 		if manualMatcher.guess(name) != nil {
+			reject(name, DeckNameAliasRejectManualExists, nil, 0)
 			continue
 		}
 
 		stat, ok := supply[name]
 		if !ok || stat.total == 0 {
+			reject(name, DeckNameAliasRejectNoSupply, nil, 0)
 			continue
 		}
 
 		best := bestDeckNameVariant(stat)
 		if best == nil {
+			reject(name, DeckNameAliasRejectNoSupply, nil, stat.total)
 			continue
 		}
 
+		// 支持→占有率→人数の順に見て、最初に満たさなかったものを理由にする。
 		ratio := float64(best.count) / float64(stat.total)
-		if best.count < cfg.MinSupport || ratio < cfg.MinRatio || len(best.users) < cfg.MinContributors {
+		switch {
+		case best.count < cfg.MinSupport:
+			reject(name, DeckNameAliasRejectLowSupport, best, stat.total)
+			continue
+		case ratio < cfg.MinRatio:
+			reject(name, DeckNameAliasRejectLowRatio, best, stat.total)
+			continue
+		case len(best.users) < cfg.MinContributors:
+			reject(name, DeckNameAliasRejectFewContributors, best, stat.total)
 			continue
 		}
 
 		sprites := parseDeckNameLayout(mostCommonLayout(best.layoutCounts))
 		if len(sprites) == 0 {
+			// 教師データ集計時に壊れた layout は除いているため通常ここには来ない。
+			reject(name, DeckNameAliasRejectNoSupply, best, stat.total)
 			continue
 		}
 
@@ -184,7 +248,7 @@ func GenerateDeckNameAliasCandidates(
 		})
 	}
 
-	return candidates, nil
+	return candidates, rejected, nil
 }
 
 // ReplaceAutoDeckNameAliases は source='auto' のエントリを全削除して候補で作り直す。

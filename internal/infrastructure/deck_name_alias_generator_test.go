@@ -102,7 +102,7 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns),
 		)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, _, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.NoError(t, err)
 		require.Len(t, candidates, 1)
@@ -141,7 +141,7 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns),
 		)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, _, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.NoError(t, err)
 		require.Len(t, candidates, 1)
@@ -154,27 +154,36 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 	t.Run("正常系_構成が割れる名前は占有率の下限で保留する", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 
-		// 同じ「ルギア」で 2 構成が半々(占有率 50% < 60%)
+		// 同じ「ミライドン」で 2 構成が半々(占有率 50% < 60%)。
+		// 名前は下限(4文字)以上にして、占有率より先に too_short で落ちないようにする。
 		supply := sqlmock.NewRows(deckNameSupplyColumns)
 		for i := 0; i < 10; i++ {
-			supply = supply.AddRow("ルギア", "user-"+string(rune('a'+i%5)), "1:0249,2:0713")
+			supply = supply.AddRow("ミライドン", "user-"+string(rune('a'+i%5)), "1:1008,2:0025")
 		}
 		for i := 0; i < 10; i++ {
-			supply = supply.AddRow("ルギア", "user-"+string(rune('a'+i%5)), "1:0249,2:0468")
+			supply = supply.AddRow("ミライドン", "user-"+string(rune('a'+i%5)), "1:1008,2:0145")
 		}
 
 		expectQueries(mock,
 			supply,
 			sqlmock.NewRows(deckNameSupplyColumns),
-			sqlmock.NewRows(deckNameDemandColumns).AddRow("ルギア", 50),
+			sqlmock.NewRows(deckNameDemandColumns).AddRow("ミライドン", 50),
 			sqlmock.NewRows(deckNameDemandColumns),
 			sqlmock.NewRows(deckNameAliasColumns),
 		)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, rejected, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.NoError(t, err)
 		require.Empty(t, candidates)
+		// 占有率不足で落ちたことを理由つきで確認する
+		require.Len(t, rejected, 1)
+		require.Equal(t, "ミライドン", rejected[0].Alias)
+		require.Equal(t, DeckNameAliasRejectLowRatio, rejected[0].Reason)
+		require.Equal(t, 50, rejected[0].DemandVotes)
+		require.Equal(t, 10, rejected[0].Support)
+		require.Equal(t, 20, rejected[0].TotalSupply)
+		require.InDelta(t, 0.5, rejected[0].Ratio, 1e-9)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -191,10 +200,18 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns),
 		)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, rejected, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.NoError(t, err)
 		require.Empty(t, candidates)
+		// 需要の多い順(パオジアン40 → ドラパルト30)に、それぞれ別の理由で落ちる
+		require.Len(t, rejected, 2)
+		require.Equal(t, "パオジアン", rejected[0].Alias)
+		require.Equal(t, DeckNameAliasRejectFewContributors, rejected[0].Reason)
+		require.Equal(t, 2, rejected[0].Contributors)
+		require.Equal(t, "ドラパルト", rejected[1].Alias)
+		require.Equal(t, DeckNameAliasRejectLowSupport, rejected[1].Reason)
+		require.Equal(t, 5, rejected[1].Support)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -210,7 +227,7 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns).AddRow("ロスバレ", 1, "0487_origin"),
 		)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, _, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.NoError(t, err)
 		require.Empty(t, candidates)
@@ -229,7 +246,7 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns),
 		)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, _, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.NoError(t, err)
 		require.Empty(t, candidates)
@@ -247,7 +264,7 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns),
 		)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, _, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.NoError(t, err)
 		require.Empty(t, candidates)
@@ -275,7 +292,7 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 			sqlmock.NewRows(deckNameAliasColumns),
 		)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, _, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.NoError(t, err)
 		require.Len(t, candidates, 2)
@@ -289,10 +306,64 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 
 		mock.ExpectQuery(`string_agg\(match_pokemon_sprites`).WillReturnError(sql.ErrConnDone)
 
-		candidates, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+		candidates, rejected, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
 
 		require.Error(t, err)
 		require.Nil(t, candidates)
+		require.Nil(t, rejected)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("正常系_落選理由を票の多い順に返す", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+
+		expectQueries(mock,
+			// 「ミライドン」は教師データはあるが占有率不足で落ちる(50%)
+			func() *sqlmock.Rows {
+				rows := sqlmock.NewRows(deckNameSupplyColumns)
+				for i := 0; i < 10; i++ {
+					rows = rows.AddRow("ミライドン", "user-"+string(rune('a'+i%5)), "1:1008,2:0025")
+				}
+				for i := 0; i < 10; i++ {
+					rows = rows.AddRow("ミライドン", "user-"+string(rune('a'+i%5)), "1:1008,2:0145")
+				}
+				return rows
+			}(),
+			sqlmock.NewRows(deckNameSupplyColumns),
+			// 需要: 教師データ無し「謎のデッキ」80票 / 占有率不足「ミライドン」50票 / 短すぎ「サナ」20票 /
+			//       手動解決済み「リザードン」10票
+			sqlmock.NewRows(deckNameDemandColumns).
+				AddRow("謎のデッキ", 80).
+				AddRow("ミライドン", 50).
+				AddRow("サナ", 20).
+				AddRow("リザードン", 10),
+			sqlmock.NewRows(deckNameDemandColumns),
+			// 手動で「リザードン」が登録済み
+			sqlmock.NewRows(deckNameAliasColumns).AddRow("リザードン", 1, "0006"),
+		)
+
+		candidates, rejected, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+
+		require.NoError(t, err)
+		require.Empty(t, candidates)
+		require.Len(t, rejected, 4)
+
+		// 票の多い順に、それぞれ想定どおりの理由で並ぶ。
+		// Alias は正規化済みの名前(「謎のデッキ」→「謎ノデッキ」)である点に注意。
+		require.Equal(t, "謎ノデッキ", rejected[0].Alias)
+		require.Equal(t, DeckNameAliasRejectNoSupply, rejected[0].Reason)
+		require.Equal(t, 80, rejected[0].DemandVotes)
+		require.Zero(t, rejected[0].TotalSupply)
+
+		require.Equal(t, "ミライドン", rejected[1].Alias)
+		require.Equal(t, DeckNameAliasRejectLowRatio, rejected[1].Reason)
+
+		require.Equal(t, "サナ", rejected[2].Alias)
+		require.Equal(t, DeckNameAliasRejectTooShort, rejected[2].Reason)
+
+		require.Equal(t, "リザードン", rejected[3].Alias)
+		require.Equal(t, DeckNameAliasRejectManualExists, rejected[3].Reason)
+
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }

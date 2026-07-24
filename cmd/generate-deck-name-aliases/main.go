@@ -52,6 +52,8 @@ func main() {
 	minRatio := flag.Float64("min-ratio", defaults.MinRatio, "代表構成の占有率の下限。割合で指定する(60% なら 0.6)")
 	minContributors := flag.Int("min-contributors", defaults.MinContributors, "代表構成を使った実ユーザー数の下限")
 	minAliasRunes := flag.Int("min-alias-runes", defaults.MinAliasRunes, "生成するエイリアスの最小文字数")
+	showRejected := flag.Bool("show-rejected", false, "候補にならなかったデッキ名も理由つきで表示する")
+	rejectedLimit := flag.Int("rejected-limit", 30, "-show-rejected 時に表示する最大件数(救済見込み票の多い順。0 で全件)")
 	flag.Parse()
 
 	// しきい値の指定ミスは「候補0件」という正常終了に紛れて気づけないため、ここで弾く。
@@ -66,6 +68,7 @@ func main() {
 		{"-min-support", *minSupport, 0},
 		{"-min-contributors", *minContributors, 0},
 		{"-min-alias-runes", *minAliasRunes, 1},
+		{"-rejected-limit", *rejectedLimit, 0},
 	} {
 		if v.value < v.min {
 			log.Printf("%s は %d 以上で指定してください(指定値: %d)\n", v.name, v.min, v.value)
@@ -122,7 +125,7 @@ func main() {
 		cfg.MinAliasRunes,
 	)
 
-	candidates, err := infrastructure.GenerateDeckNameAliasCandidates(ctx, db, cfg)
+	candidates, rejected, err := infrastructure.GenerateDeckNameAliasCandidates(ctx, db, cfg)
 	if err != nil {
 		log.Printf("failed to generate deck name alias candidates: %v\n", err)
 		os.Exit(ExitCodeNG)
@@ -144,6 +147,10 @@ func main() {
 	}
 
 	log.Printf("候補 %d 件 / 救済見込み %d 票\n", len(candidates), rescuedVotes)
+
+	if *showRejected {
+		printRejected(rejected, *rejectedLimit)
+	}
 
 	if *dryRun {
 		log.Printf("[dry-run] 書き込みは行いません(-dry-run=false で反映)\n")
@@ -168,4 +175,51 @@ func formatSprites(sprites []infrastructure.DeckNameAliasSprite) string {
 	}
 
 	return strings.Join(parts, " ")
+}
+
+// printRejected は候補にならなかったデッキ名を、救済見込み票の多い順に理由つきで表示する。
+// limit が 0 のときは全件表示する。
+func printRejected(rejected []*infrastructure.DeckNameAliasRejection, limit int) {
+	log.Printf("--- 候補にならなかったデッキ名 %d 件(救済し損ねた票の多い順) ---\n", len(rejected))
+
+	for i, r := range rejected {
+		if limit > 0 && i >= limit {
+			log.Printf("  ...ほか %d 件(-rejected-limit=0 で全件表示)\n", len(rejected)-limit)
+			break
+		}
+
+		// 教師データがある落選理由(支持・占有率・人数)だけ診断値を添える。
+		if r.TotalSupply > 0 {
+			log.Printf(
+				"  %-24s 逃し%4d票  理由:%-14s (支持%d/%d件 %.0f%% %d人)\n",
+				r.Alias, r.DemandVotes, rejectReasonLabel(r.Reason),
+				r.Support, r.TotalSupply, r.Ratio*100, r.Contributors,
+			)
+		} else {
+			log.Printf(
+				"  %-24s 逃し%4d票  理由:%s\n",
+				r.Alias, r.DemandVotes, rejectReasonLabel(r.Reason),
+			)
+		}
+	}
+}
+
+// rejectReasonLabel は落選理由コードを日本語ラベルにする。
+func rejectReasonLabel(reason string) string {
+	switch reason {
+	case infrastructure.DeckNameAliasRejectTooShort:
+		return "短すぎる"
+	case infrastructure.DeckNameAliasRejectManualExists:
+		return "手動辞書で解決済"
+	case infrastructure.DeckNameAliasRejectNoSupply:
+		return "教師データなし"
+	case infrastructure.DeckNameAliasRejectLowSupport:
+		return "支持不足"
+	case infrastructure.DeckNameAliasRejectLowRatio:
+		return "占有率不足"
+	case infrastructure.DeckNameAliasRejectFewContributors:
+		return "人数不足"
+	default:
+		return reason
+	}
 }

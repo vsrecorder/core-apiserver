@@ -301,6 +301,127 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
+	// 修飾つきの需要名は、名前に含まれる最長の供給キー(核)へフォールバックしてエイリアス化する
+	t.Run("正常系_教師データが無い名前は核の供給キーへフォールバックする", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+
+		expectQueries(mock,
+			// 教師データは基本形「オーロンゲ」のみ
+			supplyRows("オーロンゲ", "1:0861,2:0862", 12, 4),
+			sqlmock.NewRows(deckNameSupplyColumns),
+			// 需要は修飾つきの名前(完全一致する教師データは無い)
+			sqlmock.NewRows(deckNameDemandColumns).AddRow("マリィノオーロンゲシクボ", 29),
+			sqlmock.NewRows(deckNameDemandColumns),
+			sqlmock.NewRows(deckNameAliasColumns),
+		)
+
+		candidates, rejected, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+
+		require.NoError(t, err)
+		require.Empty(t, rejected)
+		require.Len(t, candidates, 1)
+		require.Equal(t, "オーロンゲ", candidates[0].Alias)
+		require.Equal(t, 29, candidates[0].DemandVotes)
+		require.Equal(t, 12, candidates[0].Support)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 略称の需要名は、それを含む供給キーのプールから教師データを継ぐ
+	t.Run("正常系_略称の需要名はそれを含む供給キーのプールで評価する", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+
+		expectQueries(mock,
+			// 教師データはフルネーム「オロチンサナ」のみ
+			supplyRows("オロチンサナ", "1:0999,2:0282", 12, 4),
+			sqlmock.NewRows(deckNameSupplyColumns),
+			// 需要は略称「オロチン」(4文字で下限ちょうど)
+			sqlmock.NewRows(deckNameDemandColumns).AddRow("オロチン", 20),
+			sqlmock.NewRows(deckNameDemandColumns),
+			sqlmock.NewRows(deckNameAliasColumns),
+		)
+
+		candidates, rejected, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+
+		require.NoError(t, err)
+		require.Empty(t, rejected)
+		require.Len(t, candidates, 1)
+		require.Equal(t, "オロチン", candidates[0].Alias)
+		require.Equal(t, 12, candidates[0].TotalSupply)
+		require.Equal(t, []DeckNameAliasSprite{
+			{PokemonSpriteId: "0999", Position: 1},
+			{PokemonSpriteId: "0282", Position: 2},
+		}, candidates[0].Sprites)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 同じ核に合流した需要名の票は1候補に合算され、票の多い順へ並べ直される
+	t.Run("正常系_同じ核に合流した需要名は票を合算する", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+
+		supply := sqlmock.NewRows(deckNameSupplyColumns)
+		for i := 0; i < 12; i++ {
+			supply = supply.AddRow("オーロンゲ", "user-"+string(rune('a'+i%4)), "1:0861,2:0862")
+		}
+		for i := 0; i < 12; i++ {
+			supply = supply.AddRow("ロストバレット", "user-"+string(rune('a'+i%4)), "1:0487_origin,2:0225")
+		}
+
+		expectQueries(mock,
+			supply,
+			sqlmock.NewRows(deckNameSupplyColumns),
+			// 「オーロンゲ」系の2つの需要名(10+9=19票)が核に合流し、単独の「ロストバレット」(15票)を上回る
+			sqlmock.NewRows(deckNameDemandColumns).
+				AddRow("ロストバレット", 15).
+				AddRow("マリィノオーロンゲシクボ", 10).
+				AddRow("ボムオーロンゲ", 9),
+			sqlmock.NewRows(deckNameDemandColumns),
+			sqlmock.NewRows(deckNameAliasColumns),
+		)
+
+		candidates, rejected, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+
+		require.NoError(t, err)
+		require.Empty(t, rejected)
+		require.Len(t, candidates, 2)
+		require.Equal(t, "オーロンゲ", candidates[0].Alias)
+		require.Equal(t, 19, candidates[0].DemandVotes)
+		require.Equal(t, "ロストバレット", candidates[1].Alias)
+		require.Equal(t, 15, candidates[1].DemandVotes)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// プールに複数の構成が混ざって割れる場合は、従来どおり占有率の下限で保留される
+	t.Run("正常系_プールで構成が割れる略称は占有率不足で保留する", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+
+		supply := sqlmock.NewRows(deckNameSupplyColumns)
+		for i := 0; i < 10; i++ {
+			supply = supply.AddRow("リザードンピジョット", "user-"+string(rune('a'+i%5)), "1:0006,2:0018")
+		}
+		for i := 0; i < 10; i++ {
+			supply = supply.AddRow("リザードンビーダル", "user-"+string(rune('a'+i%5)), "1:0006,2:0400")
+		}
+
+		expectQueries(mock,
+			supply,
+			sqlmock.NewRows(deckNameSupplyColumns),
+			sqlmock.NewRows(deckNameDemandColumns).AddRow("リザードン", 40),
+			sqlmock.NewRows(deckNameDemandColumns),
+			sqlmock.NewRows(deckNameAliasColumns),
+		)
+
+		candidates, rejected, err := GenerateDeckNameAliasCandidates(context.Background(), db, cfg())
+
+		require.NoError(t, err)
+		require.Empty(t, candidates)
+		require.Len(t, rejected, 1)
+		require.Equal(t, "リザードン", rejected[0].Alias)
+		require.Equal(t, DeckNameAliasRejectLowRatio, rejected[0].Reason)
+		require.Equal(t, 20, rejected[0].TotalSupply)
+		require.Equal(t, 10, rejected[0].Support)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
 	t.Run("異常系_教師データ取得のエラーをそのまま返す", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 

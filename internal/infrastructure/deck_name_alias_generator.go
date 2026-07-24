@@ -135,6 +135,12 @@ type deckNameSupplyStat struct {
 }
 
 // GenerateDeckNameAliasCandidates は共起マイニングでエイリアス候補を生成する。
+//
+// 需要名と完全一致する教師データが無くても、名前の包含関係で教師データへ繋ぐ:
+//   - 需要名を含む供給キーのプールで評価する(略称「オロチン」→「オロチンサナ」等の実登録を継ぐ)
+//   - プールが空なら、需要名に含まれる最長の供給キー(核)をエイリアスにする
+//     (「マリィノオーロンゲシクボ」→「オーロンゲ」)。複数の需要名が同じ核に合流したら票を合算する
+//
 // 候補にならなかった需要側の名前は、理由つきで rejected に返す(しきい値調整・手動登録の材料)。
 // DB への書き込みは行わない(書き込みは ReplaceAutoDeckNameAliases)。
 // candidates・rejected はいずれも救済見込み票の多い順(同数は名前昇順)で決定的に並ぶ。
@@ -194,6 +200,21 @@ func GenerateDeckNameAliasCandidates(
 		rejected = append(rejected, r)
 	}
 
+	// 需要名に含まれる最長の供給キー(核)を引けるよう、文字数降順(同長は昇順)に並べておく。
+	supplyKeys := make([]string, 0, len(supply))
+	for k := range supply {
+		supplyKeys = append(supplyKeys, k)
+	}
+	sort.Slice(supplyKeys, func(a, b int) bool {
+		la, lb := len([]rune(supplyKeys[a])), len([]rune(supplyKeys[b]))
+		if la != lb {
+			return la > lb
+		}
+		return supplyKeys[a] < supplyKeys[b]
+	})
+
+	candidateByAlias := make(map[string]*DeckNameAliasCandidate)
+
 	for _, name := range names {
 		if len([]rune(name)) < cfg.MinAliasRunes {
 			reject(name, DeckNameAliasRejectTooShort, nil, 0)
@@ -204,51 +225,134 @@ func GenerateDeckNameAliasCandidates(
 			continue
 		}
 
-		stat, ok := supply[name]
-		if !ok || stat.total == 0 {
-			reject(name, DeckNameAliasRejectNoSupply, nil, 0)
+		// エイリアスと教師データのプールを決める。
+		// 1. まず name 自身をエイリアスとみなす。エイリアスは突合時に「alias を含む名前」へ
+		//    ヒットするため、教師データも name を含む供給キーすべてを束ねて評価する
+		//    (完全一致はこの特殊形。略称「オロチン」は「オロチンサナ」等の教師データを継ぐ)。
+		// 2. プールが空なら、name に含まれる最長の供給キー(核)へフォールバックする。
+		//    「マリィノオーロンゲシクボ」→「オーロンゲ」のように、修飾つきの名前を
+		//    教師データのある基本形へ縮めてエイリアス化する。
+		alias := name
+		pool := pooledSupplyFor(supply, alias)
+		if pool.total == 0 {
+			core := longestSupplyCore(supplyKeys, name, cfg.MinAliasRunes)
+			if core == "" {
+				reject(name, DeckNameAliasRejectNoSupply, nil, 0)
+				continue
+			}
+			// 核の手動辞書チェックは不要: guess(name) が nil なら name に含まれる手動
+			// エイリアスは存在せず、核 ⊂ name なので核に含まれるものも存在しない。
+			alias = core
+			pool = pooledSupplyFor(supply, alias)
+		}
+
+		// 別の需要名が同じエイリアスに合流したら、救済見込み票だけ合算する。
+		if c, ok := candidateByAlias[alias]; ok {
+			c.DemandVotes += demand[name]
 			continue
 		}
 
-		best := bestDeckNameVariant(stat)
+		best := bestDeckNameVariant(pool)
 		if best == nil {
-			reject(name, DeckNameAliasRejectNoSupply, nil, stat.total)
+			reject(name, DeckNameAliasRejectNoSupply, nil, pool.total)
 			continue
 		}
 
 		// 支持→占有率→人数の順に見て、最初に満たさなかったものを理由にする。
-		ratio := float64(best.count) / float64(stat.total)
+		ratio := float64(best.count) / float64(pool.total)
 		switch {
 		case best.count < cfg.MinSupport:
-			reject(name, DeckNameAliasRejectLowSupport, best, stat.total)
+			reject(name, DeckNameAliasRejectLowSupport, best, pool.total)
 			continue
 		case ratio < cfg.MinRatio:
-			reject(name, DeckNameAliasRejectLowRatio, best, stat.total)
+			reject(name, DeckNameAliasRejectLowRatio, best, pool.total)
 			continue
 		case len(best.users) < cfg.MinContributors:
-			reject(name, DeckNameAliasRejectFewContributors, best, stat.total)
+			reject(name, DeckNameAliasRejectFewContributors, best, pool.total)
 			continue
 		}
 
 		sprites := parseDeckNameLayout(mostCommonLayout(best.layoutCounts))
 		if len(sprites) == 0 {
 			// 教師データ集計時に壊れた layout は除いているため通常ここには来ない。
-			reject(name, DeckNameAliasRejectNoSupply, best, stat.total)
+			reject(name, DeckNameAliasRejectNoSupply, best, pool.total)
 			continue
 		}
 
-		candidates = append(candidates, &DeckNameAliasCandidate{
-			Alias:        name,
+		c := &DeckNameAliasCandidate{
+			Alias:        alias,
 			Sprites:      sprites,
 			Support:      best.count,
-			TotalSupply:  stat.total,
+			TotalSupply:  pool.total,
 			Ratio:        ratio,
 			Contributors: len(best.users),
 			DemandVotes:  demand[name],
-		})
+		}
+		candidateByAlias[alias] = c
+		candidates = append(candidates, c)
 	}
 
+	// 合流で票が積み上がった候補があるため、最後に票の多い順(同数は名前昇順)へ並べ直す。
+	sort.Slice(candidates, func(a, b int) bool {
+		if candidates[a].DemandVotes != candidates[b].DemandVotes {
+			return candidates[a].DemandVotes > candidates[b].DemandVotes
+		}
+		return candidates[a].Alias < candidates[b].Alias
+	})
+
 	return candidates, rejected, nil
+}
+
+// pooledSupplyFor は alias を部分文字列として含むすべての供給キーの教師データを
+// 1つに束ねて返す。エイリアスは突合時に「alias を含む名前」へヒットするため、
+// プールの範囲を突合の範囲と一致させ、その名前群の実登録を代表構成の根拠にする。
+func pooledSupplyFor(supply map[string]*deckNameSupplyStat, alias string) *deckNameSupplyStat {
+	pool := &deckNameSupplyStat{variants: make(map[string]*deckNameVariantStat)}
+
+	for key, stat := range supply {
+		if !strings.Contains(key, alias) {
+			continue
+		}
+
+		pool.total += stat.total
+		for fp, v := range stat.variants {
+			pv, ok := pool.variants[fp]
+			if !ok {
+				pv = &deckNameVariantStat{
+					fingerprint:  fp,
+					users:        make(map[string]struct{}),
+					layoutCounts: make(map[string]int),
+				}
+				pool.variants[fp] = pv
+			}
+
+			pv.count += v.count
+			for u := range v.users {
+				pv.users[u] = struct{}{}
+			}
+			for layout, count := range v.layoutCounts {
+				pv.layoutCounts[layout] += count
+			}
+		}
+	}
+
+	return pool
+}
+
+// longestSupplyCore は name に部分文字列として含まれる最長の供給キー(核)を返す。
+// 無ければ空文字。sortedKeys は文字数降順(同長は昇順)に並んでいること。
+func longestSupplyCore(sortedKeys []string, name string, minRunes int) string {
+	for _, key := range sortedKeys {
+		if len([]rune(key)) < minRunes {
+			// 文字数降順なので、これ以降はすべて短すぎる。
+			break
+		}
+		if strings.Contains(name, key) {
+			return key
+		}
+	}
+
+	return ""
 }
 
 // ReplaceAutoDeckNameAliases は source='auto' のエントリを全削除して候補で作り直す。

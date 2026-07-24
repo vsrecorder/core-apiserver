@@ -58,7 +58,7 @@
 
 ### D3. 出現数が閾値未満の変種は「その他」に集約する
 
-`minVariantCount = 5` 未満の変種は、指紋 `""`・スプライト空の1件にまとめる。少数の変種をそのまま公開すると個人が特定されうるため(匿名化・希薄化対策、[DATA_STRATEGY.md](vsrecorder/DATA_STRATEGY.md) 第5章)。
+`minVariantCount = 3` 未満の変種は、指紋 `""`・スプライト空の1件にまとめる。少数の変種をそのまま公開すると個人が特定されうるため(匿名化・希薄化対策、[DATA_STRATEGY.md](vsrecorder/DATA_STRATEGY.md) 第5章)。
 
 **この「その他」は `total_votes` に含まれる。** 後述する「集計不能で除外される票」とは別物なので混同しないこと。
 

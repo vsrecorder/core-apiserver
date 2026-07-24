@@ -15,7 +15,7 @@ import (
 // minVariantCount はプラットフォーム公開時にデッキ変種を個別表示する最小出現数。
 // これ未満の変種は匿名化・希薄化対策として「その他」に集約する（DATA_STRATEGY 第5章）。
 // 暫定値であり、データ量に応じて調整する。
-const minVariantCount = 5
+const minVariantCount = 3
 
 // otherVariantLabel は minVariantCount 未満の変種をまとめる「その他」枠のラベル。
 const otherVariantLabel = "その他"

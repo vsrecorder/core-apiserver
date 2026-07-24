@@ -11,10 +11,12 @@ type WeeklyDeckUsageItemResponse struct {
 	// Members は「その他」枠に集約された個別変種の内訳。「その他」以外では空のため省略する。
 	Members []*WeeklyDeckUsageItemResponse `json:"members,omitempty"`
 	// 前週の同じ指紋の順位・使用率・勝率(UI の上昇/下降表示用)。
-	// 前週に個別表示されていない(圏外・「その他」集約・新登場)場合は省略される。
+	// 前週に指紋が現れていない(新登場)場合は省略される。
 	PreviousRank      *int     `json:"previous_rank,omitempty"`
 	PreviousUsageRate *float64 `json:"previous_usage_rate,omitempty"`
 	PreviousWinRate   *float64 `json:"previous_win_rate,omitempty"`
+	// 前週の「その他を除いた分母」での使用率。「その他を除いた割合」表示の前週差に使う。
+	PreviousUsageRateExclOther *float64 `json:"previous_usage_rate_excl_other,omitempty"`
 }
 
 type WeeklyDeckUsageStatResponse struct {

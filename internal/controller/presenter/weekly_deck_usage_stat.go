@@ -57,8 +57,9 @@ func newWeeklyDeckUsageItemResponse(
 		WinRate:           deck.WinRate,
 		PokemonSprites:    pokemonSprites,
 		Members:           members,
-		PreviousRank:      deck.PreviousRank,
-		PreviousUsageRate: deck.PreviousUsageRate,
-		PreviousWinRate:   deck.PreviousWinRate,
+		PreviousRank:               deck.PreviousRank,
+		PreviousUsageRate:          deck.PreviousUsageRate,
+		PreviousWinRate:            deck.PreviousWinRate,
+		PreviousUsageRateExclOther: deck.PreviousUsageRateExclOther,
 	}
 }

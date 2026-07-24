@@ -351,20 +351,24 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 func annotatePreviousWeek(current, prev *entity.WeeklyDeckUsageStat) {
 	type prevStat struct {
 		rank      int // 0 は「順位なし」(その他)
+		count     int
 		usageRate float64
 		winRate   float64
 	}
 
 	prevByFingerprint := make(map[string]prevStat, len(prev.Decks))
+	prevOtherCount := 0
 	rank := 0
 	for _, d := range prev.Decks {
 		if d.Fingerprint == "" {
-			prevByFingerprint[""] = prevStat{usageRate: d.UsageRate, winRate: d.WinRate}
+			prevOtherCount = d.Count
+			prevByFingerprint[""] = prevStat{count: d.Count, usageRate: d.UsageRate, winRate: d.WinRate}
 			// 「その他」は常に末尾のため、ここで rank は個別表示された変種の数。
 			// 内訳の連番(その他行の次から)を引き継ぐ。
 			for i, m := range d.Members {
 				prevByFingerprint[m.Fingerprint] = prevStat{
 					rank:      rank + 1 + i,
+					count:     m.Count,
 					usageRate: m.UsageRate,
 					winRate:   m.WinRate,
 				}
@@ -372,8 +376,11 @@ func annotatePreviousWeek(current, prev *entity.WeeklyDeckUsageStat) {
 			continue
 		}
 		rank++
-		prevByFingerprint[d.Fingerprint] = prevStat{rank: rank, usageRate: d.UsageRate, winRate: d.WinRate}
+		prevByFingerprint[d.Fingerprint] = prevStat{rank: rank, count: d.Count, usageRate: d.UsageRate, winRate: d.WinRate}
 	}
+
+	// 「その他を除いた割合」表示の前週差用に、前週の除外後分母も求めておく。
+	prevExclOtherTotal := prev.TotalVotes - prevOtherCount
 
 	for _, d := range current.Decks {
 		p, ok := prevByFingerprint[d.Fingerprint]
@@ -388,6 +395,12 @@ func annotatePreviousWeek(current, prev *entity.WeeklyDeckUsageStat) {
 		usageRate, winRate := p.usageRate, p.winRate
 		d.PreviousUsageRate = &usageRate
 		d.PreviousWinRate = &winRate
+
+		// 「その他」行は除外後の分母から外れるため対象外。分母0も避ける。
+		if d.Fingerprint != "" && prevExclOtherTotal > 0 {
+			exclRate := float64(p.count) / float64(prevExclOtherTotal)
+			d.PreviousUsageRateExclOther = &exclRate
+		}
 	}
 }
 

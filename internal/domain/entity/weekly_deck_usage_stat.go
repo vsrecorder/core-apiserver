@@ -24,6 +24,10 @@ type DeckUsageVariant struct {
 	// 前週に個別表示されていなければ nil。「その他」行は前週の「その他」と比較する。
 	PreviousUsageRate *float64
 	PreviousWinRate   *float64
+	// PreviousUsageRateExclOther は前週の「その他を除いた分母」での使用率。
+	// UI の「その他を除いた割合」表示の前週差に使う(全体基準の値とは分母が違う)。
+	// 前週に指紋が無い・前週の除外後分母が0・「その他」行では nil。
+	PreviousUsageRateExclOther *float64
 }
 
 func NewDeckUsageVariant(

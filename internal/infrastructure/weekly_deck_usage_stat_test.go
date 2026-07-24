@@ -430,7 +430,8 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, ret.Decks, 3)
 
-		// 変種A: 前週2位(4票のCに次ぐ) → 今週1位。使用率 3/9、勝率 1.0 が前週値として付く
+		// 変種A: 前週2位(4票のCに次ぐ) → 今週1位。使用率 3/9、勝率 1.0 が前週値として付く。
+		// 「その他を除いた分母」の前週使用率は 3/7(その他の2票を除いた7票が分母)。
 		a := ret.Decks[0]
 		require.Equal(t, "0006", a.Fingerprint)
 		require.NotNil(t, a.PreviousRank)
@@ -439,6 +440,8 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.InDelta(t, float64(3)/9, *a.PreviousUsageRate, 1e-9)
 		require.NotNil(t, a.PreviousWinRate)
 		require.InDelta(t, 1.0, *a.PreviousWinRate, 1e-9)
+		require.NotNil(t, a.PreviousUsageRateExclOther)
+		require.InDelta(t, float64(3)/7, *a.PreviousUsageRateExclOther, 1e-9)
 
 		// 変種B: 前週は「その他」の内訳にいた → NEW ではなく内訳の連番(3位)を引き継ぐ
 		b := ret.Decks[1]
@@ -449,6 +452,8 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.InDelta(t, float64(2)/9, *b.PreviousUsageRate, 1e-9)
 		require.NotNil(t, b.PreviousWinRate)
 		require.InDelta(t, 0.0, *b.PreviousWinRate, 1e-9)
+		require.NotNil(t, b.PreviousUsageRateExclOther)
+		require.InDelta(t, float64(2)/7, *b.PreviousUsageRateExclOther, 1e-9)
 
 		// 変種E: 前週に一度も現れていないので比較値は付かない(NEW)
 		e := ret.Decks[2]
@@ -456,6 +461,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.Nil(t, e.PreviousRank)
 		require.Nil(t, e.PreviousUsageRate)
 		require.Nil(t, e.PreviousWinRate)
+		require.Nil(t, e.PreviousUsageRateExclOther)
 
 		require.NoError(t, mock.ExpectationsWereMet())
 	})

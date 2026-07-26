@@ -23,6 +23,7 @@ type Match struct {
 	DefaultVictoryFlg    bool
 	DefaultDefeatFlg     bool
 	VictoryFlg           bool
+	DrawFlg              bool
 	GroupMatchVictoryFlg bool
 	OpponentsDeckInfo    string
 	Memo                 string
@@ -46,6 +47,7 @@ type MatchJoinGame struct {
 	MatchDefaultVictoryFlg    bool
 	MatchDefaultDefeatFlg     bool
 	MatchVictoryFlg           bool
+	MatchDrawFlg              bool
 	MatchGroupMatchVictoryFlg bool
 	MatchOpponentsDeckInfo    string
 	MatchMemo                 string
@@ -78,6 +80,7 @@ func NewMatch(
 	defaultVictoryFlg bool,
 	defaultDefeatFlg bool,
 	victoryFlg bool,
+	drawFlg bool,
 	groupMatchVictoryFlg bool,
 	opponentsDeckInfo string,
 	memo string,
@@ -97,6 +100,7 @@ func NewMatch(
 		DefaultVictoryFlg:    defaultVictoryFlg,
 		DefaultDefeatFlg:     defaultDefeatFlg,
 		VictoryFlg:           victoryFlg,
+		DrawFlg:              drawFlg,
 		GroupMatchVictoryFlg: groupMatchVictoryFlg,
 		OpponentsDeckInfo:    opponentsDeckInfo,
 		Memo:                 memo,

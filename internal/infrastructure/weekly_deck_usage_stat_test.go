@@ -16,7 +16,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 	fromDate := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
 	toDate := time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local)
 
-	const weeklyMatchQueryPattern = `SELECT matches\.id AS match_id, records\.user_id AS user_id, records\.deck_id AS deck_id, matches\.victory_flg AS victory_flg, matches\.opponents_deck_info AS opponents_deck_info FROM "matches" JOIN records`
+	const weeklyMatchQueryPattern = `SELECT matches\.id AS match_id, records\.user_id AS user_id, records\.deck_id AS deck_id, matches\.victory_flg AS victory_flg, matches\.draw_flg AS draw_flg, matches\.opponents_deck_info AS opponents_deck_info FROM "matches" JOIN records`
 
 	expectWeeklyMatchQuery := func(mock sqlmock.Sqlmock) *sqlmock.ExpectedQuery {
 		return mock.ExpectQuery(weeklyMatchQueryPattern).WithArgs(fromDate, toDate)

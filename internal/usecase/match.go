@@ -30,6 +30,7 @@ type MatchParam struct {
 	DefaultVictoryFlg    bool
 	DefaultDefeatFlg     bool
 	VictoryFlg           bool
+	DrawFlg              bool
 	GroupMatchVictoryFlg bool
 	OpponentsDeckInfo    string
 	Memo                 string
@@ -66,6 +67,7 @@ func NewMatchParam(
 	defaultVictoryFlg bool,
 	defaultDefeatFlg bool,
 	victoryFlg bool,
+	drawFlg bool,
 	groupMatchVictoryFlg bool,
 	opponentsDeckInfo string,
 	memo string,
@@ -85,6 +87,7 @@ func NewMatchParam(
 		DefaultVictoryFlg:    defaultVictoryFlg,
 		DefaultDefeatFlg:     defaultDefeatFlg,
 		VictoryFlg:           victoryFlg,
+		DrawFlg:              drawFlg,
 		GroupMatchVictoryFlg: groupMatchVictoryFlg,
 		OpponentsDeckInfo:    opponentsDeckInfo,
 		Memo:                 memo,
@@ -209,10 +212,39 @@ func (u *Match) FindLatest(
 	return matches, nil
 }
 
+// validateMatchParam は対戦結果の整合性を domain 層の共通関数で検証する。
+// controller の middleware と同じルールを使い、middleware を通らない経路でも
+// 不整合なデータが保存されないようにする。
+func validateMatchParam(param *MatchParam) error {
+	gameWinningFlgs := make([]bool, 0, len(param.Games))
+	for _, g := range param.Games {
+		gameWinningFlgs = append(gameWinningFlgs, g.WinningFlg)
+	}
+
+	if !entity.IsValidMatchResult(entity.MatchResultInput{
+		BO3Flg:               param.BO3Flg,
+		GroupMatchFlg:        param.GroupMatchFlg,
+		DefaultVictoryFlg:    param.DefaultVictoryFlg,
+		DefaultDefeatFlg:     param.DefaultDefeatFlg,
+		VictoryFlg:           param.VictoryFlg,
+		DrawFlg:              param.DrawFlg,
+		GroupMatchVictoryFlg: param.GroupMatchVictoryFlg,
+		GameWinningFlgs:      gameWinningFlgs,
+	}) {
+		return apperror.ErrInvalidMatch
+	}
+
+	return nil
+}
+
 func (u *Match) Create(
 	ctx context.Context,
 	param *MatchParam,
 ) (*entity.Match, error) {
+	if err := validateMatchParam(param); err != nil {
+		return nil, err
+	}
+
 	matchId, err := generateId()
 	if err != nil {
 		return nil, err
@@ -273,6 +305,7 @@ func (u *Match) Create(
 		param.DefaultVictoryFlg,
 		param.DefaultDefeatFlg,
 		param.VictoryFlg,
+		param.DrawFlg,
 		param.GroupMatchVictoryFlg,
 		param.OpponentsDeckInfo,
 		param.Memo,
@@ -320,6 +353,10 @@ func (u *Match) Update(
 	id string,
 	param *MatchParam,
 ) (*entity.Match, error) {
+	if err := validateMatchParam(param); err != nil {
+		return nil, err
+	}
+
 	// 指定されたidのMatchを取得
 	ret, err := u.repository.FindById(ctx, id)
 	if err == apperror.ErrRecordNotFound {
@@ -414,6 +451,7 @@ func (u *Match) Update(
 		param.DefaultVictoryFlg,
 		param.DefaultDefeatFlg,
 		param.VictoryFlg,
+		param.DrawFlg,
 		param.GroupMatchVictoryFlg,
 		param.OpponentsDeckInfo,
 		param.Memo,

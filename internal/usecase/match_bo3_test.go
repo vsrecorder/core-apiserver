@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
@@ -26,10 +27,11 @@ func TestMatchUsecaseBO3(t *testing.T) {
 		mockRecordRepository *mock_repository.MockRecordInterface,
 		usecase MatchInterface,
 	){
-		"Create_BO3は3ゲームがそのまま永続化される":      test_MatchUsecaseBO3_Create,
-		"Update_3ゲームから2ゲームへ減らせる":          test_MatchUsecaseBO3_UpdateShrink,
-		"Update_1ゲームから3ゲームへ増やせる":          test_MatchUsecaseBO3_UpdateGrow,
-		"Update_既存GameのIDとCreatedAtを引き継ぐ": test_MatchUsecaseBO3_UpdateKeepsIdentity,
+		"Create_BO3は3ゲームがそのまま永続化される":       test_MatchUsecaseBO3_Create,
+		"Update_3ゲームから2ゲームへ減らせる":           test_MatchUsecaseBO3_UpdateShrink,
+		"Update_1ゲームから3ゲームへ増やせる":           test_MatchUsecaseBO3_UpdateGrow,
+		"Update_既存GameのIDとCreatedAtを引き継ぐ":  test_MatchUsecaseBO3_UpdateKeepsIdentity,
+		"Create_不整合なBO3はErrInvalidMatchで弾く": test_MatchUsecaseBO3_CreateRejectsInvalid,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t, mockRepository, mockRecordRepository, usecase)
@@ -70,6 +72,7 @@ func bo3MatchParam(recordId string, userId string, games []*GameParam) *MatchPar
 		false,
 		false,
 		wins >= 2, // victoryFlg: 先取2本
+		false,     // drawFlg
 		false,
 		"リザードンex",
 		"",
@@ -102,7 +105,7 @@ func existingBO3Match(t *testing.T, id string, recordId string, userId string, g
 
 	return entity.NewMatch(
 		id, time.Now().Local(), recordId, "", "", userId, "",
-		true, false, false, false, false, false, true, false,
+		true, false, false, false, false, false, true, false, false,
 		"リザードンex", "", games, nil,
 	)
 }
@@ -273,5 +276,32 @@ func test_MatchUsecaseBO3_UpdateKeepsIdentity(t *testing.T, mockRepository *mock
 		require.False(t, saved.Games[0].WinningFlg)
 		require.True(t, saved.Games[1].WinningFlg)
 		require.False(t, saved.Games[2].WinningFlg)
+	})
+}
+
+// middleware を通らず usecase を直接呼んでも、不整合なBO3は
+// ErrInvalidMatch で弾かれ、repository の Create が呼ばれないこと。
+func test_MatchUsecaseBO3_CreateRejectsInvalid(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {
+	t.Run("異常系_2連勝なのに敗北になっているBO3", func(t *testing.T) {
+		ctx := context.Background()
+
+		// 2勝なのに victoryFlg=false という不整合(ゲーム勝敗と対戦勝敗が食い違う)
+		param := NewMatchParam(
+			"rec-1", "", "", "user-1", "",
+			true,  // bo3Flg
+			false, false, false, false, false,
+			false, // victoryFlg（2連勝なのに false = 不整合）
+			false, // drawFlg
+			false,
+			"リザードンex", "",
+			bo3GameParams(true, true),
+			nil,
+		)
+
+		// repository は一切呼ばれない(検証で弾かれる)
+		match, err := usecase.Create(ctx, param)
+
+		require.ErrorIs(t, err, apperror.ErrInvalidMatch)
+		require.Nil(t, match)
 	})
 }

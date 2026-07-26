@@ -233,6 +233,7 @@ func (c *Match) Create(ctx *gin.Context) {
 		req.DefaultVictoryFlg,
 		req.DefaultDefeatFlg,
 		req.VictoryFlg,
+		req.DrawFlg,
 		req.GroupMatchVictoryFlg,
 		req.OpponentsDeckInfo,
 		req.Memo,
@@ -242,6 +243,12 @@ func (c *Match) Create(ctx *gin.Context) {
 
 	match, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
+		// 対戦結果の整合性エラーは 400。middleware を通れば通常は発生しないが、
+		// usecase 層でも検証しているため防御的に 400 を返す。
+		if errors.Is(err, apperror.ErrInvalidMatch) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
 		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
@@ -291,6 +298,7 @@ func (c *Match) Update(ctx *gin.Context) {
 		req.DefaultVictoryFlg,
 		req.DefaultDefeatFlg,
 		req.VictoryFlg,
+		req.DrawFlg,
 		req.GroupMatchVictoryFlg,
 		req.OpponentsDeckInfo,
 		req.Memo,
@@ -300,6 +308,11 @@ func (c *Match) Update(ctx *gin.Context) {
 
 	match, err := c.usecase.Update(context.Background(), id, param)
 	if err != nil {
+		// 対戦結果の整合性エラーは 400。
+		if errors.Is(err, apperror.ErrInvalidMatch) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
 		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}

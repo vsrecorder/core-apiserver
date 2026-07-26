@@ -27,6 +27,7 @@ type recentMatchResult struct {
 	DeckId            string
 	OpponentsDeckInfo string
 	VictoryFlg        bool
+	DrawFlg           bool
 }
 
 func (i *UserStatRecent) FindRecentMatches(
@@ -43,7 +44,8 @@ func (i *UserStatRecent) FindRecentMatches(
 				"records.event_date AS event_date, "+
 				"matches.deck_id AS deck_id, "+
 				"matches.opponents_deck_info AS opponents_deck_info, "+
-				"matches.victory_flg AS victory_flg",
+				"matches.victory_flg AS victory_flg, "+
+				"matches.draw_flg AS draw_flg",
 		).
 		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
@@ -89,6 +91,7 @@ func (i *UserStatRecent) FindRecentMatches(
 			r.DeckId,
 			r.OpponentsDeckInfo,
 			r.VictoryFlg,
+			r.DrawFlg,
 			0,
 			"",
 			"",

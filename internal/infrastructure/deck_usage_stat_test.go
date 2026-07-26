@@ -33,7 +33,7 @@ func setup4DeckUsageStatInfrastructure() (repository.DeckUsageStatInterface, sql
 	return NewDeckUsageStat(db), mock, nil
 }
 
-const deckUsageStatQuery = `SELECT records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT matches.id) AS count, COUNT(DISTINCT CASE WHEN matches.victory_flg THEN matches.id END) AS wins, COUNT(games.id) AS game_count, SUM(CASE WHEN games.go_first THEN 1 ELSE 0 END) AS go_first_count, SUM(CASE WHEN games.go_first AND games.winning_flg THEN 1 ELSE 0 END) AS go_first_wins, SUM(CASE WHEN games.go_first = false AND games.winning_flg THEN 1 ELSE 0 END) AS go_second_wins FROM "matches" JOIN records ON matches.record_id = records.id LEFT JOIN decks ON records.deck_id = decks.id LEFT JOIN games ON games.match_id = matches.id AND games.deleted_at IS NULL WHERE records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND records.deck_id != '' GROUP BY records.deck_id, decks.name ORDER BY count DESC`
+const deckUsageStatQuery = `SELECT records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT matches.id) AS count, COUNT(DISTINCT CASE WHEN matches.victory_flg THEN matches.id END) AS wins, COUNT(DISTINCT CASE WHEN matches.draw_flg THEN matches.id END) AS draws, COUNT(games.id) AS game_count, SUM(CASE WHEN games.go_first THEN 1 ELSE 0 END) AS go_first_count, SUM(CASE WHEN games.go_first AND games.winning_flg THEN 1 ELSE 0 END) AS go_first_wins, SUM(CASE WHEN games.go_first = false AND games.winning_flg THEN 1 ELSE 0 END) AS go_second_wins FROM "matches" JOIN records ON matches.record_id = records.id LEFT JOIN decks ON records.deck_id = decks.id LEFT JOIN games ON games.match_id = matches.id AND games.deleted_at IS NULL WHERE records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND records.deck_id != '' GROUP BY records.deck_id, decks.name ORDER BY count DESC`
 
 const deckUsageIgnoredQuery = `SELECT records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT records.id) AS ignored_count FROM "records" LEFT JOIN decks ON records.deck_id = decks.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = true AND records.deck_id != '' GROUP BY records.deck_id, decks.name ORDER BY ignored_count DESC`
 
@@ -44,6 +44,7 @@ func TestDeckUsageStatInfrastructure(t *testing.T) {
 		"AggregatesWinsAndGoFirstCountsPerDeck": test_DeckUsageStatInfrastructure_AggregatesWinsAndGoFirstCountsPerDeck,
 		"NoMatches":                             test_DeckUsageStatInfrastructure_NoMatches,
 		"IncludesIgnoredCounts":                 test_DeckUsageStatInfrastructure_IncludesIgnoredCounts,
+		"DrawsAreNotCountedAsLosses":            test_DeckUsageStatInfrastructure_DrawsAreNotCountedAsLosses,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -95,6 +96,42 @@ func test_DeckUsageStatInfrastructure_AggregatesWinsAndGoFirstCountsPerDeck(t *t
 	require.InDelta(t, 2.0/3.0, deck.GoFirstWinRate, 0.0001)
 	require.Equal(t, 0, deck.GoSecondWins)
 	require.InDelta(t, 0.0, deck.GoSecondWinRate, 0.0001)
+}
+
+// 引き分けは負けに数えず、勝率の分母からも除外されることを検証する。
+// count=4, wins=2, draws=1 → losses=1, winRate=2/(2+1)。
+func test_DeckUsageStatInfrastructure_DrawsAreNotCountedAsLosses(t *testing.T) {
+	i, mock, err := setup4DeckUsageStatInfrastructure()
+	require.NoError(t, err)
+
+	userId := "user-01"
+
+	deckRows := sqlmock.NewRows(
+		[]string{"deck_id", "name", "count", "wins", "draws", "game_count", "go_first_count", "go_first_wins", "go_second_wins"},
+	).AddRow("deck-01", "リザードンex", 4, 2, 1, 6, 3, 2, 0)
+
+	mock.ExpectQuery(regexp.QuoteMeta(deckUsageStatQuery)).
+		WithArgs(userId).
+		WillReturnRows(deckRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(deckUsageIgnoredQuery)).
+		WithArgs(userId).
+		WillReturnRows(sqlmock.NewRows(deckUsageIgnoredColumns))
+
+	mock.ExpectQuery(regexp.QuoteMeta(
+		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
+	)).WithArgs("deck-01").WillReturnRows(sqlmock.NewRows([]string{"deck_id", "position", "pokemon_sprite_id"}))
+
+	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{})
+
+	require.NoError(t, err)
+	require.Len(t, stat.Decks, 1)
+
+	deck := stat.Decks[0]
+	require.Equal(t, 4, deck.Count)
+	require.Equal(t, 2, deck.Wins)
+	require.Equal(t, 1, deck.Losses, "引き分け1件が負けに数えられていないこと(4-2-1=1)")
+	require.InDelta(t, 2.0/3.0, deck.WinRate, 0.0001, "勝率は引き分けを分母から除外する(2/(2+1))")
 }
 
 func test_DeckUsageStatInfrastructure_NoMatches(t *testing.T) {

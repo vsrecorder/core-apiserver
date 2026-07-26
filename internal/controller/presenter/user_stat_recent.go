@@ -25,6 +25,7 @@ func NewRecentMatchStatResponse(
 			DeckId:            m.DeckId,
 			OpponentsDeckInfo: m.OpponentsDeckInfo,
 			Victory:           m.VictoryFlg,
+			Draw:              m.DrawFlg,
 			RollingWinRate:    m.RollingWinRate,
 			EnvironmentId:     m.EnvironmentId,
 			EnvironmentTitle:  m.EnvironmentTitle,

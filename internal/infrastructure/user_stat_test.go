@@ -18,7 +18,7 @@ func TestUserStatInfrastructure(t *testing.T) {
 	// FindUserStatは対戦成績と、記録数・公式/Tonamel/自由形式イベント数(1本の条件付き集計)の
 	// 計2クエリを発行する。records は4種の集計をまとめて1回だけ走査する。
 	expectStatQueries := func(mock sqlmock.Sqlmock, totalMatches, wins int, records, official, tonamel, unofficial int) {
-		mock.ExpectQuery(`SELECT COUNT\(\*\) AS total_matches, SUM\(CASE WHEN matches\.victory_flg = true THEN 1 ELSE 0 END\) AS wins FROM "matches"`).
+		mock.ExpectQuery(`SELECT COUNT\(\*\) AS total_matches, SUM\(CASE WHEN matches\.victory_flg = true THEN 1 ELSE 0 END\) AS wins, SUM\(CASE WHEN matches\.draw_flg = true THEN 1 ELSE 0 END\) AS draws FROM "matches"`).
 			WithArgs(uid, fromDate, toDate).
 			WillReturnRows(sqlmock.NewRows([]string{"total_matches", "wins"}).AddRow(totalMatches, wins))
 

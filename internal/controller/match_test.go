@@ -334,6 +334,7 @@ func test_MatchController_Create(t *testing.T) {
 			false,
 			false,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			games,
@@ -499,6 +500,7 @@ func test_MatchController_Update(t *testing.T) {
 			false,
 			false,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			games,

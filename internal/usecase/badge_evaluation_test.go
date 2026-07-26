@@ -583,7 +583,7 @@ func TestBadgeEvaluation_EvaluateOnMatchCreated(t *testing.T) {
 		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
 
 		// 敗北した対戦(victoryFlg=false)でも「初対戦」は付与される
-		match := entity.NewMatch("match-1", now, "record-1", "", "", "user-1", "", false, false, false, false, false, false, false, false, "", "", nil, nil)
+		match := entity.NewMatch("match-1", now, "record-1", "", "", "user-1", "", false, false, false, false, false, false, false, false, false, "", "", nil, nil)
 
 		awarded, err := u.EvaluateOnMatchCreated(context.Background(), "user-1", match)
 
@@ -611,7 +611,7 @@ func TestBadgeEvaluation_EvaluateOnMatchCreated(t *testing.T) {
 		// 既に獲得済みなので userBadgeRepo.Save は呼ばれない
 		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
 
-		match := entity.NewMatch("match-2", now, "record-1", "", "", "user-1", "", false, false, false, false, false, false, true, false, "", "", nil, nil)
+		match := entity.NewMatch("match-2", now, "record-1", "", "", "user-1", "", false, false, false, false, false, false, true, false, false, "", "", nil, nil)
 
 		awarded, err := u.EvaluateOnMatchCreated(context.Background(), "user-1", match)
 

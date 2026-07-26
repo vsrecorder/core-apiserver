@@ -27,6 +27,7 @@ type opponentMatchResult struct {
 	MatchId    string
 	DeckInfo   string
 	VictoryFlg bool
+	DrawFlg    bool
 }
 
 type opponentDeckGroup struct {
@@ -35,6 +36,7 @@ type opponentDeckGroup struct {
 	sprites []*model.MatchPokemonSprite
 	count   int
 	wins    int
+	draws   int
 }
 
 func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
@@ -49,7 +51,7 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	// matches と records を結合し、対戦相手デッキ名が記録されている対戦を全件取得する。
 	// opponents_deck_info が空の対戦（未記録）は除外する。
 	query := i.db.Table("matches").
-		Select("matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg").
+		Select("matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg, matches.draw_flg AS draw_flg").
 		Joins("JOIN records ON matches.record_id = records.id").
 		Where(
 			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != ''",
@@ -122,6 +124,9 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 		if r.VictoryFlg {
 			g.wins++
 		}
+		if r.DrawFlg {
+			g.draws++
+		}
 		totalMatches++
 	}
 
@@ -139,10 +144,11 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 			usageRate = float64(g.count) / float64(totalMatches)
 		}
 
-		losses := g.count - g.wins
+		// 引き分けは負けに数えない。勝率も分母から除外する(勝ち/(勝ち+負け))。
+		losses := g.count - g.wins - g.draws
 		var winRate float64
-		if g.count > 0 {
-			winRate = float64(g.wins) / float64(g.count)
+		if decided := g.wins + losses; decided > 0 {
+			winRate = float64(g.wins) / float64(decided)
 		}
 
 		pokemonSprites := make([]*entity.PokemonSprite, 0, len(g.sprites))

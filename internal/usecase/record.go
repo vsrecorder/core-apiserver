@@ -332,10 +332,30 @@ func (u *Record) FindByDeckCodeId(
 	return records, nil
 }
 
+// validateRecordParam は記録の整合性を domain 層の共通関数で検証する。
+// controller の middleware と同じルールを使い、middleware を通らない経路でも
+// 不整合な記録が保存されないようにする。
+func validateRecordParam(param *RecordParam) error {
+	if !entity.IsValidRecordEventSource(entity.RecordEventSource{
+		OfficialEventId:   param.officialEventId,
+		TonamelEventId:    param.tonamelEventId,
+		FriendId:          param.friendId,
+		UnofficialEventId: param.unofficialEventId,
+	}) {
+		return apperror.ErrInvalidRecord
+	}
+
+	return nil
+}
+
 func (u *Record) Create(
 	ctx context.Context,
 	param *RecordParam,
 ) (*entity.Record, error) {
+	if err := validateRecordParam(param); err != nil {
+		return nil, err
+	}
+
 	id, err := generateId()
 	if err != nil {
 		return nil, err
@@ -447,6 +467,10 @@ func (u *Record) Update(
 	id string,
 	param *RecordParam,
 ) (*entity.Record, error) {
+	if err := validateRecordParam(param); err != nil {
+		return nil, err
+	}
+
 	// 指定されたidのRecordが存在するか確認
 	ret, err := u.repository.FindById(ctx, id)
 	if err == apperror.ErrRecordNotFound {

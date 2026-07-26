@@ -109,7 +109,7 @@ func TestMatchUsecase_Create_NotificationCreationOrder(t *testing.T) {
 
 	matchParam := NewMatchParam(
 		recordId, deckId, "", userId, "",
-		false, false, false, false, false, false, false, false,
+		false, false, false, false, false, false, false, false, false,
 		"", "", gameParams, nil,
 	)
 
@@ -265,6 +265,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			false,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			gameParams,
@@ -345,6 +346,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			true,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			gameParams,
@@ -427,6 +429,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			false,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			gameParams,
@@ -486,6 +489,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			true,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			games,
@@ -523,6 +527,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			false,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			gameParams,
@@ -587,6 +592,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			true,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			games,
@@ -638,6 +644,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			true,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			gameParams,
@@ -724,6 +731,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			true,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			games,
@@ -761,6 +769,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			false,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			gameParams,
@@ -818,6 +827,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			false,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			gameParams,
@@ -875,6 +885,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			true,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			games,
@@ -909,6 +920,7 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 			false,
 			false,
 			false,
+			false, // drawFlg
 			"",
 			"",
 			gameParams,

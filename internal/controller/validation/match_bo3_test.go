@@ -96,6 +96,65 @@ func TestMatchValidationBO3(t *testing.T) {
 			valid: false,
 		},
 
+		// --- BO3: 両者引き分け(ダブルドロー) ---
+		{
+			name: "正常系_BO3_1勝1敗の2ゲームで両者引き分け",
+			req: dto.MatchRequest{
+				RecordId: recordId, BO3Flg: true, VictoryFlg: false, DrawFlg: true,
+				Games: []*dto.GameRequest{game(true), game(false)},
+			},
+			valid: true,
+		},
+		{
+			name: "正常系_BO3_負け勝ちの2ゲームで両者引き分け",
+			req: dto.MatchRequest{
+				RecordId: recordId, BO3Flg: true, VictoryFlg: false, DrawFlg: true,
+				Games: []*dto.GameRequest{game(false), game(true)},
+			},
+			valid: true,
+		},
+		{
+			name: "異常系_引き分けなのに2連勝(1勝1敗になっていない)",
+			req: dto.MatchRequest{
+				RecordId: recordId, BO3Flg: true, VictoryFlg: false, DrawFlg: true,
+				Games: []*dto.GameRequest{game(true), game(true)},
+			},
+			valid: false,
+		},
+		{
+			name: "異常系_引き分けなのに3ゲームある",
+			req: dto.MatchRequest{
+				RecordId: recordId, BO3Flg: true, VictoryFlg: false, DrawFlg: true,
+				Games: []*dto.GameRequest{game(true), game(false), game(true)},
+			},
+			valid: false,
+		},
+		{
+			name: "異常系_引き分けと勝ちが両立している",
+			req: dto.MatchRequest{
+				RecordId: recordId, BO3Flg: true, VictoryFlg: true, DrawFlg: true,
+				Games: []*dto.GameRequest{game(true), game(false)},
+			},
+			valid: false,
+		},
+		{
+			name: "異常系_BO1で引き分けを設定している(BO3のみ許可)",
+			req: dto.MatchRequest{
+				RecordId: recordId, BO3Flg: false, VictoryFlg: false, DrawFlg: true,
+				Games: []*dto.GameRequest{game(false)},
+			},
+			valid: false,
+		},
+		{
+			name: "異常系_不戦勝と引き分けが両立している",
+			req: dto.MatchRequest{
+				RecordId: recordId, BO3Flg: true, VictoryFlg: false, DrawFlg: true,
+				DefaultVictoryFlg: true,
+				Games:             []*dto.GameRequest{},
+			},
+			valid: false,
+		},
+
 		// --- BO3: 3ゲームで決着(2-1 / 1-2) ---
 		{
 			name: "正常系_BO3_3ゲーム_勝敗勝で勝利",

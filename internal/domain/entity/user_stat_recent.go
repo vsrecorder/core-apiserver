@@ -8,6 +8,7 @@ type RecentMatch struct {
 	DeckId            string
 	OpponentsDeckInfo string
 	VictoryFlg        bool
+	DrawFlg           bool
 	RollingWinRate    float64
 	EnvironmentId     string
 	EnvironmentTitle  string
@@ -20,6 +21,7 @@ func NewRecentMatch(
 	deckId string,
 	opponentsDeckInfo string,
 	victoryFlg bool,
+	drawFlg bool,
 	rollingWinRate float64,
 	environmentId string,
 	environmentTitle string,
@@ -31,6 +33,7 @@ func NewRecentMatch(
 		DeckId:            deckId,
 		OpponentsDeckInfo: opponentsDeckInfo,
 		VictoryFlg:        victoryFlg,
+		DrawFlg:           drawFlg,
 		RollingWinRate:    rollingWinRate,
 		EnvironmentId:     environmentId,
 		EnvironmentTitle:  environmentTitle,

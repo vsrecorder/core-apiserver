@@ -38,6 +38,7 @@ type weeklyMatchRow struct {
 	UserId            string
 	DeckId            string
 	VictoryFlg        bool
+	DrawFlg           bool
 	OpponentsDeckInfo string
 }
 
@@ -54,13 +55,16 @@ type variantGroup struct {
 	sprites []spritePos // 表示用スプライト列（重複排除のみ。並び順は position ASC）
 	count   int
 	wins    int
+	draws   int
 }
 
 func (g *variantGroup) winRate() float64 {
-	if g.count == 0 {
+	// 引き分けは勝率の分母から除外する(勝ち/(勝ち+負け))。
+	decided := g.count - g.draws
+	if decided == 0 {
 		return 0
 	}
-	return float64(g.wins) / float64(g.count)
+	return float64(g.wins) / float64(decided)
 }
 
 func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
@@ -107,6 +111,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 				"records.user_id AS user_id, " +
 				"records.deck_id AS deck_id, " +
 				"matches.victory_flg AS victory_flg, " +
+				"matches.draw_flg AS draw_flg, " +
 				"matches.opponents_deck_info AS opponents_deck_info",
 		).
 		Joins("JOIN records ON matches.record_id = records.id").
@@ -219,7 +224,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 
 	// addVote は1票を該当する指紋グループへ加算する。
 	// won はその指紋（デッキ）が勝ったかどうか。
-	addVote := func(sprites []spritePos, won bool, userId string) {
+	addVote := func(sprites []spritePos, won bool, draw bool, userId string) {
 		// 表示は position 1/2 の2枠に限られるため、指紋も同じ範囲で計算する。
 		// 3体目以降(position>2)を含めると、画面に現れないスプライトが指紋だけを分けて
 		// 「見た目が同じ行」が複数並んでしまう(表示と集計の単位を一致させる)。
@@ -263,7 +268,9 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		}
 
 		g.count++
-		if won {
+		if draw {
+			g.draws++
+		} else if won {
 			g.wins++
 		}
 
@@ -272,13 +279,14 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	}
 
 	for _, r := range rows {
-		// 相手側の票: その指紋が勝った = 記録者が負けた（victory_flg=false）。
+		// 相手側の票: その指紋が勝った = 記録者が負けた（victory_flg=false かつ 引き分けでない）。
+		// 引き分けはどちらの勝ちでもないため won=false・draw=true とする。
 		// スプライト未設定なら対戦相手デッキ名からの推測にフォールバックする。
 		opponentSprites := spritesByMatch[r.MatchId]
 		if len(opponentSprites) == 0 && matcher != nil {
 			opponentSprites = matcher.guess(r.OpponentsDeckInfo)
 		}
-		addVote(opponentSprites, !r.VictoryFlg, r.UserId)
+		addVote(opponentSprites, !r.VictoryFlg && !r.DrawFlg, r.DrawFlg, r.UserId)
 
 		// 自分側の票: マッチ単位。記録者が勝てばその指紋の勝ち。
 		// スプライト未設定ならデッキ名からの推測にフォールバックする。
@@ -287,7 +295,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 			if len(ownSprites) == 0 && matcher != nil {
 				ownSprites = matcher.guess(deckNames[r.DeckId])
 			}
-			addVote(ownSprites, r.VictoryFlg, r.UserId)
+			addVote(ownSprites, r.VictoryFlg, r.DrawFlg, r.UserId)
 		}
 	}
 
@@ -308,7 +316,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 
 	// minVariantCount 未満の変種は「その他」に集約する。
 	// 集約した個別変種は otherMembers に保持し、UI のアコーディオンで一覧表示できるようにする。
-	var otherCount, otherWins int
+	var otherCount, otherWins, otherDraws int
 	var otherMembers []*entity.DeckUsageVariant
 
 	for _, key := range order {
@@ -317,6 +325,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		if g.count < minVariantCount {
 			otherCount += g.count
 			otherWins += g.wins
+			otherDraws += g.draws
 			// order は使用率降順・同数は勝率降順に整列済みなので、内訳もその順序を引き継ぐ。
 			otherMembers = append(otherMembers, newVariantEntity(g, totalVotes))
 			continue
@@ -327,9 +336,14 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 
 	if otherCount > 0 {
 		usageRate := float64(otherCount) / float64(totalVotes)
-		winRate := float64(otherWins) / float64(otherCount)
+		// 引き分けは負けに数えず、勝率の分母からも除外する。
+		otherLosses := otherCount - otherWins - otherDraws
+		var winRate float64
+		if decided := otherWins + otherLosses; decided > 0 {
+			winRate = float64(otherWins) / float64(decided)
+		}
 		other := entity.NewDeckUsageVariant(
-			"", otherCount, usageRate, otherWins, otherCount-otherWins, winRate, []*entity.PokemonSprite{},
+			"", otherCount, usageRate, otherWins, otherLosses, winRate, []*entity.PokemonSprite{},
 		)
 		other.Members = otherMembers
 		decks = append(decks, other)
@@ -407,7 +421,8 @@ func annotatePreviousWeek(current, prev *entity.WeeklyDeckUsageStat) {
 // newVariantEntity は集計済みの variantGroup を entity へ変換する。
 func newVariantEntity(g *variantGroup, totalVotes int) *entity.DeckUsageVariant {
 	usageRate := float64(g.count) / float64(totalVotes)
-	losses := g.count - g.wins
+	// 引き分けは負けに数えない(勝率は winRate() が分母から除外する)。
+	losses := g.count - g.wins - g.draws
 
 	pokemonSprites := make([]*entity.PokemonSprite, 0, len(g.sprites))
 	for _, s := range g.sprites {

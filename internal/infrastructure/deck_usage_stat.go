@@ -25,6 +25,7 @@ type deckUsageResult struct {
 	Name         string
 	Count        int
 	Wins         int
+	Draws        int
 	GameCount    int
 	GoFirstCount int
 	GoFirstWins  int
@@ -53,7 +54,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	// games は1対戦(match)につき複数行になりうる（BO3）ため、count/winsは
 	// matches.id のDISTINCTで数え、先攻/後攻はgames行をそのままカウントする。
 	query := i.db.Table("matches").
-		Select("records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT matches.id) AS count, COUNT(DISTINCT CASE WHEN matches.victory_flg THEN matches.id END) AS wins, COUNT(games.id) AS game_count, SUM(CASE WHEN games.go_first THEN 1 ELSE 0 END) AS go_first_count, SUM(CASE WHEN games.go_first AND games.winning_flg THEN 1 ELSE 0 END) AS go_first_wins, SUM(CASE WHEN games.go_first = false AND games.winning_flg THEN 1 ELSE 0 END) AS go_second_wins").
+		Select("records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT matches.id) AS count, COUNT(DISTINCT CASE WHEN matches.victory_flg THEN matches.id END) AS wins, COUNT(DISTINCT CASE WHEN matches.draw_flg THEN matches.id END) AS draws, COUNT(games.id) AS game_count, SUM(CASE WHEN games.go_first THEN 1 ELSE 0 END) AS go_first_count, SUM(CASE WHEN games.go_first AND games.winning_flg THEN 1 ELSE 0 END) AS go_first_wins, SUM(CASE WHEN games.go_first = false AND games.winning_flg THEN 1 ELSE 0 END) AS go_second_wins").
 		Joins("JOIN records ON matches.record_id = records.id").
 		Joins("LEFT JOIN decks ON records.deck_id = decks.id").
 		Joins("LEFT JOIN games ON games.match_id = matches.id AND games.deleted_at IS NULL").
@@ -148,10 +149,11 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 			usageRate = float64(r.Count) / float64(totalMatches)
 		}
 
-		losses := r.Count - r.Wins
+		// 引き分けは負けに数えない。勝率も分母から除外する(勝ち/(勝ち+負け))。
+		losses := r.Count - r.Wins - r.Draws
 		var winRate float64
-		if r.Count > 0 {
-			winRate = float64(r.Wins) / float64(r.Count)
+		if decided := r.Wins + losses; decided > 0 {
+			winRate = float64(r.Wins) / float64(decided)
 		}
 
 		goSecondCount := r.GameCount - r.GoFirstCount

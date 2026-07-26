@@ -6,6 +6,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 // isValidMatchRequest はMatchの作成/更新リクエストの整合性を検証する。
@@ -29,6 +30,7 @@ func isValidMatchRequest(req dto.MatchRequest) bool {
 		return false
 	}
 
+	gameWinningFlgs := make([]bool, 0, len(req.Games))
 	for _, g := range req.Games {
 		if g == nil {
 			return false
@@ -37,92 +39,22 @@ func isValidMatchRequest(req dto.MatchRequest) bool {
 		if exceedsLength(g.Memo, MaxMemoLength) {
 			return false
 		}
+
+		gameWinningFlgs = append(gameWinningFlgs, g.WinningFlg)
 	}
 
-	// DefaultVictoryFlgとDefaultDefeatFlgの両方がtrue
-	if req.DefaultVictoryFlg && req.DefaultDefeatFlg {
-		return false
-	}
-
-	// DefaultVictoryFlgがtrueなのにVictoryFlgがfalse
-	if req.DefaultVictoryFlg && !req.VictoryFlg {
-		return false
-	}
-
-	// DefaultDefeatFlgがtrueなのにVictoryFlgがtrue
-	if req.DefaultDefeatFlg && req.VictoryFlg {
-		return false
-	}
-
-	// 不戦勝/不戦敗は対戦が行われていないため、Gameが存在してはならない
-	isDefault := req.DefaultVictoryFlg || req.DefaultDefeatFlg
-	if isDefault && len(req.Games) > 0 {
-		return false
-	}
-
-	// チームの勝敗(GroupMatchVictoryFlg)を持てるのはチーム戦のBO1のみ
-	if req.GroupMatchVictoryFlg && (req.BO3Flg || !req.GroupMatchFlg) {
-		return false
-	}
-
-	// 不戦勝/不戦敗の場合はGameが存在しないため、ここから先の検証は行わない
-	if isDefault {
-		return true
-	}
-
-	if req.BO3Flg {
-		// BO3(2本先取)は2ゲーム(2-0)または3ゲーム(2-1)で決着する
-		if len(req.Games) != 2 && len(req.Games) != 3 {
-			return false
-		}
-
-		if len(req.Games) == 2 {
-			// 2ゲームで決着した場合は2連勝(2-0)か2連敗(0-2)であり、
-			// どちらのゲームの勝敗も対戦全体の勝敗と一致する
-			//
-			// | victory | game 1 | game 2 |
-			// ------------------------------
-			// |  true   |  true  |  true  |
-			// |  false  |  false |  false |
-			//
-			if req.Games[0].WinningFlg != req.VictoryFlg || req.Games[1].WinningFlg != req.VictoryFlg {
-				return false
-			}
-		}
-
-		if len(req.Games) == 3 {
-			// 3ゲーム目が行われるのは1勝1敗で並んだ場合のみ。
-			// 1・2ゲーム目が同じ勝敗(2-0 or 0-2)なら既に決着しているため不正
-			if req.Games[0].WinningFlg == req.Games[1].WinningFlg {
-				return false
-			}
-
-			// 1勝1敗で並んだ場合、3ゲーム目の勝敗が対戦全体の勝敗になる
-			//
-			// | victory | game 1 | game 2 | game 3 |
-			// --------------------------------------
-			// |  true   |  true  |  false |  true  |
-			// |  true   |  false |  true  |  true  |
-			// |  false  |  true  |  false |  false |
-			// |  false  |  false |  true  |  false |
-			//
-			if req.Games[2].WinningFlg != req.VictoryFlg {
-				return false
-			}
-		}
-	} else {
-		// BO1(1本勝負)はちょうど1ゲームで決着する
-		if len(req.Games) != 1 {
-			return false
-		}
-
-		// GameのWinningFlgとMatchのVictoryFlgが異なる
-		if req.Games[0].WinningFlg != req.VictoryFlg {
-			return false
-		}
-	}
-
-	return true
+	// フラグ同士・ゲーム数・勝敗整合の検証は domain 層の単一関数に集約している
+	// (usecase 層でも同じ関数を使い、検証の二重実装による乖離を防ぐ)
+	return entity.IsValidMatchResult(entity.MatchResultInput{
+		BO3Flg:               req.BO3Flg,
+		GroupMatchFlg:        req.GroupMatchFlg,
+		DefaultVictoryFlg:    req.DefaultVictoryFlg,
+		DefaultDefeatFlg:     req.DefaultDefeatFlg,
+		VictoryFlg:           req.VictoryFlg,
+		DrawFlg:              req.DrawFlg,
+		GroupMatchVictoryFlg: req.GroupMatchVictoryFlg,
+		GameWinningFlgs:      gameWinningFlgs,
+	})
 }
 
 func MatchCreateMiddleware() gin.HandlerFunc {

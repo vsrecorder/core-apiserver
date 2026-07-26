@@ -245,11 +245,16 @@ CREATE TABLE matches (
     default_victory_flg       BOOLEAN NOT NULL DEFAULT false,
     default_defeat_flg        BOOLEAN NOT NULL DEFAULT false,
     victory_flg               BOOLEAN NOT NULL,
+    draw_flg                  BOOLEAN NOT NULL DEFAULT false,
     group_match_victory_flg   BOOLEAN NOT NULL DEFAULT false,
     opponents_deck_info       VARCHAR(63) DEFAULT NULL,
     memo                      TEXT,
     position                  INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (record_id)   REFERENCES records (id)
+    FOREIGN KEY (record_id)   REFERENCES records (id),
+    -- 「勝ち かつ 引き分け」という矛盾した状態を禁止する
+    CONSTRAINT matches_result_chk CHECK (NOT (victory_flg AND draw_flg)),
+    -- 両者引き分け(ダブルドロー)を設定できるのはBO3のみ(BO1/チーム戦は勝ち負けのみ)
+    CONSTRAINT matches_draw_bo3_chk CHECK (NOT draw_flg OR bo3_flg)
 );
 
 -- matches は集計の中心にあるが索引が無く、ユーザー単位の集計でも全件走査になっていた。

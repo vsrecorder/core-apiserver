@@ -6,6 +6,7 @@ type RecentMatchItem struct {
 	DeckId            string                   `json:"deck_id"`
 	OpponentsDeckInfo string                   `json:"opponents_deck_info"`
 	Victory           bool                     `json:"victory"`
+	Draw              bool                     `json:"draw"`
 	RollingWinRate    float64                  `json:"rolling_win_rate"`
 	EnvironmentId     string                   `json:"environment_id,omitempty"`
 	EnvironmentTitle  string                   `json:"environment_title,omitempty"`

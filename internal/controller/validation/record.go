@@ -6,6 +6,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 func RecordGetMiddleware() gin.HandlerFunc {
@@ -103,25 +104,14 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
   - 自由形式       : UnofficialEventId
 */
 func isValidRecordEventSource(req dto.RecordRequest) bool {
-	count := 0
-	if req.OfficialEventId != 0 {
-		count++
-	}
-	if req.TonamelEventId != "" {
-		count++
-	}
-	if req.FriendId != "" {
-		count++
-	}
-	if req.UnofficialEventId != "" {
-		count++
-	}
-
-	if count != 1 {
-		return false
-	}
-
-	return true
+	// 整合ルールは domain 層の単一関数に集約している
+	// (usecase 層でも同じ関数を使い、検証の二重実装による乖離を防ぐ)
+	return entity.IsValidRecordEventSource(entity.RecordEventSource{
+		OfficialEventId:   req.OfficialEventId,
+		TonamelEventId:    req.TonamelEventId,
+		FriendId:          req.FriendId,
+		UnofficialEventId: req.UnofficialEventId,
+	})
 }
 
 // isValidRecordLength は自由入力欄が上限内に収まっているかを確認する。

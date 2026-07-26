@@ -23,6 +23,7 @@ func NewUserStat(
 type matchStatsResult struct {
 	TotalMatches int
 	Wins         int
+	Draws        int
 }
 
 // recordStatsResult は records を1回走査して得る集計値。
@@ -43,7 +44,7 @@ func (i *UserStat) FindUserStat(
 	var matchResult matchStatsResult
 
 	matchQuery := i.db.Table("matches").
-		Select("COUNT(*) AS total_matches, SUM(CASE WHEN matches.victory_flg = true THEN 1 ELSE 0 END) AS wins").
+		Select("COUNT(*) AS total_matches, SUM(CASE WHEN matches.victory_flg = true THEN 1 ELSE 0 END) AS wins, SUM(CASE WHEN matches.draw_flg = true THEN 1 ELSE 0 END) AS draws").
 		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 
@@ -81,11 +82,12 @@ func (i *UserStat) FindUserStat(
 		return nil, tx.Error
 	}
 
-	losses := matchResult.TotalMatches - matchResult.Wins
+	// 引き分けは負けに数えない。勝率も分母から除外する(勝ち/(勝ち+負け))。
+	losses := matchResult.TotalMatches - matchResult.Wins - matchResult.Draws
 
 	var winRate float64
-	if matchResult.TotalMatches > 0 {
-		winRate = float64(matchResult.Wins) / float64(matchResult.TotalMatches)
+	if decided := matchResult.Wins + losses; decided > 0 {
+		winRate = float64(matchResult.Wins) / float64(decided)
 	}
 
 	return entity.NewUserStat(userId, recordResult.RecordCount, recordResult.OfficialEventCount, recordResult.TonamelEventCount, recordResult.UnofficialEventCount, matchResult.TotalMatches, matchResult.Wins, losses, winRate), nil

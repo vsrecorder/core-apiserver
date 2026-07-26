@@ -25,7 +25,8 @@ func TestUserStatRecentUsecase(t *testing.T) {
 		mockEnvironmentRepository *mock_repository.MockEnvironmentInterface,
 		usecase UserStatRecentInterface,
 	){
-		"GetRecentMatches": test_UserStatRecentUsecase_GetRecentMatches,
+		"GetRecentMatches":              test_UserStatRecentUsecase_GetRecentMatches,
+		"GetRecentMatches_DrawExcluded": test_UserStatRecentUsecase_GetRecentMatches_DrawExcluded,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t, mockRepository, mockEnvironmentRepository, usecase)
@@ -54,11 +55,11 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 		date4 := now.AddDate(0, 0, -1)
 
 		rawMatches := []*entity.RecentMatch{
-			entity.NewRecentMatch(0, date0, "deck-01", "対戦相手デッキA", true, 0, "", "", nil),  // 前情報: 勝ち
-			entity.NewRecentMatch(0, date1, "deck-01", "対戦相手デッキB", false, 0, "", "", nil), // 表示1戦目: 負け
-			entity.NewRecentMatch(0, date2, "deck-01", "対戦相手デッキA", true, 0, "", "", nil),  // 表示2戦目: 勝ち
-			entity.NewRecentMatch(0, date3, "deck-01", "対戦相手デッキA", true, 0, "", "", nil),  // 表示3戦目: 勝ち
-			entity.NewRecentMatch(0, date4, "deck-01", "対戦相手デッキB", false, 0, "", "", nil), // 表示4戦目: 負け
+			entity.NewRecentMatch(0, date0, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 前情報: 勝ち
+			entity.NewRecentMatch(0, date1, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil), // 表示1戦目: 負け
+			entity.NewRecentMatch(0, date2, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 表示2戦目: 勝ち
+			entity.NewRecentMatch(0, date3, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 表示3戦目: 勝ち
+			entity.NewRecentMatch(0, date4, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil), // 表示4戦目: 負け
 		}
 
 		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId).Return(rawMatches, nil)
@@ -102,8 +103,8 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 
 		// 対戦記録が2件しかなく、fetchCount(5件)に満たない
 		rawMatches := []*entity.RecentMatch{
-			entity.NewRecentMatch(0, date1, "deck-01", "対戦相手デッキA", true, 0, "", "", nil),
-			entity.NewRecentMatch(0, date2, "deck-01", "対戦相手デッキB", false, 0, "", "", nil),
+			entity.NewRecentMatch(0, date1, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),
+			entity.NewRecentMatch(0, date2, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil),
 		}
 
 		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId).Return(rawMatches, nil)
@@ -146,5 +147,51 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 
 		require.Error(t, err)
 		require.Nil(t, ret)
+	})
+}
+
+// 引き分けが勝率(全体・ローリング)の分母から除外されることを検証する。
+func test_UserStatRecentUsecase_GetRecentMatches_DrawExcluded(
+	t *testing.T,
+	mockRepository *mock_repository.MockUserStatRecentInterface,
+	mockEnvironmentRepository *mock_repository.MockEnvironmentInterface,
+	usecase UserStatRecentInterface,
+) {
+	t.Run("正常系_引き分けは勝率の分母から除外される", func(t *testing.T) {
+		userId := "user-draw"
+		count := 4
+		deckId := ""
+		fetchCount := 5 // windowSize = count/2 = 2
+
+		now := time.Now()
+		date0 := now.AddDate(0, 0, -5)
+		date1 := now.AddDate(0, 0, -4)
+		date2 := now.AddDate(0, 0, -3)
+		date3 := now.AddDate(0, 0, -2)
+		date4 := now.AddDate(0, 0, -1)
+
+		// 表示4戦: 勝ち・引き分け・勝ち・負け → 2勝1敗1分。
+		// 勝率は引き分けを分母から除外して 2/(2+1)=0.666...
+		rawMatches := []*entity.RecentMatch{
+			entity.NewRecentMatch(0, date0, "deck-01", "A", true, false, 0, "", "", nil),  // 前情報: 勝ち
+			entity.NewRecentMatch(0, date1, "deck-01", "B", true, false, 0, "", "", nil),  // 表示1: 勝ち
+			entity.NewRecentMatch(0, date2, "deck-01", "C", false, true, 0, "", "", nil),  // 表示2: 引き分け
+			entity.NewRecentMatch(0, date3, "deck-01", "D", true, false, 0, "", "", nil),  // 表示3: 勝ち
+			entity.NewRecentMatch(0, date4, "deck-01", "E", false, false, 0, "", "", nil), // 表示4: 負け
+		}
+
+		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId).Return(rawMatches, nil)
+		mockEnvironmentRepository.EXPECT().FindByTerm(context.Background(), date0, date4).Return(nil, nil)
+
+		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId)
+
+		require.NoError(t, err)
+		require.Equal(t, 4, ret.TotalMatches)
+		require.Equal(t, 2, ret.Wins)
+		require.InDelta(t, 2.0/3.0, ret.WinRate, 0.0001, "勝率は引き分けを分母から除外する(2勝1敗1分 → 2/3)")
+
+		// 表示2(引き分け)のローリング勝率: ウィンドウ[表示1:勝ち, 表示2:分]
+		// = 勝ち1 / (決着1) = 1.0（引き分けは分母に入らない）
+		require.InDelta(t, 1.0, ret.Matches[1].RollingWinRate, 0.0001)
 	})
 }

@@ -14,6 +14,7 @@ type MatchRequest struct {
 	DefaultVictoryFlg    bool                    `json:"default_victory_flg"`
 	DefaultDefeatFlg     bool                    `json:"default_defeat_flg"`
 	VictoryFlg           bool                    `json:"victory_flg"`
+	DrawFlg              bool                    `json:"draw_flg"`
 	GroupMatchVictoryFlg bool                    `json:"group_match_victory_flg"`
 	OpponentsDeckInfo    string                  `json:"opponents_deck_info"`
 	Memo                 string                  `json:"memo"`
@@ -44,6 +45,7 @@ type MatchResponse struct {
 	DefaultVictoryFlg    bool                     `json:"default_victory_flg"`
 	DefaultDefeatFlg     bool                     `json:"default_defeat_flg"`
 	VictoryFlg           bool                     `json:"victory_flg"`
+	DrawFlg              bool                     `json:"draw_flg"`
 	GroupMatchVictoryFlg bool                     `json:"group_match_victory_flg"`
 	OpponentsDeckInfo    string                   `json:"opponents_deck_info"`
 	Memo                 string                   `json:"memo"`

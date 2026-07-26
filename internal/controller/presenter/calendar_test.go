@@ -30,7 +30,7 @@ func TestNewCalendarGetByUserIdResponse(t *testing.T) {
 		game := entity.NewGame("game-1", now, "match-1", "user-1", true, true, 0, 6, "メモ")
 		match := entity.NewMatch(
 			"match-1", now, "record-1", "deck-1", "", "user-1", "",
-			false, false, false, false, false, false, true, false,
+			false, false, false, false, false, false, true, false, false,
 			"相手デッキ情報", "メモ",
 			[]*entity.Game{game},
 			[]*entity.PokemonSprite{entity.NewPokemonSprite("pikachu")},

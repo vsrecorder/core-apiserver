@@ -61,17 +61,23 @@ func (u *UserStatRecent) GetRecentMatches(
 	}
 
 	// 各点のローリング勝率は、そのつどウィンドウ内を数え直すと O(count^2) になる。
-	// 勝利数の累積和を先に1本だけ作り、任意区間の勝利数を差分で引けるようにする。
+	// 勝利数・引き分け数の累積和を先に作り、任意区間の値を差分で引けるようにする。
 	// prefixWins[k] は rawMatches[0..k-1] の勝利数（prefixWins[0]=0）。
+	// 引き分けは勝率の分母から除外するため、引き分け数も累積しておく。
 	prefixWins := make([]int, len(rawMatches)+1)
+	prefixDraws := make([]int, len(rawMatches)+1)
 	for i, rm := range rawMatches {
 		prefixWins[i+1] = prefixWins[i]
-		if rm.VictoryFlg {
+		prefixDraws[i+1] = prefixDraws[i]
+		if rm.DrawFlg {
+			prefixDraws[i+1]++
+		} else if rm.VictoryFlg {
 			prefixWins[i+1]++
 		}
 	}
 
 	wins := 0
+	draws := 0
 	matches := make([]*entity.RecentMatch, 0, len(rawMatches)-displayStart)
 	for idx := displayStart; idx < len(rawMatches); idx++ {
 		m := rawMatches[idx]
@@ -80,15 +86,19 @@ func (u *UserStatRecent) GetRecentMatches(
 		if windowStart < 0 {
 			windowStart = 0
 		}
-		// [windowStart, idx] の勝利数・試合数を累積和の差分で求める（O(1)）。
+		// [windowStart, idx] の勝利数・引き分け数を累積和の差分で求める（O(1)）。
+		// 引き分けは分母から除外する(勝ち/(勝ち+負け))。
 		windowTotal := idx - windowStart + 1
 		windowWins := prefixWins[idx+1] - prefixWins[windowStart]
+		windowDraws := prefixDraws[idx+1] - prefixDraws[windowStart]
 		var rollingWinRate float64
-		if windowTotal > 0 {
-			rollingWinRate = float64(windowWins) / float64(windowTotal)
+		if windowDecided := windowTotal - windowDraws; windowDecided > 0 {
+			rollingWinRate = float64(windowWins) / float64(windowDecided)
 		}
 
-		if m.VictoryFlg {
+		if m.DrawFlg {
+			draws++
+		} else if m.VictoryFlg {
 			wins++
 		}
 
@@ -106,6 +116,7 @@ func (u *UserStatRecent) GetRecentMatches(
 			m.DeckId,
 			m.OpponentsDeckInfo,
 			m.VictoryFlg,
+			m.DrawFlg,
 			rollingWinRate,
 			environmentId,
 			environmentTitle,
@@ -114,9 +125,10 @@ func (u *UserStatRecent) GetRecentMatches(
 	}
 
 	totalMatches := len(matches)
+	// 引き分けは勝率の分母から除外する(勝ち/(勝ち+負け))。
 	var winRate float64
-	if totalMatches > 0 {
-		winRate = float64(wins) / float64(totalMatches)
+	if decided := totalMatches - draws; decided > 0 {
+		winRate = float64(wins) / float64(decided)
 	}
 
 	return entity.NewRecentMatchStat(userId, count, totalMatches, wins, winRate, matches), nil

@@ -49,4 +49,14 @@ var (
 	// 対象record内の未削除match集合と過不足なく一致しない場合に返す。
 	// HTTP では 400 Bad Request に対応する。
 	ErrInvalidMatchOrder = errors.New("invalid match order")
+
+	// ErrInvalidMatch は対戦結果(BO3/両者引き分け含む)の整合性が取れていない場合に返す。
+	// 例: BO3なのにゲーム数が不正、ゲームの勝敗と対戦全体の勝敗が食い違う 等。
+	// HTTP では 400 Bad Request に対応する。
+	ErrInvalidMatch = errors.New("invalid match")
+
+	// ErrInvalidRecord は記録の整合性が取れていない場合に返す。
+	// 例: 紐づくイベント種別(公式/Tonamel/フレンド/自由形式)がちょうど1つでない。
+	// HTTP では 400 Bad Request に対応する。
+	ErrInvalidRecord = errors.New("invalid record")
 )

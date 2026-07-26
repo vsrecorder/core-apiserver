@@ -88,6 +88,7 @@ func newBO3Match(matchId string, victoryFlg bool, games []*entity.Game) *entity.
 		false,
 		false,
 		victoryFlg,
+		false, // drawFlg
 		false,
 		"リザードンex",
 		"",

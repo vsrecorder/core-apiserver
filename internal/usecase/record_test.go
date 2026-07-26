@@ -227,7 +227,7 @@ func TestRecordUsecase_Update_NotifiesDesignationChange(t *testing.T) {
 		id, time.Now().Local(), 0, "", "", "", "", deckId, "", time.Time{}, false, false, "", "",
 	)
 
-	param := NewRecordParam(0, "", "", "", "", deckId, "", time.Time{}, false, false, "", "")
+	param := NewRecordParam(1, "", "", "", "", deckId, "", time.Time{}, false, false, "", "")
 
 	mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
 	mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -288,7 +288,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 
 		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
-		param := NewRecordParam(0, "", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		param := NewRecordParam(1, "", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
 		_, err := usecase.Create(context.Background(), param)
@@ -793,7 +793,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 		record := entity.NewRecord(
 			id,
 			createdAt,
-			0,
+			1,
 			"",
 			"",
 			"",
@@ -808,7 +808,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 		)
 
 		param := NewRecordParam(
-			0,
+			1,
 			"",
 			"",
 			"",
@@ -835,7 +835,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 
 	t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
 		param := NewRecordParam(
-			0,
+			1,
 			"",
 			"",
 			"",
@@ -856,6 +856,29 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 		require.Error(t, err)
 		require.Empty(t, ret)
 	})
+
+	// middleware を通らず usecase を直接呼んでも、イベント種別が不整合な記録は
+	// ErrInvalidRecord で弾かれ、repository の Save が呼ばれないこと。
+	t.Run("異常系_イベント種別が1つも指定されていない記録は弾く", func(t *testing.T) {
+		// 公式/Tonamel/フレンド/自由形式 のどれも指定なし = 不整合
+		param := NewRecordParam(0, "", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+
+		// Save は EXPECT しない(検証で弾かれ、呼ばれない)
+		ret, err := usecase.Create(context.Background(), param)
+
+		require.ErrorIs(t, err, apperror.ErrInvalidRecord)
+		require.Nil(t, ret)
+	})
+
+	t.Run("異常系_イベント種別が2つ指定されている記録は弾く", func(t *testing.T) {
+		// 公式イベントとTonamelの両方 = 不整合
+		param := NewRecordParam(1, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+
+		ret, err := usecase.Create(context.Background(), param)
+
+		require.ErrorIs(t, err, apperror.ErrInvalidRecord)
+		require.Nil(t, ret)
+	})
 }
 
 func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
@@ -866,7 +889,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 		record := entity.NewRecord(
 			id,
 			createdAt,
-			0,
+			1,
 			"",
 			"",
 			"",
@@ -881,7 +904,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 		)
 
 		param := NewRecordParam(
-			0,
+			1,
 			"",
 			"",
 			"",
@@ -908,7 +931,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 		id, _ := generateId()
 
 		param := NewRecordParam(
-			0,
+			1,
 			"",
 			"",
 			"",
@@ -937,7 +960,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 		record := entity.NewRecord(
 			id,
 			createdAt,
-			0,
+			1,
 			"",
 			"",
 			"",
@@ -952,7 +975,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 		)
 
 		param := NewRecordParam(
-			0,
+			1,
 			"",
 			"",
 			"",

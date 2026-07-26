@@ -441,6 +441,7 @@ func matchUpdateArgs(datetime time.Time, position int) []driver.Value {
 		false,
 		false,
 		true,
+		false, // draw_flg
 		false,
 		"対戦相手のデッキ情報",
 		"メモ",
@@ -465,6 +466,7 @@ func newTestMatch(matchId string, datetime time.Time, games []*entity.Game, spri
 		false,
 		false,
 		true,
+		false, // drawFlg
 		false,
 		"対戦相手のデッキ情報",
 		"メモ",

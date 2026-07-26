@@ -207,6 +207,12 @@ func (c *Record) Create(ctx *gin.Context) {
 
 	record, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
+		// 記録の整合性エラーは 400。middleware を通れば通常は発生しないが、
+		// usecase 層でも検証しているため防御的に 400 を返す。
+		if errors.Is(err, apperror.ErrInvalidRecord) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
 		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
@@ -238,6 +244,11 @@ func (c *Record) Update(ctx *gin.Context) {
 
 	record, err := c.usecase.Update(context.Background(), id, param)
 	if err != nil {
+		// 記録の整合性エラーは 400。
+		if errors.Is(err, apperror.ErrInvalidRecord) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
 		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}

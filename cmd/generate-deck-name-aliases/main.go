@@ -18,8 +18,12 @@
 //	# 実際に deck_name_aliases へ反映する
 //	go run ./cmd/generate-deck-name-aliases -dry-run=false
 //
-//	# しきい値と集計期間を調整する
+//	# しきい値と集計期間(週数指定)を調整する
 //	go run ./cmd/generate-deck-name-aliases -min-support=20 -min-ratio=0.7 -supply-weeks=24
+//
+//	# 教師データの抽出対象期間・救済対象期間を環境/シーズン/レギュレーションで指定する
+//	# (指定した場合はそれぞれ -supply-weeks / -demand-weeks より優先される。複数指定時は期間の交差を取る)
+//	go run ./cmd/generate-deck-name-aliases -supply-season=2026 -demand-environment=sv9a
 package main
 
 import (
@@ -33,8 +37,10 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
 const (
@@ -46,8 +52,14 @@ func main() {
 	defaults := infrastructure.DefaultDeckNameAliasGeneratorConfig()
 
 	dryRun := flag.Bool("dry-run", true, "true の場合、書き込みは行わず生成される候補の確認のみ行う")
-	supplyWeeks := flag.Int("supply-weeks", 12, "教師データ(名前とスプライトが両方ある記録)を遡る週数")
-	demandWeeks := flag.Int("demand-weeks", 4, "救済対象(スプライト未設定の票)を遡る週数")
+	supplyWeeks := flag.Int("supply-weeks", 12, "教師データ(名前とスプライトが両方ある記録)を遡る週数(-supply-environment/-supply-season/-supply-regulation未指定時のみ使う)")
+	demandWeeks := flag.Int("demand-weeks", 4, "救済対象(スプライト未設定の票)を遡る週数(-demand-environment/-demand-season/-demand-regulation未指定時のみ使う)")
+	supplyEnvironment := flag.String("supply-environment", "", "教師データの抽出対象期間を環境ID(environments.id)で指定する。season/regulationと併用時は期間の交差を取る")
+	supplySeason := flag.String("supply-season", "", "教師データの抽出対象期間をシーズン(championship_series.idから接頭辞series_を除いた識別子。例:2026)で指定する")
+	supplyRegulation := flag.String("supply-regulation", "", "教師データの抽出対象期間をレギュレーションID(standard_regulations.id)で指定する")
+	demandEnvironment := flag.String("demand-environment", "", "救済対象期間を環境ID(environments.id)で指定する。season/regulationと併用時は期間の交差を取る")
+	demandSeason := flag.String("demand-season", "", "救済対象期間をシーズン(championship_series.idから接頭辞series_を除いた識別子。例:2026)で指定する")
+	demandRegulation := flag.String("demand-regulation", "", "救済対象期間をレギュレーションID(standard_regulations.id)で指定する")
 	minSupport := flag.Int("min-support", defaults.MinSupport, "代表構成の支持件数の下限")
 	minRatio := flag.Float64("min-ratio", defaults.MinRatio, "代表構成の占有率の下限。割合で指定する(60% なら 0.6)")
 	minContributors := flag.Int("min-contributors", defaults.MinContributors, "代表構成を使った実ユーザー数の下限")
@@ -99,16 +111,42 @@ func main() {
 
 	ctx := context.Background()
 
+	environmentRepo := infrastructure.NewEnvironment(db)
+	standardRegulationRepo := infrastructure.NewStandardRegulation(db)
+	championshipSeriesRepo := infrastructure.NewChampionshipSeries(db)
+
 	// 集計期間は実行日から遡って決める(終端は当日を含めるため翌日 0 時)。
+	// -supply-environment/-supply-season/-supply-regulation(需要側は demand-)が
+	// 1つでも指定されていれば、週数指定より優先してそちらの期間を使う。
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	to := today.AddDate(0, 0, 1)
 
+	supplyFrom, supplyTo, err := resolvePeriod(
+		ctx, environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		*supplyEnvironment, *supplySeason, *supplyRegulation,
+		today.AddDate(0, 0, -7*(*supplyWeeks)), to, now,
+	)
+	if err != nil {
+		log.Printf("failed to resolve supply period: %v\n", err)
+		os.Exit(ExitCodeNG)
+	}
+
+	demandFrom, demandTo, err := resolvePeriod(
+		ctx, environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		*demandEnvironment, *demandSeason, *demandRegulation,
+		today.AddDate(0, 0, -7*(*demandWeeks)), to, now,
+	)
+	if err != nil {
+		log.Printf("failed to resolve demand period: %v\n", err)
+		os.Exit(ExitCodeNG)
+	}
+
 	cfg := infrastructure.DeckNameAliasGeneratorConfig{
-		SupplyFrom:      today.AddDate(0, 0, -7*(*supplyWeeks)),
-		SupplyTo:        to,
-		DemandFrom:      today.AddDate(0, 0, -7*(*demandWeeks)),
-		DemandTo:        to,
+		SupplyFrom:      supplyFrom,
+		SupplyTo:        supplyTo,
+		DemandFrom:      demandFrom,
+		DemandTo:        demandTo,
 		MinSupport:      *minSupport,
 		MinRatio:        *minRatio,
 		MinContributors: *minContributors,
@@ -116,9 +154,11 @@ func main() {
 	}
 
 	log.Printf(
-		"教師データ %s〜 / 救済対象 %s〜 / しきい値: 支持%d件以上・占有率%.0f%%以上・%d人以上・%d文字以上\n",
+		"教師データ %s〜%s / 救済対象 %s〜%s / しきい値: 支持%d件以上・占有率%.0f%%以上・%d人以上・%d文字以上\n",
 		cfg.SupplyFrom.Format("2006-01-02"),
+		cfg.SupplyTo.Format("2006-01-02"),
 		cfg.DemandFrom.Format("2006-01-02"),
+		cfg.DemandTo.Format("2006-01-02"),
 		cfg.MinSupport,
 		cfg.MinRatio*100,
 		cfg.MinContributors,
@@ -165,6 +205,31 @@ func main() {
 
 	log.Printf("完了: source='auto' を %d 行で再生成しました\n", saved)
 	os.Exit(ExitCodeOK)
+}
+
+// resolvePeriod は environmentId/season/regulationId のいずれかが指定されていればその期間
+// (期間が複数指定された場合は交差)を、いずれも空文字なら weeksFrom〜weeksTo(週数指定による
+// 既定の期間)をそのまま返す。
+func resolvePeriod(
+	ctx context.Context,
+	environmentRepo repository.EnvironmentInterface,
+	standardRegulationRepo repository.StandardRegulationInterface,
+	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+	environmentId string,
+	season string,
+	regulationId string,
+	weeksFrom time.Time,
+	weeksTo time.Time,
+	now time.Time,
+) (time.Time, time.Time, error) {
+	if environmentId == "" && season == "" && regulationId == "" {
+		return weeksFrom, weeksTo, nil
+	}
+
+	return usecase.PeriodDateRange(
+		ctx, environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		environmentId, season, regulationId, now,
+	)
 }
 
 // formatSprites はログ用に代表スプライトを "0006(1) 0018(2)" 形式へ整形する。

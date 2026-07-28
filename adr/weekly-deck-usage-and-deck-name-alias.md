@@ -197,19 +197,31 @@ go run ./cmd/generate-deck-name-aliases
 # 反映する
 go run ./cmd/generate-deck-name-aliases -dry-run=false
 
-# しきい値・集計期間を変える
+# しきい値・集計期間(週数指定)を変える
 go run ./cmd/generate-deck-name-aliases -min-support=20 -min-ratio=0.7 -supply-weeks=24
+
+# 教師データの抽出対象期間・救済対象期間を環境/シーズン/レギュレーションで指定する
+# (指定した場合はそれぞれ -supply-weeks / -demand-weeks より優先。複数指定時は期間の交差を取る)
+go run ./cmd/generate-deck-name-aliases -supply-season=2026 -demand-environment=sv9a
 ```
 
 | オプション | 既定 | 内容 |
 |---|---|---|
 | `-dry-run` | true | 書き込みせず候補一覧のみ出力 |
-| `-supply-weeks` | 12 | 教師データを遡る週数(代表構成を安定させるため長め) |
-| `-demand-weeks` | 4 | 救済対象を遡る週数(いま効くものを優先するため短め) |
+| `-supply-weeks` | 12 | 教師データを遡る週数(代表構成を安定させるため長め)。`-supply-environment`/`-supply-season`/`-supply-regulation`未指定時のみ使う |
+| `-demand-weeks` | 4 | 救済対象を遡る週数(いま効くものを優先するため短め)。`-demand-environment`/`-demand-season`/`-demand-regulation`未指定時のみ使う |
+| `-supply-environment` | (空) | 教師データの抽出対象期間を環境ID(`environments.id`)で指定する |
+| `-supply-season` | (空) | 教師データの抽出対象期間をシーズン(`championship_series.id`から接頭辞`series_`を除いた識別子。例:`2026`)で指定する |
+| `-supply-regulation` | (空) | 教師データの抽出対象期間をレギュレーションID(`standard_regulations.id`)で指定する |
+| `-demand-environment` | (空) | 救済対象期間を環境IDで指定する |
+| `-demand-season` | (空) | 救済対象期間をシーズンで指定する |
+| `-demand-regulation` | (空) | 救済対象期間をレギュレーションIDで指定する |
 | `-min-support` | 10 | 代表構成の支持件数の下限 |
 | `-min-ratio` | 0.6 | 代表構成の占有率の下限(**割合で指定**) |
 | `-min-contributors` | 3 | 代表構成を使った実ユーザー数の下限 |
 | `-min-alias-runes` | 4 | 生成するエイリアスの最小文字数(手動運用の下限より保守的に) |
+
+環境/シーズン/レギュレーションは `DeckUsageStat.GetDeckUsageStat`(D9より前の既存機能。ユーザー単位のデッキ使用率統計)と同じ考え方(`usecase.PeriodDateRange`)で期間を解決する。同じ種別(教師データ/救済対象)で複数指定した場合は期間の交差(intersection)を取る。
 
 しきい値の指定ミスは「候補0件」という**正常終了に紛れて気づけない**ため、起動時に検証して終了コード1で弾く。とくに占有率はログに `%` で出す一方で指定は割合(`0.6`)のため `60` と書かれやすく、専用のメッセージを出す。
 

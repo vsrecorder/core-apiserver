@@ -156,9 +156,9 @@ func main() {
 	log.Printf(
 		"教師データ %s〜%s / 救済対象 %s〜%s / しきい値: 支持%d件以上・占有率%.0f%%以上・%d人以上・%d文字以上\n",
 		cfg.SupplyFrom.Format("2006-01-02"),
-		cfg.SupplyTo.Format("2006-01-02"),
+		formatInclusiveTo(cfg.SupplyTo),
 		cfg.DemandFrom.Format("2006-01-02"),
-		cfg.DemandTo.Format("2006-01-02"),
+		formatInclusiveTo(cfg.DemandTo),
 		cfg.MinSupport,
 		cfg.MinRatio*100,
 		cfg.MinContributors,
@@ -230,6 +230,13 @@ func resolvePeriod(
 		ctx, environmentRepo, standardRegulationRepo, championshipSeriesRepo,
 		environmentId, season, regulationId, now,
 	)
+}
+
+// formatInclusiveTo は集計期間の終端をログ用に整形する。
+// SupplyTo/DemandTo は半開区間 [from, to) の排他的上限(集計は event_date < to)のため、
+// そのまま出すと集計対象に含まれない日付が期間の末日に見えてしまう。前日を末日として表示する。
+func formatInclusiveTo(to time.Time) string {
+	return to.AddDate(0, 0, -1).Format("2006-01-02")
 }
 
 // formatSprites はログ用に代表スプライトを "0006(1) 0018(2)" 形式へ整形する。

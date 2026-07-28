@@ -372,7 +372,6 @@ INSERT INTO championship_series VALUES ('series_2026','チャンピオンシッ�
 INSERT INTO championship_series VALUES ('series_2025','チャンピオンシップシリーズ2025','2024-09-01','2025-08-31');
 INSERT INTO championship_series VALUES ('series_2024','チャンピオンシップシリーズ2024','2023-09-01','2024-08-31');
 INSERT INTO championship_series VALUES ('series_2023','チャンピオンシップシリーズ2023','2022-09-01','2023-08-31');
-INSERT INTO championship_series VALUES ('series_2022','チャンピオンシップシリーズ2022','2021-09-01','2022-08-31');
 
 
 

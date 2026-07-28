@@ -336,14 +336,18 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 		return nil, nil, "", err
 	}
 
-	previousFromDate, previousToDate, err := previousSeasonRange(ctx, u.championshipSeriesRepo, "", now)
+	previousFromDate, previousToDate, previousExists, err := previousSeasonRange(ctx, u.championshipSeriesRepo, "", now)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	previousCityLeagueCount, err := u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, previousFromDate, previousToDate)
-	if err != nil {
-		return nil, nil, "", err
+	// 最古のシーズンには前シーズンが存在しないため、継続条件の判定は0件として扱う。
+	previousCityLeagueCount := 0
+	if previousExists {
+		previousCityLeagueCount, err = u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, previousFromDate, previousToDate)
+		if err != nil {
+			return nil, nil, "", err
+		}
 	}
 
 	values := map[string]int{

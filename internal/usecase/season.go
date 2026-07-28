@@ -2,9 +2,11 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
@@ -127,23 +129,36 @@ func PeriodDateRange(
 // previousSeasonRange は season(空文字なら現在のシーズン)のひとつ前(championship_series上で
 // from_dateが直前に終わる)シーズンの期間を返す。「前シーズンに引き続き」といった、シーズンを
 // またいだ継続条件の判定に使う。
+//
+// 最古のシーズン(championship_seriesの先頭行)を指定した場合、そのひとつ前のシーズンは
+// テーブルに存在しない。これは異常ではなく「前シーズンの実績が0件」として扱うべき正常系なので、
+// エラーではなく exists=false を返す(呼び出し側で0件として扱う)。
 func previousSeasonRange(
 	ctx context.Context,
 	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 	season string,
 	now time.Time,
-) (fromDate time.Time, toDate time.Time, err error) {
+) (fromDate time.Time, toDate time.Time, exists bool, err error) {
 	currentFromDate, _, err := seasonRange(ctx, championshipSeriesRepo, season, now)
 	if err != nil {
-		return time.Time{}, time.Time{}, err
+		return time.Time{}, time.Time{}, false, err
 	}
 
 	cs, err := championshipSeriesRepo.FindByDate(ctx, currentFromDate.AddDate(0, 0, -1))
 	if err != nil {
-		return time.Time{}, time.Time{}, err
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			return time.Time{}, time.Time{}, false, nil
+		}
+
+		return time.Time{}, time.Time{}, false, err
 	}
 
-	return championshipSeriesDateRange(cs, now.Location())
+	fromDate, toDate, err = championshipSeriesDateRange(cs, now.Location())
+	if err != nil {
+		return time.Time{}, time.Time{}, false, err
+	}
+
+	return fromDate, toDate, true, nil
 }
 
 // championshipSeriesDateRange は championship_series の1行を、from_date(0時始まり)〜

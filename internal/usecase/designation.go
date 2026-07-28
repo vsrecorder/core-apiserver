@@ -338,14 +338,18 @@ func (u *Designation) GetRankStats(
 		return nil, err
 	}
 
-	previousFromDate, previousToDate, err := previousSeasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
+	previousFromDate, previousToDate, previousExists, err := previousSeasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
 		return nil, err
 	}
 
-	previousCityLeagueCounts, err := u.designationStatsRepo.CountCityLeagueRecordsGroupByUserId(ctx, previousFromDate, previousToDate)
-	if err != nil {
-		return nil, err
+	// 最古のシーズンには前シーズンが存在しないため、継続条件の判定は全ユーザー0件として扱う。
+	previousCityLeagueCounts := map[string]int{}
+	if previousExists {
+		previousCityLeagueCounts, err = u.designationStatsRepo.CountCityLeagueRecordsGroupByUserId(ctx, previousFromDate, previousToDate)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	cityLeaguePlacements, err := u.designationStatsRepo.ExistsCityLeagueResultGroupByUserId(ctx, fromDate, toDate)
@@ -594,9 +598,14 @@ func (u *Designation) previousSeasonCityLeagueCount(
 	userId string,
 	season string,
 ) (int, error) {
-	fromDate, toDate, err := previousSeasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
+	fromDate, toDate, exists, err := previousSeasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
 		return 0, err
+	}
+
+	// 最古のシーズンには前シーズンが存在しないため、継続条件の判定は0件として扱う。
+	if !exists {
+		return 0, nil
 	}
 
 	return u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, fromDate, toDate)

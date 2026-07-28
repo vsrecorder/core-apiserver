@@ -116,9 +116,10 @@ func TestPreviousSeasonRange(t *testing.T) {
 		repo.EXPECT().FindByDate(gomock.Any(), now).Return(current, nil)
 		repo.EXPECT().FindByDate(gomock.Any(), time.Date(2025, 8, 31, 0, 0, 0, 0, time.Local)).Return(previous, nil)
 
-		fromDate, toDate, err := previousSeasonRange(t.Context(), repo, "", now)
+		fromDate, toDate, exists, err := previousSeasonRange(t.Context(), repo, "", now)
 
 		require.NoError(t, err)
+		require.True(t, exists)
 		require.Equal(t, time.Date(2024, 9, 1, 0, 0, 0, 0, time.Local), fromDate)
 		require.Equal(t, time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), toDate)
 	})
@@ -141,20 +142,41 @@ func TestPreviousSeasonRange(t *testing.T) {
 		repo.EXPECT().FindById(gomock.Any(), "series_2024").Return(current, nil)
 		repo.EXPECT().FindByDate(gomock.Any(), time.Date(2023, 8, 31, 0, 0, 0, 0, time.Local)).Return(previous, nil)
 
-		fromDate, toDate, err := previousSeasonRange(t.Context(), repo, "2024", now)
+		fromDate, toDate, exists, err := previousSeasonRange(t.Context(), repo, "2024", now)
 
 		require.NoError(t, err)
+		require.True(t, exists)
 		require.Equal(t, time.Date(2022, 9, 1, 0, 0, 0, 0, time.Local), fromDate)
 		require.Equal(t, time.Date(2023, 9, 1, 0, 0, 0, 0, time.Local), toDate)
 	})
 
-	t.Run("異常系_championship_seriesに該当行が無ければエラーを返す", func(t *testing.T) {
+	t.Run("正常系_最古のシーズン指定時はexists=falseを返す", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
+
+		// championship_seriesの先頭行(=これ以前のシーズンはテーブルに存在しない)
+		oldest := entity.NewChampionshipSeries(
+			"series_2023", "チャンピオンシップシリーズ2023",
+			time.Date(2022, 9, 1, 0, 0, 0, 0, time.Local),
+			time.Date(2023, 8, 31, 0, 0, 0, 0, time.Local),
+		)
+
+		repo.EXPECT().FindById(gomock.Any(), "series_2023").Return(oldest, nil)
+		repo.EXPECT().FindByDate(gomock.Any(), time.Date(2022, 8, 31, 0, 0, 0, 0, time.Local)).Return(nil, apperror.ErrRecordNotFound)
+
+		_, _, exists, err := previousSeasonRange(t.Context(), repo, "2023", now)
+
+		require.NoError(t, err)
+		require.False(t, exists)
+	})
+
+	t.Run("異常系_指定されたseasonがchampionship_seriesに無ければエラーを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		repo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
 		repo.EXPECT().FindById(gomock.Any(), "series_not-a-year").Return(nil, apperror.ErrRecordNotFound)
 
-		_, _, err := previousSeasonRange(t.Context(), repo, "not-a-year", now)
+		_, _, _, err := previousSeasonRange(t.Context(), repo, "not-a-year", now)
 
 		require.Error(t, err)
 	})

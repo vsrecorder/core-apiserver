@@ -54,6 +54,24 @@ func expectCurrentAndPreviousChampionshipSeries(repo *mock_repository.MockChampi
 	repo.EXPECT().FindByDate(gomock.Any(), time.Date(2025, 8, 31, 0, 0, 0, 0, time.Local)).Return(previous, nil).AnyTimes()
 }
 
+// oldestSeason は championship_series の先頭行(=これ以前のシーズンがテーブルに存在しない)
+// を表す season 識別子。本番の championship_series の最古の行に合わせている。
+const oldestSeason = "2023"
+
+// expectOldestChampionshipSeries は、最古のシーズンを指定した場合のモックを設定する。
+// 前シーズン(from_dateの前日が属するシーズン)は championship_series に存在しないため、
+// FindByDate は ErrRecordNotFound を返す。
+func expectOldestChampionshipSeries(repo *mock_repository.MockChampionshipSeriesInterface) {
+	oldest := entity.NewChampionshipSeries(
+		"series_"+oldestSeason, "チャンピオンシップシリーズ2023",
+		time.Date(2022, 9, 1, 0, 0, 0, 0, time.Local),
+		time.Date(2023, 8, 31, 0, 0, 0, 0, time.Local),
+	)
+
+	repo.EXPECT().FindById(gomock.Any(), "series_"+oldestSeason).Return(oldest, nil).AnyTimes()
+	repo.EXPECT().FindByDate(gomock.Any(), time.Date(2022, 8, 31, 0, 0, 0, 0, time.Local)).Return(nil, apperror.ErrRecordNotFound).AnyTimes()
+}
+
 // threeTierDefinitions は 駆け出し(tier1, 記録1件)・見習い(tier2, 記録5件)・
 // 一人前(tier3, 見習いの条件+リーグ記録)という累積構造を再現した3ティア。
 func threeTierDefinitions(now time.Time) []*entity.Designation {
@@ -238,6 +256,30 @@ func TestDesignation_GetByUserId(t *testing.T) {
 		require.NotNil(t, item04)
 		require.True(t, item04.Achieved)
 		require.Equal(t, 2, item04.CurrentValue)
+		require.Equal(t, 0, item04.PreviousValue)
+	})
+
+	t.Run("正常系_最古のシーズンを指定しても前シーズン不在をエラーにせず0件として扱う", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, userPlayerRepo := newDesignationTestUsecase(mockCtrl)
+		expectOldestChampionshipSeries(championshipSeriesRepo)
+		expectUserPlayerNotLinked(userPlayerRepo, "user-1")
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
+		designationStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(5, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		// 前シーズンが存在しないため、今シーズン分の1回しか呼ばれない
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(2, nil)
+
+		view, err := u.GetByUserId(t.Context(), "user-1", oldestSeason)
+
+		require.NoError(t, err)
+		require.NotNil(t, view.Current)
+		require.Equal(t, "designation-04", view.Current.ID)
+
+		item04 := findDesignationLadderItem(view.Ladder, "designation-04")
+		require.NotNil(t, item04)
 		require.Equal(t, 0, item04.PreviousValue)
 	})
 
@@ -914,6 +956,43 @@ func TestDesignation_GetRankStats(t *testing.T) {
 		require.Equal(t, 0, tierCounts[4])
 		require.Equal(t, 0, tierCounts[5])
 		require.Equal(t, 1, tierCounts[6])
+	})
+
+	t.Run("正常系_最古のシーズンを指定しても前シーズン不在をエラーにせず0件として扱う", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, designationRepo, designationStatsRepo, championshipSeriesRepo, _ := newDesignationTestUsecase(mockCtrl)
+		expectOldestChampionshipSeries(championshipSeriesRepo)
+
+		now := time.Now()
+		designationRepo.EXPECT().FindAll(gomock.Any()).Return(fourTierDefinitions(now), nil)
+
+		designationStatsRepo.EXPECT().CountRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-1": 5}, nil)
+		designationStatsRepo.EXPECT().CountLeagueRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-1": 1}, nil)
+		// 前シーズンが存在しないため、今シーズン分の1回しか呼ばれない
+		designationStatsRepo.EXPECT().CountCityLeagueRecordsGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{"user-1": 2}, nil)
+		designationStatsRepo.EXPECT().ExistsCityLeagueResultGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{}, nil)
+		designationStatsRepo.EXPECT().
+			ExistsCityLeagueFinalTournamentResultGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{}, nil).Times(2)
+		designationStatsRepo.EXPECT().
+			ExistsCityLeagueRecordWithoutPlacementGroupByUserId(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(map[string]int{}, nil)
+
+		view, err := u.GetRankStats(t.Context(), oldestSeason)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, view.TotalUsers)
+
+		tierCounts := make(map[int]int)
+		for _, t := range view.Tiers {
+			tierCounts[t.Tier] = t.UserCount
+		}
+		// 前シーズン0件でも、今シーズン単独で2件あればレギュラー(tier4)に到達する
+		require.Equal(t, 1, tierCounts[4])
 	})
 
 	t.Run("正常系_優勝を含み常に入賞以上のユーザーは名人(tier8)として集計される", func(t *testing.T) {

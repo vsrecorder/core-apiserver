@@ -14,6 +14,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
@@ -119,6 +120,18 @@ func TestDesignationController(t *testing.T) {
 			require.Equal(t, http.StatusBadRequest, w.Code)
 		})
 
+		t.Run("異常系_存在しないseasonなら404を返す", func(t *testing.T) {
+			c, mockUsecase, _ := setup4TestDesignationController(t)
+
+			mockUsecase.EXPECT().GetByUserId(context.Background(), uid, "2022").Return(nil, apperror.ErrRecordNotFound)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath+"?season=2022", nil)
+			c.router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusNotFound, w.Code)
+		})
+
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestDesignationController(t)
 
@@ -149,6 +162,18 @@ func TestDesignationController(t *testing.T) {
 
 			require.Equal(t, http.StatusOK, w.Code)
 			require.Equal(t, "2026", res.Season)
+		})
+
+		t.Run("異常系_存在しないseasonなら404を返す", func(t *testing.T) {
+			c, mockUsecase, _ := setup4TestDesignationController(t)
+
+			mockUsecase.EXPECT().GetRankStats(context.Background(), "2022").Return(nil, apperror.ErrRecordNotFound)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", DesignationsPath+DesignationStatsPath+"?season=2022", nil)
+			c.router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusNotFound, w.Code)
 		})
 
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {

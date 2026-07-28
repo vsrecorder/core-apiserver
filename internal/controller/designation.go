@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
@@ -82,6 +84,13 @@ func (c *Designation) GetByUserId(ctx *gin.Context) {
 
 	view, err := c.usecase.GetByUserId(context.Background(), uid, season)
 	if err != nil {
+		// 形式は正しいが championship_series に存在しない season を指定された場合。
+		// クライアント起因のためサーバエラー(500)にはしない。
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
+			return
+		}
+
 		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}
@@ -108,6 +117,13 @@ func (c *Designation) GetRankStats(ctx *gin.Context) {
 
 	view, err := c.usecase.GetRankStats(context.Background(), season)
 	if err != nil {
+		// 形式は正しいが championship_series に存在しない season を指定された場合。
+		// クライアント起因のためサーバエラー(500)にはしない。
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
+			return
+		}
+
 		apierror.ErrInternalServerError.JSON(ctx)
 		return
 	}

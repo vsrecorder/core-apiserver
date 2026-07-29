@@ -256,33 +256,38 @@ func test_DeckCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("異常系_デッキコードの形式が不正なら400を返す", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ginContext, _ := gin.CreateTestContext(w)
+	// フロントエンド側でデッキコードの有効性を確認しているのでチェックは不要だが、念のためサーバ側でも確認したいが、
+	// 大量のリクエストが来ると外部APIに負荷がかかるので、現状はコメントアウトしている。
+	// もし外部APIの負荷が問題ない場合は、コメントアウトを解除してチェックを有効化する。
+	/*
+		t.Run("異常系_デッキコードの形式が不正なら400を返す", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			ginContext, _ := gin.CreateTestContext(w)
 
-		name := "test"
+			name := "test"
 
-		expected := dto.DeckCreateRequest{
-			Name:               name,
-			PrivateFlg:         false,
-			DeckCode:           "XXXXXX-YYYYYY-ZZZZZZ",
-			PrivateDeckCodeFlg: false,
-		}
+			expected := dto.DeckCreateRequest{
+				Name:               name,
+				PrivateFlg:         false,
+				DeckCode:           "XXXXXX-YYYYYY-ZZZZZZ",
+				PrivateDeckCodeFlg: false,
+			}
 
-		dataBytes, err := json.Marshal(expected)
-		require.NoError(t, err)
+			dataBytes, err := json.Marshal(expected)
+			require.NoError(t, err)
 
-		// Middlewareのテストのためpathは何でもよい
-		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
-		require.NoError(t, err)
+			// Middlewareのテストのためpathは何でもよい
+			req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+			require.NoError(t, err)
 
-		ginContext.Request = req
+			ginContext.Request = req
 
-		middleware := DeckCreateMiddleware(slog.Default())
-		middleware(ginContext)
+			middleware := DeckCreateMiddleware(slog.Default())
+			middleware(ginContext)
 
-		require.Equal(t, http.StatusBadRequest, w.Code)
-	})
+			require.Equal(t, http.StatusBadRequest, w.Code)
+		})
+	*/
 
 }
 

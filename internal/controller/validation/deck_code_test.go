@@ -53,35 +53,45 @@ func TestDeckCodeValidation(t *testing.T) {
 			require.Equal(t, expected, helper.GetDeckCodeCreateRequest(ctx))
 		})
 
-		t.Run("異常系_実在しないデッキコードなら400を返す", func(t *testing.T) {
-			overrideDeckIDCheckAPI(t, func(w http.ResponseWriter, req *http.Request) {
-				fmt.Fprint(w, `{"result":0,"errMsg":"deck not found","existence":0}`)
+		// フロントエンド側でデッキコードの有効性を確認しているのでチェックは不要だが、念のためサーバ側でも確認したいが、
+		// 大量のリクエストが来ると外部APIに負荷がかかるので、現状はコメントアウトしている。
+		// もし外部APIの負荷が問題ない場合は、コメントアウトを解除してチェックを有効化する。
+		/*
+			t.Run("異常系_実在しないデッキコードなら400を返す", func(t *testing.T) {
+				overrideDeckIDCheckAPI(t, func(w http.ResponseWriter, req *http.Request) {
+					fmt.Fprint(w, `{"result":0,"errMsg":"deck not found","existence":0}`)
+				})
+
+				b, err := json.Marshal(dto.DeckCodeCreateRequest{Code: "XXXXXX-YYYYYY-ZZZZZZ"})
+				require.NoError(t, err)
+
+				ctx, w := newValidationJSONContext(t, string(b))
+
+				DeckCodeCreateMiddleware(slog.Default())(ctx)
+
+				require.Equal(t, http.StatusBadRequest, w.Code)
 			})
+		*/
 
-			b, err := json.Marshal(dto.DeckCodeCreateRequest{Code: "XXXXXX-YYYYYY-ZZZZZZ"})
-			require.NoError(t, err)
+		// フロントエンド側でデッキコードの有効性を確認しているのでチェックは不要だが、念のためサーバ側でも確認したいが、
+		// 大量のリクエストが来ると外部APIに負荷がかかるので、現状はコメントアウトしている。
+		// もし外部APIの負荷が問題ない場合は、コメントアウトを解除してチェックを有効化する。
+		/*
+			t.Run("異常系_確認先がメンテナンス中なら503を返す", func(t *testing.T) {
+				overrideDeckIDCheckAPI(t, func(w http.ResponseWriter, req *http.Request) {
+					w.WriteHeader(http.StatusServiceUnavailable)
+				})
 
-			ctx, w := newValidationJSONContext(t, string(b))
+				b, err := json.Marshal(dto.DeckCodeCreateRequest{Code: "5dbFbk-uBwjqP-VVk5Vv"})
+				require.NoError(t, err)
 
-			DeckCodeCreateMiddleware(slog.Default())(ctx)
+				ctx, w := newValidationJSONContext(t, string(b))
 
-			require.Equal(t, http.StatusBadRequest, w.Code)
-		})
+				DeckCodeCreateMiddleware(slog.Default())(ctx)
 
-		t.Run("異常系_確認先がメンテナンス中なら503を返す", func(t *testing.T) {
-			overrideDeckIDCheckAPI(t, func(w http.ResponseWriter, req *http.Request) {
-				w.WriteHeader(http.StatusServiceUnavailable)
+				require.Equal(t, http.StatusServiceUnavailable, w.Code)
 			})
-
-			b, err := json.Marshal(dto.DeckCodeCreateRequest{Code: "5dbFbk-uBwjqP-VVk5Vv"})
-			require.NoError(t, err)
-
-			ctx, w := newValidationJSONContext(t, string(b))
-
-			DeckCodeCreateMiddleware(slog.Default())(ctx)
-
-			require.Equal(t, http.StatusServiceUnavailable, w.Code)
-		})
+		*/
 
 		t.Run("異常系_JSONとして不正なボディなら400を返す", func(t *testing.T) {
 			ctx, w := newValidationJSONContext(t, "bad data")

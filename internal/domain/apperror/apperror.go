@@ -36,14 +36,13 @@ var (
 	// HTTP では 409 Conflict に対応する。
 	ErrLocked = errors.New("locked")
 
-	// ErrInvalidChallenge は所有権確認用のチャレンジトークンが不正・期限切れ、
+	// ErrInvalidVerification は webapp が発行した検証済みトークンが不正・期限切れ、
 	// または発行時と異なるユーザー/対象に対して使われた場合に返す。
+	//
+	// プレイヤーIDの所有権確認(実在確認とアバター変更の確認)は webapp が行い、
+	// このAPIサーバはその結果を署名で検証するだけである点に注意。
 	// HTTP では 400 Bad Request に対応する。
-	ErrInvalidChallenge = errors.New("invalid challenge")
-
-	// ErrOwnershipNotVerified は所有権確認チャレンジ(アバター変更)がまだ
-	// 完了していない場合に返す。HTTP では 403 Forbidden に対応する。
-	ErrOwnershipNotVerified = errors.New("ownership not verified")
+	ErrInvalidVerification = errors.New("invalid verification")
 
 	// ErrInvalidMatchOrder は match の並び替えリクエストに含まれるIDが、
 	// 対象record内の未削除match集合と過不足なく一致しない場合に返す。

@@ -65,11 +65,11 @@ func (c *UserPlayer) RegisterRoute(relativePath string) {
 		c.Create,
 	)
 	r.POST(
-		"/verify",
+		"/challenge",
 		c.linkingEnabledMiddleware(),
 		authentication.RequiredAuthenticationMiddleware(),
-		validation.UserPlayerVerifyMiddleware(),
-		c.Verify,
+		validation.UserPlayerChallengeMiddleware(),
+		c.Challenge,
 	)
 }
 
@@ -100,6 +100,9 @@ func (c *UserPlayer) GetByUID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
+// Create は player_id と user_id の紐付けを保存する。
+// プレイヤーズクラブでの実在確認と所有権確認は webapp(BFF)が済ませており、
+// ここではその結果である検証済みトークンを確かめたうえで保存する。
 func (c *UserPlayer) Create(ctx *gin.Context) {
 	req := helper.GetUserPlayerCreateRequest(ctx)
 	uid := helper.GetUID(ctx)
@@ -107,7 +110,7 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 	param := usecase.NewUserPlayerCreateParam(
 		uid,
 		req.PlayerId,
-		req.ChallengeToken,
+		req.VerificationToken,
 	)
 
 	userPlayer, err := c.usecase.Create(context.Background(), param)
@@ -122,18 +125,8 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 			return
 		}
 
-		if errors.Is(err, apperror.ErrInvalidChallenge) {
-			apierror.ErrUserPlayerInvalidChallenge.JSON(ctx)
-			return
-		}
-
-		if errors.Is(err, apperror.ErrOwnershipNotVerified) {
-			apierror.ErrUserPlayerOwnershipNotVerified.JSON(ctx)
-			return
-		}
-
-		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrBadRequest.JSON(ctx)
+		if errors.Is(err, apperror.ErrInvalidVerification) {
+			apierror.ErrUserPlayerInvalidVerification.JSON(ctx)
 			return
 		}
 
@@ -152,20 +145,16 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, res)
 }
 
-func (c *UserPlayer) Verify(ctx *gin.Context) {
-	req := helper.GetUserPlayerVerifyRequest(ctx)
+// Challenge は所有権確認で「これに変更してください」と提示するアバターを払い出す。
+// アバターの一覧はこのAPIサーバのDBが持つため、webapp からの要求に応じて返す。
+func (c *UserPlayer) Challenge(ctx *gin.Context) {
+	req := helper.GetUserPlayerChallengeRequest(ctx)
 	uid := helper.GetUID(ctx)
 
-	verification, err := c.usecase.Verify(context.Background(), uid, req.PlayerId)
+	avatar, err := c.usecase.IssueChallengeAvatar(context.Background(), req.CurrentAvatarImage)
 	if err != nil {
-		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		c.logger.Error("controller_user_player_verify_failed",
+		c.logger.Error("controller_user_player_challenge_failed",
 			slog.String("uid", uid),
-			slog.String("player_id", req.PlayerId),
 			slog.String("error_message", err.Error()),
 		)
 
@@ -173,7 +162,7 @@ func (c *UserPlayer) Verify(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewUserPlayerVerifyResponse(verification)
+	res := presenter.NewUserPlayerChallengeResponse(avatar)
 
 	ctx.JSON(http.StatusOK, res)
 }

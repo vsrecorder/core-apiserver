@@ -16,9 +16,9 @@ var (
 	// uid単位: 1人のユーザーが短時間に多数の player_id を試すのを防ぐ。
 	// player_id単位: 複数アカウントを使って特定の player_id を繰り返し狙うのを防ぐ。
 	//
-	// player_id単位の上限は、正当な所有者を巻き込まない値として10回を採用している。
-	// 連携フローは verify → (アバター変更) → create と進み1回あたり2回消費するため、
-	// 10回はやり直しを含めて5周分にあたる。
+	// 実在確認そのものは webapp(BFF)が行い、外部サイトへ問い合わせる前に webapp 側でも
+	// 同様の制限をかけている。ここでの制限は、webapp を経由しない直接のリクエストに
+	// 対しても紐付けの試行回数を抑えるための多層防御。
 	userPlayerAttemptLimiterByUID      = ratelimit.New(10, time.Hour)
 	userPlayerAttemptLimiterByPlayerID = ratelimit.New(10, 24*time.Hour)
 )
@@ -54,7 +54,7 @@ func UserPlayerCreateMiddleware() gin.HandlerFunc {
 
 		helper.SetPlayerId(ctx, req.PlayerId)
 
-		if req.ChallengeToken == "" {
+		if req.VerificationToken == "" {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
@@ -63,31 +63,23 @@ func UserPlayerCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// player_id の実在確認と所有権(アバター変更チャレンジ)の検証は
-		// usecase.Create 内で challenge_token をもとに行うため、ここでは行わない。
+		// 所有権の確認は webapp が済ませており、その結果である検証済みトークンの
+		// 署名検証は usecase.Create 内で行うため、ここでは行わない。
 		helper.SetUserPlayerCreateRequest(ctx, req)
 	}
 }
 
-func UserPlayerVerifyMiddleware() gin.HandlerFunc {
+func UserPlayerChallengeMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		req := dto.UserPlayerVerifyRequest{}
+		req := dto.UserPlayerChallengeRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
-		if req.PlayerId == "" || len(req.PlayerId) > 16 {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
+		// current_avatar_image は除外条件にすぎず、空でも「どのアバターでもよい」
+		// という意味になるため必須にはしない。
 
-		helper.SetPlayerId(ctx, req.PlayerId)
-
-		if !allowUserPlayerAttempt(ctx, req.PlayerId) {
-			return
-		}
-
-		helper.SetUserPlayerVerifyRequest(ctx, req)
+		helper.SetUserPlayerChallengeRequest(ctx, req)
 	}
 }

@@ -3,8 +3,9 @@ package dto
 import "time"
 
 type UserPlayerCreateRequest struct {
-	PlayerId       string `json:"player_id"`
-	ChallengeToken string `json:"challenge_token"`
+	PlayerId string `json:"player_id"`
+	// VerificationToken は webapp が所有権確認を終えたことを示す署名付きトークン。
+	VerificationToken string `json:"verification_token"`
 }
 
 type UserPlayerResponse struct {
@@ -27,24 +28,16 @@ type UserPlayerCreateResponse struct {
 	UserPlayerResponse
 }
 
-type UserPlayerVerifyRequest struct {
-	PlayerId string `json:"player_id"`
+// UserPlayerChallengeRequest は所有権確認で提示するアバターの払い出し要求。
+// CurrentAvatarImage は webapp がプレイヤーズクラブから取得した現在のアバター画像URLで、
+// 同じ画像を提示しても確認にならないため除外に使う。
+type UserPlayerChallengeRequest struct {
+	CurrentAvatarImage string `json:"current_avatar_image"`
 }
 
-type UserPlayerOwnershipChallengeResponse struct {
-	Token          string    `json:"token"`
-	AvatarId       int       `json:"avatar_id"`
-	AvatarTitle    string    `json:"avatar_title"`
-	AvatarImageURL string    `json:"avatar_image_url"`
-	AvatarDetail   string    `json:"avatar_detail"`
-	ExpiresAt      time.Time `json:"expires_at"`
-}
-
-type UserPlayerVerifyResponse struct {
-	PlayerId      string                               `json:"player_id"`
-	Nickname      string                               `json:"nickname"`
-	AvatarImage   string                               `json:"avatar_image"`
-	CurrentLeague string                               `json:"current_league"`
-	Prefecture    string                               `json:"prefecture"`
-	Challenge     UserPlayerOwnershipChallengeResponse `json:"challenge"`
+type UserPlayerChallengeResponse struct {
+	AvatarId       int    `json:"avatar_id"`
+	AvatarTitle    string `json:"avatar_title"`
+	AvatarImageURL string `json:"avatar_image_url"`
+	AvatarDetail   string `json:"avatar_detail"`
 }

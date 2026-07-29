@@ -87,17 +87,17 @@ func (mr *MockUserPlayerInterfaceMockRecorder) FindLatestPlayerRanking(ctx, play
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLatestPlayerRanking", reflect.TypeOf((*MockUserPlayerInterface)(nil).FindLatestPlayerRanking), ctx, playerId)
 }
 
-// Verify mocks base method.
-func (m *MockUserPlayerInterface) Verify(ctx context.Context, uid, playerId string) (*usecase.UserPlayerVerification, error) {
+// IssueChallengeAvatar mocks base method.
+func (m *MockUserPlayerInterface) IssueChallengeAvatar(ctx context.Context, currentAvatarImage string) (*entity.PokemonAvatar, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Verify", ctx, uid, playerId)
-	ret0, _ := ret[0].(*usecase.UserPlayerVerification)
+	ret := m.ctrl.Call(m, "IssueChallengeAvatar", ctx, currentAvatarImage)
+	ret0, _ := ret[0].(*entity.PokemonAvatar)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Verify indicates an expected call of Verify.
-func (mr *MockUserPlayerInterfaceMockRecorder) Verify(ctx, uid, playerId any) *gomock.Call {
+// IssueChallengeAvatar indicates an expected call of IssueChallengeAvatar.
+func (mr *MockUserPlayerInterfaceMockRecorder) IssueChallengeAvatar(ctx, currentAvatarImage any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verify", reflect.TypeOf((*MockUserPlayerInterface)(nil).Verify), ctx, uid, playerId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueChallengeAvatar", reflect.TypeOf((*MockUserPlayerInterface)(nil).IssueChallengeAvatar), ctx, currentAvatarImage)
 }

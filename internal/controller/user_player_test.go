@@ -31,8 +31,8 @@ type stubUserPlayerUsecase struct {
 	rankingErr   error
 	created      *entity.UserPlayer
 	createErr    error
-	verification *usecase.UserPlayerVerification
-	verifyErr    error
+	avatar       *entity.PokemonAvatar
+	challengeErr error
 }
 
 func (s stubUserPlayerUsecase) FindByUserId(ctx context.Context, userId string) (*entity.UserPlayer, error) {
@@ -47,8 +47,8 @@ func (s stubUserPlayerUsecase) Create(ctx context.Context, param *usecase.UserPl
 	return s.created, s.createErr
 }
 
-func (s stubUserPlayerUsecase) Verify(ctx context.Context, uid string, playerId string) (*usecase.UserPlayerVerification, error) {
-	return s.verification, s.verifyErr
+func (s stubUserPlayerUsecase) IssueChallengeAvatar(ctx context.Context, currentAvatarImage string) (*entity.PokemonAvatar, error) {
+	return s.avatar, s.challengeErr
 }
 
 func setup4TestUserPlayerController(t *testing.T, u stubUserPlayerUsecase, linkingEnabled bool) (*UserPlayer, string) {
@@ -142,48 +142,75 @@ func TestUserPlayerController(t *testing.T) {
 		})
 	})
 
-	t.Run("Verify", func(t *testing.T) {
-		// レート制限(uid単位)を跨いで消費しないよう、テストごとに別のuidを使う
-		t.Run("正常系_実在確認の結果と所有権チャレンジを返す", func(t *testing.T) {
-			verification := &usecase.UserPlayerVerification{
-				Account: &usecase.PlayerAccount{},
-				Challenge: &usecase.OwnershipChallenge{
-					Token:     "challenge-token",
-					ExpiresAt: time.Now().Add(10 * time.Minute),
-				},
-			}
-			c, secretKey := setup4TestUserPlayerController(t, stubUserPlayerUsecase{verification: verification}, true)
+	t.Run("Challenge", func(t *testing.T) {
+		newChallengeRequest := func(t *testing.T) *http.Request {
+			t.Helper()
 
-			b, err := json.Marshal(dto.UserPlayerVerifyRequest{PlayerId: "5000000000000001"})
+			b, err := json.Marshal(dto.UserPlayerChallengeRequest{
+				CurrentAvatarImage: "https://example.com/current-avatar.png",
+			})
 			require.NoError(t, err)
 
+			req, err := http.NewRequest("POST", UserPlayersPath+"/challenge", strings.NewReader(string(b)))
+			require.NoError(t, err)
+
+			return req
+		}
+
+		t.Run("正常系_チャレンジ用アバターを返す", func(t *testing.T) {
+			avatar := entity.NewPokemonAvatar(1, "ピカチュウ", "https://example.com/other-avatar.png", "詳細")
+			c, secretKey := setup4TestUserPlayerController(t, stubUserPlayerUsecase{avatar: avatar}, true)
+
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", UserPlayersPath+"/verify", strings.NewReader(string(b)))
-			setJWTAuthHeader(t, req, "ctrl-verify-ok-user", secretKey)
+			req := newChallengeRequest(t)
+			setJWTAuthHeader(t, req, "ctrl-challenge-ok-user", secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusOK, w.Code)
+
+			var res dto.UserPlayerChallengeResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+			require.Equal(t, "https://example.com/other-avatar.png", res.AvatarImageURL)
+			require.Equal(t, "ピカチュウ", res.AvatarTitle)
 		})
 
-		t.Run("異常系_プレイヤーが実在しなければ400を返す", func(t *testing.T) {
-			c, secretKey := setup4TestUserPlayerController(t, stubUserPlayerUsecase{verifyErr: apperror.ErrRecordNotFound}, true)
-
-			b, err := json.Marshal(dto.UserPlayerVerifyRequest{PlayerId: "5000000000000002"})
-			require.NoError(t, err)
+		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
+			c, secretKey := setup4TestUserPlayerController(t, stubUserPlayerUsecase{challengeErr: errors.New("")}, true)
 
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", UserPlayersPath+"/verify", strings.NewReader(string(b)))
-			setJWTAuthHeader(t, req, "ctrl-verify-notfound-user", secretKey)
+			req := newChallengeRequest(t)
+			setJWTAuthHeader(t, req, "ctrl-challenge-error-user", secretKey)
 			c.router.ServeHTTP(w, req)
 
-			require.Equal(t, http.StatusBadRequest, w.Code)
+			require.Equal(t, http.StatusInternalServerError, w.Code)
+		})
+
+		t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
+			c, _ := setup4TestUserPlayerController(t, stubUserPlayerUsecase{}, true)
+
+			w := httptest.NewRecorder()
+			req := newChallengeRequest(t)
+			c.router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusUnauthorized, w.Code)
+		})
+
+		t.Run("異常系_連携機能が無効なら503を返す", func(t *testing.T) {
+			c, secretKey := setup4TestUserPlayerController(t, stubUserPlayerUsecase{}, false)
+
+			w := httptest.NewRecorder()
+			req := newChallengeRequest(t)
+			setJWTAuthHeader(t, req, "ctrl-challenge-disabled-user", secretKey)
+			c.router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusServiceUnavailable, w.Code)
 		})
 	})
 
 	t.Run("Create", func(t *testing.T) {
 		newCreateRequest := func(t *testing.T, playerId string) *http.Request {
 			t.Helper()
-			b, err := json.Marshal(dto.UserPlayerCreateRequest{PlayerId: playerId, ChallengeToken: "token"})
+			b, err := json.Marshal(dto.UserPlayerCreateRequest{PlayerId: playerId, VerificationToken: "token"})
 			require.NoError(t, err)
 			req, err := http.NewRequest("POST", UserPlayersPath, strings.NewReader(string(b)))
 			require.NoError(t, err)
@@ -223,8 +250,8 @@ func TestUserPlayerController(t *testing.T) {
 			require.Equal(t, http.StatusConflict, w.Code)
 		})
 
-		t.Run("異常系_チャレンジが無効なら400を返す", func(t *testing.T) {
-			c, secretKey := setup4TestUserPlayerController(t, stubUserPlayerUsecase{createErr: apperror.ErrInvalidChallenge}, true)
+		t.Run("異常系_検証済みトークンが無効なら400を返す", func(t *testing.T) {
+			c, secretKey := setup4TestUserPlayerController(t, stubUserPlayerUsecase{createErr: apperror.ErrInvalidVerification}, true)
 
 			w := httptest.NewRecorder()
 			req := newCreateRequest(t, "6000000000000004")
@@ -232,17 +259,6 @@ func TestUserPlayerController(t *testing.T) {
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusBadRequest, w.Code)
-		})
-
-		t.Run("異常系_アバター変更が確認できなければ403を返す", func(t *testing.T) {
-			c, secretKey := setup4TestUserPlayerController(t, stubUserPlayerUsecase{createErr: apperror.ErrOwnershipNotVerified}, true)
-
-			w := httptest.NewRecorder()
-			req := newCreateRequest(t, "6000000000000005")
-			setJWTAuthHeader(t, req, "ctrl-create-notverified-user", secretKey)
-			c.router.ServeHTTP(w, req)
-
-			require.Equal(t, http.StatusForbidden, w.Code)
 		})
 
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {

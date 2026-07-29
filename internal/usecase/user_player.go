@@ -10,28 +10,21 @@ import (
 )
 
 type UserPlayerCreateParam struct {
-	UserId         string
-	PlayerId       string
-	ChallengeToken string
+	UserId            string
+	PlayerId          string
+	VerificationToken string
 }
 
 func NewUserPlayerCreateParam(
 	userId string,
 	playerId string,
-	challengeToken string,
+	verificationToken string,
 ) *UserPlayerCreateParam {
 	return &UserPlayerCreateParam{
-		UserId:         userId,
-		PlayerId:       playerId,
-		ChallengeToken: challengeToken,
+		UserId:            userId,
+		PlayerId:          playerId,
+		VerificationToken: verificationToken,
 	}
-}
-
-// UserPlayerVerification は player_id の実在確認結果と、所有権確認チャレンジを
-// あわせて持つ。Verify のレスポンスとしてコントローラ層に渡される。
-type UserPlayerVerification struct {
-	Account   *PlayerAccount
-	Challenge *OwnershipChallenge
 }
 
 type UserPlayerInterface interface {
@@ -48,16 +41,18 @@ type UserPlayerInterface interface {
 		playerId string,
 	) (*entity.PlayerRanking, error)
 
+	// IssueChallengeAvatar は所有権確認で「これに変更してください」と提示する
+	// アバターを1件払い出す。現在のアバターと同じものを提示しても確認にならないため、
+	// currentAvatarImage とは異なる画像を返す。
+	IssueChallengeAvatar(
+		ctx context.Context,
+		currentAvatarImage string,
+	) (*entity.PokemonAvatar, error)
+
 	Create(
 		ctx context.Context,
 		param *UserPlayerCreateParam,
 	) (*entity.UserPlayer, error)
-
-	Verify(
-		ctx context.Context,
-		uid string,
-		playerId string,
-	) (*UserPlayerVerification, error)
 }
 
 type UserPlayer struct {
@@ -96,62 +91,30 @@ func (u *UserPlayer) FindLatestPlayerRanking(
 	return u.playerRankingRepository.FindLatestByPlayerId(ctx, playerId)
 }
 
-// Verify は player_id の実在を確認し、あわせて所有権確認チャレンジ
-// (現在と異なるアバターへの変更依頼)を発行する。
-func (u *UserPlayer) Verify(
+func (u *UserPlayer) IssueChallengeAvatar(
 	ctx context.Context,
-	uid string,
-	playerId string,
-) (*UserPlayerVerification, error) {
-	account, err := fetchPlayerAccount(playerId)
-	if err != nil {
-		return nil, err
-	}
-
-	avatar, err := u.avatarRepository.FindRandomExcludingImageURL(ctx, account.AvatarImage)
-	if err != nil {
-		return nil, err
-	}
-
-	token, expiresAt, err := signUserPlayerChallenge(uid, playerId, avatar.ImageURL)
-	if err != nil {
-		return nil, err
-	}
-
-	return &UserPlayerVerification{
-		Account: account,
-		Challenge: &OwnershipChallenge{
-			Token:                   token,
-			ChallengeAvatarID:       avatar.ID,
-			ChallengeAvatarTitle:    avatar.Title,
-			ChallengeAvatarImageURL: avatar.ImageURL,
-			ChallengeAvatarDetail:   avatar.Detail,
-			ExpiresAt:               expiresAt,
-		},
-	}, nil
+	currentAvatarImage string,
+) (*entity.PokemonAvatar, error) {
+	return u.avatarRepository.FindRandomExcludingImageURL(ctx, currentAvatarImage)
 }
 
+// Create は player_id と user_id の紐付けを保存する。
+//
+// プレイヤーズクラブでの実在確認と、アバター変更による所有権確認は webapp(BFF)が
+// 済ませており、ここではその結果である検証済みトークンの署名を確かめる。
+// 紐付けの一意性(1ユーザー1件・1player_id1件)と変更ロックはこのAPIサーバの責務。
 func (u *UserPlayer) Create(
 	ctx context.Context,
 	param *UserPlayerCreateParam,
 ) (*entity.UserPlayer, error) {
-	claims, err := parseUserPlayerChallenge(param.ChallengeToken)
+	claims, err := parseUserPlayerVerification(param.VerificationToken)
 	if err != nil {
 		return nil, err
 	}
 
-	// チャレンジは発行時と同じユーザー・同じ player_id に対してのみ有効
+	// 検証済みトークンは、確認を行ったのと同じユーザー・同じ player_id に対してのみ有効
 	if claims.UID != param.UserId || claims.PlayerId != param.PlayerId {
-		return nil, apperror.ErrInvalidChallenge
-	}
-
-	// 現在のアバターがチャレンジで指定した画像に変更されているか再確認する
-	account, err := fetchPlayerAccount(param.PlayerId)
-	if err != nil {
-		return nil, err
-	}
-	if account.AvatarImage != claims.ChallengeAvatarImageURL {
-		return nil, apperror.ErrOwnershipNotVerified
+		return nil, apperror.ErrInvalidVerification
 	}
 
 	existing, err := u.repository.FindByUserId(ctx, param.UserId)

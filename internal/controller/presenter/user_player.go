@@ -3,7 +3,6 @@ package presenter
 import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
-	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
 func NewUserPlayerGetResponse(
@@ -42,22 +41,13 @@ func NewUserPlayerCreateResponse(
 	}
 }
 
-func NewUserPlayerVerifyResponse(
-	verification *usecase.UserPlayerVerification,
-) *dto.UserPlayerVerifyResponse {
-	return &dto.UserPlayerVerifyResponse{
-		PlayerId:      verification.Account.PlayerId,
-		Nickname:      verification.Account.Nickname,
-		AvatarImage:   verification.Account.AvatarImage,
-		CurrentLeague: verification.Account.CurrentLeague,
-		Prefecture:    verification.Account.Prefecture,
-		Challenge: dto.UserPlayerOwnershipChallengeResponse{
-			Token:          verification.Challenge.Token,
-			AvatarId:       verification.Challenge.ChallengeAvatarID,
-			AvatarTitle:    verification.Challenge.ChallengeAvatarTitle,
-			AvatarImageURL: verification.Challenge.ChallengeAvatarImageURL,
-			AvatarDetail:   verification.Challenge.ChallengeAvatarDetail,
-			ExpiresAt:      verification.Challenge.ExpiresAt,
-		},
+func NewUserPlayerChallengeResponse(
+	avatar *entity.PokemonAvatar,
+) *dto.UserPlayerChallengeResponse {
+	return &dto.UserPlayerChallengeResponse{
+		AvatarId:       avatar.ID,
+		AvatarTitle:    avatar.Title,
+		AvatarImageURL: avatar.ImageURL,
+		AvatarDetail:   avatar.Detail,
 	}
 }

@@ -20,87 +20,52 @@ func TestUserPlayerValidation(t *testing.T) {
 	userPlayerAttemptLimiterByUID.Reset()
 	userPlayerAttemptLimiterByPlayerID.Reset()
 
-	t.Run("UserPlayerVerifyMiddleware", func(t *testing.T) {
-		t.Run("正常系_player_idを受理してコンテキストに設定する", func(t *testing.T) {
-			b, err := json.Marshal(dto.UserPlayerVerifyRequest{PlayerId: "1000000000000001"})
+	t.Run("UserPlayerChallengeMiddleware", func(t *testing.T) {
+		t.Run("正常系_current_avatar_imageを受理してコンテキストに設定する", func(t *testing.T) {
+			expected := dto.UserPlayerChallengeRequest{
+				CurrentAvatarImage: "https://example.com/current-avatar.png",
+			}
+
+			b, err := json.Marshal(expected)
 			require.NoError(t, err)
 
 			ctx, w := newValidationJSONContext(t, string(b))
-			helper.SetUID(ctx, "verify-ok-user")
+			helper.SetUID(ctx, "challenge-ok-user")
 
-			UserPlayerVerifyMiddleware()(ctx)
+			UserPlayerChallengeMiddleware()(ctx)
 
 			require.Equal(t, http.StatusOK, w.Code)
-			require.Equal(t, "1000000000000001", helper.GetPlayerId(ctx))
-			require.Equal(t, "1000000000000001", helper.GetUserPlayerVerifyRequest(ctx).PlayerId)
+			require.Equal(t, expected, helper.GetUserPlayerChallengeRequest(ctx))
 		})
 
 		t.Run("異常系_JSONとして不正なボディなら400を返す", func(t *testing.T) {
 			ctx, w := newValidationJSONContext(t, "bad data")
-			helper.SetUID(ctx, "verify-badjson-user")
+			helper.SetUID(ctx, "challenge-badjson-user")
 
-			UserPlayerVerifyMiddleware()(ctx)
-
-			require.Equal(t, http.StatusBadRequest, w.Code)
-		})
-
-		t.Run("異常系_player_idが空なら400を返す", func(t *testing.T) {
-			b, err := json.Marshal(dto.UserPlayerVerifyRequest{PlayerId: ""})
-			require.NoError(t, err)
-
-			ctx, w := newValidationJSONContext(t, string(b))
-			helper.SetUID(ctx, "verify-empty-user")
-
-			UserPlayerVerifyMiddleware()(ctx)
+			UserPlayerChallengeMiddleware()(ctx)
 
 			require.Equal(t, http.StatusBadRequest, w.Code)
 		})
 
-		t.Run("異常系_player_idが16桁を超えたら400を返す", func(t *testing.T) {
-			b, err := json.Marshal(dto.UserPlayerVerifyRequest{PlayerId: strings.Repeat("1", 17)})
+		// 除外条件が空でも「どのアバターでもよい」という意味になるため受理する
+		t.Run("正常系_current_avatar_imageが空でも受理する", func(t *testing.T) {
+			b, err := json.Marshal(dto.UserPlayerChallengeRequest{CurrentAvatarImage: ""})
 			require.NoError(t, err)
 
 			ctx, w := newValidationJSONContext(t, string(b))
-			helper.SetUID(ctx, "verify-long-user")
+			helper.SetUID(ctx, "challenge-empty-user")
 
-			UserPlayerVerifyMiddleware()(ctx)
+			UserPlayerChallengeMiddleware()(ctx)
 
-			require.Equal(t, http.StatusBadRequest, w.Code)
-		})
-
-		// 総当たり防止のレート制限(uid単位で1時間に10回)を超えると429になる
-		t.Run("異常系_同一ユーザの試行回数が上限を超えたら429を返す", func(t *testing.T) {
-			uid := "verify-ratelimit-user"
-
-			for i := 0; i < 10; i++ {
-				b, err := json.Marshal(dto.UserPlayerVerifyRequest{PlayerId: fmt.Sprintf("20000000000000%02d", i)})
-				require.NoError(t, err)
-
-				ctx, w := newValidationJSONContext(t, string(b))
-				helper.SetUID(ctx, uid)
-
-				UserPlayerVerifyMiddleware()(ctx)
-
-				require.Equal(t, http.StatusOK, w.Code)
-			}
-
-			b, err := json.Marshal(dto.UserPlayerVerifyRequest{PlayerId: "2000000000000099"})
-			require.NoError(t, err)
-
-			ctx, w := newValidationJSONContext(t, string(b))
-			helper.SetUID(ctx, uid)
-
-			UserPlayerVerifyMiddleware()(ctx)
-
-			require.Equal(t, http.StatusTooManyRequests, w.Code)
+			require.Equal(t, http.StatusOK, w.Code)
 		})
 	})
 
 	t.Run("UserPlayerCreateMiddleware", func(t *testing.T) {
-		t.Run("正常系_player_idとチャレンジトークンを受理して設定する", func(t *testing.T) {
+		t.Run("正常系_player_idと検証済みトークンを受理して設定する", func(t *testing.T) {
 			expected := dto.UserPlayerCreateRequest{
-				PlayerId:       "3000000000000001",
-				ChallengeToken: "token",
+				PlayerId:          "3000000000000001",
+				VerificationToken: "token",
 			}
 
 			b, err := json.Marshal(expected)
@@ -113,6 +78,7 @@ func TestUserPlayerValidation(t *testing.T) {
 
 			require.Equal(t, http.StatusOK, w.Code)
 			require.Equal(t, expected, helper.GetUserPlayerCreateRequest(ctx))
+			require.Equal(t, "3000000000000001", helper.GetPlayerId(ctx))
 		})
 
 		t.Run("異常系_JSONとして不正なボディなら400を返す", func(t *testing.T) {
@@ -125,7 +91,7 @@ func TestUserPlayerValidation(t *testing.T) {
 		})
 
 		t.Run("異常系_player_idが空なら400を返す", func(t *testing.T) {
-			b, err := json.Marshal(dto.UserPlayerCreateRequest{PlayerId: "", ChallengeToken: "token"})
+			b, err := json.Marshal(dto.UserPlayerCreateRequest{PlayerId: "", VerificationToken: "token"})
 			require.NoError(t, err)
 
 			ctx, w := newValidationJSONContext(t, string(b))
@@ -136,8 +102,20 @@ func TestUserPlayerValidation(t *testing.T) {
 			require.Equal(t, http.StatusBadRequest, w.Code)
 		})
 
-		t.Run("異常系_チャレンジトークンが空なら400を返す", func(t *testing.T) {
-			b, err := json.Marshal(dto.UserPlayerCreateRequest{PlayerId: "3000000000000002", ChallengeToken: ""})
+		t.Run("異常系_player_idが16桁を超えたら400を返す", func(t *testing.T) {
+			b, err := json.Marshal(dto.UserPlayerCreateRequest{PlayerId: strings.Repeat("1", 17), VerificationToken: "token"})
+			require.NoError(t, err)
+
+			ctx, w := newValidationJSONContext(t, string(b))
+			helper.SetUID(ctx, "create-long-user")
+
+			UserPlayerCreateMiddleware()(ctx)
+
+			require.Equal(t, http.StatusBadRequest, w.Code)
+		})
+
+		t.Run("異常系_検証済みトークンが空なら400を返す", func(t *testing.T) {
+			b, err := json.Marshal(dto.UserPlayerCreateRequest{PlayerId: "3000000000000002", VerificationToken: ""})
 			require.NoError(t, err)
 
 			ctx, w := newValidationJSONContext(t, string(b))
@@ -146,6 +124,39 @@ func TestUserPlayerValidation(t *testing.T) {
 			UserPlayerCreateMiddleware()(ctx)
 
 			require.Equal(t, http.StatusBadRequest, w.Code)
+		})
+
+		// 総当たり防止のレート制限(uid単位で1時間に10回)を超えると429になる
+		t.Run("異常系_同一ユーザの試行回数が上限を超えたら429を返す", func(t *testing.T) {
+			uid := "create-ratelimit-user"
+
+			for i := 0; i < 10; i++ {
+				b, err := json.Marshal(dto.UserPlayerCreateRequest{
+					PlayerId:          fmt.Sprintf("40000000000000%02d", i),
+					VerificationToken: "token",
+				})
+				require.NoError(t, err)
+
+				ctx, w := newValidationJSONContext(t, string(b))
+				helper.SetUID(ctx, uid)
+
+				UserPlayerCreateMiddleware()(ctx)
+
+				require.Equal(t, http.StatusOK, w.Code)
+			}
+
+			b, err := json.Marshal(dto.UserPlayerCreateRequest{
+				PlayerId:          "4000000000000099",
+				VerificationToken: "token",
+			})
+			require.NoError(t, err)
+
+			ctx, w := newValidationJSONContext(t, string(b))
+			helper.SetUID(ctx, uid)
+
+			UserPlayerCreateMiddleware()(ctx)
+
+			require.Equal(t, http.StatusTooManyRequests, w.Code)
 		})
 	})
 }

@@ -291,8 +291,6 @@ func main() {
 		r,
 		usecase.NewUserPlayer(
 			infrastructure.NewUserPlayer(db),
-			infrastructure.NewPokemonAvatar(db),
-			infrastructure.NewPlayerRanking(db),
 			infrastructure.NewTransactionManager(db),
 		),
 		os.Getenv("USERS_PLAYERS_LINKING_ENABLED") != "false",

@@ -60,37 +60,6 @@ func TestUserPlayerInfrastructure(t *testing.T) {
 		})
 	})
 
-	t.Run("ExistsActiveByPlayerId", func(t *testing.T) {
-		t.Run("正常系_有効な紐付けがあればtrueを返す", func(t *testing.T) {
-			db, mock := setupSqlmockDB(t)
-			r := NewUserPlayer(db)
-
-			mock.ExpectQuery(regexp.QuoteMeta(
-				`SELECT count(*) FROM "users_players" WHERE player_id = $1 AND "users_players"."deleted_at" IS NULL`,
-			)).WithArgs(playerId).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
-
-			ret, err := r.ExistsActiveByPlayerId(context.Background(), playerId)
-
-			require.NoError(t, err)
-			require.True(t, ret)
-			require.NoError(t, mock.ExpectationsWereMet())
-		})
-
-		t.Run("正常系_有効な紐付けが無ければfalseを返す", func(t *testing.T) {
-			db, mock := setupSqlmockDB(t)
-			r := NewUserPlayer(db)
-
-			mock.ExpectQuery(`SELECT count\(\*\) FROM "users_players"`).
-				WithArgs(playerId).WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
-
-			ret, err := r.ExistsActiveByPlayerId(context.Background(), playerId)
-
-			require.NoError(t, err)
-			require.False(t, ret)
-			require.NoError(t, mock.ExpectationsWereMet())
-		})
-	})
-
 	t.Run("Save", func(t *testing.T) {
 		t.Run("正常系_紐付けを保存する", func(t *testing.T) {
 			db, mock := setupSqlmockDB(t)

@@ -55,21 +55,6 @@ func (mr *MockUserPlayerInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUserPlayerInterface)(nil).Delete), ctx, id)
 }
 
-// ExistsActiveByPlayerId mocks base method.
-func (m *MockUserPlayerInterface) ExistsActiveByPlayerId(ctx context.Context, playerId string) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExistsActiveByPlayerId", ctx, playerId)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ExistsActiveByPlayerId indicates an expected call of ExistsActiveByPlayerId.
-func (mr *MockUserPlayerInterfaceMockRecorder) ExistsActiveByPlayerId(ctx, playerId any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsActiveByPlayerId", reflect.TypeOf((*MockUserPlayerInterface)(nil).ExistsActiveByPlayerId), ctx, playerId)
-}
-
 // FindByUserId mocks base method.
 func (m *MockUserPlayerInterface) FindByUserId(ctx context.Context, userId string) (*entity.UserPlayer, error) {
 	m.ctrl.T.Helper()

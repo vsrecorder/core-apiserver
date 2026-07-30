@@ -85,13 +85,6 @@ var (
 	// ErrUserPlayerLocked は紐付けから1ヶ月経過しておらず変更できない場合(409)。
 	ErrUserPlayerLocked = New(http.StatusConflict, errors.New("cannot change player_id within 1 month of linking"))
 
-	// ErrPlayerIdAlreadyLinked は指定された player_id が既に別のユーザーに紐付けられている場合(409)。
-	ErrPlayerIdAlreadyLinked = New(http.StatusConflict, errors.New("this player_id is already linked to another account"))
-
-	// ErrUserPlayerInvalidVerification は webapp が発行した検証済みトークンが不正・
-	// 期限切れ、または発行時と異なるユーザー/player_idに対して使われた場合(400)。
-	ErrUserPlayerInvalidVerification = New(http.StatusBadRequest, errors.New("invalid or expired verification, please try again from the beginning"))
-
 	// ErrTooManyRequests は短時間に試行が集中し、レート制限に達した場合(429)。
 	ErrTooManyRequests = New(http.StatusTooManyRequests, errors.New("too many requests"))
 

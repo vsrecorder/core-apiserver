@@ -12,11 +12,6 @@ type UserPlayerInterface interface {
 		userId string,
 	) (*entity.UserPlayer, error)
 
-	ExistsActiveByPlayerId(
-		ctx context.Context,
-		playerId string,
-	) (bool, error)
-
 	Save(
 		ctx context.Context,
 		entity *entity.UserPlayer,

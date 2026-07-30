@@ -40,19 +40,6 @@ func (i *UserPlayer) FindByUserId(
 	return entity, nil
 }
 
-func (i *UserPlayer) ExistsActiveByPlayerId(
-	ctx context.Context,
-	playerId string,
-) (bool, error) {
-	var count int64
-
-	if tx := dbFromContext(ctx, i.db).Model(&model.UserPlayer{}).Where("player_id = ?", playerId).Count(&count); tx.Error != nil {
-		return false, tx.Error
-	}
-
-	return count > 0, nil
-}
-
 func (i *UserPlayer) Save(
 	ctx context.Context,
 	entity *entity.UserPlayer,

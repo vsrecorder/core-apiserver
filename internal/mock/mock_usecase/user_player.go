@@ -71,33 +71,3 @@ func (mr *MockUserPlayerInterfaceMockRecorder) FindByUserId(ctx, userId any) *go
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserId", reflect.TypeOf((*MockUserPlayerInterface)(nil).FindByUserId), ctx, userId)
 }
-
-// FindLatestPlayerRanking mocks base method.
-func (m *MockUserPlayerInterface) FindLatestPlayerRanking(ctx context.Context, playerId string) (*entity.PlayerRanking, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindLatestPlayerRanking", ctx, playerId)
-	ret0, _ := ret[0].(*entity.PlayerRanking)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindLatestPlayerRanking indicates an expected call of FindLatestPlayerRanking.
-func (mr *MockUserPlayerInterfaceMockRecorder) FindLatestPlayerRanking(ctx, playerId any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLatestPlayerRanking", reflect.TypeOf((*MockUserPlayerInterface)(nil).FindLatestPlayerRanking), ctx, playerId)
-}
-
-// IssueChallengeAvatar mocks base method.
-func (m *MockUserPlayerInterface) IssueChallengeAvatar(ctx context.Context, currentAvatarImage string) (*entity.PokemonAvatar, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IssueChallengeAvatar", ctx, currentAvatarImage)
-	ret0, _ := ret[0].(*entity.PokemonAvatar)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IssueChallengeAvatar indicates an expected call of IssueChallengeAvatar.
-func (mr *MockUserPlayerInterfaceMockRecorder) IssueChallengeAvatar(ctx, currentAvatarImage any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueChallengeAvatar", reflect.TypeOf((*MockUserPlayerInterface)(nil).IssueChallengeAvatar), ctx, currentAvatarImage)
-}

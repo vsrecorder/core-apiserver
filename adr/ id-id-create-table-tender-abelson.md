@@ -1,46 +1,99 @@
 # バトレコユーザーIDとポケモンカードゲーム プレイヤーズクラブIDの紐付け機能
 
+## ステータス
+
+採用 (Accepted) — 実装済み
+
+**改訂履歴**
+
+- 2026-07-30 (第5版): **チャンピオンシップポイントの表示を廃止**(D10)。プレイヤーIDが本人のものである保証が無くなったため。`GET /usersplayers` はランキング検索を行わず、`champion_ship_point` / `ranking_date` も返さない。
+- 2026-07-29 (第4版): **プレイヤーIDの検証を全廃**。実在確認・所有権確認(アバターチャレンジ)をどちらも行わず、利用者の自己申告として受け入れる方針に転換(D3'/D5')。あわせて `player_id` の重複登録を許容する(D1')。外部サイトへのリクエストは本機能から完全に無くなった。
+- 2026-07-29 (第3版): 実在確認・所有権確認の責務を core-apiserver から webapp(BFF) へ移動。
+- 2026-07-2x (第2版): なりすまし対策としてアバター変更チャレンジを追加。レート制限・キルスイッチを追加。`player_rankings` 連携によるチャンピオンシップポイント表示を追加。
+- 初版: 実在確認のみで紐付ける計画。
+
+---
+
 ## Context
 
-バトレコ（本サービス）のユーザーアカウントと、公式のポケモンカードゲーム プレイヤーズクラブが発行する `player_id` を紐付けたい。将来的に公式サイト側のプレイヤー情報（ニックネーム等）と対戦記録を連携させるための土台となる機能。
+バトレコ(本サービス)のユーザーアカウントと、公式のポケモンカードゲーム プレイヤーズクラブが発行する `player_id` を紐付けたい。公式サイト側のチャンピオンシップポイントや、シティリーグの公式結果と対戦記録を連携させるための土台となる機能。
 
-紐付けは「なりすまし・誤登録防止」のため一度行うと1ヶ月は変更できない仕様とする。そのため誤ったIDを紐付けてしまった際の対応が論点になるが、ユーザーとの相談の結果、**追加のコードは実装せず、運用者（開発者自身）が手動でDBを修正する運用**とすることで合意した（本サービスは小規模な個人運用サービスのため、管理用エンドポイントを新設するコストに見合わない）。
+紐付けは誤登録防止のため一度行うと1ヶ月は変更できない仕様とする。誤ったIDを紐付けてしまった際は、**追加のコードは実装せず運用者(開発者自身)が手動でDBを修正する**ことで合意している(本サービスは小規模な個人運用サービスのため、管理用エンドポイントを新設するコストに見合わない)。
 
-ユーザーが提示した元のSQLには以下の不備があったため、併せて修正する:
+### 検証を全廃するに至った経緯
 
-1. `users_players` テーブル定義の末尾に余分なカンマがあり、SQLとして不正（[schema.sql:222-228](core-apiserver/db/schema.sql#L222-L228)）。
-2. `id` (PRIMARY KEY) が無く、他の全テーブルの命名規則（`id VARCHAR(n) PRIMARY KEY`）と不整合。
-3. `CREATE UNIQUE INDEX ... ON player_users (...)` が存在しないテーブル名 `player_users` を参照している（正しくは `users_players`）。
-4. 複合ユニークインデックス `(player_id, user_id)` だけでは、1人のユーザーが複数の `player_id` を同時に紐付けたり、1つの `player_id` を複数ユーザーが同時に紐付けたりできてしまう。本来は「ユーザー1人につき有効な紐付けは1件」「`player_id` 1つにつき有効な紐付けは1件」という1:1関係にすべき。
-
-`player_id` の実在確認は、既存の `deck_codes` バリデーション（`checkDeckCode` が `pokemon-card.com` にリクエストして実在確認する）と同じ考え方で、以下の外部APIを叩いて確認する:
+第2〜3版では、プレイヤーズクラブの以下のAPIで実在確認を行い、さらにアバター画像の変更を課すことで所有権を確認していた。
 
 ```
 curl -s -X POST -d 'player_id=XXXXXXXXXXXXXXXX' "https://players.pokemon-card.com/get_player_account_other"
 ```
 
-成功時レスポンス例:
+しかしこの方式は次の理由で維持できなくなった。
 
-```json
-{
-  "code": 200,
-  "player": {
-    "player_id": "...",
-    "nickname": "...",
-    "avatar_image": "...",
-    "current_league": "...",
-    "prefecture": "..."
-  }
-}
-```
+1. **`players.pokemon-card.com` が Cloudflare でブロックされた。** トップページを含む同ホストの全URLが 403(`Attention Required!` のHTML)を返す。User-Agent(空/Go既定/自己申告名)を変えても、HTTPクライアント(Go / curl / Node)を変えても結果は同じで、当方サーバーからの通信そのものが遮断されている。
+2. **ブラウザから直接叩く回避策も成立しない。** 利用者自身のブラウザであれば Cloudflare は通る可能性が高いが、このAPIは `Access-Control-Allow-Origin` を返さないため JavaScript から応答を読めない。Chromium で実測したところ、通常の `fetch` は `TypeError: Failed to fetch`、`no-cors` では `type=opaque` / `status=0` となりボディを取得できなかった。ブロックされていない `www.pokemon-card.com` の 200 応答にも CORS ヘッダは無く、公式サイトが自サイト内から呼ぶ前提のAPIであることが確認できた。
+3. 仮にブラウザで読めたとしても、クライアントの自己申告を信じることになり所有権確認として成立しない。
 
-実装は既存の `deck_codes` 一式（entity/model/repository/usecase/controller/validation/dto/presenter、Go: gin+gorm のレイヤードアーキテクチャ）と、フロントエンドの `UpdateNameModal.tsx` / `/api/users/[id]/route.ts`（Next.js BFF + next-auth + JWTでバックエンドへ中継）のパターンを踏襲する。
+つまり**検証を継続する手段が無い**。検証できないまま機能を止め続けるより、検証を行わない前提で機能を提供する方が利用者の利益になると判断した。
 
 ---
 
-## 1. スキーマ修正 (core-apiserver/db/schema.sql)
+## Decision
 
-[schema.sql:222-230](core-apiserver/db/schema.sql#L222-L230) を以下に置き換える:
+### D1'. 有効な紐付けは1ユーザーにつき1件。`player_id` の重複は許容する
+
+**第4版で変更。** `user_id` 側の部分ユニークインデックスは維持するが、`player_id` 側は一意にしない。
+
+所有権を確認しない以上、**先に登録した人が正しい持ち主とは限らない**。重複を禁止すると、他人に先に登録された正当な利用者が締め出され、しかもそれを救済する手段が運用者の手動介入しか無くなる。重複を許容する方が実害が小さい。
+
+`player_id` は `cityleague_results` との結合に使うため、索引自体は非ユニークとして残す。
+
+### D2. 1ヶ月ロックはアプリ層で判定する
+
+DB制約ではなく usecase 層で「有効行の `created_at` + 1ヶ月」を見る。ビジネスルールはアプリ層に置く既存方針(`deck_codes` の所有者チェック等)に揃える。
+
+検証が無くなった今、**これが唯一残る誤登録の抑止**であり、入力前の注意喚起(モーダルの警告)とあわせて機能する。
+
+### D3'. 実在確認・所有権確認は行わない
+
+**第4版で変更(第2版のD3を廃止)。** `player_id` はプレイヤーズクラブに実在するかを確認せず、利用者が入力した値をそのまま保存する。存在しないIDでも登録できる。
+
+この紐付けは**「本人であることの証明」ではなく、利用者の自己申告**である。表示・集計にあたってはその前提で扱うこと。
+
+### D5'. 外部サイトへのリクエストを行わない
+
+**第4版で変更(第3版のD5を廃止)。** 本機能から `players.pokemon-card.com` へのリクエストは、core-apiserver・webapp のどちらからも無くなった。webapp のBFFは、セッションを確認して core-apiserver へ中継するだけの単純な構成に戻る。
+
+これに伴い次を削除した。
+
+- webapp: `utils/players_club.ts` / `utils/user_player_challenge.ts` / `utils/ratelimit.ts` / `utils/user_player_upstream.ts` / `api/usersplayers/verify/route.ts`
+- core-apiserver: `usecase/player_account.go` / `usecase/user_player_verification.go`、`POST /usersplayers/challenge` エンドポイント、`PokemonAvatar` のリポジトリ・エンティティ・インフラ・モック
+
+`pokemon_avatars` テーブルと `cmd/sync-pokemon-avatars` は残しているが、本機能からは参照しない。
+
+### D6'. レート制限は uid 単位のみ残す
+
+**第4版で縮小。** 外部サイトへの問い合わせが無くなり、他人の `player_id` を総当たりで探索する余地も無くなったため、`player_id` 単位の制限は廃止した。uid 単位(10回/1時間)は書き込みの連打を防ぐために残す。通常は1ヶ月ロックがあるため、ここに到達するのは失敗を繰り返した場合に限られる。
+
+### D10. チャンピオンシップポイントは表示しない
+
+**第5版で追加。** 検証を廃止した結果、連携されている `player_id` が本人のものである保証が無くなった。他人のポイントを本人の実績のように見せてしまうため、プロフィールパネルからCSPの表示(アイコン・ポイント数・「〜現在」の日付)を削除した。
+
+表示しないものを取得し続ける意味も無いため、`GET /usersplayers` はランキング検索そのものを行わない。レスポンスから `champion_ship_point` / `ranking_date` を削除し、usecase から `FindLatestPlayerRanking` を廃止した。プロフィール表示ごとに発生していた `player_rankings` への1クエリも無くなる。
+
+これに伴い `PlayerRanking` の読み取り層(entity / repository / infrastructure / model / モック)は参照が無くなったため削除した。`player_rankings` テーブルと、別リポジトリの `import-player-ranking-job` による日次取込は残置している。
+
+### D7. 環境変数によるキルスイッチを設ける
+
+悪用が多発した場合にデプロイなしで機能全体を止められるよう、`USERS_PLAYERS_LINKING_ENABLED=false` で全エンドポイントが 503 を返す。
+
+### D9. 誤紐付けは運用者が手動でDBを修正する
+
+管理用エンドポイントは作らない(Context 記載の合意事項)。
+
+---
+
+## 1. スキーマ (core-apiserver/db/schema.sql)
 
 ```sql
 CREATE TABLE users_players (
@@ -55,173 +108,148 @@ CREATE TABLE users_players (
 CREATE INDEX idx_users_players_created_at ON users_players(created_at);
 CREATE INDEX idx_users_players_deleted_at ON users_players(deleted_at);
 
--- 有効な紐付け(deleted_at IS NULL)は user_id / player_id それぞれについて1件のみ
-CREATE UNIQUE INDEX unique_users_players_user_id   ON users_players (user_id)   WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX unique_users_players_player_id ON users_players (player_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX unique_users_players_user_id ON users_players (user_id)   WHERE deleted_at IS NULL;
+CREATE INDEX idx_users_players_player_id         ON users_players (player_id) WHERE deleted_at IS NULL;
 ```
 
-`id` は `deck_codes` と同じ `VARCHAR(26)`(ULID) とする。GRANT一覧（[schema.sql:603-619](core-apiserver/db/schema.sql#L603-L619)付近）にも `GRANT SELECT ON users_players TO grafana;` を追加し既存テーブルと揃える。
+`id` は `deck_codes` と同じ `VARCHAR(26)`(ULID)。
 
-「変更不可の1ヶ月ロック」はDB制約ではなく、後述のusecase層で `既存の有効な行のcreated_at + 1ヶ月` を見て判定する（`deck_codes`のPUTが所有者チェックをauthorizationミドルウェアで行うのと同様、ビジネスルールはアプリ層に置く）。
+**既存環境への適用が必要。** `schema.sql` は新規構築用でマイグレーション機構は無いため、稼働中のDBには手動で次を実行する。
+
+```sql
+DROP INDEX unique_users_players_player_id;
+CREATE INDEX idx_users_players_player_id ON users_players (player_id) WHERE deleted_at IS NULL;
+```
+
+関連テーブル:
+
+- `player_rankings` — 主キーは `(ranking_date, league_id, player_id)`。別リポジトリの `import-player-ranking-job` が日次で取り込む。第5版で本機能からは未参照になった(D10)。
+- `pokemon_avatars` — アバターチャレンジ用に導入したが、第4版で本機能からは未使用になった。テーブルと `cmd/sync-pokemon-avatars` は残置。
 
 ---
 
-## 2. バックエンド (core-apiserver) — `deck_codes` 一式をテンプレートに新規追加
+## 2. バックエンド (core-apiserver)
 
-### 2.1 ドメイン層
+### 2.1 エンドポイント
 
-- `internal/domain/entity/user_player.go`: `UserPlayer{ID, CreatedAt, UserId, PlayerId}` + `NewUserPlayer(...)` + `LockedUntil() time.Time`（`CreatedAt.AddDate(0, 1, 0)` を返す）。
-- `internal/domain/repository/user_player.go`: `UserPlayerInterface`
-  - `FindByUserId(ctx, userId string) (*entity.UserPlayer, error)`（有効な行が無ければ `apperror.ErrRecordNotFound`）
-  - `ExistsActiveByPlayerId(ctx, playerId string) (bool, error)`
-  - `Save(ctx, *entity.UserPlayer) error`
-  - `Delete(ctx, id string) error`（soft delete）
-- `internal/domain/apperror/apperror.go` に汎用センチネルを追加:
-  - `ErrLocked = errors.New("locked")` （一定期間操作できない場合。HTTP 409想定）
-  - 「別ユーザーに使用中」は既存の `ErrAlreadyExists` を再利用する。
+いずれも `linkingEnabledMiddleware`(D7) → `RequiredAuthenticationMiddleware` を通る。操作対象は URL パラメータではなく **JWT の `uid` のみを信頼**し、他人の紐付けを操作できないようにする。
 
-### 2.2 インフラ層
+| メソッド | パス | 役割 |
+| --- | --- | --- |
+| GET | `/usersplayers` | 紐付けを返す |
+| POST | `/usersplayers` | 紐付けを保存する |
 
-- `internal/infrastructure/model/user_player.go`: `deck_codes`と同じ形（`gorm:"primaryKey"` / `gorm.DeletedAt`）。
-- `internal/infrastructure/user_player.go`: `deck_code.go` を踏襲し、`dbFromContext(ctx, i.db)` 経由でクエリを実行（`TransactionManager.Do` 経由の呼び出しに対応するため）。`ExistsActiveByPlayerId` は `Where("player_id = ?", id).Count(...)`。
+`GET` が返すのは紐付けそのもの(`id` / `created_at` / `user_id` / `player_id` / `locked_until`)のみ。ランキング関連のフィールドは返さない(D10)。
+
+### 2.2 ドメイン層
+
+- `entity.UserPlayer{ID, CreatedAt, UserId, PlayerId}` + `LockedUntil()`(= `CreatedAt.AddDate(0, 1, 0)`)
+- `repository.UserPlayerInterface`: `FindByUserId` / `Save` / `Delete`(soft delete)
+- `apperror.ErrLocked` — 1ヶ月ロック中 (409)
 
 ### 2.3 ユースケース層 (`internal/usecase/user_player.go`)
 
-`Create` が「新規紐付け」と「ロック解除後の変更（=旧レコードをsoft delete＋新規作成）」の両方を担う（PUT/Updateは作らない — 変更は実質的に作成のやり直しとして表現し、DeleteエンドポイントもUIから呼ばれる想定が無いため実装しない）。
+`Create` が「新規紐付け」と「ロック解除後の変更(旧レコードを soft delete + 新規作成)」の両方を担う。PUT/Update・Delete エンドポイントは作らない。
 
-```go
-func (u *UserPlayer) Create(ctx, param *UserPlayerCreateParam) (*entity.UserPlayer, error) {
-    existing, err := u.repository.FindByUserId(ctx, param.UserId)
-    if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
-        return nil, err
-    }
-    if existing != nil && time.Now().Local().Before(existing.LockedUntil()) {
-        return nil, apperror.ErrLocked
-    }
+処理順:
 
-    if inUse, err := u.repository.ExistsActiveByPlayerId(ctx, param.PlayerId); err != nil {
-        return nil, err
-    } else if inUse {
-        return nil, apperror.ErrAlreadyExists
-    }
+1. `FindByUserId` で既存を取得
+2. **同じ `player_id` なら変更不要**として既存をそのまま返す
+3. 既存があり `now < LockedUntil()` → `ErrLocked`
+4. トランザクション内で、既存があれば `Delete` → `Save`
 
-    id, err := generateId()
-    ...
-    userPlayer := entity.NewUserPlayer(id, time.Now().Local(), param.UserId, param.PlayerId)
+実在確認・所有権確認・重複チェックはいずれも行わない。
 
-    err = u.transactionManager.Do(ctx, func(ctx context.Context) error {
-        if existing != nil {
-            if err := u.repository.Delete(ctx, existing.ID); err != nil {
-                return err
-            }
-        }
-        return u.repository.Save(ctx, userPlayer)
-    })
-    if err != nil {
-        return nil, err
-    }
-    return userPlayer, nil
-}
+### 2.4 DI登録
 
-func (u *UserPlayer) FindByUserId(ctx, userId string) (*entity.UserPlayer, error) { ... } // GET用、そのまま返す
-```
-
-`repository.TransactionManager`（[internal/domain/repository/transaction.go](core-apiserver/internal/domain/repository/transaction.go)）をコンストラクタで受け取る。
-
-### 2.4 コントローラ層
-
-- `internal/controller/dto/user_player.go`:
-  ```go
-  type UserPlayerCreateRequest struct { PlayerId string `json:"player_id"` }
-  type UserPlayerResponse struct {
-      ID          string    `json:"id"`
-      CreatedAt   time.Time `json:"created_at"`
-      UserId      string    `json:"user_id"`
-      PlayerId    string    `json:"player_id"`
-      LockedUntil time.Time `json:"locked_until"`
-  }
-  type UserPlayerGetResponse struct{ UserPlayerResponse }
-  type UserPlayerCreateResponse struct{ UserPlayerResponse }
-  ```
-- `internal/controller/presenter/user_player.go`: `entity.UserPlayer` → 上記DTO（`LockedUntil()`をそのまま詰める）。`deck_code.go` presenterと同じ形。
-- `internal/controller/validation/user_player.go`:
-  - `UserPlayerCreateMiddleware()`: `ShouldBindJSON` → `PlayerId` が空 or 16文字超なら `apierror.ErrBadRequest` → `checkPlayerId(ctx, req.PlayerId)` を呼び外部API実在確認 → `helper.SetUserPlayerCreateRequest(ctx, req)`。
-  - `internal/controller/validation/util.go` に `checkPlayerId` を追加。`checkDeckCode`（[util.go:26](core-apiserver/internal/controller/validation/util.go#L26)）と同型で、`https://players.pokemon-card.com/get_player_account_other` に `player_id` を `PostForm`。HTTPステータス異常はステータス別に既存の `apierror`（`ErrServiceUnavailable`/`ErrGatewayTimeout`等）へマップ。200でもレスポンスJSONの `code` が200以外、または `player` が空ならプレイヤーID不正として `apierror.ErrBadRequest.JSON(ctx)`。
-- `internal/controller/helper` に `GetUserPlayerCreateRequest`/`SetUserPlayerCreateRequest` を追加（`key.go`の既存ヘルパーと同じ生成パターン）。
-- `internal/controller/user_player.go`:
-  ```go
-  const UserPlayersPath = "/usersplayers"
-  ```
-
-  - `RegisterRoute`: `r := c.router.Group(relativePath + UserPlayersPath)`
-    - `GET  ""` : `authentication.RequiredAuthenticationMiddleware()` → `uid := helper.GetUID(ctx)` → `usecase.FindByUserId` → 404なら`apierror.ErrNotFound`、成功時 `presenter.NewUserPlayerGetResponse`
-    - `POST ""`: `authentication.RequiredAuthenticationMiddleware()` + `validation.UserPlayerCreateMiddleware()` → `uid := helper.GetUID(ctx)`（URLパラメータではなくJWTのuidのみを信頼し、他人の紐付けを操作できないようにする） → `usecase.Create` → エラーハンドリング:
-      - `errors.Is(err, apperror.ErrLocked)` → 新規 `apierror.ErrUserPlayerLocked`（409, メッセージ「紐付けから1ヶ月間は変更できません」）
-      - `errors.Is(err, apperror.ErrAlreadyExists)` → 新規 `apierror.ErrPlayerIdAlreadyLinked`（409, 「このプレイヤーIDは既に別のアカウントで使用されています」）
-      - それ以外 → `ErrInternalServerError`
-  - `internal/controller/apierror/apierror.go` に上記2つの `Error` 定数を追加（既存の `ErrDeckCodeHasRecords` 等と同じ並びに追加）。
-
-### 2.5 DI登録
-
-[cmd/core-apiserver/main.go:213-220](core-apiserver/cmd/core-apiserver/main.go#L213-L220) の `controller.NewDeckCode(...)` の並びに倣い、`controller.NewUserPlayer(r, infrastructure.NewUserPlayer(db), usecase.NewUserPlayer(infrastructure.NewUserPlayer(db), infrastructure.NewTransactionManager(db))).RegisterRoute(relativePath)` を追加。
+[main.go:289-297](core-apiserver/cmd/core-apiserver/main.go#L289-L297) で `usecase.NewUserPlayer` に `UserPlayer` リポジトリと `TransactionManager` を渡し、第4引数にキルスイッチの評価結果を渡す。
 
 ---
 
 ## 3. フロントエンド (webapp)
 
-### 3.1 型定義: `src/app/types/user_player.ts`
+### 3.1 BFF route
 
-`types/user.ts` と同じ命名規則で定義:
+| メソッド | パス | 処理 |
+| --- | --- | --- |
+| GET | `/api/usersplayers` | core-apiserver へ中継(404は未紐付けとして透過) |
+| POST | `/api/usersplayers` | core-apiserver へ中継 |
 
-```ts
-export type UserPlayerType = {
-  id: string;
-  created_at: string;
-  user_id: string;
-  player_id: string;
-  locked_until: string;
-};
-export type UserPlayerGetResponseType = UserPlayerType;
-export type UserPlayerCreateRequestType = { player_id: string };
-export type UserPlayerCreateResponseType = UserPlayerType;
-```
+### 3.2 ステータスと画面の対応
 
-### 3.2 BFF route: `src/app/api/userplayers/route.ts`
-
-`src/app/api/users/[id]/route.ts` と同じ構成（`auth()` でセッション確認 → `makeToken(session.user.id)` でJWT発行 → バックエンド `https://${domain}/api/v1beta/usersplayers` へ中継）。
-
-- `GET`: セッション必須、404はそのまま透過（未紐付け状態として扱う）。
-- `POST`: セッション必須、bodyをそのまま中継。バックエンドの409（ロック中・重複）はそのままステータスとメッセージを透過し、フロント側でエラーメッセージとして表示する。
+| ステータス | 意味 | モーダルの挙動 |
+| --- | --- | --- |
+| 400 | player_id が空/16文字超 | エラートースト |
+| 409 | ロック中 | エラートースト |
+| 429 | レート制限 | 時間をおくよう案内 |
+| 503 | 連携機能が停止中 | 時間をおくよう案内 |
 
 ### 3.3 UI
 
-- `src/app/components/organisms/User/PlayerLinkCard.tsx`（新規、`UserIdentityCard.tsx`と同格のカード）: 現在の紐付け状態を表示。
-  - 未紐付け: 「プレイヤーIDを登録」ボタン → `LinkPlayerIdModal` を開く。
-  - 紐付け済み & ロック中: `player_id` とロック解除日（`locked_until`）を表示し、`WithdrawModal.tsx` の警告UI（`LuTriangleAlert` + 文言）を参考に「変更は次の変更可能日以降に行えます」旨を表示。変更ボタンは非活性。
-  - 紐付け済み & ロック解除済み: 「プレイヤーIDを変更」ボタンで再度モーダルを開ける。
-- `src/app/components/organisms/User/Modal/LinkPlayerIdModal.tsx`（新規）: `UpdateNameModal.tsx` のtoast/送信パターンを踏襲。
-  - `Input` で `player_id` を入力（16文字以内）。
-  - 送信時: `POST /api/userplayers` → 成功: 成功トースト＋`onLinked`コールバックで親のstate更新。失敗: `res.status === 409` の場合はレスポンスの `message` をそのままトースト表示（ロック中/重複のメッセージがバックエンドから来る）、それ以外は既存パターン通り汎用エラートースト。
-  - モーダル内にも「一度登録すると1ヶ月間は変更できません」の注意書きを表示（送信前に必ず目に入るようにする）。
-- `src/app/components/templates/User.tsx`（[User.tsx:30-35](webapp/src/app/components/templates/User.tsx#L30-L35)）に `PlayerLinkCard` を追加。
+- `Modal/LinkPlayerIdModal.tsx` — **入力1ステップ**。確認画面とアバター表示は第4版で廃止した。「入力されたプレイヤーIDが正しいかどうかの確認は行いません」「一度連携すると1ヶ月間は変更できません」を送信前に表示する。
+- `User/PlayerLinkCard.tsx` — 紐付け状態を表示。未紐付け/ロック中(解除日を表示しボタン非活性)/変更可能の3状態。`?link_player=1` 付きで遷移してきた場合はモーダルを自動で開く。
+- `User/UserProfileCard.tsx` — 連携済みなら「プレイヤーズクラブ連携済み」とだけ表示し、未連携なら連携導線を出す。チャンピオンシップポイントは第5版で表示をやめた(D10)。
+- `Designation/DesignationPanel.tsx` — 称号判定に連携が必要なため、連携状態を参照する。
 
 ---
 
-## 4. 誤紐付け時の対応（コード実装なし）
+## 4. 連携後に有効になるもの
 
-合意内容: 1ヶ月ロックは仕様通り維持し、ユーザーからの申告があった場合は**運用者がDBを直接修正する**。追加のAPI/認証機構は作らない。手順の目安（ドキュメント化はせず、対応時にその場で実行する想定）:
+- **称号(デジグネーション)判定** — `cityleague_results.player_id = users_players.player_id` で結合し、シティリーグの公式結果とユーザーの記録を突き合わせる([designation_stats.go](core-apiserver/internal/infrastructure/designation_stats.go))。
 
-1. 対象ユーザーの `users_players` の有効行（`deleted_at IS NULL`）を確認。
-2. その行を `UPDATE users_players SET deleted_at = now(), updated_at = now() WHERE id = '...'` でsoft delete。
-3. 正しい `player_id` で `INSERT INTO users_players (id, created_at, updated_at, user_id, player_id) VALUES (...)` を実行（`id`はULID採番）。
+これは**入力された `player_id` を正しいものとして扱う**。第4版以降、この前提は保証されない(後述)。
 
-アプリ側のロック判定は「有効行のcreated_at」のみを見るため、この手動操作をすれば当該ユーザーは即座に新しい1ヶ月ロックのもとで正しい状態に戻る。
+チャンピオンシップポイント表示は第2版で追加したが、同じ理由により第5版で廃止した(D10)。**現時点で `player_id` を実際に使っているのは称号判定のみ**である。
 
 ---
 
-## 5. 検証方法
+## 5. 誤紐付け時の対応(コード実装なし)
 
-- バックエンド: 該当ハンドラのユニットテスト（`deck_code_test.go`等の既存テスト構成を参考に）で、①初回紐付け成功、②ロック期間中の再紐付けが409、③他ユーザーが使用中の`player_id`が409、④1ヶ月経過後は再紐付けが成功し旧行がsoft deleteされること、を確認。
-- 外部API実在確認は実際に `curl` で疎通確認したうえで、Goのテストは実サイトを叩かず HTTPクライアントをモック/httptestで差し替える（`checkDeckCode`のテストがあれば同じ手法を確認して踏襲）。
-- `go build ./...` / 既存の `go test ./...` を実行し、既存機能に影響がないことを確認。
-- フロントエンド: `npm run dev` で `/users` ページを開き、未紐付け→紐付け→ロック表示→（DBのcreated_atを1ヶ月以上前に書き換えて）再紐付け可能、の一連を手動確認。`npm run lint` / `npm run build`(型チェック) を実行。
+1. 対象ユーザーの `users_players` の有効行(`deleted_at IS NULL`)を確認する。
+2. `UPDATE users_players SET deleted_at = now(), updated_at = now() WHERE id = '...'` で soft delete する。
+3. 正しい `player_id` で `INSERT INTO users_players (id, created_at, updated_at, user_id, player_id) VALUES (...)` を実行する(`id` は ULID 採番)。
+
+アプリ側のロック判定は有効行の `created_at` のみを見るため、この操作で当該ユーザーは新しい1ヶ月ロックのもとで正しい状態に戻る。
+
+---
+
+## 6. Consequences
+
+**Pros**
+
+- **外部サイトの可用性に依存しなくなった。** Cloudflare のブロックが続いていても連携機能は動作する。
+- 実装が大幅に単純になった。webapp のBFFは中継のみ、core-apiserver は自分のDBだけを見る。トークンは認証用の1種類だけになり、チャレンジトークンの取り違え(iss の共用)といった事故の余地も消えた。
+- 利用者の手間が減った。アバターを一時的に変更してもらう必要がなくなり、入力1ステップで完了する。
+- 正当な利用者が「他人に先に登録された」という理由で締め出されることが無くなった(D1')。
+
+**Cons / トレードオフ**
+
+- **なりすましを防げない。** 他人のプレイヤーIDを自分のアカウントに登録できる。プレイヤーIDは公式サイトで公開されているため、知っていれば誰でも登録できる。
+- **称号(デジグネーション)判定で他人のシティリーグ成績が自分のものとして計上される。** `player_id` の重複を許容したため、同じIDを登録した複数のユーザーが同時に同じ成績で判定される。**第5版時点で未対応の唯一の実害**であり、CSP表示(D10)と違って単純に消せない(称号機能そのものが公式結果との突き合わせで成立しているため)。
+- **実在しないプレイヤーIDも登録できる。** 公式結果と一致する行が無いだけで、エラーにはならない。
+- 誤登録に気づいても1ヶ月は自力で直せず、運用者の手動対応に頼ることになる(D2/D9)。
+- CSP表示を失った(D10)。連携して得られる利点が称号判定だけになり、**利用者から見た連携の動機が薄くなった**。
+
+**未決事項**
+
+- 称号判定における成績の誤計上をどこまで許容するか。公式結果との突き合わせを外す、表示側で「自己申告」であることを明示する、といった緩和策は未検討。
+- プレイヤーズクラブのブロックが解消した場合に検証を復活させるか。復活させる場合、`player_id` のユニーク制約とCSP表示(D10)も戻すかを併せて判断する必要がある。
+- 連携の動機が称号判定のみになったことを踏まえ、機能自体を維持するか。
+
+---
+
+## 7. 既知の問題: プレイヤーズクラブがWAFでブロックされている
+
+本機能は外部サイトを叩かなくなったため影響を受けないが、**同ホストを利用する他のバッチは停止したままである**。
+
+- `import-player-ranking-job` — ランキングの日次取込。第5版でCSP表示を廃止した(D10)ため、`player_rankings` の内容が古くなっても本サービスの表示に影響しなくなった。
+- `cmd/sync-pokemon-avatars` — アバター一覧の同期。本機能からは未使用のため実害は無い。
+
+`www.pokemon-card.com`(デッキコード確認・デッキ画像)は正常であり、影響は `players.pokemon-card.com` に限られる。
+
+---
+
+## 8. 検証方法
+
+- **core-apiserver**: `internal/usecase/user_player_test.go` で、①紐付けの作成、②**別ユーザーに登録済みの `player_id` でも作成できること**、③**実在しない `player_id` でも作成できること**、④1ヶ月経過後は旧行を soft delete して作成、⑤同じ `player_id` なら変更不要として既存を返す、⑥ロック期間中は `ErrLocked`、を確認する。`internal/controller/user_player_test.go` でステータスの対応と、**`GET` のレスポンスに `champion_ship_point` / `ranking_date` が含まれないこと**を確認する。
+- `go build ./...` / `go vet ./...` / `go test ./...`、`npx tsc --noEmit` / `npx next lint` / `npx next build` を通す。

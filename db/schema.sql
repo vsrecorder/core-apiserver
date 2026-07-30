@@ -310,9 +310,14 @@ CREATE TABLE users_players (
 CREATE INDEX idx_users_players_created_at ON users_players(created_at);
 CREATE INDEX idx_users_players_deleted_at ON users_players(deleted_at);
 
--- 有効な紐付け(deleted_at IS NULL)は user_id / player_id それぞれについて1件のみ
-CREATE UNIQUE INDEX unique_users_players_user_id   ON users_players (user_id)   WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX unique_users_players_player_id ON users_players (player_id) WHERE deleted_at IS NULL;
+-- 有効な紐付け(deleted_at IS NULL)は1ユーザーにつき1件のみ。
+--
+-- player_id 側は一意にしない(同じ player_id を複数のユーザーが登録できる)。
+-- 所有権の確認を行わない方針としたため、重複を禁止すると「先に登録した人が正しい
+-- 持ち主とは限らない」状態で正当な利用者を締め出してしまうことになるため。
+-- player_id は cityleague_results との結合に使うので索引自体は残す。
+CREATE UNIQUE INDEX unique_users_players_user_id ON users_players (user_id)   WHERE deleted_at IS NULL;
+CREATE INDEX idx_users_players_player_id         ON users_players (player_id) WHERE deleted_at IS NULL;
 
 
 

@@ -36,14 +36,6 @@ var (
 	// HTTP では 409 Conflict に対応する。
 	ErrLocked = errors.New("locked")
 
-	// ErrInvalidVerification は webapp が発行した検証済みトークンが不正・期限切れ、
-	// または発行時と異なるユーザー/対象に対して使われた場合に返す。
-	//
-	// プレイヤーIDの所有権確認(実在確認とアバター変更の確認)は webapp が行い、
-	// このAPIサーバはその結果を署名で検証するだけである点に注意。
-	// HTTP では 400 Bad Request に対応する。
-	ErrInvalidVerification = errors.New("invalid verification")
-
 	// ErrInvalidMatchOrder は match の並び替えリクエストに含まれるIDが、
 	// 対象record内の未削除match集合と過不足なく一致しない場合に返す。
 	// HTTP では 400 Bad Request に対応する。

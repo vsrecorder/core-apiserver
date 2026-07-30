@@ -11,33 +11,12 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/ratelimit"
 )
 
-var (
-	// 他人の player_id を大量に試行する、いわゆる総当たりを抑止するためのレート制限。
-	// uid単位: 1人のユーザーが短時間に多数の player_id を試すのを防ぐ。
-	// player_id単位: 複数アカウントを使って特定の player_id を繰り返し狙うのを防ぐ。
-	//
-	// 実在確認そのものは webapp(BFF)が行い、外部サイトへ問い合わせる前に webapp 側でも
-	// 同様の制限をかけている。ここでの制限は、webapp を経由しない直接のリクエストに
-	// 対しても紐付けの試行回数を抑えるための多層防御。
-	userPlayerAttemptLimiterByUID      = ratelimit.New(10, time.Hour)
-	userPlayerAttemptLimiterByPlayerID = ratelimit.New(10, 24*time.Hour)
-)
-
-func allowUserPlayerAttempt(ctx *gin.Context, playerId string) bool {
-	uid := helper.GetUID(ctx)
-
-	if !userPlayerAttemptLimiterByUID.Allow(uid) {
-		apierror.ErrTooManyRequests.JSON(ctx)
-		return false
-	}
-
-	if !userPlayerAttemptLimiterByPlayerID.Allow(playerId) {
-		apierror.ErrTooManyRequests.JSON(ctx)
-		return false
-	}
-
-	return true
-}
+// 1人のユーザーが短時間に紐付けを繰り返すのを抑えるためのレート制限。
+//
+// player_id の実在確認を行わなくなったため、外部サイトへの問い合わせも、他人の
+// player_id を総当たりで探索する余地も無い。残しているのは書き込みの連打を防ぐため。
+// 通常は1ヶ月ロックがあるため、ここに到達するのは失敗を繰り返した場合に限られる。
+var userPlayerAttemptLimiterByUID = ratelimit.New(10, time.Hour)
 
 func UserPlayerCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -54,32 +33,11 @@ func UserPlayerCreateMiddleware() gin.HandlerFunc {
 
 		helper.SetPlayerId(ctx, req.PlayerId)
 
-		if req.VerificationToken == "" {
-			apierror.ErrBadRequest.JSON(ctx)
+		if !userPlayerAttemptLimiterByUID.Allow(helper.GetUID(ctx)) {
+			apierror.ErrTooManyRequests.JSON(ctx)
 			return
 		}
 
-		if !allowUserPlayerAttempt(ctx, req.PlayerId) {
-			return
-		}
-
-		// 所有権の確認は webapp が済ませており、その結果である検証済みトークンの
-		// 署名検証は usecase.Create 内で行うため、ここでは行わない。
 		helper.SetUserPlayerCreateRequest(ctx, req)
-	}
-}
-
-func UserPlayerChallengeMiddleware() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		req := dto.UserPlayerChallengeRequest{}
-		if err := ctx.ShouldBindJSON(&req); err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
-			return
-		}
-
-		// current_avatar_image は除外条件にすぎず、空でも「どのアバターでもよい」
-		// という意味になるため必須にはしない。
-
-		helper.SetUserPlayerChallengeRequest(ctx, req)
 	}
 }

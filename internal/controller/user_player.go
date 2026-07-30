@@ -64,13 +64,6 @@ func (c *UserPlayer) RegisterRoute(relativePath string) {
 		validation.UserPlayerCreateMiddleware(),
 		c.Create,
 	)
-	r.POST(
-		"/challenge",
-		c.linkingEnabledMiddleware(),
-		authentication.RequiredAuthenticationMiddleware(),
-		validation.UserPlayerChallengeMiddleware(),
-		c.Challenge,
-	)
 }
 
 func (c *UserPlayer) GetByUID(ctx *gin.Context) {
@@ -87,22 +80,13 @@ func (c *UserPlayer) GetByUID(ctx *gin.Context) {
 		return
 	}
 
-	// ランキング履歴がまだ存在しない(連携直後等)場合は ErrRecordNotFound を
-	// 許容し、championship_point 等を含まないレスポンスとして返す。
-	ranking, err := c.usecase.FindLatestPlayerRanking(context.Background(), userPlayer.PlayerId)
-	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
-		apierror.ErrInternalServerError.JSON(ctx)
-		return
-	}
-
-	res := presenter.NewUserPlayerGetResponse(userPlayer, ranking)
+	res := presenter.NewUserPlayerGetResponse(userPlayer)
 
 	ctx.JSON(http.StatusOK, res)
 }
 
 // Create は player_id と user_id の紐付けを保存する。
-// プレイヤーズクラブでの実在確認と所有権確認は webapp(BFF)が済ませており、
-// ここではその結果である検証済みトークンを確かめたうえで保存する。
+// player_id の実在確認・所有権確認は行わず、利用者の自己申告として受け入れる。
 func (c *UserPlayer) Create(ctx *gin.Context) {
 	req := helper.GetUserPlayerCreateRequest(ctx)
 	uid := helper.GetUID(ctx)
@@ -110,23 +94,12 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 	param := usecase.NewUserPlayerCreateParam(
 		uid,
 		req.PlayerId,
-		req.VerificationToken,
 	)
 
 	userPlayer, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
 		if errors.Is(err, apperror.ErrLocked) {
 			apierror.ErrUserPlayerLocked.JSON(ctx)
-			return
-		}
-
-		if errors.Is(err, apperror.ErrAlreadyExists) {
-			apierror.ErrPlayerIdAlreadyLinked.JSON(ctx)
-			return
-		}
-
-		if errors.Is(err, apperror.ErrInvalidVerification) {
-			apierror.ErrUserPlayerInvalidVerification.JSON(ctx)
 			return
 		}
 
@@ -143,26 +116,4 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 	res := presenter.NewUserPlayerCreateResponse(userPlayer)
 
 	ctx.JSON(http.StatusCreated, res)
-}
-
-// Challenge は所有権確認で「これに変更してください」と提示するアバターを払い出す。
-// アバターの一覧はこのAPIサーバのDBが持つため、webapp からの要求に応じて返す。
-func (c *UserPlayer) Challenge(ctx *gin.Context) {
-	req := helper.GetUserPlayerChallengeRequest(ctx)
-	uid := helper.GetUID(ctx)
-
-	avatar, err := c.usecase.IssueChallengeAvatar(context.Background(), req.CurrentAvatarImage)
-	if err != nil {
-		c.logger.Error("controller_user_player_challenge_failed",
-			slog.String("uid", uid),
-			slog.String("error_message", err.Error()),
-		)
-
-		apierror.ErrInternalServerError.JSON(ctx)
-		return
-	}
-
-	res := presenter.NewUserPlayerChallengeResponse(avatar)
-
-	ctx.JSON(http.StatusOK, res)
 }

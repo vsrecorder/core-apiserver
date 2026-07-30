@@ -425,14 +425,3 @@ func GetUserPlayerCreateRequest(ctx *gin.Context) dto.UserPlayerCreateRequest {
 
 	return ret
 }
-
-func SetUserPlayerChallengeRequest(ctx *gin.Context, value dto.UserPlayerChallengeRequest) {
-	ctx.Set("user_player_challenge_request", value)
-}
-
-func GetUserPlayerChallengeRequest(ctx *gin.Context) dto.UserPlayerChallengeRequest {
-	value, _ := ctx.Get("user_player_challenge_request")
-	ret, _ := value.(dto.UserPlayerChallengeRequest)
-
-	return ret
-}

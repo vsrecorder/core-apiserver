@@ -10,20 +10,17 @@ import (
 )
 
 type UserPlayerCreateParam struct {
-	UserId            string
-	PlayerId          string
-	VerificationToken string
+	UserId   string
+	PlayerId string
 }
 
 func NewUserPlayerCreateParam(
 	userId string,
 	playerId string,
-	verificationToken string,
 ) *UserPlayerCreateParam {
 	return &UserPlayerCreateParam{
-		UserId:            userId,
-		PlayerId:          playerId,
-		VerificationToken: verificationToken,
+		UserId:   userId,
+		PlayerId: playerId,
 	}
 }
 
@@ -33,22 +30,6 @@ type UserPlayerInterface interface {
 		userId string,
 	) (*entity.UserPlayer, error)
 
-	// FindLatestPlayerRanking はプレイヤーズクラブの player_id に紐づく
-	// 最新のランキング情報(チャンピオンシップポイント等)を返す。
-	// ランキング履歴が存在しない場合は apperror.ErrRecordNotFound。
-	FindLatestPlayerRanking(
-		ctx context.Context,
-		playerId string,
-	) (*entity.PlayerRanking, error)
-
-	// IssueChallengeAvatar は所有権確認で「これに変更してください」と提示する
-	// アバターを1件払い出す。現在のアバターと同じものを提示しても確認にならないため、
-	// currentAvatarImage とは異なる画像を返す。
-	IssueChallengeAvatar(
-		ctx context.Context,
-		currentAvatarImage string,
-	) (*entity.PokemonAvatar, error)
-
 	Create(
 		ctx context.Context,
 		param *UserPlayerCreateParam,
@@ -56,19 +37,15 @@ type UserPlayerInterface interface {
 }
 
 type UserPlayer struct {
-	repository              repository.UserPlayerInterface
-	avatarRepository        repository.PokemonAvatarInterface
-	playerRankingRepository repository.PlayerRankingInterface
-	transactionManager      repository.TransactionManager
+	repository         repository.UserPlayerInterface
+	transactionManager repository.TransactionManager
 }
 
 func NewUserPlayer(
 	repository repository.UserPlayerInterface,
-	avatarRepository repository.PokemonAvatarInterface,
-	playerRankingRepository repository.PlayerRankingInterface,
 	transactionManager repository.TransactionManager,
 ) UserPlayerInterface {
-	return &UserPlayer{repository, avatarRepository, playerRankingRepository, transactionManager}
+	return &UserPlayer{repository, transactionManager}
 }
 
 func (u *UserPlayer) FindByUserId(
@@ -84,39 +61,18 @@ func (u *UserPlayer) FindByUserId(
 	return userPlayer, nil
 }
 
-func (u *UserPlayer) FindLatestPlayerRanking(
-	ctx context.Context,
-	playerId string,
-) (*entity.PlayerRanking, error) {
-	return u.playerRankingRepository.FindLatestByPlayerId(ctx, playerId)
-}
-
-func (u *UserPlayer) IssueChallengeAvatar(
-	ctx context.Context,
-	currentAvatarImage string,
-) (*entity.PokemonAvatar, error) {
-	return u.avatarRepository.FindRandomExcludingImageURL(ctx, currentAvatarImage)
-}
-
 // Create は player_id と user_id の紐付けを保存する。
 //
-// プレイヤーズクラブでの実在確認と、アバター変更による所有権確認は webapp(BFF)が
-// 済ませており、ここではその結果である検証済みトークンの署名を確かめる。
-// 紐付けの一意性(1ユーザー1件・1player_id1件)と変更ロックはこのAPIサーバの責務。
+// player_id がプレイヤーズクラブに実在するか、また利用者がその持ち主かどうかは
+// 確認しない(自己申告として受け入れる)。同じ player_id を複数のユーザーが登録することも
+// 許容する。したがってこの紐付けは「本人であることの証明」ではなく、
+// あくまで利用者が自分で入力した値として扱うこと。
+//
+// 一方「1ユーザーにつき有効な紐付けは1件」と「紐付けから1ヶ月は変更不可」は維持する。
 func (u *UserPlayer) Create(
 	ctx context.Context,
 	param *UserPlayerCreateParam,
 ) (*entity.UserPlayer, error) {
-	claims, err := parseUserPlayerVerification(param.VerificationToken)
-	if err != nil {
-		return nil, err
-	}
-
-	// 検証済みトークンは、確認を行ったのと同じユーザー・同じ player_id に対してのみ有効
-	if claims.UID != param.UserId || claims.PlayerId != param.PlayerId {
-		return nil, apperror.ErrInvalidVerification
-	}
-
 	existing, err := u.repository.FindByUserId(ctx, param.UserId)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
 		return nil, err
@@ -132,15 +88,6 @@ func (u *UserPlayer) Create(
 	// 既に有効な紐付けがあり、かつ紐付けから1ヶ月経過していない場合は変更不可
 	if existing != nil && now.Before(existing.LockedUntil()) {
 		return nil, apperror.ErrLocked
-	}
-
-	// player_id が既に別ユーザーの有効な紐付けに使われていないか確認
-	inUse, err := u.repository.ExistsActiveByPlayerId(ctx, param.PlayerId)
-	if err != nil {
-		return nil, err
-	}
-	if inUse {
-		return nil, apperror.ErrAlreadyExists
 	}
 
 	id, err := generateId()

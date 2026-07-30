@@ -58,7 +58,6 @@ mockgen:
 	mockgen -source=./internal/domain/repository/designation.go -destination=./internal/mock/mock_repository/designation.go
 	mockgen -source=./internal/domain/repository/designation_stats.go -destination=./internal/mock/mock_repository/designation_stats.go
 	mockgen -source=./internal/domain/repository/championship_series.go -destination=./internal/mock/mock_repository/championship_series.go
-	mockgen -source=./internal/domain/repository/player_ranking.go -destination=./internal/mock/mock_repository/player_ranking.go
 	mockgen -source=./internal/domain/repository/notification.go -destination=./internal/mock/mock_repository/notification.go
 	mockgen -source=./internal/domain/repository/user_environment_badge.go -destination=./internal/mock/mock_repository/user_environment_badge.go
 	mockgen -source=./internal/domain/repository/user_player.go -destination=./internal/mock/mock_repository/user_player.go
@@ -66,7 +65,6 @@ mockgen:
 	mockgen -source=./internal/domain/repository/calendar.go -destination=./internal/mock/mock_repository/calendar.go
 	mockgen -source=./internal/domain/repository/cityleague_result.go -destination=./internal/mock/mock_repository/cityleague_result.go
 	mockgen -source=./internal/domain/repository/cityleague_schedule.go -destination=./internal/mock/mock_repository/cityleague_schedule.go
-	mockgen -source=./internal/domain/repository/pokemon_avatar.go -destination=./internal/mock/mock_repository/pokemon_avatar.go
 	mockgen -source=./internal/domain/repository/unofficial_event.go -destination=./internal/mock/mock_repository/unofficial_event.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go

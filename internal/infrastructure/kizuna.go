@@ -76,11 +76,8 @@ const (
 )
 
 type kizunaRecordResult struct {
-	DeckId          string
-	EventDayCount   int
-	RecordCount     int
-	MemoCount       int
-	MemoTotalLength int
+	DeckId        string
+	EventDayCount int
 }
 
 type kizunaStageResult struct {
@@ -100,9 +97,11 @@ type kizunaEveResult struct {
 }
 
 type kizunaMatchResult struct {
-	DeckId     string
-	MatchCount int
-	Wins       int
+	DeckId          string
+	MatchCount      int
+	Wins            int
+	MemoMatchCount  int
+	MemoTotalLength int
 }
 
 func (i *Kizuna) FindKizunaDeckAggregates(
@@ -132,16 +131,12 @@ func (i *Kizuna) FindKizunaDeckAggregates(
 		}
 	}
 
-	// ── 同行日数・語り度：記録そのものの集計
-	// メモは空文字と NULL の両方がありうるため、TRIM して長さで判定する。
+	// ── 同行日数：実際に会場へ連れて行った日数（記録のある日付の種類数）
 	var recordResults []kizunaRecordResult
 	if tx := i.db.WithContext(ctx).
 		Table("records").
 		Select("records.deck_id AS deck_id, "+
-			"COUNT(DISTINCT records.event_date) AS event_day_count, "+
-			"COUNT(*) AS record_count, "+
-			"COUNT(CASE WHEN COALESCE(TRIM(records.memo), '') != '' THEN 1 END) AS memo_count, "+
-			"COALESCE(SUM(CHAR_LENGTH(COALESCE(TRIM(records.memo), ''))), 0) AS memo_total_length").
+			"COUNT(DISTINCT records.event_date) AS event_day_count").
 		Where(kizunaRecordCondition, userId).
 		Group("records.deck_id").
 		Scan(&recordResults); tx.Error != nil {
@@ -151,9 +146,6 @@ func (i *Kizuna) FindKizunaDeckAggregates(
 	for _, r := range recordResults {
 		if a, ok := aggregates[r.DeckId]; ok {
 			a.EventDayCount = r.EventDayCount
-			a.RecordCount = r.RecordCount
-			a.MemoCount = r.MemoCount
-			a.MemoTotalLength = r.MemoTotalLength
 		}
 	}
 
@@ -222,10 +214,14 @@ func (i *Kizuna) FindKizunaDeckAggregates(
 		}
 	}
 
-	// ── 逆境ロイヤルティ・一途度：対戦数と勝数
+	// ── 逆境ロイヤルティ・一途度・語り度：対戦数・勝数・対戦メモ
 	//
 	// デッキへの紐付けは records.deck_id を正とする（matches.deck_id は記録後の
 	// デッキ変更に追随しないため使わない。deck_usage_stat と同じ方針）。
+	//
+	// 語り度は対戦（matches）のメモを見る。記録（records）のメモは準備段階のメモなので
+	// 使わない。1対戦=1行なので、メモのある対戦数と文字数はそのまま数えられる。
+	// メモは空文字とNULLの両方がありうるため TRIM して長さで判定する。
 	//
 	// DISTINCT は付けない。games を結合していないので、records.id が主キーである以上
 	// 1つの matches 行は高々1つの records 行としか結合せず、行は増えないため
@@ -239,7 +235,9 @@ func (i *Kizuna) FindKizunaDeckAggregates(
 		Table("matches").
 		Select("records.deck_id AS deck_id, "+
 			"COUNT(matches.id) AS match_count, "+
-			"COUNT(CASE WHEN matches.victory_flg THEN 1 END) AS wins").
+			"COUNT(CASE WHEN matches.victory_flg THEN 1 END) AS wins, "+
+			"COUNT(CASE WHEN COALESCE(TRIM(matches.memo), '') != '' THEN 1 END) AS memo_match_count, "+
+			"COALESCE(SUM(CHAR_LENGTH(COALESCE(TRIM(matches.memo), ''))), 0) AS memo_total_length").
 		Joins("JOIN records ON matches.record_id = records.id").
 		Where(kizunaRecordCondition+" AND matches.user_id = ? AND matches.deleted_at IS NULL",
 			userId, userId).
@@ -252,6 +250,8 @@ func (i *Kizuna) FindKizunaDeckAggregates(
 		if a, ok := aggregates[r.DeckId]; ok {
 			a.MatchCount = r.MatchCount
 			a.Wins = r.Wins
+			a.MatchMemoCount = r.MemoMatchCount
+			a.MatchMemoLength = r.MemoTotalLength
 		}
 	}
 

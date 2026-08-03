@@ -98,14 +98,15 @@ func insertKizunaFixtures(t *testing.T, db *gorm.DB, userId string) {
 		time.Date(2026, 2, 28, 22, 0, 0, 0, time.Local), now, userId).Error)
 
 	// 対戦：4戦1勝。match-01 は BO3 で games が2行付く（match 単位で数えられること）
-	// match-04 は集計対象外の記録(rec-04)に紐づく対戦で、これも数える
+	// match-04 は集計対象外の記録(rec-04)に紐づく対戦で、これも数える。
+	// 語り度は対戦のメモを見る。match-01・03・04 にメモあり、match-02 は空。
 	require.NoError(t, db.Exec(
 		`INSERT INTO matches (id, created_at, updated_at, user_id, record_id, deck_id,
-		                      bo3_flg, qualifying_round_flg, final_tournament_flg, victory_flg) VALUES
-		 ('match-01', ?, ?, ?, 'rec-01', 'deck-01', true,  true, false, true),
-		 ('match-02', ?, ?, ?, 'rec-01', 'deck-01', false, true, false, false),
-		 ('match-03', ?, ?, ?, 'rec-03', 'deck-01', false, true, false, false),
-		 ('match-04', ?, ?, ?, 'rec-04', 'deck-01', false, true, false, false)`,
+		                      bo3_flg, qualifying_round_flg, final_tournament_flg, victory_flg, memo) VALUES
+		 ('match-01', ?, ?, ?, 'rec-01', 'deck-01', true,  true, false, true,  '先攻から丁寧に回した'),
+		 ('match-02', ?, ?, ?, 'rec-01', 'deck-01', false, true, false, false, ''),
+		 ('match-03', ?, ?, ?, 'rec-03', 'deck-01', false, true, false, false, 'サイド差で押し切った'),
+		 ('match-04', ?, ?, ?, 'rec-04', 'deck-01', false, true, false, false, 'これも数える対戦メモ')`,
 		now, now, userId, now, now, userId, now, now, userId, now, now, userId).Error)
 
 	require.NoError(t, db.Exec(
@@ -137,12 +138,14 @@ func TestIntegrationKizunaRepository(t *testing.T) {
 
 		// 3/1 に2件・3/5 に1件・3/9 に1件。集計対象外(rec-04)も数える
 		require.Equal(t, 3, a.EventDayCount)
-		require.Equal(t, 4, a.RecordCount)
-		// メモがあるのは rec-01・rec-03 と、集計対象外の rec-04
-		require.Equal(t, 3, a.MemoCount)
+		// 語り度は対戦（matches）のメモ。match-01・03・04 にメモあり、match-02 は空。
+		// 記録（records）のメモは準備段階のメモなので数えない。
+		require.Equal(t, 3, a.MatchMemoCount)
 		require.Equal(t,
-			len([]rune("よく回った"))+len([]rune("あああ"))+len([]rune("これも数える")),
-			a.MemoTotalLength)
+			len([]rune("先攻から丁寧に回した"))+
+				len([]rune("サイド差で押し切った"))+
+				len([]rune("これも数える対戦メモ")),
+			a.MatchMemoLength)
 
 		// シティリーグ1件・ジムバトル3件（rec-02, rec-03 と集計対象外の rec-04）
 		require.Equal(t, 1, a.StageCounts[entity.KizunaStageCityLeague])
@@ -161,8 +164,8 @@ func TestIntegrationKizunaRepository(t *testing.T) {
 		a := byDeck["deck-02"]
 		require.NotNil(t, a, "記録が無いデッキも「出会ったばかり」として返す必要がある")
 
-		require.Equal(t, 0, a.RecordCount)
 		require.Equal(t, 0, a.MatchCount)
+		require.Equal(t, 0, a.MatchMemoCount)
 		require.Equal(t, 0, a.DeckCodeCount)
 	})
 

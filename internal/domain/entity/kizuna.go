@@ -138,16 +138,17 @@ type KizunaDeckAggregate struct {
 	// 託し度：舞台の分類ごとの記録件数
 	StageCounts map[KizunaStageKind]int
 
-	// 語り度
-	RecordCount     int
-	MemoCount       int
-	MemoTotalLength int
+	// 語り度：対戦（matches）のメモ。記録（records）のメモは準備段階のメモなので使わない。
+	// MatchMemoCount = メモのある対戦数、MatchMemoLength = 対戦メモの総文字数。
+	// 記入率の分母は MatchCount（対戦数）。
+	MatchMemoCount  int
+	MatchMemoLength int
 
 	// 手入れ度
 	DeckCodeCount int // デッキコードの総数（登録時の1件を含む）
 	EveCodeCount  int // 大会直前（3日前〜当日昼）に作られたデッキコードの数
 
-	// 逆境ロイヤルティ・一途度
+	// 逆境ロイヤルティ・一途度・語り度の分母
 	MatchCount int
 	Wins       int
 }
@@ -260,11 +261,12 @@ func calculateKizunaDeck(
 		0.6*topStageScore + 0.4*kizunaLogScale(seriousSum, kizunaTrustSeriousSaturation),
 	)
 
-	// ── 語り度：メモを書き残したか（記入率 × 熱量）
+	// ── 語り度：対戦のメモを書き残したか（記入率 × 熱量）
+	// 記入率は「メモのある対戦 ÷ 対戦数」、熱量はメモの平均文字数。
 	narrativeValue := 0.0
-	if a.RecordCount > 0 && a.MemoCount > 0 {
-		memoRate := float64(a.MemoCount) / float64(a.RecordCount)
-		memoAvgLength := float64(a.MemoTotalLength) / float64(a.MemoCount)
+	if a.MatchCount > 0 && a.MatchMemoCount > 0 {
+		memoRate := float64(a.MatchMemoCount) / float64(a.MatchCount)
+		memoAvgLength := float64(a.MatchMemoLength) / float64(a.MatchMemoCount)
 		narrativeValue = memoRate * kizunaLogScale(memoAvgLength, kizunaMemoLengthSaturation)
 	}
 

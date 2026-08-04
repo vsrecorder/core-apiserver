@@ -86,6 +86,18 @@ func (c *Deck) RegisterRoute(relativePath string) {
 		authorization.DeckUnarchiveAuthorizationMiddleware(c.deckRepository),
 		c.Unarchive,
 	)
+	r.PATCH(
+		"/:id/favorite",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.DeckFavoriteAuthorizationMiddleware(c.deckRepository),
+		c.Favorite,
+	)
+	r.PATCH(
+		"/:id/unfavorite",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.DeckUnfavoriteAuthorizationMiddleware(c.deckRepository),
+		c.Unfavorite,
+	)
 	r.DELETE(
 		"/:id",
 		authentication.RequiredAuthenticationMiddleware(),
@@ -306,6 +318,34 @@ func (c *Deck) Unarchive(ctx *gin.Context) {
 	}
 
 	res := presenter.NewDeckUnarchiveResponse(deck)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *Deck) Favorite(ctx *gin.Context) {
+	id := helper.GetId(ctx)
+
+	deck, err := c.usecase.Favorite(context.Background(), id)
+	if err != nil {
+		apierror.ErrInternalServerError.JSON(ctx)
+		return
+	}
+
+	res := presenter.NewDeckFavoriteResponse(deck)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *Deck) Unfavorite(ctx *gin.Context) {
+	id := helper.GetId(ctx)
+
+	deck, err := c.usecase.Unfavorite(context.Background(), id)
+	if err != nil {
+		apierror.ErrInternalServerError.JSON(ctx)
+		return
+	}
+
+	res := presenter.NewDeckUnfavoriteResponse(deck)
 
 	ctx.JSON(http.StatusOK, res)
 }

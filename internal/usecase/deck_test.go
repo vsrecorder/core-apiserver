@@ -28,11 +28,21 @@ func (errBadgeEvaluation) EvaluateOnDeckCreated(
 	return nil, errors.New("")
 }
 
+// stubTransactionManager はトランザクションを張らず、渡された関数をそのまま実行する。
+// ここで確かめたいのは usecase がどのリポジトリをどう呼ぶかで、
+// ロールバックの挙動は infrastructure 側のテストが受け持つ。
+type stubTransactionManager struct{}
+
+func (stubTransactionManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
+}
+
 func TestDeckUsecase(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 		mockRepository *mock_repository.MockDeckInterface,
 		mockDeckAsset *mock_repository.MockDeckAssetInterface,
+		mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 		usecase DeckInterface,
 	){
 		"Find":                 test_DeckUsecase_Find,
@@ -45,15 +55,24 @@ func TestDeckUsecase(t *testing.T) {
 		"Update":               test_DeckUsecase_Update,
 		"Archive":              test_DeckUsecase_Archive,
 		"Unarchive":            test_DeckUsecase_Unarchive,
+		"Favorite":             test_DeckUsecase_Favorite,
+		"Unfavorite":           test_DeckUsecase_Unfavorite,
 		"Delete":               test_DeckUsecase_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			mockRepository := mock_repository.NewMockDeckInterface(mockCtrl)
 			mockDeckAsset := mock_repository.NewMockDeckAssetInterface(mockCtrl)
-			usecase := NewDeck(mockRepository, mockDeckAsset, stubBadgeEvaluation{})
+			mockUserFavoriteDeck := mock_repository.NewMockUserFavoriteDeckInterface(mockCtrl)
+			usecase := NewDeck(
+				mockRepository,
+				mockDeckAsset,
+				mockUserFavoriteDeck,
+				stubTransactionManager{},
+				stubBadgeEvaluation{},
+			)
 
-			fn(t, mockRepository, mockDeckAsset, usecase)
+			fn(t, mockRepository, mockDeckAsset, mockUserFavoriteDeck, usecase)
 		})
 	}
 }
@@ -62,6 +81,7 @@ func test_DeckUsecase_Find(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_デッキ一覧をそのまま返す", func(t *testing.T) {
@@ -114,6 +134,7 @@ func test_DeckUsecase_FindAll(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_指定ユーザの全デッキを返す", func(t *testing.T) {
@@ -164,6 +185,7 @@ func test_DeckUsecase_FindOnCursor(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_カーソル以降のデッキ一覧を返す", func(t *testing.T) {
@@ -216,6 +238,7 @@ func test_DeckUsecase_FindById(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_指定IDのデッキを返す", func(t *testing.T) {
@@ -261,6 +284,7 @@ func test_DeckUsecase_FindByUserId(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_未アーカイブのデッキ一覧を返す", func(t *testing.T) {
@@ -345,6 +369,7 @@ func test_DeckUsecase_FindByUserIdOnCursor(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_カーソル以降の未アーカイブデッキ一覧を返す", func(t *testing.T) {
@@ -429,6 +454,7 @@ func test_DeckUsecase_Create(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -533,7 +559,13 @@ func test_DeckUsecase_Create(
 
 	// 称号評価に失敗した場合はエラーを返す
 	t.Run("異常系_称号評価失敗時はエラーを返す", func(t *testing.T) {
-		usecase := NewDeck(mockRepository, mockDeckAsset, errBadgeEvaluation{})
+		usecase := NewDeck(
+			mockRepository,
+			mockDeckAsset,
+			mockUserFavoriteDeck,
+			stubTransactionManager{},
+			errBadgeEvaluation{},
+		)
 		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil)
 
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -549,6 +581,7 @@ func test_DeckUsecase_Update(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -565,6 +598,7 @@ func test_DeckUsecase_Update(
 		deck := entity.NewDeck(
 			id,
 			createdAt,
+			time.Time{},
 			time.Time{},
 			uid,
 			"更新前のデッキ",
@@ -600,7 +634,7 @@ func test_DeckUsecase_Update(
 		createdAt := time.Now().Local()
 		archivedAt := time.Now().Local()
 
-		deck := entity.NewDeck(id, createdAt, archivedAt, uid, "更新前のデッキ", false, nil, nil)
+		deck := entity.NewDeck(id, createdAt, archivedAt, time.Time{}, uid, "更新前のデッキ", false, nil, nil)
 		param := NewDeckUpdateParam("更新後のデッキ", false, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
@@ -630,7 +664,7 @@ func test_DeckUsecase_Update(
 		id, err := generateId()
 		require.NoError(t, err)
 
-		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, uid, "更新前のデッキ", false, nil, nil)
+		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, time.Time{}, uid, "更新前のデッキ", false, nil, nil)
 		param := NewDeckUpdateParam("更新後のデッキ", false, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
@@ -647,6 +681,7 @@ func test_DeckUsecase_Archive(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -657,15 +692,18 @@ func test_DeckUsecase_Archive(
 		require.NoError(t, err)
 
 		createdAt := time.Now().Local()
-		deck := entity.NewDeck(id, createdAt, time.Time{}, uid, "テストデッキ", false, nil, nil)
+		deck := entity.NewDeck(id, createdAt, time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+		// アーカイブすると、そのデッキのお気に入りも解除される
+		mockUserFavoriteDeck.EXPECT().Delete(context.Background(), uid, id).Return(nil)
 
 		ret, err := usecase.Archive(context.Background(), id)
 
 		require.NoError(t, err)
 		require.NotEmpty(t, ret.ArchivedAt)
+		require.Empty(t, ret.FavoritedAt)
 		require.Equal(t, id, ret.ID)
 		require.Equal(t, createdAt, ret.CreatedAt)
 		require.Equal(t, "テストデッキ", ret.Name)
@@ -687,7 +725,7 @@ func test_DeckUsecase_Archive(
 		id, err := generateId()
 		require.NoError(t, err)
 
-		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, uid, "テストデッキ", false, nil, nil)
+		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(errors.New(""))
@@ -717,6 +755,7 @@ func test_DeckUsecase_Unarchive(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -727,7 +766,7 @@ func test_DeckUsecase_Unarchive(
 		require.NoError(t, err)
 
 		createdAt := time.Now().Local()
-		archivedDeck := entity.NewDeck(id, createdAt, time.Now().Local(), uid, "テストデッキ", false, nil, nil)
+		archivedDeck := entity.NewDeck(id, createdAt, time.Now().Local(), time.Time{}, uid, "テストデッキ", false, nil, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(archivedDeck, nil)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -757,7 +796,7 @@ func test_DeckUsecase_Unarchive(
 		id, err := generateId()
 		require.NoError(t, err)
 
-		deck := entity.NewDeck(id, time.Now().Local(), time.Now().Local(), uid, "テストデッキ", false, nil, nil)
+		deck := entity.NewDeck(id, time.Now().Local(), time.Now().Local(), time.Time{}, uid, "テストデッキ", false, nil, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(errors.New(""))
@@ -783,10 +822,146 @@ func test_DeckUsecase_Unarchive(
 	})
 }
 
+func test_DeckUsecase_Favorite(
+	t *testing.T,
+	mockRepository *mock_repository.MockDeckInterface,
+	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	usecase DeckInterface,
+) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	// お気に入りが1件も無いときは、解除は発生せず追加だけが行われる
+	t.Run("正常系_お気に入りが無ければそのまま追加する", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockUserFavoriteDeck.EXPECT().FindByUserId(context.Background(), uid).Return(
+			[]*entity.UserFavoriteDeck{}, nil,
+		)
+		mockUserFavoriteDeck.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+
+		ret, err := usecase.Favorite(context.Background(), id)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, ret.FavoritedAt)
+		require.Equal(t, id, ret.ID)
+	})
+
+	// 上限に達している場合、古いものを外してから追加する(上限1なら入れ替えになる)
+	t.Run("正常系_上限に達していれば古いものを外してから追加する", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		oldestId, err := generateId()
+		require.NoError(t, err)
+
+		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
+
+		// MaxFavoriteDecksPerUser 件ちょうど登録されている状態を作る
+		favorites := []*entity.UserFavoriteDeck{}
+		for i := 0; i < MaxFavoriteDecksPerUser; i++ {
+			favoriteDeckId := oldestId
+			if i > 0 {
+				favoriteDeckId, err = generateId()
+				require.NoError(t, err)
+			}
+			favorites = append(favorites, entity.NewUserFavoriteDeck(
+				uid,
+				favoriteDeckId,
+				time.Now().Local().Add(time.Duration(i)*time.Minute),
+			))
+		}
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockUserFavoriteDeck.EXPECT().FindByUserId(context.Background(), uid).Return(favorites, nil)
+		// 最も古い1件だけが外れる
+		mockUserFavoriteDeck.EXPECT().Delete(context.Background(), uid, oldestId).Return(nil)
+		mockUserFavoriteDeck.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+
+		ret, err := usecase.Favorite(context.Background(), id)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, ret.FavoritedAt)
+	})
+
+	// 既にお気に入りのデッキを再度指定しても、二重登録も日時の更新もしない
+	t.Run("正常系_既にお気に入りなら何もしない", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		favoritedAt := time.Now().Local().Add(-time.Hour)
+		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockUserFavoriteDeck.EXPECT().FindByUserId(context.Background(), uid).Return(
+			[]*entity.UserFavoriteDeck{entity.NewUserFavoriteDeck(uid, id, favoritedAt)}, nil,
+		)
+
+		ret, err := usecase.Favorite(context.Background(), id)
+
+		require.NoError(t, err)
+		require.Equal(t, favoritedAt, ret.FavoritedAt)
+	})
+
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+
+		ret, err := usecase.Favorite(context.Background(), id)
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Empty(t, ret)
+	})
+}
+
+func test_DeckUsecase_Unfavorite(
+	t *testing.T,
+	mockRepository *mock_repository.MockDeckInterface,
+	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	usecase DeckInterface,
+) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	t.Run("正常系_お気に入りを解除する", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, time.Now().Local(), uid, "テストデッキ", false, nil, nil)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockUserFavoriteDeck.EXPECT().Delete(context.Background(), uid, id).Return(nil)
+
+		ret, err := usecase.Unfavorite(context.Background(), id)
+
+		require.NoError(t, err)
+		require.Empty(t, ret.FavoritedAt)
+	})
+
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+
+		ret, err := usecase.Unfavorite(context.Background(), id)
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Empty(t, ret)
+	})
+}
+
 func test_DeckUsecase_Delete(
 	t *testing.T,
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
+	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_リポジトリのDeleteを呼び出す", func(t *testing.T) {

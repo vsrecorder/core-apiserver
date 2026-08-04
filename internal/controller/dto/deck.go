@@ -25,6 +25,7 @@ type DeckResponse struct {
 	ID             string                   `json:"id"`
 	CreatedAt      time.Time                `json:"created_at"`
 	ArchivedAt     time.Time                `json:"archived_at"`
+	FavoritedAt    time.Time                `json:"favorited_at"`
 	UserId         string                   `json:"user_id"`
 	Name           string                   `json:"name"`
 	PrivateFlg     bool                     `json:"private_flg"`
@@ -66,5 +67,13 @@ type DeckArchiveResponse struct {
 }
 
 type DeckUnarchiveResponse struct {
+	DeckResponse
+}
+
+type DeckFavoriteResponse struct {
+	DeckResponse
+}
+
+type DeckUnfavoriteResponse struct {
 	DeckResponse
 }

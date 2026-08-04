@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -267,10 +268,12 @@ func (i *Calendar) findDecks(
 	decks := make([]*entity.Deck, 0, len(deckModels))
 	for _, m := range deckModels {
 		// LatestDeckCode はカレンダーでは使わない(デッキコードは別途全件返す)ため nil でよい。
+		// お気に入り(FavoritedAt)もカレンダーでは使わないため、引かずにゼロ値のままにする。
 		decks = append(decks, entity.NewDeck(
 			m.ID,
 			m.CreatedAt,
 			m.ArchivedAt.Time,
+			time.Time{},
 			m.UserId,
 			m.Name,
 			m.PrivateFlg,

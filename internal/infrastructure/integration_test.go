@@ -353,3 +353,67 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 		require.Empty(t, alive("deck_codes"))
 	})
 }
+
+// お気に入りは decks の列ではなく user_favorite_decks で管理している。
+// JOIN の当たり方・並び順・削除の連鎖は sqlmock では確かめられないため、実DBで見る。
+func TestIntegrationUserFavoriteDeckRepository(t *testing.T) {
+	db := setupIntegrationDB(t, "user_favorite_decks", "deck_codes", "decks")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	// 「古いデッキをお気に入りにすると、新しいデッキより前に出る」ことを見たいので、
+	// お気に入りにするデッキ(deck-old)の作成日時を最も古くしておく。
+	require.NoError(t, db.Create(&model.Deck{ID: "deck-old", CreatedAt: now.Add(-2 * time.Hour), UpdatedAt: now, UserId: uid, Name: "古いデッキ"}).Error)
+	require.NoError(t, db.Create(&model.Deck{ID: "deck-new", CreatedAt: now, UpdatedAt: now, UserId: uid, Name: "新しいデッキ"}).Error)
+
+	ctx := context.Background()
+	r := NewUserFavoriteDeck(db)
+	deckRepository := NewDeck(db)
+
+	favoritedAt := now.Add(-time.Minute)
+
+	t.Run("正常系_お気に入りを追加して取得できる", func(t *testing.T) {
+		require.NoError(t, r.Create(ctx, entity.NewUserFavoriteDeck(uid, "deck-old", favoritedAt)))
+
+		favorites, err := r.FindByUserId(ctx, uid)
+
+		require.NoError(t, err)
+		require.Len(t, favorites, 1)
+		require.Equal(t, "deck-old", favorites[0].DeckId)
+		// DBから戻る時刻は Location が接続のTZ(Asia/Tokyo)になるため、
+		// 表現ではなく指している瞬間で比べる。
+		require.True(t, favoritedAt.Equal(favorites[0].CreatedAt))
+	})
+
+	t.Run("正常系_お気に入りのデッキが作成日時によらず一覧の先頭に来る", func(t *testing.T) {
+		decks, err := deckRepository.FindAll(ctx, uid)
+
+		require.NoError(t, err)
+		require.Len(t, decks, 2)
+		require.Equal(t, "deck-old", decks[0].ID)
+		require.True(t, favoritedAt.Equal(decks[0].FavoritedAt))
+		// お気に入りでないデッキは FavoritedAt がゼロ値のまま
+		require.Equal(t, "deck-new", decks[1].ID)
+		require.True(t, decks[1].FavoritedAt.IsZero())
+	})
+
+	t.Run("正常系_デッキを削除するとお気に入りも消える", func(t *testing.T) {
+		require.NoError(t, deckRepository.Delete(ctx, "deck-old"))
+
+		favorites, err := r.FindByUserId(ctx, uid)
+
+		require.NoError(t, err)
+		require.Empty(t, favorites)
+	})
+
+	t.Run("正常系_解除したお気に入りは一覧に残らない", func(t *testing.T) {
+		require.NoError(t, r.Create(ctx, entity.NewUserFavoriteDeck(uid, "deck-new", favoritedAt)))
+		require.NoError(t, r.Delete(ctx, uid, "deck-new"))
+
+		favorites, err := r.FindByUserId(ctx, uid)
+
+		require.NoError(t, err)
+		require.Empty(t, favorites)
+	})
+}

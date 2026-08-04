@@ -56,7 +56,7 @@ func TestNewCalendarGetByUserIdResponse(t *testing.T) {
 	})
 
 	t.Run("正常系_未アーカイブのデッキはarchived_atがnullになる", func(t *testing.T) {
-		deck := entity.NewDeck("deck-1", now, time.Time{}, "user-1", "テストデッキ", false, nil, nil)
+		deck := entity.NewDeck("deck-1", now, time.Time{}, time.Time{}, "user-1", "テストデッキ", false, nil, nil)
 		calendar := &entity.Calendar{
 			Decks: []*entity.CalendarDeck{entity.NewCalendarDeck(deck, nil)},
 		}
@@ -69,7 +69,7 @@ func TestNewCalendarGetByUserIdResponse(t *testing.T) {
 
 	t.Run("正常系_アーカイブ済みデッキはarchived_atが設定される", func(t *testing.T) {
 		archivedAt := now.Add(-time.Hour)
-		deck := entity.NewDeck("deck-1", now, archivedAt, "user-1", "テストデッキ", false, nil, nil)
+		deck := entity.NewDeck("deck-1", now, archivedAt, time.Time{}, "user-1", "テストデッキ", false, nil, nil)
 		deckCode := entity.NewDeckCode("code-1", now, "user-1", "deck-1", "5dbFbk-uBwjqP-VVk5Vv", false, "")
 		calendar := &entity.Calendar{
 			Decks: []*entity.CalendarDeck{entity.NewCalendarDeck(deck, []*entity.DeckCode{deckCode})},

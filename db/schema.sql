@@ -156,6 +156,23 @@ CREATE INDEX idx_decks_deleted_at ON decks(deleted_at);
 -- 索引が無いとサービス全体の行数に比例して遅くなる。
 CREATE INDEX idx_decks_user_id ON decks(user_id);
 
+-- お気に入りのデッキ。1行が「あるユーザがあるデッキをお気に入りにしている」ことを表す。
+-- decks の列ではなく別テーブルにしてあるのは、1ユーザが持てる件数を将来増やせるようにするため。
+-- 現在の上限はアプリ側(usecase.MaxFavoriteDecksPerUser)が持ち、ここでは制約しない。
+-- created_at はお気に入りにした日時で、一覧の並び順(古い順)にも使う。
+CREATE TABLE user_favorite_decks (
+    user_id     VARCHAR(32) NOT NULL,
+    deck_id     VARCHAR(26) NOT NULL,
+    created_at  TIMESTAMP NOT NULL,
+    -- 同じデッキを重複してお気に入りにできないことは主キーで担保する
+    PRIMARY KEY (user_id, deck_id),
+    FOREIGN KEY (deck_id) REFERENCES decks (id)
+);
+
+-- デッキ削除時に、そのデッキのお気に入りをまとめて消すために引く。
+-- 主キーの先頭は user_id のため、deck_id 単独では主キー索引が使えない。
+CREATE INDEX idx_user_favorite_decks_deck_id ON user_favorite_decks(deck_id);
+
 CREATE TABLE deck_codes (
     id                    VARCHAR(26) PRIMARY KEY, 
     created_at            TIMESTAMP NOT NULL,

@@ -54,6 +54,7 @@ var deckJoinDeckCodeColumns = []string{
 	"deck_updated_at",
 	"deck_deleted_at",
 	"deck_archived_at",
+	"deck_favorited_at",
 	"deck_user_id",
 	"deck_name",
 	"deck_private_flg",
@@ -112,6 +113,7 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 			datetime,
 			datetime,
 			gorm.DeletedAt{},
+			sql.NullTime{},
 			sql.NullTime{},
 			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 			"テストデッキ",
@@ -193,6 +195,7 @@ func test_DeckInfrastructure_FindAll(t *testing.T) {
 			datetime,
 			gorm.DeletedAt{},
 			sql.NullTime{},
+			sql.NullTime{},
 			uid,
 			"テストデッキ",
 			true,
@@ -208,7 +211,7 @@ func test_DeckInfrastructure_FindAll(t *testing.T) {
 		)
 
 		mock.ExpectQuery(deckJoinDeckCodeQuery(
-			`WHERE decks.user_id = $2 AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY decks.created_at DESC`,
+			`WHERE decks.user_id = $2 AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY user_favorite_decks.created_at IS NULL, decks.created_at DESC`,
 		)).WithArgs(
 			uid,
 			uid,
@@ -237,7 +240,7 @@ func test_DeckInfrastructure_FindAll(t *testing.T) {
 		uid := "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
 
 		mock.ExpectQuery(deckJoinDeckCodeQuery(
-			`WHERE decks.user_id = $2 AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY decks.created_at DESC`,
+			`WHERE decks.user_id = $2 AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY user_favorite_decks.created_at IS NULL, decks.created_at DESC`,
 		)).WithArgs(
 			uid,
 			uid,
@@ -266,6 +269,7 @@ func test_DeckInfrastructure_FindOnCursor(t *testing.T) {
 			datetime,
 			datetime,
 			gorm.DeletedAt{},
+			sql.NullTime{},
 			sql.NullTime{},
 			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 			"テストデッキ",
@@ -345,6 +349,7 @@ func test_DeckInfrastructure_FindById(t *testing.T) {
 			datetime,
 			datetime,
 			gorm.DeletedAt{},
+			sql.NullTime{},
 			sql.NullTime{},
 			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 			"テストデッキ",
@@ -427,12 +432,12 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 		offset := 10
 
 		rows := sqlmock.NewRows(deckJoinDeckCodeColumns).AddRow(
-			id, datetime, datetime, gorm.DeletedAt{}, sql.NullTime{}, uid, "テストデッキ", false,
+			id, datetime, datetime, gorm.DeletedAt{}, sql.NullTime{}, sql.NullTime{}, uid, "テストデッキ", false,
 			"", time.Time{}, time.Time{}, gorm.DeletedAt{}, "", "", "", false, "",
 		)
 
 		mock.ExpectQuery(deckJoinDeckCodeQuery(
-			`WHERE decks.user_id = $2 AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY decks.created_at DESC LIMIT $3 OFFSET $4`,
+			`WHERE decks.user_id = $2 AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY user_favorite_decks.created_at IS NULL, decks.created_at DESC LIMIT $3 OFFSET $4`,
 		)).WithArgs(
 			uid,
 			uid,
@@ -464,7 +469,7 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 		offset := 10
 
 		rows := sqlmock.NewRows(deckJoinDeckCodeColumns).AddRow(
-			id, datetime, datetime, gorm.DeletedAt{}, archivedAt, uid, "テストデッキ", false,
+			id, datetime, datetime, gorm.DeletedAt{}, archivedAt, sql.NullTime{}, uid, "テストデッキ", false,
 			"", time.Time{}, time.Time{}, gorm.DeletedAt{}, "", "", "", false, "",
 		)
 
@@ -497,7 +502,7 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 		offset := 10
 
 		mock.ExpectQuery(deckJoinDeckCodeQuery(
-			`WHERE decks.user_id = $2 AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY decks.created_at DESC LIMIT $3 OFFSET $4`,
+			`WHERE decks.user_id = $2 AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY user_favorite_decks.created_at IS NULL, decks.created_at DESC LIMIT $3 OFFSET $4`,
 		)).WithArgs(
 			uid,
 			uid,
@@ -526,7 +531,7 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		limit := 10
 
 		rows := sqlmock.NewRows(deckJoinDeckCodeColumns).AddRow(
-			id, datetime, datetime, gorm.DeletedAt{}, sql.NullTime{}, uid, "テストデッキ", false,
+			id, datetime, datetime, gorm.DeletedAt{}, sql.NullTime{}, sql.NullTime{}, uid, "テストデッキ", false,
 			"", time.Time{}, time.Time{}, gorm.DeletedAt{}, "", "", "", false, "",
 		)
 
@@ -562,7 +567,7 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		limit := 10
 
 		rows := sqlmock.NewRows(deckJoinDeckCodeColumns).AddRow(
-			id, datetime, datetime, gorm.DeletedAt{}, archivedAt, uid, "テストデッキ", false,
+			id, datetime, datetime, gorm.DeletedAt{}, archivedAt, sql.NullTime{}, uid, "テストデッキ", false,
 			"", time.Time{}, time.Time{}, gorm.DeletedAt{}, "", "", "", false, "",
 		)
 
@@ -612,7 +617,7 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 }
 
 func test_DeckInfrastructure_DeleteByUserId(t *testing.T) {
-	// 退会時の一括削除。デッキの件数によらずクエリは2文で、
+	// 退会時の一括削除。デッキの件数によらずクエリは3文で、
 	// アーカイブ済みのデッキも対象になる(archived_at を条件に入れない)。
 	t.Run("正常系_デッキコードとデッキをまとめて削除する", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
@@ -628,6 +633,13 @@ func test_DeckInfrastructure_DeleteByUserId(t *testing.T) {
 			AnyTime{},
 			uid,
 		).WillReturnResult(sqlmock.NewResult(0, 2))
+
+		// お気に入りは論理削除ではなく実削除する
+		mock.ExpectExec(regexp.QuoteMeta(
+			`DELETE FROM "user_favorite_decks" WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $1 AND "decks"."deleted_at" IS NULL)`,
+		)).WithArgs(
+			uid,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		mock.ExpectExec(regexp.QuoteMeta(
 			`UPDATE "decks" SET "deleted_at"=$1 WHERE user_id = $2 AND "decks"."deleted_at" IS NULL`,
@@ -679,6 +691,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 			id,
 			datetime,
 			time.Time{},
+			time.Time{},
 			uid,
 			"テストデッキ",
 			false,
@@ -721,6 +734,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 			id,
 			datetime,
 			now,
+			time.Time{},
 			uid,
 			"テストデッキ",
 			false,
@@ -780,6 +794,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 			id,
 			datetime,
 			time.Time{},
+			time.Time{},
 			uid,
 			"テストデッキ",
 			false,
@@ -827,6 +842,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 			id,
 			datetime,
 			time.Time{},
+			time.Time{},
 			uid,
 			"テストデッキ",
 			false,
@@ -859,6 +875,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 			datetime,
 			datetime,
 			gorm.DeletedAt{},
+			sql.NullTime{},
 			sql.NullTime{},
 			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 			"テストデッキ",
@@ -927,6 +944,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 			id,
 			datetime,
 			time.Time{},
+			time.Time{},
 			uid,
 			"テストデッキ",
 			false,
@@ -949,7 +967,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "decks" SET`)).WillReturnError(sql.ErrConnDone)
 		mock.ExpectRollback()
 
-		deck := entity.NewDeck(id, datetime, time.Time{}, uid, "テストデッキ", false, nil, nil)
+		deck := entity.NewDeck(id, datetime, time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
 
 		require.Error(t, r.Save(context.Background(), deck))
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -979,6 +997,12 @@ func test_DeckInfrastructure_Delete(t *testing.T) {
 			AnyTime{},
 			deckCodeId,
 		).WillReturnResult(sqlmock.NewResult(0, 1))
+		// このデッキへのお気に入りも実削除する
+		mock.ExpectExec(regexp.QuoteMeta(
+			`DELETE FROM "user_favorite_decks" WHERE deck_id = $1`,
+		)).WithArgs(
+			id,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec(regexp.QuoteMeta(
 			`UPDATE "decks" SET "deleted_at"=$1 WHERE id = $2 AND "decks"."deleted_at" IS NULL`,
 		)).WithArgs(
@@ -1003,6 +1027,12 @@ func test_DeckInfrastructure_Delete(t *testing.T) {
 		).WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
 		mock.ExpectBegin()
+		// このデッキへのお気に入りも実削除する
+		mock.ExpectExec(regexp.QuoteMeta(
+			`DELETE FROM "user_favorite_decks" WHERE deck_id = $1`,
+		)).WithArgs(
+			id,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec(regexp.QuoteMeta(
 			`UPDATE "decks" SET "deleted_at"=$1 WHERE id = $2 AND "decks"."deleted_at" IS NULL`,
 		)).WithArgs(

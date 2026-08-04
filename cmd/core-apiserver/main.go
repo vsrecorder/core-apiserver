@@ -270,6 +270,8 @@ func main() {
 		usecase.NewDeck(
 			infrastructure.NewDeck(db),
 			infrastructure.NewDeckAsset(logger),
+			infrastructure.NewUserFavoriteDeck(db),
+			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
 		),
 	).RegisterRoute(relativePath)

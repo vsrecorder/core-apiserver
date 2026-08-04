@@ -645,7 +645,7 @@ func TestBadgeEvaluation_EvaluateOnDeckCreated(t *testing.T) {
 		// デッキコード無しで作成した場合、deck_codes は増えないため
 		// マイルストーン系(deck_code_count)の判定は行われない
 		// (=CountDeckCodesByUserId・championshipSeriesRepo は一切呼ばれない)。
-		deck := entity.NewDeck("deck-1", now, time.Time{}, "user-1", "リザードンex", false, nil, nil)
+		deck := entity.NewDeck("deck-1", now, time.Time{}, time.Time{}, "user-1", "リザードンex", false, nil, nil)
 
 		awarded, err := u.EvaluateOnDeckCreated(context.Background(), "user-1", deck)
 
@@ -673,7 +673,7 @@ func TestBadgeEvaluation_EvaluateOnDeckCreated(t *testing.T) {
 		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil).Times(2)
 
 		deckCode := entity.NewDeckCode("deckcode-1", now, "user-1", "deck-1", "AbCdEfGhIj12", false, "")
-		deck := entity.NewDeck("deck-1", now, time.Time{}, "user-1", "リザードンex", false, deckCode, nil)
+		deck := entity.NewDeck("deck-1", now, time.Time{}, time.Time{}, "user-1", "リザードンex", false, deckCode, nil)
 
 		awarded, err := u.EvaluateOnDeckCreated(context.Background(), "user-1", deck)
 

@@ -37,6 +37,7 @@ func (i *Deck) Find(
 		decks.updated_at AS deck_updated_at,
 		decks.deleted_at AS deck_deleted_at,
 		decks.archived_at AS deck_archived_at,
+		user_favorite_decks.created_at AS deck_favorited_at,
 		decks.user_id AS deck_user_id,
 		decks.name AS deck_name,
 		decks.private_flg AS deck_private_flg,
@@ -66,6 +67,9 @@ func (i *Deck) Find(
 			WHERE deleted_at IS NULL
 			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
+			LEFT JOIN user_favorite_decks
+				ON user_favorite_decks.deck_id = decks.id
+				AND user_favorite_decks.user_id = decks.user_id
 	`,
 	).Where(
 		"decks.private_flg = false AND decks.archived_at IS NULL AND decks.deleted_at IS NULL",
@@ -99,6 +103,7 @@ func (i *Deck) Find(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
+			djdc.DeckFavoritedAt.Time,
 			djdc.DeckUserId,
 			djdc.DeckName,
 			djdc.DeckPrivateFlg,
@@ -132,6 +137,7 @@ func (i *Deck) FindAll(
 			decks.updated_at AS deck_updated_at,
 			decks.deleted_at AS deck_deleted_at,
 			decks.archived_at AS deck_archived_at,
+			user_favorite_decks.created_at AS deck_favorited_at,
 			decks.user_id AS deck_user_id,
 			decks.name AS deck_name,
 			decks.private_flg AS deck_private_flg,
@@ -161,11 +167,17 @@ func (i *Deck) FindAll(
 				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
+			LEFT JOIN user_favorite_decks
+				ON user_favorite_decks.deck_id = decks.id
+				AND user_favorite_decks.user_id = decks.user_id
 		`, uid,
 	).Where(
 		"decks.user_id = ? AND decks.archived_at IS NULL AND decks.deleted_at IS NULL", uid,
 	).Order(
-		"decks.created_at DESC",
+		// お気に入りのデッキを先頭に置く(記録作成時のデッキ選択で最初に現れるようにする)。
+		// PostgreSQL では false < true のため、JOIN が当たった(= IS NULL が false の)
+		// お気に入りが先に来る。残りは従来どおり新しい順。
+		"user_favorite_decks.created_at IS NULL, decks.created_at DESC",
 	).Scan(&deckJoinDeckCodes)
 
 	if tx.Error != nil {
@@ -190,6 +202,7 @@ func (i *Deck) FindAll(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
+			djdc.DeckFavoritedAt.Time,
 			djdc.DeckUserId,
 			djdc.DeckName,
 			djdc.DeckPrivateFlg,
@@ -224,6 +237,7 @@ func (i *Deck) FindOnCursor(
 		decks.updated_at AS deck_updated_at,
 		decks.deleted_at AS deck_deleted_at,
 		decks.archived_at AS deck_archived_at,
+		user_favorite_decks.created_at AS deck_favorited_at,
 		decks.user_id AS deck_user_id,
 		decks.name AS deck_name,
 		decks.private_flg AS deck_private_flg,
@@ -253,6 +267,9 @@ func (i *Deck) FindOnCursor(
 			WHERE deleted_at IS NULL
 			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
+			LEFT JOIN user_favorite_decks
+				ON user_favorite_decks.deck_id = decks.id
+				AND user_favorite_decks.user_id = decks.user_id
 	`,
 	).Where(
 		"decks.created_at < ? AND decks.private_flg = false AND decks.archived_at IS NULL AND decks.deleted_at IS NULL", cursor,
@@ -284,6 +301,7 @@ func (i *Deck) FindOnCursor(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
+			djdc.DeckFavoritedAt.Time,
 			djdc.DeckUserId,
 			djdc.DeckName,
 			djdc.DeckPrivateFlg,
@@ -322,6 +340,7 @@ func (i *Deck) FindById(
 		decks.updated_at AS deck_updated_at,
 		decks.deleted_at AS deck_deleted_at,
 		decks.archived_at AS deck_archived_at,
+		user_favorite_decks.created_at AS deck_favorited_at,
 		decks.user_id AS deck_user_id,
 		decks.name AS deck_name,
 		decks.private_flg AS deck_private_flg,
@@ -351,6 +370,9 @@ func (i *Deck) FindById(
 			WHERE deck_id = ? AND deleted_at IS NULL
 			ORDER BY deck_id, created_at DESC, updated_at DESC
 		) AS deck_codes ON decks.id = deck_codes.deck_id
+			LEFT JOIN user_favorite_decks
+				ON user_favorite_decks.deck_id = decks.id
+				AND user_favorite_decks.user_id = decks.user_id
 	`, id,
 	).Where(
 		"decks.id = ? AND decks.deleted_at IS NULL", id,
@@ -375,6 +397,7 @@ func (i *Deck) FindById(
 		deckJoinDeckCodes.DeckID,
 		deckJoinDeckCodes.DeckCreatedAt,
 		deckJoinDeckCodes.DeckArchivedAt.Time,
+		deckJoinDeckCodes.DeckFavoritedAt.Time,
 		deckJoinDeckCodes.DeckUserId,
 		deckJoinDeckCodes.DeckName,
 		deckJoinDeckCodes.DeckPrivateFlg,
@@ -411,6 +434,7 @@ func (i *Deck) FindByUserId(
 			decks.updated_at AS deck_updated_at,
 			decks.deleted_at AS deck_deleted_at,
 			decks.archived_at AS deck_archived_at,
+			user_favorite_decks.created_at AS deck_favorited_at,
 			decks.user_id AS deck_user_id,
 			decks.name AS deck_name,
 			decks.private_flg AS deck_private_flg,
@@ -440,6 +464,9 @@ func (i *Deck) FindByUserId(
 				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
+			LEFT JOIN user_favorite_decks
+				ON user_favorite_decks.deck_id = decks.id
+				AND user_favorite_decks.user_id = decks.user_id
 		`, uid,
 		).Where(
 			"decks.user_id = ? AND decks.archived_at IS NOT NULL AND decks.deleted_at IS NULL", uid,
@@ -463,6 +490,7 @@ func (i *Deck) FindByUserId(
 			decks.updated_at AS deck_updated_at,
 			decks.deleted_at AS deck_deleted_at,
 			decks.archived_at AS deck_archived_at,
+			user_favorite_decks.created_at AS deck_favorited_at,
 			decks.user_id AS deck_user_id,
 			decks.name AS deck_name,
 			decks.private_flg AS deck_private_flg,
@@ -492,11 +520,17 @@ func (i *Deck) FindByUserId(
 				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
+			LEFT JOIN user_favorite_decks
+				ON user_favorite_decks.deck_id = decks.id
+				AND user_favorite_decks.user_id = decks.user_id
 		`, uid,
 		).Where(
 			"decks.user_id = ? AND decks.archived_at IS NULL AND decks.deleted_at IS NULL", uid,
 		).Order(
-			"decks.created_at DESC",
+			// お気に入りのデッキを一覧の先頭に置く。カーソル取得側(FindByUserIdOnCursor)は
+			// 従来の並びのままにしてある。2ページ目以降でも先頭に差し込むと、
+			// 本来そのデッキが現れるページとで重複して返ることになるため。
+			"user_favorite_decks.created_at IS NULL, decks.created_at DESC",
 		).Limit(
 			limit,
 		).Offset(
@@ -526,6 +560,7 @@ func (i *Deck) FindByUserId(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
+			djdc.DeckFavoritedAt.Time,
 			djdc.DeckUserId,
 			djdc.DeckName,
 			djdc.DeckPrivateFlg,
@@ -563,6 +598,7 @@ func (i *Deck) FindByUserIdOnCursor(
 			decks.updated_at AS deck_updated_at,
 			decks.deleted_at AS deck_deleted_at,
 			decks.archived_at AS deck_archived_at,
+			user_favorite_decks.created_at AS deck_favorited_at,
 			decks.user_id AS deck_user_id,
 			decks.name AS deck_name,
 			decks.private_flg AS deck_private_flg,
@@ -592,6 +628,9 @@ func (i *Deck) FindByUserIdOnCursor(
 				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
+			LEFT JOIN user_favorite_decks
+				ON user_favorite_decks.deck_id = decks.id
+				AND user_favorite_decks.user_id = decks.user_id
 		`, uid,
 		).Where(
 			"decks.created_at < ? AND decks.user_id = ? AND decks.archived_at IS NOT NULL AND decks.deleted_at IS NULL", cursor, uid,
@@ -613,6 +652,7 @@ func (i *Deck) FindByUserIdOnCursor(
 			decks.updated_at AS deck_updated_at,
 			decks.deleted_at AS deck_deleted_at,
 			decks.archived_at AS deck_archived_at,
+			user_favorite_decks.created_at AS deck_favorited_at,
 			decks.user_id AS deck_user_id,
 			decks.name AS deck_name,
 			decks.private_flg AS deck_private_flg,
@@ -642,6 +682,9 @@ func (i *Deck) FindByUserIdOnCursor(
 				WHERE user_id = ? AND deleted_at IS NULL
 				ORDER BY deck_id, created_at DESC, updated_at DESC
 			) AS deck_codes ON decks.id = deck_codes.deck_id
+			LEFT JOIN user_favorite_decks
+				ON user_favorite_decks.deck_id = decks.id
+				AND user_favorite_decks.user_id = decks.user_id
 		`, uid,
 		).Where(
 			"decks.created_at < ? AND decks.user_id = ? AND decks.archived_at IS NULL AND decks.deleted_at IS NULL", cursor, uid,
@@ -674,6 +717,7 @@ func (i *Deck) FindByUserIdOnCursor(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
+			djdc.DeckFavoritedAt.Time,
 			djdc.DeckUserId,
 			djdc.DeckName,
 			djdc.DeckPrivateFlg,
@@ -711,6 +755,16 @@ func (i *Deck) DeleteByUserId(
 			return tx.Error
 		}
 
+		// お気に入りも同様に、decks を消す前にまとめて消す。
+		// 論理削除の decks と違いこちらは実削除のため、消し残すと
+		// 参照先の無い行が残る。
+		if tx := tx.Where(
+			"deck_id IN (?)",
+			tx.Model(&model.Deck{}).Select("id").Where("user_id = ?", uid),
+		).Delete(&model.UserFavoriteDeck{}); tx.Error != nil {
+			return tx.Error
+		}
+
 		if tx := tx.Where("user_id = ?", uid).Delete(&model.Deck{}); tx.Error != nil {
 			return tx.Error
 		}
@@ -732,6 +786,7 @@ func (i *Deck) Save(
 		archivedAt.Valid = true
 	}
 
+	// お気に入りは user_favorite_decks で管理しているため、ここでは書き戻さない。
 	deck := model.NewDeck(
 		entity.ID,
 		entity.CreatedAt,
@@ -826,6 +881,12 @@ func (i *Deck) Delete(
 			if tx := tx.Where("id = ?", deckCode.ID).Delete(&model.DeckCode{}); tx.Error != nil {
 				return tx.Error
 			}
+		}
+
+		// このデッキへのお気に入りも解除する。decks は論理削除だがこちらは実削除のため、
+		// 残すと参照先の無い行になり、お気に入りの件数にも数えられてしまう。
+		if tx := tx.Where("deck_id = ?", id).Delete(&model.UserFavoriteDeck{}); tx.Error != nil {
+			return tx.Error
 		}
 
 		if tx := tx.Where("id = ?", id).Delete(&model.Deck{}); tx.Error != nil {

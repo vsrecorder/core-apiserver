@@ -72,6 +72,14 @@ func DeckUnarchiveAuthorizationMiddleware(repository repository.DeckInterface) g
 	return DeckAuthorizationMiddleware(repository)
 }
 
+func DeckFavoriteAuthorizationMiddleware(repository repository.DeckInterface) gin.HandlerFunc {
+	return DeckAuthorizationMiddleware(repository)
+}
+
+func DeckUnfavoriteAuthorizationMiddleware(repository repository.DeckInterface) gin.HandlerFunc {
+	return DeckAuthorizationMiddleware(repository)
+}
+
 func DeckDeleteAuthorizationMiddleware(deckRepository repository.DeckInterface, recordRepository repository.RecordInterface) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := helper.GetId(ctx)

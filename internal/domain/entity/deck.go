@@ -6,6 +6,7 @@ type Deck struct {
 	ID             string
 	CreatedAt      time.Time
 	ArchivedAt     time.Time
+	FavoritedAt    time.Time
 	UserId         string
 	Name           string
 	PrivateFlg     bool
@@ -17,6 +18,7 @@ func NewDeck(
 	id string,
 	createdAt time.Time,
 	archivedAt time.Time,
+	favoritedAt time.Time,
 	userId string,
 	name string,
 	privateFlg bool,
@@ -27,6 +29,7 @@ func NewDeck(
 		ID:             id,
 		CreatedAt:      createdAt,
 		ArchivedAt:     archivedAt,
+		FavoritedAt:    favoritedAt,
 		UserId:         userId,
 		Name:           name,
 		PrivateFlg:     privateFlg,

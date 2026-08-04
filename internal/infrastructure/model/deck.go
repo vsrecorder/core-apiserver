@@ -24,6 +24,7 @@ type DeckJoinDeckCode struct {
 	DeckUpdatedAt          time.Time
 	DeckDeletedAt          gorm.DeletedAt
 	DeckArchivedAt         sql.NullTime
+	DeckFavoritedAt        sql.NullTime
 	DeckUserId             string
 	DeckName               string
 	DeckPrivateFlg         bool

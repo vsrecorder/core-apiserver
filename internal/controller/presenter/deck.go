@@ -28,12 +28,13 @@ func NewDeckGetResponse(
 		ret = append(ret, &dto.DeckData{
 			Cursor: base64.StdEncoding.EncodeToString([]byte(deck.CreatedAt.Format(time.RFC3339))),
 			Data: &dto.DeckResponse{
-				ID:         deck.ID,
-				CreatedAt:  deck.CreatedAt,
-				ArchivedAt: deck.ArchivedAt,
-				UserId:     deck.UserId,
-				Name:       deck.Name,
-				PrivateFlg: deck.PrivateFlg,
+				ID:          deck.ID,
+				CreatedAt:   deck.CreatedAt,
+				ArchivedAt:  deck.ArchivedAt,
+				FavoritedAt: deck.FavoritedAt,
+				UserId:      deck.UserId,
+				Name:        deck.Name,
+				PrivateFlg:  deck.PrivateFlg,
 				LatestDeckCode: dto.DeckCodeResponse{
 					ID:             deck.LatestDeckCode.ID,
 					CreatedAt:      deck.LatestDeckCode.CreatedAt,
@@ -70,12 +71,13 @@ func NewDeckGetAllResponse(
 		}
 
 		ret = append(ret, dto.DeckResponse{
-			ID:         deck.ID,
-			CreatedAt:  deck.CreatedAt,
-			ArchivedAt: deck.ArchivedAt,
-			UserId:     deck.UserId,
-			Name:       deck.Name,
-			PrivateFlg: deck.PrivateFlg,
+			ID:          deck.ID,
+			CreatedAt:   deck.CreatedAt,
+			ArchivedAt:  deck.ArchivedAt,
+			FavoritedAt: deck.FavoritedAt,
+			UserId:      deck.UserId,
+			Name:        deck.Name,
+			PrivateFlg:  deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
 				ID:             deck.LatestDeckCode.ID,
 				CreatedAt:      deck.LatestDeckCode.CreatedAt,
@@ -105,12 +107,13 @@ func NewDeckGetByIdResponse(
 
 	return &dto.DeckGetByIdResponse{
 		DeckResponse: dto.DeckResponse{
-			ID:         deck.ID,
-			CreatedAt:  deck.CreatedAt,
-			ArchivedAt: deck.ArchivedAt,
-			UserId:     deck.UserId,
-			Name:       deck.Name,
-			PrivateFlg: deck.PrivateFlg,
+			ID:          deck.ID,
+			CreatedAt:   deck.CreatedAt,
+			ArchivedAt:  deck.ArchivedAt,
+			FavoritedAt: deck.FavoritedAt,
+			UserId:      deck.UserId,
+			Name:        deck.Name,
+			PrivateFlg:  deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
 				ID:             deck.LatestDeckCode.ID,
 				CreatedAt:      deck.LatestDeckCode.CreatedAt,
@@ -146,12 +149,13 @@ func NewDeckGetByUserIdResponse(
 		ret = append(ret, &dto.DeckData{
 			Cursor: base64.StdEncoding.EncodeToString([]byte(deck.CreatedAt.Format(time.RFC3339))),
 			Data: &dto.DeckResponse{
-				ID:         deck.ID,
-				CreatedAt:  deck.CreatedAt,
-				ArchivedAt: deck.ArchivedAt,
-				UserId:     deck.UserId,
-				Name:       deck.Name,
-				PrivateFlg: deck.PrivateFlg,
+				ID:          deck.ID,
+				CreatedAt:   deck.CreatedAt,
+				ArchivedAt:  deck.ArchivedAt,
+				FavoritedAt: deck.FavoritedAt,
+				UserId:      deck.UserId,
+				Name:        deck.Name,
+				PrivateFlg:  deck.PrivateFlg,
 				LatestDeckCode: dto.DeckCodeResponse{
 					ID:             deck.LatestDeckCode.ID,
 					CreatedAt:      deck.LatestDeckCode.CreatedAt,
@@ -188,12 +192,13 @@ func NewDeckCreateResponse(
 
 	return &dto.DeckCreateResponse{
 		DeckResponse: dto.DeckResponse{
-			ID:         deck.ID,
-			CreatedAt:  deck.CreatedAt,
-			ArchivedAt: deck.ArchivedAt,
-			UserId:     deck.UserId,
-			Name:       deck.Name,
-			PrivateFlg: deck.PrivateFlg,
+			ID:          deck.ID,
+			CreatedAt:   deck.CreatedAt,
+			ArchivedAt:  deck.ArchivedAt,
+			FavoritedAt: deck.FavoritedAt,
+			UserId:      deck.UserId,
+			Name:        deck.Name,
+			PrivateFlg:  deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
 				ID:             deck.LatestDeckCode.ID,
 				CreatedAt:      deck.LatestDeckCode.CreatedAt,
@@ -221,12 +226,13 @@ func NewDeckUpdateResponse(
 
 	return &dto.DeckUpdateResponse{
 		DeckResponse: dto.DeckResponse{
-			ID:         deck.ID,
-			CreatedAt:  deck.CreatedAt,
-			ArchivedAt: deck.ArchivedAt,
-			UserId:     deck.UserId,
-			Name:       deck.Name,
-			PrivateFlg: deck.PrivateFlg,
+			ID:          deck.ID,
+			CreatedAt:   deck.CreatedAt,
+			ArchivedAt:  deck.ArchivedAt,
+			FavoritedAt: deck.FavoritedAt,
+			UserId:      deck.UserId,
+			Name:        deck.Name,
+			PrivateFlg:  deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
 				ID:             deck.LatestDeckCode.ID,
 				CreatedAt:      deck.LatestDeckCode.CreatedAt,
@@ -254,12 +260,81 @@ func NewDeckArchiveResponse(
 
 	return &dto.DeckArchiveResponse{
 		DeckResponse: dto.DeckResponse{
-			ID:         deck.ID,
-			CreatedAt:  deck.CreatedAt,
-			ArchivedAt: deck.ArchivedAt,
-			UserId:     deck.UserId,
-			Name:       deck.Name,
-			PrivateFlg: deck.PrivateFlg,
+			ID:          deck.ID,
+			CreatedAt:   deck.CreatedAt,
+			ArchivedAt:  deck.ArchivedAt,
+			FavoritedAt: deck.FavoritedAt,
+			UserId:      deck.UserId,
+			Name:        deck.Name,
+			PrivateFlg:  deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				Memo:           deck.LatestDeckCode.Memo,
+			},
+			PokemonSprites: pokemonSpritesResponse,
+		},
+	}
+}
+
+func NewDeckFavoriteResponse(
+	deck *entity.Deck,
+) *dto.DeckFavoriteResponse {
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range deck.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
+		})
+	}
+
+	return &dto.DeckFavoriteResponse{
+		DeckResponse: dto.DeckResponse{
+			ID:          deck.ID,
+			CreatedAt:   deck.CreatedAt,
+			ArchivedAt:  deck.ArchivedAt,
+			FavoritedAt: deck.FavoritedAt,
+			UserId:      deck.UserId,
+			Name:        deck.Name,
+			PrivateFlg:  deck.PrivateFlg,
+			LatestDeckCode: dto.DeckCodeResponse{
+				ID:             deck.LatestDeckCode.ID,
+				CreatedAt:      deck.LatestDeckCode.CreatedAt,
+				UserId:         deck.LatestDeckCode.UserId,
+				DeckId:         deck.LatestDeckCode.DeckId,
+				Code:           deck.LatestDeckCode.Code,
+				PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
+				Memo:           deck.LatestDeckCode.Memo,
+			},
+			PokemonSprites: pokemonSpritesResponse,
+		},
+	}
+}
+
+func NewDeckUnfavoriteResponse(
+	deck *entity.Deck,
+) *dto.DeckUnfavoriteResponse {
+	pokemonSpritesResponse := []*dto.PokemonSpriteResponse{}
+	for _, pokemonSprite := range deck.PokemonSprites {
+		pokemonSpritesResponse = append(pokemonSpritesResponse, &dto.PokemonSpriteResponse{
+			ID:       pokemonSprite.ID,
+			Position: pokemonSprite.Position,
+		})
+	}
+
+	return &dto.DeckUnfavoriteResponse{
+		DeckResponse: dto.DeckResponse{
+			ID:          deck.ID,
+			CreatedAt:   deck.CreatedAt,
+			ArchivedAt:  deck.ArchivedAt,
+			FavoritedAt: deck.FavoritedAt,
+			UserId:      deck.UserId,
+			Name:        deck.Name,
+			PrivateFlg:  deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
 				ID:             deck.LatestDeckCode.ID,
 				CreatedAt:      deck.LatestDeckCode.CreatedAt,
@@ -287,12 +362,13 @@ func NewDeckUnarchiveResponse(
 
 	return &dto.DeckUnarchiveResponse{
 		DeckResponse: dto.DeckResponse{
-			ID:         deck.ID,
-			CreatedAt:  deck.CreatedAt,
-			ArchivedAt: deck.ArchivedAt,
-			UserId:     deck.UserId,
-			Name:       deck.Name,
-			PrivateFlg: deck.PrivateFlg,
+			ID:          deck.ID,
+			CreatedAt:   deck.CreatedAt,
+			ArchivedAt:  deck.ArchivedAt,
+			FavoritedAt: deck.FavoritedAt,
+			UserId:      deck.UserId,
+			Name:        deck.Name,
+			PrivateFlg:  deck.PrivateFlg,
 			LatestDeckCode: dto.DeckCodeResponse{
 				ID:             deck.LatestDeckCode.ID,
 				CreatedAt:      deck.LatestDeckCode.CreatedAt,

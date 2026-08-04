@@ -87,6 +87,21 @@ func (mr *MockDeckInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeckInterface)(nil).Delete), ctx, id)
 }
 
+// Favorite mocks base method.
+func (m *MockDeckInterface) Favorite(ctx context.Context, id string) (*entity.Deck, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Favorite", ctx, id)
+	ret0, _ := ret[0].(*entity.Deck)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Favorite indicates an expected call of Favorite.
+func (mr *MockDeckInterfaceMockRecorder) Favorite(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Favorite", reflect.TypeOf((*MockDeckInterface)(nil).Favorite), ctx, id)
+}
+
 // Find mocks base method.
 func (m *MockDeckInterface) Find(ctx context.Context, limit, offset int) ([]*entity.Deck, error) {
 	m.ctrl.T.Helper()
@@ -190,6 +205,21 @@ func (m *MockDeckInterface) Unarchive(ctx context.Context, id string) (*entity.D
 func (mr *MockDeckInterfaceMockRecorder) Unarchive(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unarchive", reflect.TypeOf((*MockDeckInterface)(nil).Unarchive), ctx, id)
+}
+
+// Unfavorite mocks base method.
+func (m *MockDeckInterface) Unfavorite(ctx context.Context, id string) (*entity.Deck, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unfavorite", ctx, id)
+	ret0, _ := ret[0].(*entity.Deck)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Unfavorite indicates an expected call of Unfavorite.
+func (mr *MockDeckInterfaceMockRecorder) Unfavorite(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unfavorite", reflect.TypeOf((*MockDeckInterface)(nil).Unfavorite), ctx, id)
 }
 
 // Update mocks base method.

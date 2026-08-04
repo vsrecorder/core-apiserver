@@ -355,6 +355,13 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	controller.NewUserDailyActivity(
+		r,
+		usecase.NewUserDailyActivity(
+			infrastructure.NewUserDailyActivity(db),
+		),
+	).RegisterRoute(relativePath)
+
 	controller.NewDesignation(
 		r,
 		usecase.NewDesignation(

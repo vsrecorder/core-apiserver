@@ -636,6 +636,40 @@ CREATE TABLE user_streaks (
 
 
 
+-- エンゲージメント計測: 「見る」利用の日次シグナル (USER_DAILY_ACTIVITIES_PLAN.md)
+--
+-- records/decks の「作成」しか活動として測れていないため、戦績を見返しに来ただけの
+-- ユーザーが活動として計上されない。ログイン済みユーザーの1日の利用を
+-- (user_id, date, category) 単位で1行 upsert し、記録経験者を
+--   「記録あり / 見返しのみ / 訪問のみ / 不在」の4層に分解できるようにする。
+--
+-- category の採番ルール:
+--   'visit'  = その日サイトを開いた (全ページ共通。必ず送られる)
+--   'review' = その日自分の戦績を見返した (対象ルートは USER_DAILY_ACTIVITIES_PLAN.md §2)
+--   新しいカテゴリを追加するときはアプリ側の定義
+--   (entity.UserDailyActivityCategories / webapp の CATEGORY_RULES) に足すだけでよく、
+--   このテーブルの変更は不要。意図的に CHECK 制約を付けていないのはそのため
+--   (制約を付けるとカテゴリ追加のたびに本番のマイグレーションが必要になる)。
+--   一度使ったカテゴリ名は意味を変えない・使い回さない(過去データの解釈が壊れるため)。
+--
+-- signal_count はクライアント側で日次1回に間引いて送るため「回数」ではなく実質フラグ
+-- (1。複数端末・localStorageクリア時のみ増える)。「その日開いたか」の判定は
+-- カテゴリを問わず「行の存在」で行い、値の大小には意味を持たせない。
+CREATE TABLE user_daily_activities (
+    user_id      VARCHAR(32) NOT NULL,
+    date         DATE        NOT NULL,           -- JST基準の日付 (アプリを開いた日)
+    category     VARCHAR(32) NOT NULL,           -- 'visit' / 'review' / ...
+    signal_count INT         NOT NULL DEFAULT 1, -- その日そのカテゴリで受け取ったシグナル数
+    updated_at   TIMESTAMP   NOT NULL,           -- 最終シグナル時刻(JST)。通知→来訪の遅延測定に使う
+    PRIMARY KEY (user_id, date, category)
+);
+
+-- 集計は「直近N日 × カテゴリ」で走査するため、date を先頭に置いたインデックスを別に持つ
+-- (PKの先頭は user_id なので日付範囲の絞り込みには効かない)。
+CREATE INDEX idx_user_daily_activities_date_category ON user_daily_activities (date, category);
+
+
+
 -- 施策D: 記録ストリーク・実績バッジ (MOTIVATION.md 施策D / BADGE_STREAK_PLAN.md)
 --
 -- badge_definitions.id の採番ルール:
@@ -876,6 +910,7 @@ GRANT SELECT ON pokemon_cards           TO grafana;
 GRANT SELECT ON badge_definitions       TO grafana;
 GRANT SELECT ON user_badges             TO grafana;
 GRANT SELECT ON user_streaks            TO grafana;
+GRANT SELECT ON user_daily_activities   TO grafana;
 
 GRANT SELECT ON user_environment_badges TO grafana;
 

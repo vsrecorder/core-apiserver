@@ -199,6 +199,84 @@ func TestIntegrationTonamelEventStore(t *testing.T) {
 	})
 }
 
+// 「見る」利用の日次シグナル(user_daily_activities)のupsertを実DBで確認する。
+// (user_id, date, category)のPKで1日1行に収れんすること、カテゴリが違えば別行になること、
+// 再訪でsignal_countが積まれることは、閲覧WAU・記録経験者の4層分解
+// (USER_DAILY_ACTIVITIES_PLAN.md §7)の前提になる。
+// sqlmockではSQL文字列しか見られないため、実際に行がどう残るかをここで検証する。
+func TestIntegrationUserDailyActivityRepository(t *testing.T) {
+	db := setupIntegrationDB(t, "user_daily_activities")
+	r := NewUserDailyActivity(db)
+	ctx := context.Background()
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	morning := time.Date(2026, 8, 4, 10, 0, 0, 0, time.Local)
+	night := time.Date(2026, 8, 4, 21, 30, 0, 0, time.Local)
+
+	// サブテスト間で干渉しないよう、ケースごとに別の日付を使う
+	day1 := time.Date(2026, 8, 4, 0, 0, 0, 0, time.Local)
+	day2 := time.Date(2026, 8, 5, 0, 0, 0, 0, time.Local)
+	day3 := time.Date(2026, 8, 6, 0, 0, 0, 0, time.Local)
+
+	countOf := func(t *testing.T, date time.Time) int64 {
+		t.Helper()
+
+		var count int64
+		require.NoError(t, db.Model(&model.UserDailyActivity{}).
+			Where("user_id = ? AND date = ?", uid, date).Count(&count).Error)
+
+		return count
+	}
+
+	findOne := func(t *testing.T, date time.Time, category string) model.UserDailyActivity {
+		t.Helper()
+
+		var m model.UserDailyActivity
+		require.NoError(t, db.Where("user_id = ? AND date = ? AND category = ?", uid, date, category).
+			First(&m).Error)
+
+		return m
+	}
+
+	t.Run("正常系_同日同カテゴリの再訪は1行のままsignal_countが積まれる", func(t *testing.T) {
+		require.NoError(t, r.Touch(ctx, []*entity.UserDailyActivity{
+			entity.NewUserDailyActivity(uid, day1, entity.UserDailyActivityCategoryVisit, morning),
+		}))
+		require.NoError(t, r.Touch(ctx, []*entity.UserDailyActivity{
+			entity.NewUserDailyActivity(uid, day1, entity.UserDailyActivityCategoryVisit, night),
+		}))
+
+		require.Equal(t, int64(1), countOf(t, day1))
+
+		m := findOne(t, day1, entity.UserDailyActivityCategoryVisit)
+		require.Equal(t, 2, m.SignalCount)
+		// updated_atは最後のシグナル時刻へ更新する(通知→来訪の遅延測定に使うため)
+		require.Equal(t, night, m.UpdatedAt.Local())
+	})
+
+	t.Run("正常系_同日でもカテゴリが違えば別行になる", func(t *testing.T) {
+		require.NoError(t, r.Touch(ctx, []*entity.UserDailyActivity{
+			entity.NewUserDailyActivity(uid, day2, entity.UserDailyActivityCategoryVisit, morning),
+			entity.NewUserDailyActivity(uid, day2, entity.UserDailyActivityCategoryReview, morning),
+		}))
+
+		require.Equal(t, int64(2), countOf(t, day2))
+		require.Equal(t, 1, findOne(t, day2, entity.UserDailyActivityCategoryVisit).SignalCount)
+		require.Equal(t, 1, findOne(t, day2, entity.UserDailyActivityCategoryReview).SignalCount)
+	})
+
+	t.Run("正常系_reviewだけが届いても行は作られる", func(t *testing.T) {
+		// 「その日開いたか」は行の存在で判定するため(visit行の有無では判定しない)、
+		// visitのビーコンが落ちてreviewだけ届いた場合も訪問として数えられる必要がある。
+		require.NoError(t, r.Touch(ctx, []*entity.UserDailyActivity{
+			entity.NewUserDailyActivity(uid, day3, entity.UserDailyActivityCategoryReview, morning),
+		}))
+
+		require.Equal(t, int64(1), countOf(t, day3))
+		require.Equal(t, 1, findOne(t, day3, entity.UserDailyActivityCategoryReview).SignalCount)
+	})
+}
+
 // 退会時の一括削除(DeleteByUserId)が、退会者の関連データを漏れなく消し、かつ
 // 他ユーザのデータを巻き込まないことを実DBで確認する。
 // 一括削除はサブクエリで対象を絞るため、条件を1つ間違えると他人のデータまで

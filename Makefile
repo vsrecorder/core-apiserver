@@ -54,6 +54,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/badge_definition.go -destination=./internal/mock/mock_repository/badge_definition.go
 	mockgen -source=./internal/domain/repository/user_badge.go -destination=./internal/mock/mock_repository/user_badge.go
 	mockgen -source=./internal/domain/repository/user_streak.go -destination=./internal/mock/mock_repository/user_streak.go
+	mockgen -source=./internal/domain/repository/user_daily_activity.go -destination=./internal/mock/mock_repository/user_daily_activity.go
 	mockgen -source=./internal/domain/repository/badge_stats.go -destination=./internal/mock/mock_repository/badge_stats.go
 	mockgen -source=./internal/domain/repository/designation.go -destination=./internal/mock/mock_repository/designation.go
 	mockgen -source=./internal/domain/repository/designation_stats.go -destination=./internal/mock/mock_repository/designation_stats.go
@@ -86,6 +87,7 @@ mockgen:
 	mockgen -source=./internal/usecase/standard_regulation.go -destination=./internal/mock/mock_usecase/standard_regulation.go
 	mockgen -source=./internal/usecase/badge.go -destination=./internal/mock/mock_usecase/badge.go
 	mockgen -source=./internal/usecase/streak.go -destination=./internal/mock/mock_usecase/streak.go
+	mockgen -source=./internal/usecase/user_daily_activity.go -destination=./internal/mock/mock_usecase/user_daily_activity.go
 	mockgen -source=./internal/usecase/badge_evaluation.go -destination=./internal/mock/mock_usecase/badge_evaluation.go
 	mockgen -source=./internal/usecase/designation_evaluation.go -destination=./internal/mock/mock_usecase/designation_evaluation.go
 	mockgen -source=./internal/usecase/designation.go -destination=./internal/mock/mock_usecase/designation.go

@@ -50,4 +50,9 @@ var (
 	// 例: 紐づくイベント種別(公式/Tonamel/フレンド/自由形式)がちょうど1つでない。
 	// HTTP では 400 Bad Request に対応する。
 	ErrInvalidRecord = errors.New("invalid record")
+
+	// ErrNoKnownActivityCategory は日次活動の記録リクエストに、既知の計測カテゴリが
+	// 1つも含まれていない場合に返す。未知のカテゴリが混ざっているだけでは返さない
+	// (既知のぶんだけ記録する)。HTTP では 400 Bad Request に対応する。
+	ErrNoKnownActivityCategory = errors.New("no known activity category")
 )

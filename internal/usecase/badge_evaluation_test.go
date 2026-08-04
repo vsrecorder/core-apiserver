@@ -147,8 +147,8 @@ func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
 		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
 		lastWeek := mondayOf(time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local))
-		// フリーズ枠の上限は2。上限まで使い切った(FreezeUsedCount=2)状態を再現する。
-		current := entity.NewUserStreak("user-1", 4, 4, 2, 0, lastWeek, time.Now())
+		// 上限まで使い切った(FreezeUsedCount=StreakMaxFreezeCount)状態を再現する。
+		current := entity.NewUserStreak("user-1", 4, 4, StreakMaxFreezeCount, 0, lastWeek, time.Now())
 
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
 		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -191,24 +191,24 @@ func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
 		require.Equal(t, 1, streak.CurrentWeeks)
 	})
 
-	t.Run("正常系_フリーズ枠は上限(2)まで消費できる", func(t *testing.T) {
+	t.Run("正常系_フリーズ枠は上限まで消費できる", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
 
-		// 既に1枠消費済み。もう1枠残っているので1週の空白でも継続扱いになる。
+		// 残り1枠まで消費済み。まだ枠が残っているので1週の空白でも継続扱いになる。
 		lastWeek := mondayOf(time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local))
-		current := entity.NewUserStreak("user-1", 5, 5, 1, 0, lastWeek, time.Now())
+		current := entity.NewUserStreak("user-1", 5, 5, StreakMaxFreezeCount-1, 0, lastWeek, time.Now())
 
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
 		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(ctx context.Context, streak *entity.UserStreak) error {
 				require.Equal(t, 6, streak.CurrentWeeks)
-				require.Equal(t, 2, streak.FreezeUsedCount)
+				require.Equal(t, StreakMaxFreezeCount, streak.FreezeUsedCount)
 				return nil
 			},
 		)
 
-		// 2週間後(1週間の空白) → 2枠目のフリーズを消費
+		// 2週間後(1週間の空白) → 最後の1枠を消費
 		twoWeeksLater := time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local)
 		streak, err := u.updateStreak(context.Background(), "user-1", twoWeeksLater, twoWeeksLater)
 

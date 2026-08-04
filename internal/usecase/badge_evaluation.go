@@ -45,7 +45,7 @@ const streakFreezeMaxGapWeeks = 2
 // ストリークがリセットされると再び上限までフリーズを使えるようになる。また、フリーズを
 // 使わずに streakFreezeRegenWeeks 週連続で記録するごとに使用済み枠が1つ回復する
 // (下記 streakFreezeRegenWeeks 参照)。
-const StreakMaxFreezeCount = 2
+const StreakMaxFreezeCount = 3
 
 // streakFreezeRegenWeeks は、フリーズを使わずに連続記録した週数がこの数に達するごとに
 // 使用済みフリーズ枠を1つ回復する(回復後はカウンタを0に戻し、次の回復まで再び数え直す)。

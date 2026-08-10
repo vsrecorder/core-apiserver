@@ -20,6 +20,7 @@ type MatchRequest struct {
 	Memo                 string                  `json:"memo"`
 	Games                []*GameRequest          `json:"games"`
 	PokemonSprites       []*PokemonSpriteRequest `json:"pokemon_sprites"`
+	TagIds               []string                `json:"tag_ids"`
 }
 
 type MatchCreateRequest struct {
@@ -51,6 +52,7 @@ type MatchResponse struct {
 	Memo                 string                   `json:"memo"`
 	Games                []*GameResponse          `json:"games"`
 	PokemonSprites       []*PokemonSpriteResponse `json:"pokemon_sprites"`
+	Tags                 []*TagResponse           `json:"tags"`
 }
 
 type MatchGetByIdResponse struct {

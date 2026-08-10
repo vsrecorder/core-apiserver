@@ -246,6 +246,7 @@ func (c *Deck) Create(ctx *gin.Context) {
 		req.DeckCode,
 		req.PrivateDeckCodeFlg,
 		pokemonSprites,
+		req.TagIds,
 	)
 
 	deck, err := c.usecase.Create(context.Background(), param)
@@ -281,6 +282,7 @@ func (c *Deck) Update(ctx *gin.Context) {
 		req.Name,
 		req.PrivateFlg,
 		pokemonSprites,
+		req.TagIds,
 	)
 
 	deck, err := c.usecase.Update(context.Background(), id, param)

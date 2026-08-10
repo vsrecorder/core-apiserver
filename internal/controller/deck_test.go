@@ -608,6 +608,7 @@ func test_DeckController_Create(t *testing.T) {
 			"",
 			false,
 			nil,
+			nil,
 		)
 
 		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
@@ -657,6 +658,7 @@ func test_DeckController_Create(t *testing.T) {
 			"",
 			false,
 			[]*usecase.PokemonSpriteParam{usecase.NewPokemonSpriteParam("pikachu")},
+			nil,
 		)
 
 		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
@@ -807,6 +809,7 @@ func test_DeckController_Update(t *testing.T) {
 			"更新後のデッキ",
 			true,
 			[]*usecase.PokemonSpriteParam{usecase.NewPokemonSpriteParam("pikachu")},
+			nil,
 		)
 
 		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(deck, nil)

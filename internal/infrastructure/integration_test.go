@@ -417,3 +417,216 @@ func TestIntegrationUserFavoriteDeckRepository(t *testing.T) {
 		require.Empty(t, favorites)
 	})
 }
+
+// タグは tags マスタと deck_tags / deck_code_tags 中間テーブルにまたがる。
+// 生SQLの INSERT/DELETE(replaceTags)と JOIN 読み出し(findTagsBy*)、削除時の連鎖は
+// sqlmock では確かめられないため、実DBで一連の往復を見る。
+func TestIntegrationTagRepository(t *testing.T) {
+	db := setupIntegrationDB(t, "deck_code_tags", "deck_tags", "tags", "deck_codes", "decks")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	const otherUid = "KBp7roRDZobZg1t0OPzFR1kvLeO2"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	// 付与先(FK制約があるため先に用意する)
+	require.NoError(t, db.Create(&model.Deck{ID: "deck-t1", CreatedAt: now, UpdatedAt: now, UserId: uid, Name: "デッキ"}).Error)
+	require.NoError(t, db.Create(&model.DeckCode{ID: "dc-t1", CreatedAt: now, UpdatedAt: now, UserId: uid, DeckId: "deck-t1", Code: "aaaa"}).Error)
+
+	ctx := context.Background()
+	r := NewTag(db)
+	deckRepository := NewDeck(db)
+	deckCodeRepository := NewDeckCode(db)
+
+	t.Run("正常系_タグを保存して一覧と名前引きで取得できる", func(t *testing.T) {
+		require.NoError(t, r.Save(ctx, entity.NewTag("tag-1", now, now, uid, "アグロ", "#ff0000", false)))
+		require.NoError(t, r.Save(ctx, entity.NewTag("tag-2", now.Add(time.Second), now, uid, "コントロール", "", false)))
+		// 他人のタグは混ざってはいけない
+		require.NoError(t, r.Save(ctx, entity.NewTag("tag-x", now, now, otherUid, "アグロ", "", false)))
+
+		tags, err := r.FindByUserId(ctx, uid)
+		require.NoError(t, err)
+		require.Len(t, tags, 2)
+		// created_at の降順
+		require.Equal(t, "tag-2", tags[0].ID)
+		require.Equal(t, "tag-1", tags[1].ID)
+		require.Equal(t, "#ff0000", tags[1].Color)
+
+		got, err := r.FindByUserIdAndName(ctx, uid, "アグロ")
+		require.NoError(t, err)
+		require.Equal(t, "tag-1", got.ID)
+
+		_, err = r.FindByUserIdAndName(ctx, uid, "存在しない")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+
+	t.Run("正常系_FindAttachableByIdsは付与できるタグだけ返す", func(t *testing.T) {
+		// 自分のタグ + 存在しないID + 他人のタグ を混ぜても、自分のものだけ返る
+		tags, err := r.FindAttachableByIds(ctx, []string{"tag-1", "tag-2", "not-exist", "tag-x"}, uid)
+		require.NoError(t, err)
+		require.Len(t, tags, 2)
+
+		// 他人のIDだけを自分のuidで引いても空
+		tags, err = r.FindAttachableByIds(ctx, []string{"tag-x"}, uid)
+		require.NoError(t, err)
+		require.Empty(t, tags)
+	})
+
+	t.Run("正常系_ReplaceDeckTagsで付与を差分更新しデッキ読み出しに載る", func(t *testing.T) {
+		require.NoError(t, r.ReplaceDeckTags(ctx, "deck-t1", []string{"tag-1", "tag-2", "tag-1"})) // 重複は無視される
+
+		deck, err := deckRepository.FindById(ctx, "deck-t1")
+		require.NoError(t, err)
+		require.Len(t, deck.Tags, 2)
+		// 付与した順(tag-1, tag-2)で並ぶ。tag-1 の created_at は tag-2 より前なので、
+		// これは created_at 降順とは逆であり、付与順(position)で並んでいることを保証する。
+		require.Equal(t, "tag-1", deck.Tags[0].ID)
+		require.Equal(t, "tag-2", deck.Tags[1].ID)
+
+		// DBに保存される position は1始まり(0始まりではない)であることを実値で確認する。
+		var positions []int
+		require.NoError(t, db.Raw(
+			"SELECT position FROM deck_tags WHERE deck_id = ? ORDER BY position", "deck-t1",
+		).Scan(&positions).Error)
+		require.Equal(t, []int{1, 2}, positions)
+
+		// 付与し直すと順序も入れ替わる(tag-2 を先に付ける)
+		require.NoError(t, r.ReplaceDeckTags(ctx, "deck-t1", []string{"tag-2", "tag-1"}))
+		deck, err = deckRepository.FindById(ctx, "deck-t1")
+		require.NoError(t, err)
+		require.Len(t, deck.Tags, 2)
+		require.Equal(t, "tag-2", deck.Tags[0].ID)
+		require.Equal(t, "tag-1", deck.Tags[1].ID)
+
+		// 集合を tag-2 だけに絞る
+		require.NoError(t, r.ReplaceDeckTags(ctx, "deck-t1", []string{"tag-2"}))
+		deck, err = deckRepository.FindById(ctx, "deck-t1")
+		require.NoError(t, err)
+		require.Len(t, deck.Tags, 1)
+		require.Equal(t, "tag-2", deck.Tags[0].ID)
+
+		// 空にすると付与が消える
+		require.NoError(t, r.ReplaceDeckTags(ctx, "deck-t1", []string{}))
+		deck, err = deckRepository.FindById(ctx, "deck-t1")
+		require.NoError(t, err)
+		require.Empty(t, deck.Tags)
+	})
+
+	t.Run("正常系_ReplaceDeckCodeTagsで付与しデッキコード読み出しに載る", func(t *testing.T) {
+		require.NoError(t, r.ReplaceDeckCodeTags(ctx, "dc-t1", []string{"tag-1"}))
+
+		deckcode, err := deckCodeRepository.FindById(ctx, "dc-t1")
+		require.NoError(t, err)
+		require.Len(t, deckcode.Tags, 1)
+		require.Equal(t, "tag-1", deckcode.Tags[0].ID)
+	})
+
+	t.Run("正常系_タグ削除で本体は論理削除され中間テーブルの付与も消える", func(t *testing.T) {
+		// deck-t1 に tag-1 を付け直してから tag-1 を消す
+		require.NoError(t, r.ReplaceDeckTags(ctx, "deck-t1", []string{"tag-1"}))
+
+		require.NoError(t, r.Delete(ctx, "tag-1"))
+
+		// 論理削除されて名前引き・ID引きの対象から外れる
+		_, err := r.FindByUserIdAndName(ctx, uid, "アグロ")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		_, err = r.FindById(ctx, "tag-1")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+
+		// 付与(deck_tags / deck_code_tags)も消えている
+		deck, err := deckRepository.FindById(ctx, "deck-t1")
+		require.NoError(t, err)
+		require.Empty(t, deck.Tags)
+
+		deckcode, err := deckCodeRepository.FindById(ctx, "dc-t1")
+		require.NoError(t, err)
+		require.Empty(t, deckcode.Tags)
+
+		// 一覧には残った tag-2 だけが返る
+		tags, err := r.FindByUserId(ctx, uid)
+		require.NoError(t, err)
+		require.Len(t, tags, 1)
+		require.Equal(t, "tag-2", tags[0].ID)
+	})
+
+	t.Run("正常系_プリセットタグは一覧と別枠で扱われ誰でも付与できる", func(t *testing.T) {
+		// プリセット(全ユーザー共通): user_id='' / preset_flg=true
+		require.NoError(t, r.Save(ctx, entity.NewTag("preset-1", now, now, "", "マスターボール", "#FF007F", true)))
+
+		// ユーザーの一覧(FindByUserId)にはプリセットは出ない
+		userTags, err := r.FindByUserId(ctx, uid)
+		require.NoError(t, err)
+		require.Len(t, userTags, 1)
+		require.Equal(t, "tag-2", userTags[0].ID)
+
+		// プリセット一覧には出る
+		presets, err := r.FindPresets(ctx)
+		require.NoError(t, err)
+		require.Len(t, presets, 1)
+		require.Equal(t, "preset-1", presets[0].ID)
+		require.True(t, presets[0].PresetFlg)
+
+		// 付与可否: 自分のタグ + プリセットは付与できるが、他人のタグは付与できない
+		attachable, err := r.FindAttachableByIds(ctx, []string{"tag-2", "preset-1", "tag-x"}, uid)
+		require.NoError(t, err)
+		require.Len(t, attachable, 2)
+
+		// ユーザーが自分のデッキにプリセットを付与でき、読み出しに載る(preset_flgも復元される)
+		require.NoError(t, r.ReplaceDeckTags(ctx, "deck-t1", []string{"preset-1"}))
+		deck, err := deckRepository.FindById(ctx, "deck-t1")
+		require.NoError(t, err)
+		require.Len(t, deck.Tags, 1)
+		require.Equal(t, "preset-1", deck.Tags[0].ID)
+		require.True(t, deck.Tags[0].PresetFlg)
+	})
+}
+
+// 対戦結果(match)へのタグ付与。match_tags の生SQL(replaceTags)・JOIN読み出し
+// (findTagsByMatchIds)・タグ削除時の連鎖を実DBで確認する。
+func TestIntegrationMatchTagRepository(t *testing.T) {
+	db := setupIntegrationDB(t, "match_tags", "matches", "records", "tags")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	// 付与先(FK制約: match_tags.match_id -> matches.id -> records.id)
+	require.NoError(t, db.Create(&model.Record{ID: "rec-m1", CreatedAt: now, UpdatedAt: now, UserId: uid, EventDate: now}).Error)
+	require.NoError(t, db.Create(&model.Match{ID: "mat-m1", CreatedAt: now, UpdatedAt: now, RecordId: "rec-m1", UserId: uid}).Error)
+
+	ctx := context.Background()
+	r := NewTag(db)
+	matchRepository := NewMatch(db)
+
+	require.NoError(t, r.Save(ctx, entity.NewTag("mtag-1", now, now, uid, "接戦", "", false)))
+	require.NoError(t, r.Save(ctx, entity.NewTag("mtag-2", now.Add(time.Second), now, uid, "反省", "", false)))
+
+	t.Run("正常系_ReplaceMatchTagsで付与を差分更新し対戦結果の読み出しに載る", func(t *testing.T) {
+		require.NoError(t, r.ReplaceMatchTags(ctx, "mat-m1", []string{"mtag-1", "mtag-2"}))
+
+		match, err := matchRepository.FindById(ctx, "mat-m1")
+		require.NoError(t, err)
+		require.Len(t, match.Tags, 2)
+		// 付与した順(mtag-1, mtag-2)で並ぶ
+		require.Equal(t, "mtag-1", match.Tags[0].ID)
+		require.Equal(t, "mtag-2", match.Tags[1].ID)
+
+		// 集合を mtag-2 だけに絞る
+		require.NoError(t, r.ReplaceMatchTags(ctx, "mat-m1", []string{"mtag-2"}))
+		match, err = matchRepository.FindById(ctx, "mat-m1")
+		require.NoError(t, err)
+		require.Len(t, match.Tags, 1)
+		require.Equal(t, "mtag-2", match.Tags[0].ID)
+	})
+
+	t.Run("正常系_タグ削除で対戦結果への付与も外れる", func(t *testing.T) {
+		require.NoError(t, r.ReplaceMatchTags(ctx, "mat-m1", []string{"mtag-1", "mtag-2"}))
+
+		require.NoError(t, r.Delete(ctx, "mtag-1"))
+
+		match, err := matchRepository.FindById(ctx, "mat-m1")
+		require.NoError(t, err)
+		require.Len(t, match.Tags, 1)
+		require.Equal(t, "mtag-2", match.Tags[0].ID)
+	})
+}

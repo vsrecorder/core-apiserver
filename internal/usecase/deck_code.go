@@ -15,11 +15,13 @@ type DeckCodeCreateParam struct {
 	Code       string
 	PrivateFlg bool
 	Memo       string
+	TagIds     []string
 }
 
 type DeckCodeUpdateParam struct {
 	PrivateFlg bool
 	Memo       string
+	TagIds     []string
 }
 
 func NewDeckCodeCreateParam(
@@ -28,6 +30,7 @@ func NewDeckCodeCreateParam(
 	code string,
 	privateFlg bool,
 	memo string,
+	tagIds []string,
 ) *DeckCodeCreateParam {
 	return &DeckCodeCreateParam{
 		UserId:     userId,
@@ -35,16 +38,19 @@ func NewDeckCodeCreateParam(
 		Code:       code,
 		PrivateFlg: privateFlg,
 		Memo:       memo,
+		TagIds:     tagIds,
 	}
 }
 
 func NewDeckCodeUpdateParam(
 	privateFlg bool,
 	memo string,
+	tagIds []string,
 ) *DeckCodeUpdateParam {
 	return &DeckCodeUpdateParam{
 		PrivateFlg: privateFlg,
 		Memo:       memo,
+		TagIds:     tagIds,
 	}
 }
 
@@ -79,15 +85,41 @@ type DeckCodeInterface interface {
 type DeckCode struct {
 	repository      repository.DeckCodeInterface
 	deckAsset       repository.DeckAssetInterface
+	tag             repository.TagInterface
 	badgeEvaluation BadgeEvaluationInterface
 }
 
 func NewDeckCode(
 	repository repository.DeckCodeInterface,
 	deckAsset repository.DeckAssetInterface,
+	tag repository.TagInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 ) DeckCodeInterface {
-	return &DeckCode{repository, deckAsset, badgeEvaluation}
+	return &DeckCode{repository, deckAsset, tag, badgeEvaluation}
+}
+
+// syncDeckCodeTags は deckCodeId について、userId が付与できる有効なタグ(自分のタグ or
+// プリセット)だけを残して deck_code_tags を更新し、付与後のタグを返す。
+// 挙動は Deck.syncDeckTags と同じ。
+func (u *DeckCode) syncDeckCodeTags(
+	ctx context.Context,
+	deckCodeId string,
+	userId string,
+	tagIds []string,
+) ([]*entity.Tag, error) {
+	tags, err := u.tag.FindAttachableByIds(ctx, tagIds, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// FindAttachableByIds の戻り順は不定なので、付与順(tagIds)に整列してから採番する。
+	orderedTags, attachableTagIds := orderAttachableTagsByIds(tags, tagIds)
+
+	if err := u.tag.ReplaceDeckCodeTags(ctx, deckCodeId, attachableTagIds); err != nil {
+		return nil, err
+	}
+
+	return orderedTags, nil
 }
 
 func (u *DeckCode) FindById(
@@ -156,6 +188,13 @@ func (u *DeckCode) Create(
 		return nil, err
 	}
 
+	// タグの付与はデッキコード本体とは別テーブルのため Save とは分けて反映する。
+	tags, err := u.syncDeckCodeTags(ctx, deckcode.ID, param.UserId, param.TagIds)
+	if err != nil {
+		return nil, err
+	}
+	deckcode.Tags = tags
+
 	if deckcode.Code != "" {
 		u.badgeEvaluation.EvaluateOnDeckCodeCreated(ctx, param.UserId, deckcode)
 	}
@@ -189,6 +228,13 @@ func (u *DeckCode) Update(
 	if err := u.repository.Save(ctx, deckcode); err != nil {
 		return nil, err
 	}
+
+	// タグの付与を param.TagIds の集合に合わせて更新する。
+	tags, err := u.syncDeckCodeTags(ctx, deckcode.ID, ret.UserId, param.TagIds)
+	if err != nil {
+		return nil, err
+	}
+	deckcode.Tags = tags
 
 	return deckcode, nil
 }

@@ -27,6 +27,10 @@ type Match struct {
 	Memo                 string
 	Games                []*Game
 	PokemonSprites       []*PokemonSprite
+	// Tags は付与されたタグ。読み込み時にインフラ層が詰める。
+	// 付与の書き込みは TagRepository.ReplaceMatchTags が担うため、
+	// NewMatch のコンストラクタ引数には含めない(deck の Tags と同じ扱い)。
+	Tags []*Tag
 	// Position は record 内での表示順序。Reorder によってのみ更新されるため、
 	// NewMatch のコンストラクタ引数には含めず、必要な箇所で個別に設定する。
 	Position int

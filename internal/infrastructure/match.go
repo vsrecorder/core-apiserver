@@ -114,6 +114,11 @@ func (i *Match) FindById(
 		pokemonSprites = append(pokemonSprites, entity)
 	}
 
+	tagsByMatchId, err := findTagsByMatchIds(ctx, i.db, []string{id})
+	if err != nil {
+		return nil, err
+	}
+
 	match := entity.NewMatch(
 		results[0].MatchID,
 		results[0].MatchCreatedAt,
@@ -137,6 +142,7 @@ func (i *Match) FindById(
 		pokemonSprites,
 	)
 	match.Position = results[0].MatchPosition
+	match.Tags = tagsByMatchId[id]
 
 	return match, nil
 }
@@ -207,6 +213,11 @@ func (i *Match) FindByRecordId(
 		return nil, err
 	}
 
+	tagsByMatchId, err := findTagsByMatchIds(ctx, i.db, matchIdsOf(results))
+	if err != nil {
+		return nil, err
+	}
+
 	v := make(map[string]*entity.Match)
 	var keys []string
 
@@ -256,6 +267,7 @@ func (i *Match) FindByRecordId(
 				spritesByMatchId[result.MatchID],
 			)
 			match.Position = result.MatchPosition
+			match.Tags = tagsByMatchId[result.MatchID]
 
 			v[result.MatchID] = match
 			keys = append(keys, result.MatchID)
@@ -359,6 +371,11 @@ func (i *Match) FindByUserId(
 		return nil, err
 	}
 
+	tagsByMatchId, err := findTagsByMatchIds(ctx, i.db, matchIdsOf(results))
+	if err != nil {
+		return nil, err
+	}
+
 	v := make(map[string]*entity.Match)
 	var keys []string
 
@@ -408,6 +425,7 @@ func (i *Match) FindByUserId(
 				pokemonSprites,
 			)
 			match.Position = result.MatchPosition
+			match.Tags = tagsByMatchId[result.MatchID]
 
 			v[result.MatchID] = match
 			keys = append(keys, result.MatchID)
@@ -509,6 +527,11 @@ func (i *Match) FindLatest(
 		return nil, err
 	}
 
+	tagsByMatchId, err := findTagsByMatchIds(ctx, i.db, matchIdsOf(results))
+	if err != nil {
+		return nil, err
+	}
+
 	v := make(map[string]*entity.Match)
 	var keys []string
 
@@ -558,6 +581,7 @@ func (i *Match) FindLatest(
 				pokemonSprites,
 			)
 			match.Position = result.MatchPosition
+			match.Tags = tagsByMatchId[result.MatchID]
 
 			v[result.MatchID] = match
 			keys = append(keys, result.MatchID)

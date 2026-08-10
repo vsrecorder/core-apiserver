@@ -33,6 +33,11 @@ const (
 	MaxDeckNameLength = 32 // decks.name VARCHAR(32)
 	MaxDeckCodeLength = 21 // deck_codes.code VARCHAR(21)
 
+	MaxTagNameLength = 32 // tags.name VARCHAR(32)
+	// MaxTagsPerEntity は1つのデッキ/デッキコードに付与できるタグ数の上限。
+	// DB制約ではなくアプリ層で弾く。過剰な付与によるレスポンス肥大化を防ぐための緩い上限。
+	MaxTagsPerEntity = 20
+
 	MaxEventTitleLength = 255 // unofficial_events.title VARCHAR(255)
 
 	MaxOpponentsDeckInfoLength = 63 // matches.opponents_deck_info VARCHAR(63)

@@ -38,6 +38,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/tonamel_event_store.go -destination=./internal/mock/mock_repository/tonamel_event_store.go
 	mockgen -source=./internal/domain/repository/deck.go -destination=./internal/mock/mock_repository/deck.go
 	mockgen -source=./internal/domain/repository/deck_code.go -destination=./internal/mock/mock_repository/deck_code.go
+	mockgen -source=./internal/domain/repository/tag.go -destination=./internal/mock/mock_repository/tag.go
 	mockgen -source=./internal/domain/repository/deck_asset.go -destination=./internal/mock/mock_repository/deck_asset.go
 	mockgen -source=./internal/domain/repository/match.go -destination=./internal/mock/mock_repository/match.go
 	mockgen -source=./internal/domain/repository/game.go -destination=./internal/mock/mock_repository/game.go
@@ -73,6 +74,7 @@ mockgen:
 	mockgen -source=./internal/usecase/official_event.go -destination=./internal/mock/mock_usecase/official_event.go
 	mockgen -source=./internal/usecase/tonamel_event.go -destination=./internal/mock/mock_usecase/tonamel_event.go
 	mockgen -source=./internal/usecase/deck.go -destination=./internal/mock/mock_usecase/deck.go
+	mockgen -source=./internal/usecase/tag.go -destination=./internal/mock/mock_usecase/tag.go
 	mockgen -source=./internal/usecase/match.go -destination=./internal/mock/mock_usecase/match.go
 	mockgen -source=./internal/usecase/game.go -destination=./internal/mock/mock_usecase/game.go
 	mockgen -source=./internal/usecase/environment.go -destination=./internal/mock/mock_usecase/environment.go

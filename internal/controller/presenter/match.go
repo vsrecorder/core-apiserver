@@ -51,12 +51,13 @@ func NewMatchGetByIdResponse(
 			DefaultVictoryFlg:    match.DefaultVictoryFlg,
 			DefaultDefeatFlg:     match.DefaultDefeatFlg,
 			VictoryFlg:           match.VictoryFlg,
-			DrawFlg:           match.DrawFlg,
+			DrawFlg:              match.DrawFlg,
 			GroupMatchVictoryFlg: match.GroupMatchVictoryFlg,
 			OpponentsDeckInfo:    match.OpponentsDeckInfo,
 			Memo:                 match.Memo,
 			Games:                gamesResponse,
 			PokemonSprites:       pokemonSpritesResponse,
+			Tags:                 newTagResponses(match.Tags),
 		},
 	}
 }
@@ -110,12 +111,13 @@ func NewMatchGetByRecordIdResponse(
 				DefaultVictoryFlg:    match.DefaultVictoryFlg,
 				DefaultDefeatFlg:     match.DefaultDefeatFlg,
 				VictoryFlg:           match.VictoryFlg,
-				DrawFlg:           match.DrawFlg,
+				DrawFlg:              match.DrawFlg,
 				GroupMatchVictoryFlg: match.GroupMatchVictoryFlg,
 				OpponentsDeckInfo:    match.OpponentsDeckInfo,
 				Memo:                 match.Memo,
 				Games:                gamesResponse,
 				PokemonSprites:       pokemonSpritesResponse,
+				Tags:                 newTagResponses(match.Tags),
 			},
 		)
 	}
@@ -169,12 +171,13 @@ func NewMatchCreateResponse(
 			DefaultVictoryFlg:    match.DefaultVictoryFlg,
 			DefaultDefeatFlg:     match.DefaultDefeatFlg,
 			VictoryFlg:           match.VictoryFlg,
-			DrawFlg:           match.DrawFlg,
+			DrawFlg:              match.DrawFlg,
 			GroupMatchVictoryFlg: match.GroupMatchVictoryFlg,
 			OpponentsDeckInfo:    match.OpponentsDeckInfo,
 			Memo:                 match.Memo,
 			Games:                gamesResponse,
 			PokemonSprites:       pokemonSpritesResponse,
+			Tags:                 newTagResponses(match.Tags),
 		},
 	}
 }
@@ -225,12 +228,13 @@ func NewMatchUpdateResponse(
 			DefaultVictoryFlg:    match.DefaultVictoryFlg,
 			DefaultDefeatFlg:     match.DefaultDefeatFlg,
 			VictoryFlg:           match.VictoryFlg,
-			DrawFlg:           match.DrawFlg,
+			DrawFlg:              match.DrawFlg,
 			GroupMatchVictoryFlg: match.GroupMatchVictoryFlg,
 			OpponentsDeckInfo:    match.OpponentsDeckInfo,
 			Memo:                 match.Memo,
 			Games:                gamesResponse,
 			PokemonSprites:       pokemonSpritesResponse,
+			Tags:                 newTagResponses(match.Tags),
 		},
 	}
 }

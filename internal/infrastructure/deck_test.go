@@ -71,6 +71,19 @@ var deckJoinDeckCodeColumns = []string{
 
 var deckPokemonSpriteColumns = []string{"deck_id", "position", "pokemon_sprite_id"}
 
+// deckTagColumns は findTagsByDeckIds が deck_tags と tags を JOIN して取り出すカラム。
+var deckTagColumns = []string{
+	"owner_id", "id", "created_at", "updated_at", "user_id", "name", "color", "preset_flg",
+}
+
+// expectDeckTagsQuery は各Findの後に走るタグのバッチ取得(findTagsByDeckIds)に対する
+// 期待を空の結果で登録する。タグSQLの正しさは統合テストが実DBで検証するため、
+// ここでは「クエリが1回走る」ことだけを押さえる(引数は問わない)。
+func expectDeckTagsQuery(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(`FROM "deck_tags"`)).
+		WillReturnRows(sqlmock.NewRows(deckTagColumns))
+}
+
 // deckJoinDeckCodeQuery は decks と deck_codes を JOIN するクエリにマッチする正規表現を組み立てる。
 // SELECT句・JOIN句はGoのソース上の改行やインデントをそのままSQLに含むため、
 // 検証したいWHERE以降(絞り込み条件・並び順・件数制限)だけを完全一致で見る。
@@ -143,6 +156,8 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 		).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns).AddRow(
 			"01HD7Y3K8D6FDHMHTZ2GT41TN2", 1, "pikachu",
 		))
+
+		expectDeckTagsQuery(mock)
 
 		decks, err := r.Find(context.Background(), limit, offset)
 
@@ -223,6 +238,8 @@ func test_DeckInfrastructure_FindAll(t *testing.T) {
 			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
 		).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns))
 
+		expectDeckTagsQuery(mock)
+
 		decks, err := r.FindAll(context.Background(), uid)
 
 		require.NoError(t, err)
@@ -297,6 +314,8 @@ func test_DeckInfrastructure_FindOnCursor(t *testing.T) {
 		)).WithArgs(
 			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
 		).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns))
+
+		expectDeckTagsQuery(mock)
 
 		decks, err := r.FindOnCursor(context.Background(), limit, cursor)
 
@@ -382,6 +401,8 @@ func test_DeckInfrastructure_FindById(t *testing.T) {
 			id, 2, "raichu",
 		))
 
+		expectDeckTagsQuery(mock)
+
 		deck, err := r.FindById(context.Background(), id)
 
 		require.NoError(t, err)
@@ -449,6 +470,8 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 			`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
 		)).WithArgs(id).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns))
 
+		expectDeckTagsQuery(mock)
+
 		decks, err := r.FindByUserId(context.Background(), uid, false, limit, offset)
 
 		require.NoError(t, err)
@@ -485,6 +508,8 @@ func test_DeckInfrastructure_FindByUserId(t *testing.T) {
 		mock.ExpectQuery(regexp.QuoteMeta(
 			`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
 		)).WithArgs(id).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns))
+
+		expectDeckTagsQuery(mock)
 
 		decks, err := r.FindByUserId(context.Background(), uid, true, limit, offset)
 
@@ -548,6 +573,8 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 			`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
 		)).WithArgs(id).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns))
 
+		expectDeckTagsQuery(mock)
+
 		decks, err := r.FindByUserIdOnCursor(context.Background(), uid, false, limit, cursor)
 
 		require.NoError(t, err)
@@ -583,6 +610,8 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 		mock.ExpectQuery(regexp.QuoteMeta(
 			`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
 		)).WithArgs(id).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns))
+
+		expectDeckTagsQuery(mock)
 
 		decks, err := r.FindByUserIdOnCursor(context.Background(), uid, true, limit, cursor)
 
@@ -905,6 +934,8 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 		).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns).AddRow(
 			id, 2, "raichu",
 		))
+
+		expectDeckTagsQuery(mock)
 
 		deck, err := r.FindById(context.Background(), id)
 

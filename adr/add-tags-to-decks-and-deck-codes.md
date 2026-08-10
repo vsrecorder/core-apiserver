@@ -241,3 +241,50 @@ func (i *Tag) ReplaceDeckCodeTags(ctx context.Context, deckCodeId string, tagIds
 **未決事項 / 今後の検討**
 - タグによる検索・フィルタ API(一覧エンドポイントへの `tag_id` クエリ追加)は別ADRで扱う。
 - タグ数の上限、色パレットの固定/自由入力の是非は UI 検討時に確定する。
+
+---
+
+## 5. 追補: プリセットタグ(全ユーザー共通) — 例: ACE SPEC
+
+ユーザー個別タグに加え、運営が用意する**全ユーザー共通のプリセットタグ**を導入する。第一弾は ACE SPEC カード(1デッキ1枚の特別なカード)を、どのデッキ/デッキコードにも付けられる共通タグとして事前に用意する。
+
+### D5. プリセットは `tags` に `preset_flg` を足して同居させる
+
+新テーブルを作らず、`tags` に `preset_flg BOOLEAN NOT NULL DEFAULT false` を追加して表現する。プリセットは `preset_flg=true` かつ `user_id=''`(特定ユーザーに属さない)。
+
+- 中間テーブル(`deck_tags` / `deck_code_tags`)はそのまま流用できる(`tag_id` が指す先がユーザータグかプリセットかを問わない)。別テーブルにすると join 側も二重になるため避ける。
+- 一意制約 `unique_tags_user_id_name (user_id, name) WHERE deleted_at IS NULL` は、プリセットが `user_id=''` を共有するため**プリセット名の重複もそのまま一意に防ぐ**。
+
+### 権限・付与ルール
+
+- **付与**: 誰でも自分のデッキ/デッキコードにプリセットを付けられる。付与検証は `FindByIdsAndUserId` を **`FindAttachableByIds`**(`WHERE id IN ? AND (user_id = ? OR preset_flg = true)`)に置き換える。
+- **編集/削除**: ユーザーはプリセットを編集・削除できない。既存の所有者チェック(`uid == tag.UserId`)が `user_id=''` により自然に 403 を返すため、追加実装は不要。
+- **一覧**: `GET /tags` は自分のタグのみ(プリセット除外)。プリセットは `GET /tags/presets` で別に返し、フロントは別セクション表示。レスポンス `TagResponse` に `preset_flg` を追加。
+
+### 投入は cards テーブルを情報源にしたバックフィルで行う
+
+ACE SPEC かどうかの判定情報源は `cards.card_name` に付く `(ACE SPEC)` の目印(`deckcard-api` の `fetch_acespec_ids` と同規約)。`cmd/backfill-acespec-tags` が `cards` から名前を取得し、目印を除いた名前でプリセットタグ(`preset_flg=true` / `user_id=''` / 色は ACE SPEC カードのマゼンタ調 `#FF007F`。全 ACE SPEC 共通の1色)を作る。既存プリセットの色定義を変えた場合も、再実行で色だけ更新される。
+
+タグの表示は、色を持つタグ(＝プリセット)は**背景をその色にして名前を白の太字**で描く。色を持たないユーザータグは既定の見た目のまま。白文字の可読性のため、色は白とのコントラストが取れる濃さのマゼンタにしている。
+
+- **対象は現行スタンダードのレギュレーションマークのみ**: 既定で `regulation_mark = 'H'` に絞る(`-regulation-mark` で変更可)。旧マークで刷られた同名の再録を除外し、現行の ACE SPEC だけをプリセットにする。レギュレーション更新時は `-regulation-mark=I` のように指定して再実行する。
+- **冪等**: 既存プリセットと名前で突き合わせ、未登録分だけ追加。新カードが増えたら再実行で差分投入。
+- 記憶ベースのハードコード一覧にせず、実データを情報源にすることで正確・自動追随にする。
+
+### 拡張性
+
+将来 ACE SPEC 以外のプリセット群(例: スタジアム、特定の道具)を足す場合も同じ枠組みで足せる。群の区別が必要になったら `preset_category` 列の追加を検討する(現状は ACE SPEC のみのため未導入)。
+
+---
+
+## 6. 追補: 対戦結果(match)へのタグ付与
+
+D4 の拡張性設計どおり、対戦結果(match)にもタグを付けられるようにした。デッキ/デッキコードと同じ枠組みで、追加は「中間テーブル1つ + `tagLinkTable` 1行 + 薄い配線」で済んだ。
+
+- **スキーマ**: `match_tags(match_id, tag_id)` を `deck_tags` と同じ規約(FK制約・ソフトデリート列なし)で追加。
+- **infra**: `matchTagLink = tagLinkTable{"match_tags", "match_id"}` を1つ足し、`ReplaceMatchTags` / `findTagsByMatchIds` を薄く生やすだけ(差分同期・バッチ読み出しの本体は共通ヘルパを流用)。読み出しは match の全 Find(FindById / FindByRecordId / FindByUserId / FindLatest)でスプライトと同様にバッチロード。
+- **usecase/controller**: Match の Create/Update で所有権チェック済みタグを `ReplaceMatchTags` で同期。`MatchRequest` に `tag_ids`、`MatchResponse` に `tags` を追加。
+- **タグ削除の連鎖**: `Tag.Delete` は `deck_tags` / `deck_code_tags` に加え `match_tags` の行も物理削除する(タグを消すと付与先すべてから外れる、を維持)。
+- **frontend**: 対戦結果の作成/編集フォームにタグ付与(たたんだアコーディオン)を追加し、対戦一覧の各行にタグを表示。
+
+記録(record)へ広げる場合も、残る `recordTagLink` を1つ足すだけで同様に実装できる。

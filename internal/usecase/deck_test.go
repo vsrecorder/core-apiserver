@@ -37,6 +37,51 @@ func (stubTransactionManager) Do(ctx context.Context, fn func(ctx context.Contex
 	return fn(ctx)
 }
 
+// stubTagRepository はタグ関連を素通りさせるスタブ。デッキのテストで確かめたいのは
+// デッキ本体の振る舞いで、タグ付与の詳細は tag のテストが受け持つ。
+// 付与タグは常に空(所有タグ無し)として扱う。
+type stubTagRepository struct{}
+
+func (stubTagRepository) FindByUserId(ctx context.Context, uid string) ([]*entity.Tag, error) {
+	return nil, nil
+}
+
+func (stubTagRepository) FindPresets(ctx context.Context) ([]*entity.Tag, error) {
+	return nil, nil
+}
+
+func (stubTagRepository) FindById(ctx context.Context, id string) (*entity.Tag, error) {
+	return nil, apperror.ErrRecordNotFound
+}
+
+func (stubTagRepository) FindAttachableByIds(ctx context.Context, ids []string, uid string) ([]*entity.Tag, error) {
+	return nil, nil
+}
+
+func (stubTagRepository) FindByUserIdAndName(ctx context.Context, uid string, name string) (*entity.Tag, error) {
+	return nil, apperror.ErrRecordNotFound
+}
+
+func (stubTagRepository) Save(ctx context.Context, tag *entity.Tag) error {
+	return nil
+}
+
+func (stubTagRepository) Delete(ctx context.Context, id string) error {
+	return nil
+}
+
+func (stubTagRepository) ReplaceDeckTags(ctx context.Context, deckId string, tagIds []string) error {
+	return nil
+}
+
+func (stubTagRepository) ReplaceDeckCodeTags(ctx context.Context, deckCodeId string, tagIds []string) error {
+	return nil
+}
+
+func (stubTagRepository) ReplaceMatchTags(ctx context.Context, matchId string, tagIds []string) error {
+	return nil
+}
+
 func TestDeckUsecase(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -68,6 +113,7 @@ func TestDeckUsecase(t *testing.T) {
 				mockRepository,
 				mockDeckAsset,
 				mockUserFavoriteDeck,
+				stubTagRepository{},
 				stubTransactionManager{},
 				stubBadgeEvaluation{},
 			)
@@ -462,7 +508,7 @@ func test_DeckUsecase_Create(
 
 	// デッキコードを指定しない場合、外部リソース(HTML・画像)のアップロードは行われない
 	t.Run("正常系_デッキコード未指定なら外部アップロードなしで保存される", func(t *testing.T) {
-		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil)
+		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil, nil)
 
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
@@ -481,7 +527,7 @@ func test_DeckUsecase_Create(
 
 	// デッキコードを指定した場合、HTML→画像の順にアップロードした上でデッキが保存される
 	t.Run("正常系_デッキコード指定時はHTMLと画像をアップロードして保存される", func(t *testing.T) {
-		param := NewDeckCreateParam(uid, "テストデッキ", true, deckCode, true, nil)
+		param := NewDeckCreateParam(uid, "テストデッキ", true, deckCode, true, nil, nil)
 
 		gomock.InOrder(
 			mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), deckCode).Return(nil),
@@ -506,7 +552,7 @@ func test_DeckUsecase_Create(
 			NewPokemonSpriteParam("pikachu"),
 			NewPokemonSpriteParam("raichu"),
 		}
-		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, pokemonSprites)
+		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, pokemonSprites, nil)
 
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
@@ -521,7 +567,7 @@ func test_DeckUsecase_Create(
 	// デッキコードのHTMLアップロードに失敗した場合(=不正なデッキコード)、
 	// 画像アップロードもデッキ保存も行わずに中止する
 	t.Run("異常系_HTMLアップロード失敗時は画像アップロードも保存も行わない", func(t *testing.T) {
-		param := NewDeckCreateParam(uid, "テストデッキ", false, deckCode, false, nil)
+		param := NewDeckCreateParam(uid, "テストデッキ", false, deckCode, false, nil, nil)
 
 		mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), deckCode).Return(errors.New(""))
 
@@ -533,7 +579,7 @@ func test_DeckUsecase_Create(
 
 	// デッキ画像のアップロードに失敗した場合もデッキ保存は行わずに中止する
 	t.Run("異常系_画像アップロード失敗時は保存を行わない", func(t *testing.T) {
-		param := NewDeckCreateParam(uid, "テストデッキ", false, deckCode, false, nil)
+		param := NewDeckCreateParam(uid, "テストデッキ", false, deckCode, false, nil, nil)
 
 		gomock.InOrder(
 			mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), deckCode).Return(nil),
@@ -547,7 +593,7 @@ func test_DeckUsecase_Create(
 	})
 
 	t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
-		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil)
+		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil, nil)
 
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(errors.New(""))
 
@@ -563,10 +609,11 @@ func test_DeckUsecase_Create(
 			mockRepository,
 			mockDeckAsset,
 			mockUserFavoriteDeck,
+			stubTagRepository{},
 			stubTransactionManager{},
 			errBadgeEvaluation{},
 		)
-		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil)
+		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil, nil)
 
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
@@ -607,7 +654,7 @@ func test_DeckUsecase_Update(
 			[]*entity.PokemonSprite{entity.NewPokemonSprite("pikachu")},
 		)
 
-		param := NewDeckUpdateParam("更新後のデッキ", true, []*PokemonSpriteParam{NewPokemonSpriteParam("raichu")})
+		param := NewDeckUpdateParam("更新後のデッキ", true, []*PokemonSpriteParam{NewPokemonSpriteParam("raichu")}, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -635,7 +682,7 @@ func test_DeckUsecase_Update(
 		archivedAt := time.Now().Local()
 
 		deck := entity.NewDeck(id, createdAt, archivedAt, time.Time{}, uid, "更新前のデッキ", false, nil, nil)
-		param := NewDeckUpdateParam("更新後のデッキ", false, nil)
+		param := NewDeckUpdateParam("更新後のデッキ", false, nil, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -650,7 +697,7 @@ func test_DeckUsecase_Update(
 		id, err := generateId()
 		require.NoError(t, err)
 
-		param := NewDeckUpdateParam("更新後のデッキ", false, nil)
+		param := NewDeckUpdateParam("更新後のデッキ", false, nil, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
@@ -665,7 +712,7 @@ func test_DeckUsecase_Update(
 		require.NoError(t, err)
 
 		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, time.Time{}, uid, "更新前のデッキ", false, nil, nil)
-		param := NewDeckUpdateParam("更新後のデッキ", false, nil)
+		param := NewDeckUpdateParam("更新後のデッキ", false, nil, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(errors.New(""))
@@ -981,4 +1028,86 @@ func test_DeckUsecase_Delete(
 
 		require.Equal(t, usecase.Delete(context.Background(), id), errors.New(""))
 	})
+}
+
+// デッキ登録時にデッキコードとタグの両方が指定された場合、
+// デッキ本体だけでなくそのデッキコード(バージョン)にも同じタグが付くことを確認する。
+func TestDeckUsecaseCreateAppliesTagsToDeckCode(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockDeckInterface(mockCtrl)
+	mockDeckAsset := mock_repository.NewMockDeckAssetInterface(mockCtrl)
+	mockUserFavoriteDeck := mock_repository.NewMockUserFavoriteDeckInterface(mockCtrl)
+	mockTag := mock_repository.NewMockTagInterface(mockCtrl)
+
+	usecase := NewDeck(
+		mockRepository,
+		mockDeckAsset,
+		mockUserFavoriteDeck,
+		mockTag,
+		stubTransactionManager{},
+		stubBadgeEvaluation{},
+	)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	deckCode := "5dbFbk-uBwjqP-VVk5Vv"
+	now := time.Now().Local()
+	tag := entity.NewTag("tag-1", now, now, uid, "アグロ", "", false)
+
+	// デッキコードのアップロードとデッキ本体の保存
+	mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), deckCode).Return(nil)
+	mockDeckAsset.EXPECT().UploadDeckImage(context.Background(), deckCode).Return(nil)
+	mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+	// 所有権チェックで tag-1 が返り、デッキ本体・デッキコードの双方に同じタグIDが付与される
+	mockTag.EXPECT().FindAttachableByIds(context.Background(), []string{"tag-1"}, uid).Return([]*entity.Tag{tag}, nil)
+	mockTag.EXPECT().ReplaceDeckTags(context.Background(), gomock.Any(), []string{"tag-1"}).Return(nil)
+	mockTag.EXPECT().ReplaceDeckCodeTags(context.Background(), gomock.Any(), []string{"tag-1"}).Return(nil)
+
+	param := NewDeckCreateParam(uid, "テストデッキ", false, deckCode, false, nil, []string{"tag-1"})
+
+	deck, err := usecase.Create(context.Background(), param)
+
+	require.NoError(t, err)
+	require.Len(t, deck.Tags, 1)
+	require.Equal(t, "tag-1", deck.Tags[0].ID)
+	// レスポンスのデッキコードにも同じタグが載る
+	require.NotNil(t, deck.LatestDeckCode)
+	require.Len(t, deck.LatestDeckCode.Tags, 1)
+	require.Equal(t, "tag-1", deck.LatestDeckCode.Tags[0].ID)
+}
+
+// デッキコードはあるがタグが無い場合は、デッキコードへのタグ付与(ReplaceDeckCodeTags)を呼ばない。
+func TestDeckUsecaseCreateDeckCodeWithoutTags(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockDeckInterface(mockCtrl)
+	mockDeckAsset := mock_repository.NewMockDeckAssetInterface(mockCtrl)
+	mockUserFavoriteDeck := mock_repository.NewMockUserFavoriteDeckInterface(mockCtrl)
+	mockTag := mock_repository.NewMockTagInterface(mockCtrl)
+
+	usecase := NewDeck(
+		mockRepository,
+		mockDeckAsset,
+		mockUserFavoriteDeck,
+		mockTag,
+		stubTransactionManager{},
+		stubBadgeEvaluation{},
+	)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	deckCode := "5dbFbk-uBwjqP-VVk5Vv"
+
+	mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), deckCode).Return(nil)
+	mockDeckAsset.EXPECT().UploadDeckImage(context.Background(), deckCode).Return(nil)
+	mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+	// タグ無し: 付与可能タグは空。ReplaceDeckTags は空で呼ばれるが ReplaceDeckCodeTags は呼ばれない。
+	mockTag.EXPECT().FindAttachableByIds(context.Background(), gomock.Nil(), uid).Return([]*entity.Tag{}, nil)
+	mockTag.EXPECT().ReplaceDeckTags(context.Background(), gomock.Any(), []string{}).Return(nil)
+
+	param := NewDeckCreateParam(uid, "テストデッキ", false, deckCode, false, nil, nil)
+
+	deck, err := usecase.Create(context.Background(), param)
+
+	require.NoError(t, err)
+	require.Empty(t, deck.Tags)
 }

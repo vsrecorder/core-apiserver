@@ -271,6 +271,7 @@ func main() {
 			infrastructure.NewDeck(db),
 			infrastructure.NewDeckAsset(logger),
 			infrastructure.NewUserFavoriteDeck(db),
+			infrastructure.NewTag(db),
 			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
 		),
@@ -284,7 +285,16 @@ func main() {
 		usecase.NewDeckCode(
 			infrastructure.NewDeckCode(db),
 			infrastructure.NewDeckAsset(logger),
+			infrastructure.NewTag(db),
 			badgeEvaluation,
+		),
+	).RegisterRoute(relativePath)
+
+	controller.NewTag(
+		r,
+		infrastructure.NewTag(db),
+		usecase.NewTag(
+			infrastructure.NewTag(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -318,6 +328,7 @@ func main() {
 		usecase.NewMatch(
 			infrastructure.NewMatch(db),
 			infrastructure.NewRecord(db, logger),
+			infrastructure.NewTag(db),
 			badgeEvaluation,
 			designationEvaluation,
 			environmentBadgeEvaluation,

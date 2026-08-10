@@ -69,6 +69,11 @@ func DeckCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 			//checkDeckCode(ctx, logger, req.DeckCode)
 		}
 
+		if !validateTagIds(req.TagIds) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetDeckCreateRequest(ctx, req)
 	}
 }
@@ -82,6 +87,11 @@ func DeckUpdateMiddleware() gin.HandlerFunc {
 		}
 
 		if req.Name == "" || exceedsLength(req.Name, MaxDeckNameLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if !validateTagIds(req.TagIds) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

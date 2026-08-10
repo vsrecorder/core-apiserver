@@ -196,6 +196,67 @@ CREATE INDEX idx_deck_codes_user_id ON deck_codes(user_id);
 -- DESC まで含めた複合索引にする(deck_id 単独の索引ではソートを省けず効果が無い)。
 CREATE INDEX idx_deck_codes_deck_id_created_at ON deck_codes(deck_id, created_at DESC, updated_at DESC);
 
+-- タグマスタ。ユーザーごとにタグの名前空間を持つ(あるユーザーの「アグロ」と
+-- 別ユーザーの「アグロ」は別レコード)。付与先(デッキ/デッキコード、将来は記録/対戦結果)は
+-- エンティティごとの中間テーブルで表す。単一のポリモーフィック中間テーブルにしないのは、
+-- 参照先IDの型が混在してFK制約を張れず、既存の *_pokemon_sprites の規約に反するため。
+CREATE TABLE tags (
+    id          VARCHAR(26) PRIMARY KEY,
+    created_at  TIMESTAMP NOT NULL,
+    updated_at  TIMESTAMP NOT NULL,
+    deleted_at  TIMESTAMP DEFAULT NULL,
+    user_id     VARCHAR(32) NOT NULL,
+    name        VARCHAR(32) NOT NULL,
+    color       VARCHAR(7)  DEFAULT NULL,  -- '#RRGGBB' 任意。UI表示用
+    -- preset_flg=true は運営が用意する全ユーザー共通の「プリセットタグ」
+    -- (例: ACE SPECカード)。プリセットは user_id='' を持ち特定ユーザーに属さない。
+    -- 誰でも自分のデッキ/デッキコードに付与できるが、編集・削除はできない
+    -- (投入は cmd/backfill-acespec-tags が担う)。
+    preset_flg  BOOLEAN NOT NULL DEFAULT false
+);
+
+CREATE INDEX idx_tags_created_at ON tags(created_at);
+CREATE INDEX idx_tags_deleted_at ON tags(deleted_at);
+CREATE INDEX idx_tags_user_id    ON tags(user_id);
+-- 同一ユーザー内でタグ名は一意。解除済み(deleted_at IS NOT NULL)は対象外にして、
+-- 同名のタグを消して作り直せるようにする。
+-- プリセットは user_id='' を共有するため、この索引がプリセット名の重複も一意に防ぐ。
+CREATE UNIQUE INDEX unique_tags_user_id_name ON tags (user_id, name) WHERE deleted_at IS NULL;
+-- プリセットタグ一覧(GET /tags/presets)の取得用。名前順で少数を引く。
+CREATE INDEX idx_tags_preset ON tags(name) WHERE preset_flg = true AND deleted_at IS NULL;
+
+-- デッキ ⇔ タグ。中間テーブルはソフトデリート列を持たず、関連の解除は行の物理削除で表す
+-- (deck_pokemon_sprites と同じ規約)。
+CREATE TABLE deck_tags (
+    deck_id  VARCHAR(26) NOT NULL,
+    tag_id   VARCHAR(26) NOT NULL,
+    -- position は付与した順(1始まり)。表示は position 昇順(1が先頭)。ReplaceDeckTags が採番する。
+    position SMALLINT NOT NULL DEFAULT 1,
+    PRIMARY KEY (deck_id, tag_id),
+    FOREIGN KEY (deck_id) REFERENCES decks(id),
+    FOREIGN KEY (tag_id)  REFERENCES tags(id)
+);
+
+-- タグ削除時に、そのタグの関連をまとめて消すために引く。
+-- 主キーの先頭は deck_id のため、tag_id 単独では主キー索引が使えない。
+CREATE INDEX idx_deck_tags_tag_id ON deck_tags(tag_id);
+
+-- デッキコード(バージョン) ⇔ タグ。
+CREATE TABLE deck_code_tags (
+    deck_code_id  VARCHAR(26) NOT NULL,
+    tag_id        VARCHAR(26) NOT NULL,
+    -- position は付与した順(1始まり)。表示は position 昇順(1が先頭)。ReplaceDeckCodeTags が採番する。
+    position      SMALLINT NOT NULL DEFAULT 1,
+    PRIMARY KEY (deck_code_id, tag_id),
+    FOREIGN KEY (deck_code_id) REFERENCES deck_codes(id),
+    FOREIGN KEY (tag_id)       REFERENCES tags(id)
+);
+
+CREATE INDEX idx_deck_code_tags_tag_id ON deck_code_tags(tag_id);
+
+-- 対戦結果(match) ⇔ タグの中間テーブルは、FK参照先の matches を定義した後で作成する
+-- (matches の CREATE TABLE 直後、下の方に定義してある)。
+
 CREATE TABLE records (
     id                        VARCHAR(26) PRIMARY KEY,
     created_at                TIMESTAMP NOT NULL,
@@ -278,6 +339,21 @@ CREATE TABLE matches (
 -- user_id は絞り込み用、record_id は records との結合用。
 CREATE INDEX idx_matches_user_id ON matches(user_id);
 CREATE INDEX idx_matches_record_id ON matches(record_id);
+
+-- 対戦結果(match) ⇔ タグ。deck_tags / deck_code_tags と同じ規約
+-- (中間テーブルはソフトデリート列を持たず、関連の解除は行の物理削除で表す)。
+-- FK参照先の matches を定義した後に作成する必要があるため、ここに置く。
+CREATE TABLE match_tags (
+    match_id  VARCHAR(26) NOT NULL,
+    tag_id    VARCHAR(26) NOT NULL,
+    -- position は付与した順(1始まり)。表示は position 昇順(1が先頭)。ReplaceMatchTags が採番する。
+    position  SMALLINT NOT NULL DEFAULT 1,
+    PRIMARY KEY (match_id, tag_id),
+    FOREIGN KEY (match_id) REFERENCES matches(id),
+    FOREIGN KEY (tag_id)   REFERENCES tags(id)
+);
+
+CREATE INDEX idx_match_tags_tag_id ON match_tags(tag_id);
 
 CREATE TABLE games (
     id                       VARCHAR(26) PRIMARY KEY,
@@ -913,6 +989,11 @@ GRANT SELECT ON decks                   TO grafana;
 GRANT SELECT ON deck_codes              TO grafana;
 GRANT SELECT ON deck_pokemon_sprites    TO grafana;
 GRANT SELECT ON deck_name_aliases       TO grafana;
+
+GRANT SELECT ON tags                    TO grafana;
+GRANT SELECT ON deck_tags               TO grafana;
+GRANT SELECT ON deck_code_tags          TO grafana;
+GRANT SELECT ON match_tags              TO grafana;
 
 GRANT SELECT ON championship_series     TO grafana;
 GRANT SELECT ON standard_regulations    TO grafana;

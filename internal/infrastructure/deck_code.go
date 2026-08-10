@@ -31,7 +31,12 @@ func (i *DeckCode) FindById(
 		return nil, wrapError(tx.Error)
 	}
 
-	entity := entity.NewDeckCode(
+	tagsByDeckCodeId, err := findTagsByDeckCodeIds(ctx, i.db, []string{deckcode.ID})
+	if err != nil {
+		return nil, err
+	}
+
+	e := entity.NewDeckCode(
 		deckcode.ID,
 		deckcode.CreatedAt,
 		deckcode.UserId,
@@ -40,8 +45,9 @@ func (i *DeckCode) FindById(
 		deckcode.PrivateCodeFlg,
 		deckcode.Memo,
 	)
+	e.Tags = tagsByDeckCodeId[deckcode.ID]
 
-	return entity, nil
+	return e, nil
 }
 
 func (i *DeckCode) FindByDeckId(
@@ -54,9 +60,19 @@ func (i *DeckCode) FindByDeckId(
 		return nil, tx.Error
 	}
 
+	deckCodeIds := make([]string, 0, len(deckcodes))
+	for _, deckcode := range deckcodes {
+		deckCodeIds = append(deckCodeIds, deckcode.ID)
+	}
+
+	tagsByDeckCodeId, err := findTagsByDeckCodeIds(ctx, i.db, deckCodeIds)
+	if err != nil {
+		return nil, err
+	}
+
 	var entities []*entity.DeckCode
 	for _, deckcode := range deckcodes {
-		entity := entity.NewDeckCode(
+		e := entity.NewDeckCode(
 			deckcode.ID,
 			deckcode.CreatedAt,
 			deckcode.UserId,
@@ -65,7 +81,8 @@ func (i *DeckCode) FindByDeckId(
 			deckcode.PrivateCodeFlg,
 			deckcode.Memo,
 		)
-		entities = append(entities, entity)
+		e.Tags = tagsByDeckCodeId[deckcode.ID]
+		entities = append(entities, e)
 	}
 
 	return entities, nil

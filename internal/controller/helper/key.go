@@ -360,6 +360,28 @@ func GetDeckCodeUpdateRequest(ctx *gin.Context) dto.DeckCodeUpdateRequest {
 	return ret
 }
 
+func SetTagCreateRequest(ctx *gin.Context, value dto.TagCreateRequest) {
+	ctx.Set("tag_create_request", value)
+}
+
+func GetTagCreateRequest(ctx *gin.Context) dto.TagCreateRequest {
+	value, _ := ctx.Get("tag_create_request")
+	ret, _ := value.(dto.TagCreateRequest)
+
+	return ret
+}
+
+func SetTagUpdateRequest(ctx *gin.Context, value dto.TagUpdateRequest) {
+	ctx.Set("tag_update_request", value)
+}
+
+func GetTagUpdateRequest(ctx *gin.Context) dto.TagUpdateRequest {
+	value, _ := ctx.Get("tag_update_request")
+	ret, _ := value.(dto.TagUpdateRequest)
+
+	return ret
+}
+
 func SetMatchCreateRequest(ctx *gin.Context, value dto.MatchCreateRequest) {
 	ctx.Set("match_create_request", value)
 }

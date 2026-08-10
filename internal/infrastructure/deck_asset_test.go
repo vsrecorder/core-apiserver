@@ -25,10 +25,17 @@ import (
 type fakeDeckAssetS3 struct {
 	mu      sync.Mutex
 	objects map[string][]byte
+	// CDNがそのまま配信するため、本文だけでなくContent-Type/Cache-Controlも検証できるようにする
+	contentTypes  map[string]string
+	cacheControls map[string]string
 }
 
 func newFakeDeckAssetS3() *fakeDeckAssetS3 {
-	return &fakeDeckAssetS3{objects: map[string][]byte{}}
+	return &fakeDeckAssetS3{
+		objects:       map[string][]byte{},
+		contentTypes:  map[string]string{},
+		cacheControls: map[string]string{},
+	}
 }
 
 func (f *fakeDeckAssetS3) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
@@ -51,6 +58,12 @@ func (f *fakeDeckAssetS3) PutObject(ctx context.Context, params *s3.PutObjectInp
 		return nil, err
 	}
 	f.objects[*params.Key] = body
+	if params.ContentType != nil {
+		f.contentTypes[*params.Key] = *params.ContentType
+	}
+	if params.CacheControl != nil {
+		f.cacheControls[*params.Key] = *params.CacheControl
+	}
 
 	return &s3.PutObjectOutput{}, nil
 }
@@ -111,6 +124,9 @@ func TestDeckAssetInfrastructure(t *testing.T) {
 
 			key := "deck-result_html/" + deckCode
 			require.Equal(t, []byte("<html>deck result</html>"), fakeS3.objects[key])
+			// メタデータを付けないとCDNがapplication/octet-streamのまま配信してしまう
+			require.Equal(t, deckResultHTMLContentType, fakeS3.contentTypes[key])
+			require.Equal(t, deckResultHTMLCacheControl, fakeS3.cacheControls[key])
 		})
 
 		t.Run("正常系_アップロード済みなら取得せずスキップする", func(t *testing.T) {
@@ -172,6 +188,10 @@ func TestDeckAssetInfrastructure(t *testing.T) {
 			uploaded, ok := fakeS3.objects[key]
 			require.True(t, ok)
 			require.Equal(t, "image/jpeg", http.DetectContentType(uploaded))
+			// メタデータを付けないとCDNがapplication/octet-streamのまま配信し、
+			// Cache-Controlも無いためブラウザが再訪問のたびに再検証してしまう
+			require.Equal(t, deckImageContentType, fakeS3.contentTypes[key])
+			require.Equal(t, deckImageCacheControl, fakeS3.cacheControls[key])
 		})
 
 		t.Run("正常系_アップロード済みなら取得せずスキップする", func(t *testing.T) {

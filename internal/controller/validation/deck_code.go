@@ -33,6 +33,11 @@ func DeckCodeCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 		// もし外部APIの負荷が問題ない場合は、コメントアウトを解除してチェックを有効化する。
 		//checkDeckCode(ctx, logger, req.Code)
 
+		if !validateTagIds(req.TagIds) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetDeckCodeCreateRequest(ctx, req)
 	}
 }
@@ -46,6 +51,11 @@ func DeckCodeUpdateMiddleware() gin.HandlerFunc {
 		}
 
 		if exceedsLength(req.Memo, MaxMemoLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if !validateTagIds(req.TagIds) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

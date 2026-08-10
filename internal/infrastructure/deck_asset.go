@@ -27,6 +27,22 @@ const (
 	deckAssetBucket       = "vsrecorder"
 )
 
+// アップロード時のメタデータ。明示しないとオブジェクトストレージは Content-Type を
+// application/octet-stream として保存し、CDNもそのまま配信してしまう。
+// またCache-Controlが無いとCDNが付けるs-maxageだけになる。s-maxageは共有キャッシュ用の
+// 指定なので、ブラウザは「max-ageが無い」とみなして再訪問のたびに再検証(304往復)を行う。
+//
+// デッキ画像・結果HTMLはどちらもデッキコード単位で内容が変わらない
+// (アップロード済みならスキップするため、同じキーが上書きされることはない)。
+// そのため画像はブラウザに長期キャッシュさせる。結果HTMLは配信用途ではないので控えめにする。
+const (
+	deckImageContentType  = "image/jpeg"
+	deckImageCacheControl = "public, max-age=31536000, immutable"
+
+	deckResultHTMLContentType  = "text/html; charset=utf-8"
+	deckResultHTMLCacheControl = "public, max-age=86400"
+)
+
 // deckResultHTMLURLFormat・deckImageURLFormat は取得元のURL。外部サイトへ実通信せずに
 // テストできるよう、httptestサーバへ差し替え可能な変数にしている。
 var (
@@ -84,12 +100,21 @@ func isNotFound(ctx context.Context, s3client deckAssetS3API, key string) (bool,
 	return false, nil
 }
 
-func putObject(ctx context.Context, s3client deckAssetS3API, key string, body []byte) error {
+func putObject(
+	ctx context.Context,
+	s3client deckAssetS3API,
+	key string,
+	body []byte,
+	contentType string,
+	cacheControl string,
+) error {
 	_, err := s3client.PutObject(ctx, &s3.PutObjectInput{
-		ACL:    "public-read",
-		Bucket: aws.String(deckAssetBucket),
-		Key:    aws.String(key),
-		Body:   bytes.NewReader(body),
+		ACL:          "public-read",
+		Bucket:       aws.String(deckAssetBucket),
+		Key:          aws.String(key),
+		Body:         bytes.NewReader(body),
+		ContentType:  aws.String(contentType),
+		CacheControl: aws.String(cacheControl),
 	})
 
 	return err
@@ -166,7 +191,7 @@ func (i *DeckAsset) UploadDeckResultHTML(
 		return apperror.ErrDeckCodeInvalid
 	}
 
-	return putObject(ctx, s3client, key, bodyBytes)
+	return putObject(ctx, s3client, key, bodyBytes, deckResultHTMLContentType, deckResultHTMLCacheControl)
 }
 
 func (i *DeckAsset) UploadDeckImage(
@@ -237,7 +262,7 @@ func (i *DeckAsset) UploadDeckImage(
 		return err
 	}
 
-	return putObject(ctx, s3client, key, imageBytes)
+	return putObject(ctx, s3client, key, imageBytes, deckImageContentType, deckImageCacheControl)
 }
 
 func convertPNG2JPG(imageBytes []byte) ([]byte, error) {

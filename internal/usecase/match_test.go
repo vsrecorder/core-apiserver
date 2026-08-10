@@ -95,6 +95,7 @@ func TestMatchUsecase_Create_NotificationCreationOrder(t *testing.T) {
 	usecase := NewMatch(
 		mockRepository,
 		mockRecordRepository,
+		stubTagRepository{},
 		orderTrackingBadgeEvaluation{calls: &calls},
 		orderTrackingDesignationEvaluation{calls: &calls},
 		orderTrackingEnvironmentBadgeEvaluation{calls: &calls},
@@ -127,7 +128,7 @@ func TestMatchUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
 	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewMatch(mockRepository, mockRecordRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{})
+	usecase := NewMatch(mockRepository, mockRecordRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

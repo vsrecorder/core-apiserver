@@ -23,6 +23,7 @@ type DeckCreateParam struct {
 	DeckCode           string
 	PrivateDeckCodeFlg bool
 	PokemonSprites     []*PokemonSpriteParam
+	TagIds             []string
 }
 
 func NewDeckCreateParam(
@@ -32,6 +33,7 @@ func NewDeckCreateParam(
 	deckcode string,
 	privateDeckCodeFlg bool,
 	pokemonSprites []*PokemonSpriteParam,
+	tagIds []string,
 ) *DeckCreateParam {
 	return &DeckCreateParam{
 		UserId:             userId,
@@ -40,6 +42,7 @@ func NewDeckCreateParam(
 		DeckCode:           deckcode,
 		PrivateDeckCodeFlg: privateDeckCodeFlg,
 		PokemonSprites:     pokemonSprites,
+		TagIds:             tagIds,
 	}
 }
 
@@ -47,17 +50,20 @@ type DeckUpdateParam struct {
 	Name           string
 	PrivateFlg     bool
 	PokemonSprites []*PokemonSpriteParam
+	TagIds         []string
 }
 
 func NewDeckUpdateParam(
 	name string,
 	privateFlg bool,
 	pokemonSprites []*PokemonSpriteParam,
+	tagIds []string,
 ) *DeckUpdateParam {
 	return &DeckUpdateParam{
 		Name:           name,
 		PrivateFlg:     privateFlg,
 		PokemonSprites: pokemonSprites,
+		TagIds:         tagIds,
 	}
 }
 
@@ -141,6 +147,7 @@ type Deck struct {
 	repository         repository.DeckInterface
 	deckAsset          repository.DeckAssetInterface
 	userFavoriteDeck   repository.UserFavoriteDeckInterface
+	tag                repository.TagInterface
 	transactionManager repository.TransactionManager
 	badgeEvaluation    BadgeEvaluationInterface
 }
@@ -149,6 +156,7 @@ func NewDeck(
 	repository repository.DeckInterface,
 	deckAsset repository.DeckAssetInterface,
 	userFavoriteDeck repository.UserFavoriteDeckInterface,
+	tag repository.TagInterface,
 	transactionManager repository.TransactionManager,
 	badgeEvaluation BadgeEvaluationInterface,
 ) DeckInterface {
@@ -156,9 +164,35 @@ func NewDeck(
 		repository,
 		deckAsset,
 		userFavoriteDeck,
+		tag,
 		transactionManager,
 		badgeEvaluation,
 	}
+}
+
+// syncDeckTags は付与先について、param で指定されたタグIDのうち userId が付与できる
+// 有効なタグ(自分のタグ or プリセット)だけを残して中間テーブルを更新し、付与後のタグを返す。
+// 他人のタグIDや存在しないIDは黙って捨てる(フロントからは付与可能なタグしか送られない想定で、
+// 不正な値はエラーにせず無視して防御する)。
+func (u *Deck) syncDeckTags(
+	ctx context.Context,
+	deckId string,
+	userId string,
+	tagIds []string,
+) ([]*entity.Tag, error) {
+	tags, err := u.tag.FindAttachableByIds(ctx, tagIds, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// FindAttachableByIds の戻り順は不定なので、付与順(tagIds)に整列してから採番する。
+	orderedTags, attachableTagIds := orderAttachableTagsByIds(tags, tagIds)
+
+	if err := u.tag.ReplaceDeckTags(ctx, deckId, attachableTagIds); err != nil {
+		return nil, err
+	}
+
+	return orderedTags, nil
 }
 
 func (u *Deck) Find(
@@ -318,6 +352,27 @@ func (u *Deck) Create(
 		return nil, err
 	}
 
+	// タグの付与はデッキ本体とは別テーブルのため Save とは分けて反映する。
+	tags, err := u.syncDeckTags(ctx, deck.ID, param.UserId, param.TagIds)
+	if err != nil {
+		return nil, err
+	}
+	deck.Tags = tags
+
+	// デッキ登録と同時にデッキコード(バージョン)も作られ、かつタグが付与された場合は、
+	// 同じタグをそのデッキコードにも付ける。tags は所有権チェック済みのものを流用する。
+	if LatestDeckCode.ID != "" && len(tags) > 0 {
+		tagIds := make([]string, 0, len(tags))
+		for _, tag := range tags {
+			tagIds = append(tagIds, tag.ID)
+		}
+		if err := u.tag.ReplaceDeckCodeTags(ctx, LatestDeckCode.ID, tagIds); err != nil {
+			return nil, err
+		}
+		// deck.LatestDeckCode は LatestDeckCode と同じ実体を指すため、レスポンスにも反映される。
+		LatestDeckCode.Tags = tags
+	}
+
 	if _, err := u.badgeEvaluation.EvaluateOnDeckCreated(ctx, param.UserId, deck); err != nil {
 		return nil, err
 	}
@@ -361,6 +416,13 @@ func (u *Deck) Update(
 	if err := u.repository.Save(ctx, deck); err != nil {
 		return nil, err
 	}
+
+	// タグの付与を param.TagIds の集合に合わせて更新する。
+	tags, err := u.syncDeckTags(ctx, deck.ID, ret.UserId, param.TagIds)
+	if err != nil {
+		return nil, err
+	}
+	deck.Tags = tags
 
 	return deck, nil
 }
@@ -408,6 +470,9 @@ func (u *Deck) Archive(
 		return nil, err
 	}
 
+	// アーカイブはタグを変更しないので、読み込んだ付与タグをそのままレスポンスに引き継ぐ。
+	deck.Tags = ret.Tags
+
 	return deck, nil
 }
 
@@ -442,6 +507,9 @@ func (u *Deck) Unarchive(
 	if err := u.repository.Save(ctx, deck); err != nil {
 		return nil, err
 	}
+
+	// アーカイブ解除もタグを変更しないので、付与タグをそのまま引き継ぐ。
+	deck.Tags = ret.Tags
 
 	return deck, nil
 }

@@ -30,6 +30,10 @@ func isValidMatchRequest(req dto.MatchRequest) bool {
 		return false
 	}
 
+	if !validateTagIds(req.TagIds) {
+		return false
+	}
+
 	gameWinningFlgs := make([]bool, 0, len(req.Games))
 	for _, g := range req.Games {
 		if g == nil {

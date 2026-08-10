@@ -12,6 +12,10 @@ type Deck struct {
 	PrivateFlg     bool
 	LatestDeckCode *DeckCode
 	PokemonSprites []*PokemonSprite
+	// Tags は付与されたタグ。読み込み時にインフラ層が詰める。
+	// 付与の書き込みは Deck.Save ではなく TagRepository.ReplaceDeckTags が担うため、
+	// コンストラクタ引数には含めない(アーカイブ等の別経路で誤って空へ上書きしないため)。
+	Tags []*Tag
 }
 
 func NewDeck(

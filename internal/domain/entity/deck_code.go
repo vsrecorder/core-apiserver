@@ -10,6 +10,8 @@ type DeckCode struct {
 	Code           string
 	PrivateCodeFlg bool
 	Memo           string
+	// Tags は付与されたタグ。読み込み時にインフラ層が詰める。詳細は Deck.Tags と同様。
+	Tags []*Tag
 }
 
 func NewDeckCode(

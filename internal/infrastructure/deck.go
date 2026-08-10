@@ -94,12 +94,17 @@ func (i *Deck) Find(
 		return nil, err
 	}
 
+	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
 		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
-		ret = append(ret, entity.NewDeck(
+		deck := entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
@@ -117,7 +122,9 @@ func (i *Deck) Find(
 				djdc.DeckCodeMemo,
 			),
 			pokemonSprites,
-		))
+		)
+		deck.Tags = tagsByDeckId[djdc.DeckID]
+		ret = append(ret, deck)
 	}
 
 	return ret, nil
@@ -193,12 +200,17 @@ func (i *Deck) FindAll(
 		return nil, err
 	}
 
+	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
 		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
-		ret = append(ret, entity.NewDeck(
+		deck := entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
@@ -216,7 +228,9 @@ func (i *Deck) FindAll(
 				djdc.DeckCodeMemo,
 			),
 			pokemonSprites,
-		))
+		)
+		deck.Tags = tagsByDeckId[djdc.DeckID]
+		ret = append(ret, deck)
 	}
 
 	return ret, nil
@@ -292,12 +306,17 @@ func (i *Deck) FindOnCursor(
 		return nil, err
 	}
 
+	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
 		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
-		ret = append(ret, entity.NewDeck(
+		deck := entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
@@ -315,7 +334,9 @@ func (i *Deck) FindOnCursor(
 				djdc.DeckCodeMemo,
 			),
 			pokemonSprites,
-		))
+		)
+		deck.Tags = tagsByDeckId[djdc.DeckID]
+		ret = append(ret, deck)
 	}
 
 	return ret, nil
@@ -393,6 +414,11 @@ func (i *Deck) FindById(
 		pokemonSprites = append(pokemonSprites, entity)
 	}
 
+	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, []string{deckJoinDeckCodes.DeckID})
+	if err != nil {
+		return nil, err
+	}
+
 	ret := entity.NewDeck(
 		deckJoinDeckCodes.DeckID,
 		deckJoinDeckCodes.DeckCreatedAt,
@@ -412,6 +438,7 @@ func (i *Deck) FindById(
 		),
 		pokemonSprites,
 	)
+	ret.Tags = tagsByDeckId[deckJoinDeckCodes.DeckID]
 
 	return ret, nil
 }
@@ -551,12 +578,17 @@ func (i *Deck) FindByUserId(
 		return nil, err
 	}
 
+	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
 		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
-		ret = append(ret, entity.NewDeck(
+		deck := entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
@@ -574,7 +606,9 @@ func (i *Deck) FindByUserId(
 				djdc.DeckCodeMemo,
 			),
 			pokemonSprites,
-		))
+		)
+		deck.Tags = tagsByDeckId[djdc.DeckID]
+		ret = append(ret, deck)
 	}
 
 	return ret, nil
@@ -708,12 +742,17 @@ func (i *Deck) FindByUserIdOnCursor(
 		return nil, err
 	}
 
+	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
+	if err != nil {
+		return nil, err
+	}
+
 	var ret []*entity.Deck
 
 	for _, djdc := range deckJoinDeckCodes {
 		pokemonSprites := spritesByDeckId[djdc.DeckID]
 
-		ret = append(ret, entity.NewDeck(
+		deck := entity.NewDeck(
 			djdc.DeckID,
 			djdc.DeckCreatedAt,
 			djdc.DeckArchivedAt.Time,
@@ -731,7 +770,9 @@ func (i *Deck) FindByUserIdOnCursor(
 				djdc.DeckCodeMemo,
 			),
 			pokemonSprites,
-		))
+		)
+		deck.Tags = tagsByDeckId[djdc.DeckID]
+		ret = append(ret, deck)
 	}
 
 	return ret, nil

@@ -85,6 +85,14 @@ var matchJoinGameColumns = []string{
 
 var matchPokemonSpriteColumns = []string{"match_id", "position", "pokemon_sprite_id"}
 
+// expectMatchTagsQuery は各Matchの読み込み後に走るタグのバッチ取得(findTagsByMatchIds)に
+// 対する期待を空の結果で登録する。deckTagColumns(JOIN出力カラム)を流用する。
+// タグSQLの正しさは統合テストが実DBで検証するため、ここではクエリが走ることだけを押さえる。
+func expectMatchTagsQuery(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(`FROM "match_tags"`)).
+		WillReturnRows(sqlmock.NewRows(deckTagColumns))
+}
+
 // matchJoinGameQuery は matches と games を JOIN するクエリにマッチする正規表現を組み立てる。
 // SELECT句・JOIN句はGoのソース上の改行やインデントをそのままSQLに含むため、
 // 検証したいWHERE以降(絞り込み条件・並び順)だけを完全一致で見る。
@@ -188,6 +196,8 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 			sqlmock.NewRows(matchPokemonSpriteColumns).AddRow(matchId, 1, "pikachu"),
 		)
 
+		expectMatchTagsQuery(mock)
+
 		match, err := r.FindById(context.Background(), matchId)
 
 		require.NoError(t, err)
@@ -223,6 +233,8 @@ func test_MatchInfrastructure_FindById(t *testing.T) {
 		mock.ExpectQuery(regexp.QuoteMeta(
 			`SELECT * FROM "match_pokemon_sprites" WHERE match_id = $1`,
 		)).WithArgs(matchId).WillReturnRows(sqlmock.NewRows(matchPokemonSpriteColumns))
+
+		expectMatchTagsQuery(mock)
 
 		match, err := r.FindById(context.Background(), matchId)
 
@@ -285,6 +297,8 @@ func test_MatchInfrastructure_FindByRecordId(t *testing.T) {
 			sqlmock.NewRows(matchPokemonSpriteColumns).AddRow(matchId2, 1, "raichu"),
 		)
 
+		expectMatchTagsQuery(mock)
+
 		matches, err := r.FindByRecordId(context.Background(), recordId)
 
 		require.NoError(t, err)
@@ -345,6 +359,8 @@ func test_MatchInfrastructure_FindByUserId(t *testing.T) {
 			`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1,$2) ORDER BY position ASC`,
 		)).WithArgs(matchId2, matchId1).WillReturnRows(sqlmock.NewRows(matchPokemonSpriteColumns))
 
+		expectMatchTagsQuery(mock)
+
 		matches, err := r.FindByUserId(context.Background(), uid, limit)
 
 		require.NoError(t, err)
@@ -394,6 +410,8 @@ func test_MatchInfrastructure_FindLatest(t *testing.T) {
 		mock.ExpectQuery(regexp.QuoteMeta(
 			`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1) ORDER BY position ASC`,
 		)).WithArgs(matchId).WillReturnRows(sqlmock.NewRows(matchPokemonSpriteColumns))
+
+		expectMatchTagsQuery(mock)
 
 		matches, err := r.FindLatest(context.Background(), limit)
 

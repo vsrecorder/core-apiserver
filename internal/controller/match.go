@@ -240,6 +240,8 @@ func (c *Match) Create(ctx *gin.Context) {
 		games,
 		pokemonSprites,
 	)
+	// TagIds は NewMatchParam の引数に含めていないため、ここで直接設定する。
+	param.TagIds = req.TagIds
 
 	match, err := c.usecase.Create(context.Background(), param)
 	if err != nil {
@@ -305,6 +307,8 @@ func (c *Match) Update(ctx *gin.Context) {
 		games,
 		pokemonSprites,
 	)
+	// TagIds は NewMatchParam の引数に含めていないため、ここで直接設定する。
+	param.TagIds = req.TagIds
 
 	match, err := c.usecase.Update(context.Background(), id, param)
 	if err != nil {

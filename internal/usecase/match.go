@@ -36,6 +36,9 @@ type MatchParam struct {
 	Memo                 string
 	Games                []*GameParam
 	PokemonSprites       []*PokemonSpriteParam
+	// TagIds は付与するタグID。NewMatchParam の引数には含めず、controller が
+	// param.TagIds に直接設定する(既存の NewMatchParam 呼び出しを壊さないため)。
+	TagIds []string
 }
 
 func NewGameParam(
@@ -144,6 +147,7 @@ type MatchInterface interface {
 type Match struct {
 	repository            repository.MatchInterface
 	recordRepository      repository.RecordInterface
+	tag                   repository.TagInterface
 	badgeEvaluation       BadgeEvaluationInterface
 	designationEvaluation DesignationEvaluationInterface
 	environmentBadgeEval  EnvironmentBadgeEvaluationInterface
@@ -152,11 +156,36 @@ type Match struct {
 func NewMatch(
 	repository repository.MatchInterface,
 	recordRepository repository.RecordInterface,
+	tag repository.TagInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	designationEvaluation DesignationEvaluationInterface,
 	environmentBadgeEval EnvironmentBadgeEvaluationInterface,
 ) MatchInterface {
-	return &Match{repository, recordRepository, badgeEvaluation, designationEvaluation, environmentBadgeEval}
+	return &Match{repository, recordRepository, tag, badgeEvaluation, designationEvaluation, environmentBadgeEval}
+}
+
+// syncMatchTags は対戦結果について、userId が付与できる有効なタグ(自分のタグ or
+// プリセット)だけを残して match_tags を更新し、付与後のタグを返す。
+// 挙動は Deck.syncDeckTags と同じ。
+func (u *Match) syncMatchTags(
+	ctx context.Context,
+	matchId string,
+	userId string,
+	tagIds []string,
+) ([]*entity.Tag, error) {
+	tags, err := u.tag.FindAttachableByIds(ctx, tagIds, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// FindAttachableByIds の戻り順は不定なので、付与順(tagIds)に整列してから採番する。
+	orderedTags, attachableTagIds := orderAttachableTagsByIds(tags, tagIds)
+
+	if err := u.tag.ReplaceMatchTags(ctx, matchId, attachableTagIds); err != nil {
+		return nil, err
+	}
+
+	return orderedTags, nil
 }
 
 func (u *Match) FindById(
@@ -317,6 +346,13 @@ func (u *Match) Create(
 		return nil, err
 	}
 
+	// タグの付与は対戦結果本体とは別テーブルのため Create とは分けて反映する。
+	tags, err := u.syncMatchTags(ctx, match.ID, param.UserId, param.TagIds)
+	if err != nil {
+		return nil, err
+	}
+	match.Tags = tags
+
 	// 通知一覧はcreated_at DESC(新しい順、同値時はid DESC)で表示されるため、後から
 	// 生成した通知ほど上に表示される。作成順序を「ユーザバッジ→環境バッジ→称号/
 	// ランクアップ」にすることで、表示順序は下から「ユーザバッジ→環境バッジ→称号/
@@ -464,6 +500,13 @@ func (u *Match) Update(
 	if err := u.repository.Update(ctx, match); err != nil {
 		return nil, err
 	}
+
+	// タグの付与を param.TagIds の集合に合わせて更新する。
+	tags, err := u.syncMatchTags(ctx, match.ID, param.UserId, param.TagIds)
+	if err != nil {
+		return nil, err
+	}
+	match.Tags = tags
 
 	return match, nil
 }

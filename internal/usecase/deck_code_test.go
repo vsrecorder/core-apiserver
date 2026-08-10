@@ -39,8 +39,18 @@ func setup4DeckCodeUsecase(t *testing.T) (
 	mockRepository := mock_repository.NewMockDeckCodeInterface(mockCtrl)
 	mockDeckAsset := mock_repository.NewMockDeckAssetInterface(mockCtrl)
 
+	// タグ同期は Create/Update のたびに呼ばれる。タグ自体の検証は別テストで行うため、
+	// ここでは呼び出しを素通り(付与なし)にする。
+	mockTagRepository := mock_repository.NewMockTagInterface(mockCtrl)
+	mockTagRepository.EXPECT().
+		FindAttachableByIds(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]*entity.Tag{}, nil).AnyTimes()
+	mockTagRepository.EXPECT().
+		ReplaceDeckCodeTags(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+
 	badgeEvaluationCalled := false
-	usecase := NewDeckCode(mockRepository, mockDeckAsset, spyDeckCodeBadgeEvaluation{called: &badgeEvaluationCalled})
+	usecase := NewDeckCode(mockRepository, mockDeckAsset, mockTagRepository, spyDeckCodeBadgeEvaluation{called: &badgeEvaluationCalled})
 
 	return mockRepository, mockDeckAsset, &badgeEvaluationCalled, usecase
 }
@@ -113,7 +123,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		t.Run("正常系_コード未指定なら外部アップロードと称号評価なしで保存する", func(t *testing.T) {
 			mockRepository, _, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
 
-			param := NewDeckCodeCreateParam(uid, deckId, "", false, "")
+			param := NewDeckCodeCreateParam(uid, deckId, "", false, "", nil)
 
 			mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
@@ -131,7 +141,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		t.Run("正常系_コード指定時はHTMLと画像をアップロードして保存し称号評価する", func(t *testing.T) {
 			mockRepository, mockDeckAsset, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
 
-			param := NewDeckCodeCreateParam(uid, deckId, code, true, "メモ")
+			param := NewDeckCodeCreateParam(uid, deckId, code, true, "メモ", nil)
 
 			gomock.InOrder(
 				mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), code).Return(nil),
@@ -151,7 +161,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		t.Run("異常系_HTMLアップロード失敗時は画像アップロードも保存も行わない", func(t *testing.T) {
 			_, mockDeckAsset, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
 
-			param := NewDeckCodeCreateParam(uid, deckId, code, false, "")
+			param := NewDeckCodeCreateParam(uid, deckId, code, false, "", nil)
 
 			mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), code).Return(errors.New(""))
 
@@ -165,7 +175,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		t.Run("異常系_画像アップロード失敗時は保存を行わない", func(t *testing.T) {
 			_, mockDeckAsset, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
 
-			param := NewDeckCodeCreateParam(uid, deckId, code, false, "")
+			param := NewDeckCodeCreateParam(uid, deckId, code, false, "", nil)
 
 			gomock.InOrder(
 				mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), code).Return(nil),
@@ -182,7 +192,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		t.Run("異常系_保存失敗時はエラーを返し称号評価しない", func(t *testing.T) {
 			mockRepository, _, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
 
-			param := NewDeckCodeCreateParam(uid, deckId, "", false, "")
+			param := NewDeckCodeCreateParam(uid, deckId, "", false, "", nil)
 
 			mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(errors.New(""))
 
@@ -207,7 +217,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 			mockRepository.EXPECT().FindById(context.Background(), id).Return(existing, nil)
 			mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
-			param := NewDeckCodeUpdateParam(true, "更新後のメモ")
+			param := NewDeckCodeUpdateParam(true, "更新後のメモ", nil)
 
 			ret, err := usecase.Update(context.Background(), id, param)
 
@@ -229,7 +239,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 
 			mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
 
-			ret, err := usecase.Update(context.Background(), id, NewDeckCodeUpdateParam(false, ""))
+			ret, err := usecase.Update(context.Background(), id, NewDeckCodeUpdateParam(false, "", nil))
 
 			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 			require.Nil(t, ret)
@@ -246,7 +256,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 			mockRepository.EXPECT().FindById(context.Background(), id).Return(existing, nil)
 			mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(errors.New(""))
 
-			ret, err := usecase.Update(context.Background(), id, NewDeckCodeUpdateParam(false, ""))
+			ret, err := usecase.Update(context.Background(), id, NewDeckCodeUpdateParam(false, "", nil))
 
 			require.Error(t, err)
 			require.Nil(t, ret)

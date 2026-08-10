@@ -64,7 +64,9 @@ func (i *Tag) FindPresets(
 
 	if tx := dbFromContext(ctx, i.db).
 		Where("preset_flg = ?", true).
-		Order("name ASC").
+		// プリセット(ACE SPEC)は card id 昇順で作成し、ULIDは生成順に単調増加するため、
+		// id 昇順で引くと card id 昇順(≒収録順)で並ぶ。
+		Order("id ASC").
 		Find(&tagModels); tx.Error != nil {
 		return nil, tx.Error
 	}

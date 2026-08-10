@@ -14,7 +14,8 @@ type TagInterface interface {
 		uid string,
 	) ([]*entity.Tag, error)
 
-	// FindPresets は全ユーザー共通のプリセットタグ(preset_flg=true)を名前順で返す。
+	// FindPresets は全ユーザー共通のプリセットタグ(preset_flg=true)を、
+	// 作成順(=ACE SPEC の card id 昇順、≒収録順)で返す。
 	FindPresets(
 		ctx context.Context,
 	) ([]*entity.Tag, error)

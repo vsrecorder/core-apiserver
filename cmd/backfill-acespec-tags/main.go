@@ -59,7 +59,9 @@ const aceSpecTagColor = "#FF007F"
 // maxTagNameLength は tags.name VARCHAR(32) に対応する上限。超える名前は投入しない。
 const maxTagNameLength = 32
 
-var entropy = rand.New(rand.NewSource(time.Now().UnixNano()))
+// ULID を単調増加(モノトニック)で発番する。生成順(=card id 昇順)が id の昇順に一致するため、
+// FindPresets を id 昇順で引けばプリセットが card id 昇順(≒収録順)で並ぶ。
+var entropy = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
 
 func generateId() (string, error) {
 	ms := ulid.Timestamp(time.Now())
@@ -96,7 +98,9 @@ func main() {
 	// 現行スタンダードの ACE SPEC だけをプリセットにする。
 	var rawNames []string
 	if tx := db.Raw(
-		"SELECT DISTINCT card_name FROM cards WHERE card_name LIKE ? AND regulation_mark = ? ORDER BY card_name ASC",
+		// card id が小さいカードから順にプリセット化する(≒収録・登場順)。同名の ACE SPEC が
+		// 複数カード(再録含む)に跨ることがあるため、名前ごとの最小 id で並び順を決める。
+		"SELECT card_name FROM cards WHERE card_name LIKE ? AND regulation_mark = ? GROUP BY card_name ORDER BY MIN(id) ASC",
 		"%"+aceSpecSuffix+"%",
 		*regulationMark,
 	).Scan(&rawNames); tx.Error != nil {

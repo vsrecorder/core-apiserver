@@ -22,6 +22,33 @@ func NewDeck(
 	return &Deck{db}
 }
 
+// attachLatestDeckCodeTags は、各 deck の LatestDeckCode に付与タグをまとめてロードして載せる。
+// deck の読み出しは deck 本体のタグ(findTagsByDeckIds)しか積まないため、レスポンスの
+// latest_deck_code.tags を正しく返す(新バージョン作成時のタグ継承などで使う)にはこれを併用する。
+func attachLatestDeckCodeTags(ctx context.Context, db *gorm.DB, decks []*entity.Deck) error {
+	ids := make([]string, 0, len(decks))
+	for _, d := range decks {
+		if d != nil && d.LatestDeckCode != nil && d.LatestDeckCode.ID != "" {
+			ids = append(ids, d.LatestDeckCode.ID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	tagsByDeckCodeId, err := findTagsByDeckCodeIds(ctx, db, ids)
+	if err != nil {
+		return err
+	}
+
+	for _, d := range decks {
+		if d != nil && d.LatestDeckCode != nil {
+			d.LatestDeckCode.Tags = tagsByDeckCodeId[d.LatestDeckCode.ID]
+		}
+	}
+	return nil
+}
+
 func (i *Deck) Find(
 	ctx context.Context,
 	limit int,
@@ -125,6 +152,11 @@ func (i *Deck) Find(
 		)
 		deck.Tags = tagsByDeckId[djdc.DeckID]
 		ret = append(ret, deck)
+	}
+
+	// latest_deck_code の付与タグをまとめてロードして載せる。
+	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		return nil, err
 	}
 
 	return ret, nil
@@ -233,6 +265,11 @@ func (i *Deck) FindAll(
 		ret = append(ret, deck)
 	}
 
+	// latest_deck_code の付与タグをまとめてロードして載せる。
+	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		return nil, err
+	}
+
 	return ret, nil
 }
 
@@ -339,6 +376,11 @@ func (i *Deck) FindOnCursor(
 		ret = append(ret, deck)
 	}
 
+	// latest_deck_code の付与タグをまとめてロードして載せる。
+	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		return nil, err
+	}
+
 	return ret, nil
 }
 
@@ -439,6 +481,11 @@ func (i *Deck) FindById(
 		pokemonSprites,
 	)
 	ret.Tags = tagsByDeckId[deckJoinDeckCodes.DeckID]
+
+	// latest_deck_code の付与タグをロードして載せる。
+	if err := attachLatestDeckCodeTags(ctx, i.db, []*entity.Deck{ret}); err != nil {
+		return nil, err
+	}
 
 	return ret, nil
 }
@@ -611,6 +658,11 @@ func (i *Deck) FindByUserId(
 		ret = append(ret, deck)
 	}
 
+	// latest_deck_code の付与タグをまとめてロードして載せる。
+	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		return nil, err
+	}
+
 	return ret, nil
 }
 
@@ -773,6 +825,11 @@ func (i *Deck) FindByUserIdOnCursor(
 		)
 		deck.Tags = tagsByDeckId[djdc.DeckID]
 		ret = append(ret, deck)
+	}
+
+	// latest_deck_code の付与タグをまとめてロードして載せる。
+	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		return nil, err
 	}
 
 	return ret, nil

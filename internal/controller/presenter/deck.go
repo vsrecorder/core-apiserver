@@ -35,6 +35,8 @@ func newDeckResponse(deck *entity.Deck) dto.DeckResponse {
 			Code:           deck.LatestDeckCode.Code,
 			PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
 			Memo:           deck.LatestDeckCode.Memo,
+			// 新バージョン作成時のタグ継承などで使うため、最新バージョンの付与タグも返す。
+			Tags: newTagResponses(deck.LatestDeckCode.Tags),
 		},
 		PokemonSprites: pokemonSpritesResponse,
 		Tags:           newTagResponses(deck.Tags),

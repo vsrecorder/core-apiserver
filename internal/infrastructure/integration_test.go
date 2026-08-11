@@ -519,6 +519,15 @@ func TestIntegrationTagRepository(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, deckcode.Tags, 1)
 		require.Equal(t, "tag-1", deckcode.Tags[0].ID)
+
+		// デッキ読み出しでも、最新バージョン(latest_deck_code)のタグが載る
+		// (新バージョン作成時のタグ継承で使う。dc-t1 は deck-t1 唯一=最新のデッキコード)。
+		deck, err := deckRepository.FindById(ctx, "deck-t1")
+		require.NoError(t, err)
+		require.NotNil(t, deck.LatestDeckCode)
+		require.Equal(t, "dc-t1", deck.LatestDeckCode.ID)
+		require.Len(t, deck.LatestDeckCode.Tags, 1)
+		require.Equal(t, "tag-1", deck.LatestDeckCode.Tags[0].ID)
 	})
 
 	t.Run("正常系_タグ削除で本体は論理削除され中間テーブルの付与も消える", func(t *testing.T) {

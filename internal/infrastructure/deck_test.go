@@ -84,6 +84,14 @@ func expectDeckTagsQuery(mock sqlmock.Sqlmock) {
 		WillReturnRows(sqlmock.NewRows(deckTagColumns))
 }
 
+// expectDeckCodeTagsQuery は各Findの後に走る latest_deck_code のタグ取得
+// (attachLatestDeckCodeTags→findTagsByDeckCodeIds)に対する期待を空の結果で登録する。
+// カラム構成は deck_tags と同じ(owner_id/id/created_at/... の別名)ため deckTagColumns を流用する。
+func expectDeckCodeTagsQuery(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(`FROM "deck_code_tags"`)).
+		WillReturnRows(sqlmock.NewRows(deckTagColumns))
+}
+
 // deckJoinDeckCodeQuery は decks と deck_codes を JOIN するクエリにマッチする正規表現を組み立てる。
 // SELECT句・JOIN句はGoのソース上の改行やインデントをそのままSQLに含むため、
 // 検証したいWHERE以降(絞り込み条件・並び順・件数制限)だけを完全一致で見る。
@@ -158,6 +166,7 @@ func test_DeckInfrastructure_Find(t *testing.T) {
 		))
 
 		expectDeckTagsQuery(mock)
+		expectDeckCodeTagsQuery(mock)
 
 		decks, err := r.Find(context.Background(), limit, offset)
 
@@ -402,6 +411,7 @@ func test_DeckInfrastructure_FindById(t *testing.T) {
 		))
 
 		expectDeckTagsQuery(mock)
+		expectDeckCodeTagsQuery(mock)
 
 		deck, err := r.FindById(context.Background(), id)
 
@@ -936,6 +946,7 @@ func test_DeckInfrastructure_Save(t *testing.T) {
 		))
 
 		expectDeckTagsQuery(mock)
+		expectDeckCodeTagsQuery(mock)
 
 		deck, err := r.FindById(context.Background(), id)
 

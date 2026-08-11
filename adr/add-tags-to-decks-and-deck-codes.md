@@ -288,3 +288,41 @@ D4 の拡張性設計どおり、対戦結果(match)にもタグを付けられ�
 - **frontend**: 対戦結果の作成/編集フォームにタグ付与(たたんだアコーディオン)を追加し、対戦一覧の各行にタグを表示。
 
 記録(record)へ広げる場合も、残る `recordTagLink` を1つ足すだけで同様に実装できる。
+
+---
+
+## 7. 追補: 表示順の確定(付与順・プリセットのcard id順)と表示崩れ対策
+
+運用しながら「並び順」に関する要件が固まったため、以下を確定した。
+
+### D6. タグの表示は「付与した順」にする(中間テーブルに `position`)
+
+当初は `tags.created_at` で並べていたが、これはタグの作成日順であって付与順ではない。中間テーブル(`deck_tags` / `deck_code_tags` / `match_tags`)に **`position SMALLINT`** を持たせ、付与順(=リクエストの `tag_ids` の並び)で採番して、読み出しは `position` 昇順で返す。
+
+- **1始まり**: `ReplaceXxxTags` は `tag_ids` の並びどおり `position` を **1, 2, 3…** と採番する(最初に付与したタグが `position=1`、以降昇順)。列の `DEFAULT` も 1。
+- **読み出し**: `findTagsByOwnerIds` は `ORDER BY <中間テーブル>.position ASC, tags.created_at DESC`(同値タイブレークのみ created_at)。
+- **既存データの補正**: `migration_add_tags.sql` に、オーナー単位で `position` を 1..N へ振り直す `UPDATE`(`ROW_NUMBER()`)を用意。表示順(position昇順・created_at降順)と同順で振り直すので見た目は不変、かつ冪等。
+- **注意点(採番の入力順)**: `FindAttachableByIds` は `WHERE id IN (...)` で **戻り順が不定**。usecase 側で付与順を保つため、共通ヘルパ `orderAttachableTagsByIds` で `tag_ids` の並びに整列し直してから `ReplaceXxxTags` に渡す(付与不可ID・重複も除去)。ここを戻り順のまま採番すると付与順にならない。
+
+### D7. プリセット(ACE SPEC)は card id 昇順で並べる
+
+プリセットは名前順(五十音/アルファベット順)よりも、収録・登場順に近い **card id 昇順**が自然。専用の並び順カラムは設けず、ULIDの生成順で表現する。
+
+- **backfill**: 取得を `... GROUP BY card_name ORDER BY MIN(id) ASC`(同名再録は最小 card id で代表)にし、ULID発番を **`ulid.Monotonic`(単調増加)** にする。これで「作成順 = card id 昇順」が id の昇順に一致する。
+- **読み出し**: `FindPresets` は `ORDER BY id ASC`。
+- **限界と代替**: 既存プリセットの id は振り直されない(冪等な差分投入のため)。後から**小さい card id のカードを取りこぼし補充**した場合だけ末尾に付いて厳密な順序から外れる。厳密性が要るようになったら、明示的な並び順カラム(`preset_order`)を足して backfill が既存分も in-place で `UPDATE` する方式に切り替える(非破壊)。
+
+### D8. `match_tags` は FK 参照先(`matches`)の後に定義する
+
+`schema.sql` は上から順に流すため、`match_tags` の `FOREIGN KEY (match_id) REFERENCES matches(id)` を満たすには `matches` の `CREATE TABLE` より後に置く必要がある(当初 `deck_tags` の並びで前方に置いてしまい、`make integration-test` で `relation "match_tags" does not exist` になった)。`migration_add_tags.sql` は稼働DBに `matches` が既存の前提なので順序非依存。
+
+### D9. 対戦一覧のタグ表示は折り返さず横スクロール
+
+対戦一覧の行(HeroUI `Button`, `h-10` 固定 + `overflow-hidden`)にタグを**別行**で足すと、行数増加で相手デッキ名などが見切れる。タグを先攻/後攻・サイド数などの情報チップと**同じ1行**に置き、その行を `flex-nowrap + overflow-x-auto`(`[&>*]:shrink-0`)で**折り返さず横スクロール**にした。行の高さは 2 行のまま変わらず、タグは何個でも横スクロールで辿れる。
+
+- **編集の変更検知**: 付与順が表示に効くため、`hasChanges` は集合一致ではなく**並び順も見る**比較にする(match/deck の更新モーダル)。同じ集合でも並べ替えれば更新できる。
+
+### テスト
+
+- `orderAttachableTagsByIds`(付与順整列・付与不可除去・重複1回化)の純粋ユニットテスト。
+- 統合テスト: `position` の実値が 1 始まりで付与順に並ぶこと、`FindPresets` が id 昇順で返ること、backfill の `fetchAceSpecCardNames` が最小 card id 昇順で返すこと、`cleanAceSpecNames` の目印除去・重複除去。`make integration-test` は `./cmd/backfill-acespec-tags/` も対象に含める。

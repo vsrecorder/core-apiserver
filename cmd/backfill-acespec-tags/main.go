@@ -38,6 +38,7 @@ import (
 
 	"github.com/joho/godotenv"
 	ulid "github.com/oklog/ulid/v2"
+	"gorm.io/gorm"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
@@ -70,6 +71,44 @@ func generateId() (string, error) {
 	return id.String(), err
 }
 
+// fetchAceSpecCardNames は cards から、指定レギュレーションマークの ACE SPEC カード名(目印付き)を
+// card id が小さい順で取得する。同名の ACE SPEC が複数カード(再録含む)に跨ることがあるため、
+// 名前ごとの最小 id で並び順を決める。
+func fetchAceSpecCardNames(db *gorm.DB, regulationMark string) ([]string, error) {
+	var rawNames []string
+	if tx := db.Raw(
+		"SELECT card_name FROM cards WHERE card_name LIKE ? AND regulation_mark = ? GROUP BY card_name ORDER BY MIN(id) ASC",
+		"%"+aceSpecSuffix+"%",
+		regulationMark,
+	).Scan(&rawNames); tx.Error != nil {
+		return nil, tx.Error
+	}
+	return rawNames, nil
+}
+
+// cleanAceSpecNames は目印(aceSpecSuffix)を除き、空・長すぎる名前を除外し、重複を取り除く。
+// 入力の並び順(=card id 昇順)は保持する。
+func cleanAceSpecNames(rawNames []string) []string {
+	seen := make(map[string]struct{}, len(rawNames))
+	names := make([]string, 0, len(rawNames))
+	for _, raw := range rawNames {
+		name := strings.TrimSpace(strings.ReplaceAll(raw, aceSpecSuffix, ""))
+		if name == "" {
+			continue
+		}
+		if utf8.RuneCountInString(name) > maxTagNameLength {
+			log.Printf("skip (name too long > %d chars): %s\n", maxTagNameLength, name)
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	}
+	return names
+}
+
 func main() {
 	dryRun := flag.Bool("dry-run", true, "true の場合、書き込みは行わず投入対象の確認のみ行う")
 	// 対象のレギュレーションマーク。既定は現行スタンダードの H のみ。
@@ -93,39 +132,15 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
-	// 1. cards から ACE SPEC カード名(目印付き)を取得する。
-	// 対象は指定レギュレーションマーク(既定 H)のみ。旧マークで刷られた同名の再録は除外し、
-	// 現行スタンダードの ACE SPEC だけをプリセットにする。
-	var rawNames []string
-	if tx := db.Raw(
-		// card id が小さいカードから順にプリセット化する(≒収録・登場順)。同名の ACE SPEC が
-		// 複数カード(再録含む)に跨ることがあるため、名前ごとの最小 id で並び順を決める。
-		"SELECT card_name FROM cards WHERE card_name LIKE ? AND regulation_mark = ? GROUP BY card_name ORDER BY MIN(id) ASC",
-		"%"+aceSpecSuffix+"%",
-		*regulationMark,
-	).Scan(&rawNames); tx.Error != nil {
-		log.Printf("failed to query cards: %v\n", tx.Error)
+	// 1. cards から ACE SPEC カード名(目印付き)を card id 昇順で取得する。
+	rawNames, err := fetchAceSpecCardNames(db, *regulationMark)
+	if err != nil {
+		log.Printf("failed to query cards: %v\n", err)
 		os.Exit(ExitCodeNG)
 	}
 
-	// 2. 目印を除いた一意のタグ名にする。
-	seen := make(map[string]struct{}, len(rawNames))
-	names := make([]string, 0, len(rawNames))
-	for _, raw := range rawNames {
-		name := strings.TrimSpace(strings.ReplaceAll(raw, aceSpecSuffix, ""))
-		if name == "" {
-			continue
-		}
-		if utf8.RuneCountInString(name) > maxTagNameLength {
-			log.Printf("skip (name too long > %d chars): %s\n", maxTagNameLength, name)
-			continue
-		}
-		if _, ok := seen[name]; ok {
-			continue
-		}
-		seen[name] = struct{}{}
-		names = append(names, name)
-	}
+	// 2. 目印を除いた一意のタグ名にする(取得順=card id 昇順を保つ)。
+	names := cleanAceSpecNames(rawNames)
 
 	// 3. 既存のプリセットタグと名前で突き合わせ、未登録は新規作成、
 	//    既存でも色が変わっていれば色だけ更新する(色の定義を変えても再実行で反映される)。

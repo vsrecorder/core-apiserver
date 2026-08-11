@@ -581,6 +581,30 @@ func TestIntegrationTagRepository(t *testing.T) {
 	})
 }
 
+// FindPresets はプリセットを id 昇順(=作成順=ACE SPEC の card id 昇順)で返す。
+// name 昇順ではないことを、id の昇順と name の昇順が逆になるデータで確認する。
+func TestIntegrationTagPresetOrder(t *testing.T) {
+	db := setupIntegrationDB(t, "tags")
+	ctx := context.Background()
+	r := NewTag(db)
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	// id "aaa..."(小) の name は "ゼ..."(後方)、id "zzz..."(大) の name は "ア..."(前方)。
+	// FindPresets が id 昇順なら [小id, 大id]、name 昇順なら [大id, 小id] になる。
+	smallID := "aaaaaaaaaaaaaaaaaaaaaaaaaa"
+	largeID := "zzzzzzzzzzzzzzzzzzzzzzzzzz"
+	require.NoError(t, r.Save(ctx, entity.NewTag(smallID, now, now, "", "ゼットプリセット", "#FF007F", true)))
+	require.NoError(t, r.Save(ctx, entity.NewTag(largeID, now, now, "", "アループリセット", "#FF007F", true)))
+
+	presets, err := r.FindPresets(ctx)
+	require.NoError(t, err)
+	require.Len(t, presets, 2)
+	// id 昇順(name 昇順の逆)で返ることを確認する。
+	require.Equal(t, smallID, presets[0].ID)
+	require.Equal(t, largeID, presets[1].ID)
+}
+
 // 対戦結果(match)へのタグ付与。match_tags の生SQL(replaceTags)・JOIN読み出し
 // (findTagsByMatchIds)・タグ削除時の連鎖を実DBで確認する。
 func TestIntegrationMatchTagRepository(t *testing.T) {

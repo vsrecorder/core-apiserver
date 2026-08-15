@@ -2,6 +2,27 @@ services:
   core-apiserver:
     image: vsrecorder/core-apiserver:latest
     restart: unless-stopped
+    #
+    # メモリ上限。本番は単一VM(4vCPU/4GiB)に PostgreSQL・nginx・webapp・
+    # 各APIサーバが同居しているため、上限が無いとリークを起こしたコンテナが
+    # ホストのメモリを食い尽くし、カーネルのOOM Killerが巻き添えで
+    # PostgreSQL を殺しうる。上限は暴走を1コンテナに閉じ込めるためのもので、
+    # 平常時には当たらない値にしてある。
+    #
+    # memswap_limit を mem_limit と同値にしてスワップへの逃げを塞ぐ
+    # (未指定だと docker は「メモリ+スワップ」を mem_limit の2倍まで許す)。
+    #
+    # 128m の根拠: 2026-08-16 の本番実測(docker stats)で 12MiB。
+    # Go のランタイムは解放したメモリをすぐOSへ返さないため実測より膨らむ余地があり、
+    # 約10倍を取っている。上限を実測から離しすぎると「暴走の隔離」として働かない
+    # (上限に達する前にホスト側が枯渇する)ため、意図的に低く抑えている。
+    #
+    # 大きなクエリ結果をメモリに載せる経路を足す場合はこの値も見直すこと。
+    # mem_reservation は実測値に合わせている。
+    #
+    mem_limit: 128m
+    memswap_limit: 128m
+    mem_reservation: 32m
     ports:
       - 8914:8914
     environment:

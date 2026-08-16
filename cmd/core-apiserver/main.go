@@ -303,8 +303,11 @@ func main() {
 		r,
 		usecase.NewUserPlayer(
 			infrastructure.NewUserPlayer(db),
+			infrastructure.NewCityleagueResult(db),
+			infrastructure.NewChampionshipSeries(db),
 			infrastructure.NewTransactionManager(db),
 		),
+		infrastructure.NewChampionshipSeries(db),
 		os.Getenv("USERS_PLAYERS_LINKING_ENABLED") != "false",
 	).RegisterRoute(relativePath)
 

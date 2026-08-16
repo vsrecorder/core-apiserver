@@ -87,6 +87,21 @@ func (mr *MockCityleagueResultInterfaceMockRecorder) FindByOfficialEventId(ctx, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByOfficialEventId", reflect.TypeOf((*MockCityleagueResultInterface)(nil).FindByOfficialEventId), ctx, officialEventId)
 }
 
+// FindByPlayerId mocks base method.
+func (m *MockCityleagueResultInterface) FindByPlayerId(ctx context.Context, playerId string, fromDate, toDate time.Time) ([]*entity.PlayerCityleagueResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByPlayerId", ctx, playerId, fromDate, toDate)
+	ret0, _ := ret[0].([]*entity.PlayerCityleagueResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByPlayerId indicates an expected call of FindByPlayerId.
+func (mr *MockCityleagueResultInterfaceMockRecorder) FindByPlayerId(ctx, playerId, fromDate, toDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByPlayerId", reflect.TypeOf((*MockCityleagueResultInterface)(nil).FindByPlayerId), ctx, playerId, fromDate, toDate)
+}
+
 // FindByTerm mocks base method.
 func (m *MockCityleagueResultInterface) FindByTerm(ctx context.Context, leagueType uint, fromDate, toDate time.Time) ([]*entity.CityleagueResult, error) {
 	m.ctrl.T.Helper()

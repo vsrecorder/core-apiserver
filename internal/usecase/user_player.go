@@ -34,18 +34,58 @@ type UserPlayerInterface interface {
 		ctx context.Context,
 		param *UserPlayerCreateParam,
 	) (*entity.UserPlayer, error)
+
+	// FindCityleagueResultsByUserId は userId に紐付いたプレイヤーIDの、
+	// season(空文字なら現在のシーズン)における入賞を新しい順に返す。
+	// 紐付けが無い場合は apperror.ErrRecordNotFound を返す。
+	FindCityleagueResultsByUserId(
+		ctx context.Context,
+		userId string,
+		season string,
+	) ([]*entity.PlayerCityleagueResult, error)
 }
 
 type UserPlayer struct {
-	repository         repository.UserPlayerInterface
-	transactionManager repository.TransactionManager
+	repository                   repository.UserPlayerInterface
+	cityleagueResultRepository   repository.CityleagueResultInterface
+	championshipSeriesRepository repository.ChampionshipSeriesInterface
+	transactionManager           repository.TransactionManager
 }
 
 func NewUserPlayer(
 	repository repository.UserPlayerInterface,
+	cityleagueResultRepository repository.CityleagueResultInterface,
+	championshipSeriesRepository repository.ChampionshipSeriesInterface,
 	transactionManager repository.TransactionManager,
 ) UserPlayerInterface {
-	return &UserPlayer{repository, transactionManager}
+	return &UserPlayer{
+		repository,
+		cityleagueResultRepository,
+		championshipSeriesRepository,
+		transactionManager,
+	}
+}
+
+// FindCityleagueResultsByUserId は「本人が自己申告したプレイヤーID」の入賞を返す。
+// 紐付けは所有権を検証していない(usecase.UserPlayer.Create 参照)ため、返る内容は
+// 公開情報である cityleague_results の範囲に限る。ここから記録や他ユーザーの
+// 情報へ広げないこと。
+func (u *UserPlayer) FindCityleagueResultsByUserId(
+	ctx context.Context,
+	userId string,
+	season string,
+) ([]*entity.PlayerCityleagueResult, error) {
+	userPlayer, err := u.repository.FindByUserId(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepository, season, timeNow().Local())
+	if err != nil {
+		return nil, err
+	}
+
+	return u.cityleagueResultRepository.FindByPlayerId(ctx, userPlayer.PlayerId, fromDate, toDate)
 }
 
 func (u *UserPlayer) FindByUserId(

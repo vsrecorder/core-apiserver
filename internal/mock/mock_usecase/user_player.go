@@ -71,3 +71,18 @@ func (mr *MockUserPlayerInterfaceMockRecorder) FindByUserId(ctx, userId any) *go
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserId", reflect.TypeOf((*MockUserPlayerInterface)(nil).FindByUserId), ctx, userId)
 }
+
+// FindCityleagueResultsByUserId mocks base method.
+func (m *MockUserPlayerInterface) FindCityleagueResultsByUserId(ctx context.Context, userId, season string) ([]*entity.PlayerCityleagueResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindCityleagueResultsByUserId", ctx, userId, season)
+	ret0, _ := ret[0].([]*entity.PlayerCityleagueResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindCityleagueResultsByUserId indicates an expected call of FindCityleagueResultsByUserId.
+func (mr *MockUserPlayerInterfaceMockRecorder) FindCityleagueResultsByUserId(ctx, userId, season any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindCityleagueResultsByUserId", reflect.TypeOf((*MockUserPlayerInterface)(nil).FindCityleagueResultsByUserId), ctx, userId, season)
+}

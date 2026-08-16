@@ -663,3 +663,100 @@ func TestIntegrationMatchTagRepository(t *testing.T) {
 		require.Equal(t, "mtag-2", match.Tags[0].ID)
 	})
 }
+
+// 連携済みプレイヤーIDの入賞取得。official_events・shops・prefectures を結合する生SQLと
+// db/schema.sql の整合(カラム名・予約語 rank のエスケープ有無)を実DBで確認する。
+func TestIntegrationCityleagueResultFindByPlayerId(t *testing.T) {
+	db := setupIntegrationDB(t, "cityleague_results", "official_events")
+
+	const playerId = "1234567890"
+
+	// FK制約: cityleague_results -> cityleague_schedules / official_events -> shops -> prefectures。
+	// prefectures と cityleague_schedules は db/schema.sql が初期データを持つのでそのまま使う。
+	require.NoError(t, db.Exec(
+		`INSERT INTO shops (id, name, term, prefecture_id) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
+		9001, "ポケモンカードステーション・テスト", 1, 13,
+	).Error)
+	require.NoError(t, db.Exec(
+		`INSERT INTO official_events (id, title, address, date, shop_id, shop_name) VALUES (?, ?, ?, ?, ?, ?)`,
+		952749, "シティリーグ2026 シーズン4", "東京都", time.Date(2026, 4, 5, 0, 0, 0, 0, time.Local), 9001, "ポケモンカードステーション・テスト",
+	).Error)
+	// official_events に対応する行が無い入賞も落とさない(LEFT JOIN)ことを確認するための1件
+	require.NoError(t, db.Exec(
+		`INSERT INTO official_events (id, title, address, date) VALUES (?, ?, ?, ?)`,
+		952750, "シティリーグ2026 シーズン4", "北海道", time.Date(2026, 4, 12, 0, 0, 0, 0, time.Local),
+	).Error)
+
+	insertResult := func(officialEventId uint, eventDate time.Time, rank uint, point uint, deckCode string, targetPlayerId string) {
+		t.Helper()
+		require.NoError(t, db.Create(&model.CityleagueResult{
+			CityleagueScheduleId: "2026s4",
+			OfficialEventId:      officialEventId,
+			LeagueType:           1,
+			EventDate:            eventDate,
+			PlayerId:             targetPlayerId,
+			PlayerName:           "テストプレイヤー",
+			Rank:                 rank,
+			Point:                point,
+			DeckCode:             deckCode,
+		}).Error)
+	}
+
+	insertResult(952749, time.Date(2026, 4, 5, 0, 0, 0, 0, time.Local), 1, 15, "gnnHHn-Vg3aWc-LHNnHH", playerId)
+	insertResult(952750, time.Date(2026, 4, 12, 0, 0, 0, 0, time.Local), 3, 12, "xxxYYY-ZZZzzz-AAAbbb", playerId)
+	// 他人の入賞(返してはならない)
+	insertResult(952749, time.Date(2026, 4, 5, 0, 0, 0, 0, time.Local), 2, 13, "other-deck-code-0000", "9999999999")
+
+	ctx := context.Background()
+	r := NewCityleagueResult(db)
+
+	t.Run("正常系_自分の入賞だけを開催イベント情報込みで新しい順に返す", func(t *testing.T) {
+		ret, err := r.FindByPlayerId(ctx, playerId, time.Time{}, time.Time{})
+
+		require.NoError(t, err)
+		require.Len(t, ret, 2)
+
+		// event_date の降順
+		require.Equal(t, uint(952750), ret[0].OfficialEventId)
+		require.Equal(t, uint(3), ret[0].Rank)
+
+		require.Equal(t, uint(952749), ret[1].OfficialEventId)
+		require.Equal(t, uint(1), ret[1].Rank)
+		require.Equal(t, uint(15), ret[1].Point)
+		require.Equal(t, "gnnHHn-Vg3aWc-LHNnHH", ret[1].DeckCode)
+		require.Equal(t, "シティリーグ2026 シーズン4", ret[1].EventTitle)
+		require.Equal(t, "ポケモンカードステーション・テスト", ret[1].ShopName)
+		require.Equal(t, "東京都", ret[1].PrefectureName)
+		// 開催日(2026-04-05)が属する対戦環境が db/schema.sql の初期データから引けること
+		require.NotEmpty(t, ret[1].EnvironmentTitle)
+	})
+
+	t.Run("正常系_店舗が紐付かない入賞も落とさない", func(t *testing.T) {
+		ret, err := r.FindByPlayerId(ctx, playerId, time.Time{}, time.Time{})
+
+		require.NoError(t, err)
+		require.Equal(t, uint(952750), ret[0].OfficialEventId)
+		require.Empty(t, ret[0].ShopName)
+		require.Empty(t, ret[0].PrefectureName)
+	})
+
+	t.Run("正常系_シーズン期間の半開区間で絞り込む", func(t *testing.T) {
+		// toDate は exclusive のため、4/12 の入賞は範囲外になる
+		ret, err := r.FindByPlayerId(ctx, playerId,
+			time.Date(2026, 4, 1, 0, 0, 0, 0, time.Local),
+			time.Date(2026, 4, 12, 0, 0, 0, 0, time.Local),
+		)
+
+		require.NoError(t, err)
+		require.Len(t, ret, 1)
+		require.Equal(t, uint(952749), ret[0].OfficialEventId)
+	})
+
+	t.Run("正常系_該当が無ければ空のスライスを返す", func(t *testing.T) {
+		ret, err := r.FindByPlayerId(ctx, "0000000000", time.Time{}, time.Time{})
+
+		require.NoError(t, err)
+		require.NotNil(t, ret)
+		require.Empty(t, ret)
+	})
+}

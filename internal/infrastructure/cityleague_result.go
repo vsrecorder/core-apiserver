@@ -64,6 +64,99 @@ func (i *CityleagueResult) FindEvents(
 	return ret, nil
 }
 
+// playerCityleagueResultRow は FindByPlayerId の結合結果を受けるスキャン用の行。
+// official_events(+shops・prefectures)を結合するため、cityleague_results の
+// モデルだけでは受けきれない。
+type playerCityleagueResultRow struct {
+	CityleagueScheduleId string
+	OfficialEventId      uint
+	LeagueType           uint
+	EventDate            time.Time
+	Rank                 uint
+	Point                uint
+	DeckCode             string
+	EventTitle           string
+	ShopName             string
+	PrefectureName       string
+	EnvironmentTitle     string
+}
+
+func (i *CityleagueResult) FindByPlayerId(
+	ctx context.Context,
+	playerId string,
+	fromDate time.Time,
+	toDate time.Time,
+) ([]*entity.PlayerCityleagueResult, error) {
+	// 大会名・店舗名・都道府県は official_events 側にしかないが、対象は1プレイヤーの入賞
+	// (1シーズンでも数件)に限られるため、結合の追加コストは無視できる。呼び出し側で
+	// イベントを引き直すと入賞の件数だけ往復が増えるので、ここで一度に揃える。
+	// official_events 側の行が欠けていても入賞自体は表示したいのでLEFT JOINにする。
+	query := i.db.Table("cityleague_results").
+		Select(
+			"cityleague_results.cityleague_schedule_id AS cityleague_schedule_id," +
+				"cityleague_results.official_event_id AS official_event_id," +
+				"cityleague_results.league_type AS league_type," +
+				"cityleague_results.event_date AS event_date," +
+				"cityleague_results.rank AS rank," +
+				"cityleague_results.point AS point," +
+				"cityleague_results.deck_code AS deck_code," +
+				"official_events.title AS event_title," +
+				"official_events.shop_name AS shop_name," +
+				"prefectures.name AS prefecture_name," +
+				"environments.title AS environment_title",
+		).
+		Joins(
+			"LEFT JOIN official_events ON official_events.id = cityleague_results.official_event_id",
+		).
+		Joins(
+			"LEFT JOIN shops ON shops.id = official_events.shop_id",
+		).
+		Joins(
+			"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
+		).
+		// 対戦環境は開催日が属する期間で引く(official_event.go の結合と同じ考え方)。
+		// official_events.date ではなく cityleague_results.event_date を基準にするのは、
+		// official_events 側の行が欠けていても環境名は出したいため。
+		Joins(
+			"LEFT JOIN environments ON environments.from_date <= cityleague_results.event_date AND environments.to_date >= cityleague_results.event_date",
+		).
+		Where("cityleague_results.player_id = ?", playerId)
+
+	// シーズン期間は [fromDate, toDate) の半開区間(usecase/season.go の取り決め)。
+	if !fromDate.IsZero() {
+		query = query.Where("cityleague_results.event_date >= ?", fromDate)
+	}
+	if !toDate.IsZero() {
+		query = query.Where("cityleague_results.event_date < ?", toDate)
+	}
+
+	var rows []*playerCityleagueResultRow
+	if tx := query.Order(
+		"cityleague_results.event_date DESC, cityleague_results.rank ASC, cityleague_results.official_event_id ASC",
+	).Scan(&rows); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	ret := []*entity.PlayerCityleagueResult{}
+	for _, row := range rows {
+		ret = append(ret, entity.NewPlayerCityleagueResult(
+			row.CityleagueScheduleId,
+			row.OfficialEventId,
+			row.LeagueType,
+			row.EventDate,
+			row.Rank,
+			row.Point,
+			row.DeckCode,
+			row.EventTitle,
+			row.ShopName,
+			row.PrefectureName,
+			row.EnvironmentTitle,
+		))
+	}
+
+	return ret, nil
+}
+
 func (i *CityleagueResult) FindByOfficialEventId(
 	ctx context.Context,
 	officialEventId uint,

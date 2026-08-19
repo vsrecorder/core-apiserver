@@ -30,3 +30,26 @@ func UnofficialEventCreateMiddleware() gin.HandlerFunc {
 		helper.SetUnofficialEventCreateRequest(ctx, req)
 	}
 }
+
+func UnofficialEventUpdateMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		req := dto.UnofficialEventUpdateRequest{}
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		// イベント名と開催日は必須
+		if req.Title == "" || req.Date.IsZero() {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if exceedsLength(req.Title, MaxEventTitleLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		helper.SetUnofficialEventUpdateRequest(ctx, req)
+	}
+}

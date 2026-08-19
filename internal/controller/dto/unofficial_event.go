@@ -13,6 +13,10 @@ type UnofficialEventCreateRequest struct {
 	UnofficialEventRequest
 }
 
+type UnofficialEventUpdateRequest struct {
+	UnofficialEventRequest
+}
+
 type UnofficialEventResponse struct {
 	ID     string    `json:"id"`
 	UserId string    `json:"user_id"`
@@ -25,5 +29,9 @@ type UnofficialEventGetByIdResponse struct {
 }
 
 type UnofficialEventCreateResponse struct {
+	UnofficialEventResponse
+}
+
+type UnofficialEventUpdateResponse struct {
 	UnofficialEventResponse
 }

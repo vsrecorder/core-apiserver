@@ -11,6 +11,11 @@ type UnofficialEvent struct {
 	UserId string
 	Title  string
 	Date   time.Time
+	// 作成日時。更新時に元の値を引き継ぐためだけに保持する。
+	// GORMのSaveは全カラムを書き戻すため、ゼロ値のまま保存すると
+	// 既存レコードのcreated_atが更新時刻で上書きされてしまう。
+	// 新規作成時はゼロ値のままにしておき、GORMのautoCreateTimeに任せる。
+	CreatedAt time.Time
 }
 
 func NewUnofficialEvent(

@@ -36,3 +36,18 @@ func NewUnofficialEventCreateResponse(
 		},
 	}
 }
+
+func NewUnofficialEventUpdateResponse(
+	unofficialEvent *entity.UnofficialEvent,
+) *dto.UnofficialEventUpdateResponse {
+	date := time.Date(unofficialEvent.Date.Year(), unofficialEvent.Date.Month(), unofficialEvent.Date.Day(), 0, 0, 0, 0, time.Local)
+
+	return &dto.UnofficialEventUpdateResponse{
+		UnofficialEventResponse: dto.UnofficialEventResponse{
+			ID:     unofficialEvent.ID,
+			UserId: unofficialEvent.UserId,
+			Title:  unofficialEvent.Title,
+			Date:   date,
+		},
+	}
+}

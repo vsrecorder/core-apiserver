@@ -9,10 +9,12 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -21,15 +23,17 @@ const (
 )
 
 type UnofficialEvent struct {
-	router  *gin.Engine
-	usecase usecase.UnofficialEventInterface
+	router     *gin.Engine
+	repository repository.UnofficialEventInterface
+	usecase    usecase.UnofficialEventInterface
 }
 
 func NewUnofficialEvent(
 	router *gin.Engine,
+	repository repository.UnofficialEventInterface,
 	usecase usecase.UnofficialEventInterface,
 ) *UnofficialEvent {
-	return &UnofficialEvent{router, usecase}
+	return &UnofficialEvent{router, repository, usecase}
 }
 
 func (c *UnofficialEvent) RegisterRoute(relativePath string) {
@@ -43,6 +47,19 @@ func (c *UnofficialEvent) RegisterRoute(relativePath string) {
 		authentication.RequiredAuthenticationMiddleware(),
 		validation.UnofficialEventCreateMiddleware(),
 		c.Create,
+	)
+	r.PUT(
+		"/:id",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.UnofficialEventUpdateAuthorizationMiddleware(c.repository),
+		validation.UnofficialEventUpdateMiddleware(),
+		c.Update,
+	)
+	r.DELETE(
+		"/:id",
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.UnofficialEventDeleteAuthorizationMiddleware(c.repository),
+		c.Delete,
 	)
 }
 
@@ -84,4 +101,47 @@ func (c *UnofficialEvent) Create(ctx *gin.Context) {
 	res := presenter.NewUnofficialEventCreateResponse(unofficialEvent)
 
 	ctx.JSON(http.StatusCreated, res)
+}
+
+func (c *UnofficialEvent) Update(ctx *gin.Context) {
+	req := helper.GetUnofficialEventUpdateRequest(ctx)
+	id := helper.GetId(ctx)
+	uid := helper.GetUID(ctx)
+
+	param := usecase.NewUnofficialEventParam(
+		uid,
+		req.Title,
+		req.Date,
+	)
+
+	unofficialEvent, err := c.usecase.Update(context.Background(), id, param)
+	if err != nil {
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx)
+			return
+		}
+
+		apierror.ErrInternalServerError.JSON(ctx)
+		return
+	}
+
+	res := presenter.NewUnofficialEventUpdateResponse(unofficialEvent)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *UnofficialEvent) Delete(ctx *gin.Context) {
+	id := helper.GetId(ctx)
+
+	if err := c.usecase.Delete(context.Background(), id); err != nil {
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrBadRequestNotFound.JSON(ctx)
+			return
+		}
+
+		apierror.ErrInternalServerError.JSON(ctx)
+		return
+	}
+
+	ctx.JSON(http.StatusNoContent, gin.H{})
 }

@@ -81,5 +81,44 @@ func TestUnofficialEventInfrastructure(t *testing.T) {
 			require.NoError(t, r.Save(context.Background(), event))
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
+
+		t.Run("正常系_作成日時を保持したイベントはその値のまま保存する", func(t *testing.T) {
+			db, mock := setupSqlmockDB(t)
+			r := NewUnofficialEvent(db)
+
+			createdAt := time.Date(2026, 7, 1, 12, 0, 0, 0, time.Local)
+
+			// GORMのSaveは全カラムを書き戻すため、created_atを渡さないと更新時刻で潰れる
+			mock.ExpectBegin()
+			mock.ExpectExec(regexp.QuoteMeta(
+				`UPDATE "unofficial_events" SET "created_at"=$1,"updated_at"=$2,"deleted_at"=$3,"user_id"=$4,"title"=$5,"date"=$6 WHERE "unofficial_events"."deleted_at" IS NULL AND "id" = $7`,
+			)).WithArgs(
+				createdAt, AnyTime{}, gorm.DeletedAt{}, uid, "身内対戦会", date, id,
+			).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectCommit()
+
+			event := entity.NewUnofficialEvent(id, uid, "身内対戦会", date)
+			event.CreatedAt = createdAt
+
+			require.NoError(t, r.Save(context.Background(), event))
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("正常系_イベントを削除する", func(t *testing.T) {
+			db, mock := setupSqlmockDB(t)
+			r := NewUnofficialEvent(db)
+
+			// unofficial_events は論理削除(deleted_at)
+			mock.ExpectBegin()
+			mock.ExpectExec(regexp.QuoteMeta(
+				`UPDATE "unofficial_events" SET "deleted_at"=$1 WHERE id = $2 AND "unofficial_events"."deleted_at" IS NULL`,
+			)).WithArgs(AnyTime{}, id).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectCommit()
+
+			require.NoError(t, r.Delete(context.Background(), id))
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
 	})
 }

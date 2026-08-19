@@ -146,6 +146,40 @@ func TestIntegrationUnofficialEventRepository(t *testing.T) {
 		require.Equal(t, date.Format(time.DateOnly), ret.Date.Format(time.DateOnly))
 	})
 
+	t.Run("正常系_更新してもcreated_atは変わらない", func(t *testing.T) {
+		before, err := r.FindById(context.Background(), id)
+		require.NoError(t, err)
+		require.False(t, before.CreatedAt.IsZero())
+
+		// 取得した内容をそのまま引き継いで更新する(自由形式イベントの編集と同じ流れ)。
+		// created_atを渡さずSaveするとGORMが全カラムを書き戻して更新時刻で潰れるため、
+		// 実DBでも保持されることを確認する。
+		date := time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)
+		updated := entity.NewUnofficialEvent(id, uid, "身内対戦会", date)
+		updated.CreatedAt = before.CreatedAt
+
+		require.NoError(t, r.Save(context.Background(), updated))
+
+		ret, err := r.FindById(context.Background(), id)
+
+		require.NoError(t, err)
+		require.Equal(t, "身内対戦会", ret.Title)
+		require.Equal(t, date.Format(time.DateOnly), ret.Date.Format(time.DateOnly))
+		require.WithinDuration(t, before.CreatedAt, ret.CreatedAt, time.Second)
+	})
+
+	t.Run("正常系_削除したイベントは取得できない", func(t *testing.T) {
+		deletedId := "01HD7Y3K8D6FDHMHTZ2GT41TU2"
+		event := entity.NewUnofficialEvent(deletedId, uid, "削除する自主大会", time.Now().Local())
+		require.NoError(t, r.Save(context.Background(), event))
+
+		require.NoError(t, r.Delete(context.Background(), deletedId))
+
+		_, err := r.FindById(context.Background(), deletedId)
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+
 	t.Run("異常系_存在しないIDはErrRecordNotFoundになる", func(t *testing.T) {
 		_, err := r.FindById(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TU9")
 

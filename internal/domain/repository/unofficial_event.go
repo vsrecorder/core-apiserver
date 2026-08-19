@@ -16,4 +16,9 @@ type UnofficialEventInterface interface {
 		ctx context.Context,
 		entity *entity.UnofficialEvent,
 	) error
+
+	Delete(
+		ctx context.Context,
+		id string,
+	) error
 }

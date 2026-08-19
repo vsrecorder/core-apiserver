@@ -294,6 +294,17 @@ func GetUnofficialEventCreateRequest(ctx *gin.Context) dto.UnofficialEventCreate
 	return unofficialEventRequest
 }
 
+func SetUnofficialEventUpdateRequest(ctx *gin.Context, value dto.UnofficialEventUpdateRequest) {
+	ctx.Set("unofficial_event_update_request", value)
+}
+
+func GetUnofficialEventUpdateRequest(ctx *gin.Context) dto.UnofficialEventUpdateRequest {
+	value, _ := ctx.Get("unofficial_event_update_request")
+	unofficialEventRequest, _ := value.(dto.UnofficialEventUpdateRequest)
+
+	return unofficialEventRequest
+}
+
 func SetRecordCreateRequest(ctx *gin.Context, value dto.RecordCreateRequest) {
 	ctx.Set("record_create_request", value)
 }

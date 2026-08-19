@@ -57,6 +57,20 @@ func (mr *MockUnofficialEventInterfaceMockRecorder) Create(ctx, param any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUnofficialEventInterface)(nil).Create), ctx, param)
 }
 
+// Delete mocks base method.
+func (m *MockUnofficialEventInterface) Delete(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockUnofficialEventInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUnofficialEventInterface)(nil).Delete), ctx, id)
+}
+
 // FindById mocks base method.
 func (m *MockUnofficialEventInterface) FindById(ctx context.Context, id string) (*entity.UnofficialEvent, error) {
 	m.ctrl.T.Helper()
@@ -70,4 +84,19 @@ func (m *MockUnofficialEventInterface) FindById(ctx context.Context, id string) 
 func (mr *MockUnofficialEventInterfaceMockRecorder) FindById(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockUnofficialEventInterface)(nil).FindById), ctx, id)
+}
+
+// Update mocks base method.
+func (m *MockUnofficialEventInterface) Update(ctx context.Context, id string, param *usecase.UnofficialEventParam) (*entity.UnofficialEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, id, param)
+	ret0, _ := ret[0].(*entity.UnofficialEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockUnofficialEventInterfaceMockRecorder) Update(ctx, id, param any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUnofficialEventInterface)(nil).Update), ctx, id, param)
 }

@@ -257,6 +257,7 @@ func main() {
 
 	controller.NewUnofficialEvent(
 		r,
+		infrastructure.NewUnofficialEvent(db),
 		usecase.NewUnofficialEvent(
 			infrastructure.NewUnofficialEvent(db),
 		),

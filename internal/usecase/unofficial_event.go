@@ -36,6 +36,17 @@ type UnofficialEventInterface interface {
 		ctx context.Context,
 		param *UnofficialEventParam,
 	) (*entity.UnofficialEvent, error)
+
+	Update(
+		ctx context.Context,
+		id string,
+		param *UnofficialEventParam,
+	) (*entity.UnofficialEvent, error)
+
+	Delete(
+		ctx context.Context,
+		id string,
+	) error
 }
 
 type UnofficialEvent struct {
@@ -82,4 +93,43 @@ func (u *UnofficialEvent) Create(
 	}
 
 	return unofficialEvent, nil
+}
+
+func (u *UnofficialEvent) Update(
+	ctx context.Context,
+	id string,
+	param *UnofficialEventParam,
+) (*entity.UnofficialEvent, error) {
+	// 指定されたidのUnofficialEventが存在するか確認
+	ret, err := u.repository.FindById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	unofficialEvent := entity.NewUnofficialEvent(
+		id,
+		param.userId,
+		param.title,
+		param.date,
+	)
+	// 作成日時は更新対象ではないため、保存済みの値を引き継ぐ
+	unofficialEvent.CreatedAt = ret.CreatedAt
+
+	if err := u.repository.Save(ctx, unofficialEvent); err != nil {
+		return nil, err
+	}
+
+	return unofficialEvent, nil
+}
+
+func (u *UnofficialEvent) Delete(
+	ctx context.Context,
+	id string,
+) error {
+	// 指定されたidのUnofficialEventが存在するか確認
+	if _, err := u.repository.FindById(ctx, id); err != nil {
+		return err
+	}
+
+	return u.repository.Delete(ctx, id)
 }

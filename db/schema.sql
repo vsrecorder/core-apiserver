@@ -564,7 +564,6 @@ INSERT INTO championsleague_schedules VALUES ('cl2025_fukuoka','チャンピオ�
 INSERT INTO championsleague_schedules VALUES ('cl2025_osaka',  'チャンピオンズリーグ2025 大阪',         '2024-12-21','2024-12-22');
 INSERT INTO championsleague_schedules VALUES ('cl2025_tokyo',  'チャンピオンズリーグ2025 東京',         '2024-09-22','2024-09-23');
 
-
 INSERT INTO championsleague_schedules VALUES ('pjcs2024',        'ポケモンジャパンチャンピオンシップス2024','2024-06-01','2024-06-02');
 INSERT INTO championsleague_schedules VALUES ('cl2024_sapporo',  'チャンピオンズリーグ2024 札幌',         '2024-05-03','2024-05-04');
 INSERT INTO championsleague_schedules VALUES ('cl2024_aichi',    'チャンピオンズリーグ2024 愛知',         '2024-04-13','2024-04-14');
@@ -577,7 +576,7 @@ INSERT INTO championsleague_schedules VALUES ('cl2023_niigata',  'チャンピ�
 INSERT INTO championsleague_schedules VALUES ('cl2023_miyagi',   'チャンピオンズリーグ2023 宮城',         '2024-04-01','2024-04-02');
 INSERT INTO championsleague_schedules VALUES ('cl2023_aichi',    'チャンピオンズリーグ2023 愛知',         '2024-02-25','2024-02-26');
 INSERT INTO championsleague_schedules VALUES ('cl2023_kyoto',    'チャンピオンズリーグ2023 京都',         '2023-12-10','2023-12-11');
-INSERT INTO championsleague_schedules VALUES ('cl2023_yokohama', 'チャンピオンズリーグ2023 横浜',         '2022-09-17','2023-09-18');
+INSERT INTO championsleague_schedules VALUES ('cl2023_yokohama', 'チャンピオンズリーグ2023 横浜',         '2022-09-17','2022-09-18');
 
 
 
@@ -585,7 +584,7 @@ INSERT INTO championsleague_schedules VALUES ('cl2023_yokohama', 'チャンピ�
 
 
 CREATE TABLE championsleague_results (
-    championsleague_schedule_id               VARCHAR(6) NOT NULL,
+    championsleague_schedule_id               VARCHAR(63) NOT NULL,
     official_event_id                         INT NOT NULL,
     league_type                               INT NOT NULL,
     event_date                                DATE DEFAULT NULL,
@@ -596,6 +595,8 @@ CREATE TABLE championsleague_results (
     FOREIGN KEY (championsleague_schedule_id) REFERENCES championsleague_schedules (id),
     FOREIGN KEY (official_event_id)           REFERENCES official_events (id)
 );
+
+CREATE UNIQUE INDEX championsleague_results_unique ON public.championsleague_results USING btree (championsleague_schedule_id, official_event_id, player_id);
 
 
 

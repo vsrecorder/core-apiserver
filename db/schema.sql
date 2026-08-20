@@ -571,11 +571,11 @@ INSERT INTO championsleague_schedules VALUES ('cl2024_fukuoka',  'チャンピ�
 INSERT INTO championsleague_schedules VALUES ('cl2024_kyoto',    'チャンピオンズリーグ2024 京都',         '2023-12-23','2023-12-24');
 INSERT INTO championsleague_schedules VALUES ('cl2024_yokohama', 'チャンピオンズリーグ2024 横浜',         '2023-09-09','2023-09-10');
 
-INSERT INTO championsleague_schedules VALUES ('pjcs2023',        'ポケモンジャパンチャンピオンシップス2023','2024-06-10','2024-06-11');
-INSERT INTO championsleague_schedules VALUES ('cl2023_niigata',  'チャンピオンズリーグ2023 新潟',         '2024-05-06','2024-05-07');
-INSERT INTO championsleague_schedules VALUES ('cl2023_miyagi',   'チャンピオンズリーグ2023 宮城',         '2024-04-01','2024-04-02');
-INSERT INTO championsleague_schedules VALUES ('cl2023_aichi',    'チャンピオンズリーグ2023 愛知',         '2024-02-25','2024-02-26');
-INSERT INTO championsleague_schedules VALUES ('cl2023_kyoto',    'チャンピオンズリーグ2023 京都',         '2023-12-10','2023-12-11');
+INSERT INTO championsleague_schedules VALUES ('pjcs2023',        'ポケモンジャパンチャンピオンシップス2023','2023-06-10','2023-06-11');
+INSERT INTO championsleague_schedules VALUES ('cl2023_niigata',  'チャンピオンズリーグ2023 新潟',         '2023-05-06','2023-05-07');
+INSERT INTO championsleague_schedules VALUES ('cl2023_miyagi',   'チャンピオンズリーグ2023 宮城',         '2023-04-01','2023-04-02');
+INSERT INTO championsleague_schedules VALUES ('cl2023_aichi',    'チャンピオンズリーグ2023 愛知',         '2023-02-25','2023-02-26');
+INSERT INTO championsleague_schedules VALUES ('cl2023_kyoto',    'チャンピオンズリーグ2023 京都',         '2022-12-10','2022-12-11');
 INSERT INTO championsleague_schedules VALUES ('cl2023_yokohama', 'チャンピオンズリーグ2023 横浜',         '2022-09-17','2022-09-18');
 
 

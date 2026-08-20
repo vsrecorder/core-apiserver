@@ -301,7 +301,7 @@ D4 の拡張性設計どおり、対戦結果(match)にもタグを付けられ�
 
 - **1始まり**: `ReplaceXxxTags` は `tag_ids` の並びどおり `position` を **1, 2, 3…** と採番する(最初に付与したタグが `position=1`、以降昇順)。列の `DEFAULT` も 1。
 - **読み出し**: `findTagsByOwnerIds` は `ORDER BY <中間テーブル>.position ASC, tags.created_at DESC`(同値タイブレークのみ created_at)。
-- **既存データの補正**: `migration_add_tags.sql` に、オーナー単位で `position` を 1..N へ振り直す `UPDATE`(`ROW_NUMBER()`)を用意。表示順(position昇順・created_at降順)と同順で振り直すので見た目は不変、かつ冪等。
+- **既存データの補正**: 稼働DBへ適用した `db/migration_add_tags.sql`(適用完了につき削除済み。以降は `db/schema.sql` が正)で、オーナー単位で `position` を 1..N へ振り直す `UPDATE`(`ROW_NUMBER()`)を流した。表示順(position昇順・created_at降順)と同順で振り直すので見た目は不変、かつ冪等。
 - **注意点(採番の入力順)**: `FindAttachableByIds` は `WHERE id IN (...)` で **戻り順が不定**。usecase 側で付与順を保つため、共通ヘルパ `orderAttachableTagsByIds` で `tag_ids` の並びに整列し直してから `ReplaceXxxTags` に渡す(付与不可ID・重複も除去)。ここを戻り順のまま採番すると付与順にならない。
 
 ### D7. プリセット(ACE SPEC)は card id 昇順で並べる
@@ -314,7 +314,7 @@ D4 の拡張性設計どおり、対戦結果(match)にもタグを付けられ�
 
 ### D8. `match_tags` は FK 参照先(`matches`)の後に定義する
 
-`schema.sql` は上から順に流すため、`match_tags` の `FOREIGN KEY (match_id) REFERENCES matches(id)` を満たすには `matches` の `CREATE TABLE` より後に置く必要がある(当初 `deck_tags` の並びで前方に置いてしまい、`make integration-test` で `relation "match_tags" does not exist` になった)。`migration_add_tags.sql` は稼働DBに `matches` が既存の前提なので順序非依存。
+`schema.sql` は上から順に流すため、`match_tags` の `FOREIGN KEY (match_id) REFERENCES matches(id)` を満たすには `matches` の `CREATE TABLE` より後に置く必要がある(当初 `deck_tags` の並びで前方に置いてしまい、`make integration-test` で `relation "match_tags" does not exist` になった)。この制約は `schema.sql` を頭から流す場合のもので、稼働DBへ適用した `db/migration_add_tags.sql`(削除済み)は `matches` が既存の前提だったため順序非依存だった。
 
 ### D9. 対戦一覧のタグ表示は折り返さず横スクロール
 

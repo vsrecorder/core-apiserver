@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +38,7 @@ func TestChampionshipSeriesController(t *testing.T) {
 		t.Run("正常系_date未指定なら全シリーズ一覧を返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestChampionshipSeriesController(t)
 
-			mockUsecase.EXPECT().Find(context.Background()).Return([]*entity.ChampionshipSeries{series}, nil)
+			mockUsecase.EXPECT().Find(gomock.Any()).Return([]*entity.ChampionshipSeries{series}, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", ChampionshipSeriesPath, nil)
@@ -51,7 +50,7 @@ func TestChampionshipSeriesController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestChampionshipSeriesController(t)
 
-			mockUsecase.EXPECT().Find(context.Background()).Return(nil, errors.New(""))
+			mockUsecase.EXPECT().Find(gomock.Any()).Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", ChampionshipSeriesPath, nil)
@@ -67,7 +66,7 @@ func TestChampionshipSeriesController(t *testing.T) {
 
 			date := time.Date(2026, 7, 18, 0, 0, 0, 0, time.Local)
 
-			mockUsecase.EXPECT().FindByDate(context.Background(), date).Return(series, nil)
+			mockUsecase.EXPECT().FindByDate(gomock.Any(), date).Return(series, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", ChampionshipSeriesPath+"?date=2026-07-18", nil)
@@ -91,7 +90,7 @@ func TestChampionshipSeriesController(t *testing.T) {
 		t.Run("正常系_指定IDのシリーズを返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestChampionshipSeriesController(t)
 
-			mockUsecase.EXPECT().FindById(context.Background(), "series_2026").Return(series, nil)
+			mockUsecase.EXPECT().FindById(gomock.Any(), "series_2026").Return(series, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", ChampionshipSeriesPath+"/series_2026", nil)
@@ -103,7 +102,7 @@ func TestChampionshipSeriesController(t *testing.T) {
 		t.Run("異常系_存在しないIDは404を返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestChampionshipSeriesController(t)
 
-			mockUsecase.EXPECT().FindById(context.Background(), "series_9999").Return(nil, apperror.ErrRecordNotFound)
+			mockUsecase.EXPECT().FindById(gomock.Any(), "series_9999").Return(nil, apperror.ErrRecordNotFound)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", ChampionshipSeriesPath+"/series_9999", nil)

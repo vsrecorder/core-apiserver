@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -47,9 +46,9 @@ func (c *ChampionshipSeries) RegisterRoute(relativePath string) {
 }
 
 func (c *ChampionshipSeries) Get(ctx *gin.Context) {
-	championshipSeriesList, err := c.usecase.Find(context.Background())
+	championshipSeriesList, err := c.usecase.Find(ctx.Request.Context())
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -61,14 +60,14 @@ func (c *ChampionshipSeries) Get(ctx *gin.Context) {
 func (c *ChampionshipSeries) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	championshipSeries, err := c.usecase.FindById(context.Background(), id)
+	championshipSeries, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -84,14 +83,14 @@ func (c *ChampionshipSeries) GetByDate(ctx *gin.Context) {
 		return
 	}
 
-	championshipSeries, err := c.usecase.FindByDate(context.Background(), date)
+	championshipSeries, err := c.usecase.FindByDate(ctx.Request.Context(), date)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

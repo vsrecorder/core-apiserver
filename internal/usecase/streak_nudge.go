@@ -48,6 +48,7 @@ func NewStreakNudge(
 func (u *StreakNudge) NudgeUser(ctx context.Context, userId string, dryRun bool) (bool, error) {
 	streak, err := u.userStreakRepo.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			// まだ一度も記録していない(=守るべき連続が無い)ユーザーは対象外
 			return false, nil
@@ -63,6 +64,7 @@ func (u *StreakNudge) NudgeUser(ctx context.Context, userId string, dryRun bool)
 
 	already, err := u.alreadyNudgedThisWeek(ctx, userId, now)
 	if err != nil {
+		logError(ctx, err)
 		return false, err
 	}
 	if already {
@@ -75,6 +77,7 @@ func (u *StreakNudge) NudgeUser(ctx context.Context, userId string, dryRun bool)
 
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return false, err
 	}
 
@@ -91,6 +94,7 @@ func (u *StreakNudge) NudgeUser(ctx context.Context, userId string, dryRun bool)
 	)
 
 	if err := u.notificationRepo.Save(ctx, notification); err != nil {
+		logError(ctx, err)
 		return false, err
 	}
 
@@ -104,6 +108,7 @@ func (u *StreakNudge) alreadyNudgedThisWeek(ctx context.Context, userId string, 
 
 	notifications, err := u.notificationRepo.FindByUserId(ctx, userId, streakNudgeDedupScanLimit)
 	if err != nil {
+		logError(ctx, err)
 		return false, err
 	}
 

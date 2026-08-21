@@ -38,6 +38,7 @@ func attachLatestDeckCodeTags(ctx context.Context, db *gorm.DB, decks []*entity.
 
 	tagsByDeckCodeId, err := findTagsByDeckCodeIds(ctx, db, ids)
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -109,6 +110,7 @@ func (i *Deck) Find(
 	).Scan(&deckJoinDeckCodes)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -118,11 +120,13 @@ func (i *Deck) Find(
 
 	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -156,6 +160,7 @@ func (i *Deck) Find(
 
 	// latest_deck_code の付与タグをまとめてロードして載せる。
 	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -220,6 +225,7 @@ func (i *Deck) FindAll(
 	).Scan(&deckJoinDeckCodes)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -229,11 +235,13 @@ func (i *Deck) FindAll(
 
 	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -267,6 +275,7 @@ func (i *Deck) FindAll(
 
 	// latest_deck_code の付与タグをまとめてロードして載せる。
 	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -331,6 +340,7 @@ func (i *Deck) FindOnCursor(
 	).Scan(&deckJoinDeckCodes)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -340,11 +350,13 @@ func (i *Deck) FindOnCursor(
 
 	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -378,6 +390,7 @@ func (i *Deck) FindOnCursor(
 
 	// latest_deck_code の付与タグをまとめてロードして載せる。
 	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -390,6 +403,7 @@ func (i *Deck) FindById(
 ) (*entity.Deck, error) {
 	// idの存在確認
 	if tx := i.db.Where("id = ?", id).First(&model.Deck{}); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -442,11 +456,13 @@ func (i *Deck) FindById(
 	).Scan(&deckJoinDeckCodes)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
 	var deckPokemonSpriteModels []*model.DeckPokemonSprite
 	if tx := i.db.Where("deck_id = ?", deckJoinDeckCodes.DeckID).Order("position ASC").Find(&deckPokemonSpriteModels); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -458,6 +474,7 @@ func (i *Deck) FindById(
 
 	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, []string{deckJoinDeckCodes.DeckID})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -484,6 +501,7 @@ func (i *Deck) FindById(
 
 	// latest_deck_code の付与タグをロードして載せる。
 	if err := attachLatestDeckCodeTags(ctx, i.db, []*entity.Deck{ret}); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -553,6 +571,7 @@ func (i *Deck) FindByUserId(
 		).Scan(&deckJoinDeckCodes)
 
 		if tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
@@ -612,6 +631,7 @@ func (i *Deck) FindByUserId(
 		).Scan(&deckJoinDeckCodes)
 
 		if tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	}
@@ -622,11 +642,13 @@ func (i *Deck) FindByUserId(
 
 	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -660,6 +682,7 @@ func (i *Deck) FindByUserId(
 
 	// latest_deck_code の付与タグをまとめてロードして載せる。
 	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -727,6 +750,7 @@ func (i *Deck) FindByUserIdOnCursor(
 		).Scan(&deckJoinDeckCodes)
 
 		if tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
@@ -781,6 +805,7 @@ func (i *Deck) FindByUserIdOnCursor(
 		).Scan(&deckJoinDeckCodes)
 
 		if tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	}
@@ -791,11 +816,13 @@ func (i *Deck) FindByUserIdOnCursor(
 
 	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	tagsByDeckId, err := findTagsByDeckIds(ctx, i.db, deckIdsOf(deckJoinDeckCodes))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -829,6 +856,7 @@ func (i *Deck) FindByUserIdOnCursor(
 
 	// latest_deck_code の付与タグをまとめてロードして載せる。
 	if err := attachLatestDeckCodeTags(ctx, i.db, ret); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -864,6 +892,7 @@ func (i *Deck) DeleteByUserId(
 		}
 
 		if tx := tx.Where("user_id = ?", uid).Delete(&model.Deck{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
@@ -919,15 +948,18 @@ func (i *Deck) Save(
 		return i.db.Transaction(func(tx *gorm.DB) error {
 			// Deck を先に保存して FK 制約を満たす
 			if err := tx.Save(deck).Error; err != nil {
+				logError(ctx, err)
 				return err
 			}
 
 			if tx := tx.Where("deck_id = ?", entity.ID).Delete(&model.DeckPokemonSprite{}); tx.Error != nil {
+				logError(ctx, tx.Error)
 				return tx.Error
 			}
 
 			for _, deckPokemonSpriteModal := range deckPokemonSpriteModals {
 				if err := tx.Save(deckPokemonSpriteModal).Error; err != nil {
+					logError(ctx, err)
 					return err
 				}
 			}
@@ -935,6 +967,7 @@ func (i *Deck) Save(
 			// デッキコードのIDが空でない場合は保存する
 			if deckcode.ID != "" {
 				if err := tx.Save(deckcode).Error; err != nil {
+					logError(ctx, err)
 					return err
 				}
 			}
@@ -945,15 +978,18 @@ func (i *Deck) Save(
 		return i.db.Transaction(func(tx *gorm.DB) error {
 			// Deck を先に保存して FK 制約を満たす
 			if err := tx.Save(deck).Error; err != nil {
+				logError(ctx, err)
 				return err
 			}
 
 			if tx := tx.Where("deck_id = ?", entity.ID).Delete(&model.DeckPokemonSprite{}); tx.Error != nil {
+				logError(ctx, tx.Error)
 				return tx.Error
 			}
 
 			for _, deckPokemonSpriteModal := range deckPokemonSpriteModals {
 				if err := tx.Save(deckPokemonSpriteModal).Error; err != nil {
+					logError(ctx, err)
 					return err
 				}
 			}
@@ -971,12 +1007,14 @@ func (i *Deck) Delete(
 
 	var deckCodes []*model.DeckCode
 	if tx := db.Where("deck_id = ?", id).Order("created_at ASC").Find(&deckCodes); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, deckCode := range deckCodes {
 			if tx := tx.Where("id = ?", deckCode.ID).Delete(&model.DeckCode{}); tx.Error != nil {
+				logError(ctx, tx.Error)
 				return tx.Error
 			}
 		}
@@ -984,10 +1022,12 @@ func (i *Deck) Delete(
 		// このデッキへのお気に入りも解除する。decks は論理削除だがこちらは実削除のため、
 		// 残すと参照先の無い行になり、お気に入りの件数にも数えられてしまう。
 		if tx := tx.Where("deck_id = ?", id).Delete(&model.UserFavoriteDeck{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
 		if tx := tx.Where("id = ?", id).Delete(&model.Deck{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 

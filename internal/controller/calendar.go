@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -47,9 +46,9 @@ func (c *Calendar) RegisterRoute(relativePath string) {
 func (c *Calendar) GetByUserId(ctx *gin.Context) {
 	userId := helper.GetId(ctx)
 
-	calendar, err := c.usecase.GetCalendar(context.Background(), userId)
+	calendar, err := c.usecase.GetCalendar(ctx.Request.Context(), userId)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

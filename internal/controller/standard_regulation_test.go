@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -37,7 +36,7 @@ func TestStandardRegulationController(t *testing.T) {
 		t.Run("正常系_date未指定なら全レギュレーション一覧を返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestStandardRegulationController(t)
 
-			mockUsecase.EXPECT().Find(context.Background()).Return([]*entity.StandardRegulation{regulation}, nil)
+			mockUsecase.EXPECT().Find(gomock.Any()).Return([]*entity.StandardRegulation{regulation}, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", StandardRegulationsPath, nil)
@@ -49,7 +48,7 @@ func TestStandardRegulationController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestStandardRegulationController(t)
 
-			mockUsecase.EXPECT().Find(context.Background()).Return(nil, errors.New(""))
+			mockUsecase.EXPECT().Find(gomock.Any()).Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", StandardRegulationsPath, nil)
@@ -65,7 +64,7 @@ func TestStandardRegulationController(t *testing.T) {
 
 			date := time.Date(2026, 7, 18, 0, 0, 0, 0, time.Local)
 
-			mockUsecase.EXPECT().FindByDate(context.Background(), date).Return(regulation, nil)
+			mockUsecase.EXPECT().FindByDate(gomock.Any(), date).Return(regulation, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", StandardRegulationsPath+"?date=2026-07-18", nil)
@@ -87,7 +86,7 @@ func TestStandardRegulationController(t *testing.T) {
 		t.Run("異常系_該当なしはErrRecordNotFoundから404を返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestStandardRegulationController(t)
 
-			mockUsecase.EXPECT().FindByDate(context.Background(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
+			mockUsecase.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", StandardRegulationsPath+"?date=2000-01-01", nil)
@@ -101,7 +100,7 @@ func TestStandardRegulationController(t *testing.T) {
 		t.Run("正常系_指定IDのレギュレーションを返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestStandardRegulationController(t)
 
-			mockUsecase.EXPECT().FindById(context.Background(), "regulation-g").Return(regulation, nil)
+			mockUsecase.EXPECT().FindById(gomock.Any(), "regulation-g").Return(regulation, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", StandardRegulationsPath+"/regulation-g", nil)
@@ -113,7 +112,7 @@ func TestStandardRegulationController(t *testing.T) {
 		t.Run("異常系_存在しないIDは404を返す", func(t *testing.T) {
 			c, mockUsecase := setup4TestStandardRegulationController(t)
 
-			mockUsecase.EXPECT().FindById(context.Background(), "unknown").Return(nil, apperror.ErrRecordNotFound)
+			mockUsecase.EXPECT().FindById(gomock.Any(), "unknown").Return(nil, apperror.ErrRecordNotFound)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", StandardRegulationsPath+"/unknown", nil)

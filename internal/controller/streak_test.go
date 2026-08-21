@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -39,7 +38,7 @@ func TestStreakController_GetByUserId(t *testing.T) {
 
 		streak := entity.NewUserStreak(uid, 3, 5, 1, 0, time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local), time.Now().Local())
 
-		mockUsecase.EXPECT().GetByUserId(context.Background(), uid).Return(streak, nil)
+		mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid).Return(streak, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+StreakPath, nil)
@@ -56,7 +55,7 @@ func TestStreakController_GetByUserId(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase := setup4TestStreakController(t)
 
-		mockUsecase.EXPECT().GetByUserId(context.Background(), uid).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+StreakPath, nil)

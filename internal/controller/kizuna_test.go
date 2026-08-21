@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -44,7 +43,7 @@ func TestKizunaController_GetByUserId(t *testing.T) {
 	t.Run("正常系_本人なら全デッキのきずなLv.を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestKizunaController(t)
 
-		mockUsecase.EXPECT().GetKizuna(context.Background(), uid).
+		mockUsecase.EXPECT().GetKizuna(gomock.Any(), uid).
 			Return(entity.NewKizuna(uid, []*entity.KizunaDeck{
 				{
 					DeckId: "deck-01",
@@ -76,7 +75,7 @@ func TestKizunaController_GetByUserId(t *testing.T) {
 	t.Run("正常系_デッキが1つも無くてもdecksはnullではなく空配列を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestKizunaController(t)
 
-		mockUsecase.EXPECT().GetKizuna(context.Background(), uid).
+		mockUsecase.EXPECT().GetKizuna(gomock.Any(), uid).
 			Return(entity.NewKizuna(uid, []*entity.KizunaDeck{}), nil)
 
 		w := httptest.NewRecorder()
@@ -112,7 +111,7 @@ func TestKizunaController_GetByUserId(t *testing.T) {
 	t.Run("異常系_レコードが見つからなければ404を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestKizunaController(t)
 
-		mockUsecase.EXPECT().GetKizuna(context.Background(), uid).
+		mockUsecase.EXPECT().GetKizuna(gomock.Any(), uid).
 			Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
@@ -126,7 +125,7 @@ func TestKizunaController_GetByUserId(t *testing.T) {
 	t.Run("異常系_想定外のエラーなら500を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestKizunaController(t)
 
-		mockUsecase.EXPECT().GetKizuna(context.Background(), uid).
+		mockUsecase.EXPECT().GetKizuna(gomock.Any(), uid).
 			Return(nil, errors.New("unexpected"))
 
 		w := httptest.NewRecorder()

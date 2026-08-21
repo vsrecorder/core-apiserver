@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -62,9 +61,9 @@ func (c *Notification) GetByUID(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 	limit := helper.GetLimit(ctx)
 
-	notifications, err := c.usecase.ListByUserId(context.Background(), uid, limit)
+	notifications, err := c.usecase.ListByUserId(ctx.Request.Context(), uid, limit)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -76,9 +75,9 @@ func (c *Notification) GetByUID(ctx *gin.Context) {
 func (c *Notification) CountUnread(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 
-	count, err := c.usecase.CountUnreadByUserId(context.Background(), uid)
+	count, err := c.usecase.CountUnreadByUserId(ctx.Request.Context(), uid)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -91,13 +90,13 @@ func (c *Notification) MarkAsRead(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 	id := helper.GetId(ctx)
 
-	if err := c.usecase.MarkAsRead(context.Background(), uid, id); err != nil {
+	if err := c.usecase.MarkAsRead(ctx.Request.Context(), uid, id); err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -107,8 +106,8 @@ func (c *Notification) MarkAsRead(ctx *gin.Context) {
 func (c *Notification) MarkAllAsRead(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 
-	if err := c.usecase.MarkAllAsRead(context.Background(), uid); err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+	if err := c.usecase.MarkAllAsRead(ctx.Request.Context(), uid); err != nil {
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

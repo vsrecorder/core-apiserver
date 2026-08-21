@@ -37,6 +37,7 @@ func (u *Kizuna) GetKizuna(
 ) (*entity.Kizuna, error) {
 	aggregates, err := u.kizunaRepo.FindKizunaDeckAggregates(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

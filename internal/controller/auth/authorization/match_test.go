@@ -1,7 +1,6 @@
 package authorization
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +60,7 @@ func test_MatchAuthorizationMiddleware(t *testing.T) {
 			UserId: uid,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(match, nil)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -111,7 +110,7 @@ func test_MatchAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -145,7 +144,7 @@ func test_MatchAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -184,7 +183,7 @@ func test_MatchAuthorizationMiddleware(t *testing.T) {
 			UserId: "KBp7roRDZobZg1t0OPzFR1kvLeO2",
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(match, nil)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -226,7 +225,7 @@ func test_MatchReorderAuthorizationMiddleware(t *testing.T) {
 			UserId: uid,
 		}
 
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(record, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(record, nil)
 
 		req, err := http.NewRequest("PUT", "/", nil)
 		require.NoError(t, err)
@@ -257,7 +256,7 @@ func test_MatchReorderAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(nil, apperror.ErrRecordNotFound)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(nil, apperror.ErrRecordNotFound)
 
 		req, err := http.NewRequest("PUT", "/", nil)
 		require.NoError(t, err)
@@ -293,7 +292,7 @@ func test_MatchReorderAuthorizationMiddleware(t *testing.T) {
 			UserId: "KBp7roRDZobZg1t0OPzFR1kvLeO2",
 		}
 
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(record, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(record, nil)
 
 		req, err := http.NewRequest("PUT", "/", nil)
 		require.NoError(t, err)
@@ -330,7 +329,7 @@ func test_MatchReorderAuthorizationMiddleware(t *testing.T) {
 			PrivateFlg: true,
 		}
 
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(record, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(record, nil)
 
 		req, err := http.NewRequest("PUT", "/", nil)
 		require.NoError(t, err)

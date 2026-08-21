@@ -27,6 +27,7 @@ func (i *UserPlayer) FindByUserId(
 	var userPlayer *model.UserPlayer
 
 	if tx := dbFromContext(ctx, i.db).Where("user_id = ?", userId).First(&userPlayer); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -59,6 +60,7 @@ func (i *UserPlayer) Delete(
 	id string,
 ) error {
 	if tx := dbFromContext(ctx, i.db).Where("id = ?", id).Delete(&model.UserPlayer{}); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 

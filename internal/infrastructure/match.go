@@ -74,6 +74,7 @@ func (i *Match) FindById(
 	).Scan(&results)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -105,6 +106,7 @@ func (i *Match) FindById(
 
 	var matchPokemonSpriteModels []*model.MatchPokemonSprite
 	if tx := i.db.Where("match_id = ?", id).Order("position ASC").Find(&matchPokemonSpriteModels); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -116,6 +118,7 @@ func (i *Match) FindById(
 
 	tagsByMatchId, err := findTagsByMatchIds(ctx, i.db, []string{id})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -201,6 +204,7 @@ func (i *Match) FindByRecordId(
 	).Scan(&results)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -210,11 +214,13 @@ func (i *Match) FindByRecordId(
 
 	spritesByMatchId, err := findMatchPokemonSpritesByMatchIds(ctx, i.db, matchIdsOf(results))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	tagsByMatchId, err := findTagsByMatchIds(ctx, i.db, matchIdsOf(results))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -359,6 +365,7 @@ func (i *Match) FindByUserId(
 	).Scan(&results)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -368,11 +375,13 @@ func (i *Match) FindByUserId(
 
 	spritesByMatchId, err := findMatchPokemonSpritesByMatchIds(ctx, i.db, matchIdsOf(results))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	tagsByMatchId, err := findTagsByMatchIds(ctx, i.db, matchIdsOf(results))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -515,6 +524,7 @@ func (i *Match) FindLatest(
 	).Scan(&results)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -524,11 +534,13 @@ func (i *Match) FindLatest(
 
 	spritesByMatchId, err := findMatchPokemonSpritesByMatchIds(ctx, i.db, matchIdsOf(results))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	tagsByMatchId, err := findTagsByMatchIds(ctx, i.db, matchIdsOf(results))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -676,17 +688,20 @@ func (i *Match) Create(
 
 	return i.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(matchModel).Error; err != nil {
+			logError(ctx, err)
 			return err
 		}
 
 		for _, gameModel := range gameModels {
 			if err := tx.Save(gameModel).Error; err != nil {
+				logError(ctx, err)
 				return err
 			}
 		}
 
 		for _, matchPokemonSpriteModal := range matchPokemonSpriteModals {
 			if err := tx.Save(matchPokemonSpriteModal).Error; err != nil {
+				logError(ctx, err)
 				return err
 			}
 		}
@@ -702,6 +717,7 @@ func (i *Match) Update(
 	var models []*model.Game
 
 	if tx := i.db.Where("match_id = ?", entity.ID).Order("created_at ASC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 
@@ -741,15 +757,18 @@ func (i *Match) Update(
 
 	return i.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(matchModel).Error; err != nil {
+			logError(ctx, err)
 			return err
 		}
 
 		if tx := tx.Where("match_id = ?", entity.ID).Delete(&model.MatchPokemonSprite{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
 		for _, matchPokemonSpriteModal := range matchPokemonSpriteModals {
 			if err := tx.Save(matchPokemonSpriteModal).Error; err != nil {
+				logError(ctx, err)
 				return err
 			}
 		}
@@ -771,6 +790,7 @@ func (i *Match) Update(
 					)
 
 					if err := tx.Save(gameModel).Error; err != nil {
+						logError(ctx, err)
 						return err
 					}
 				} else { // 新しくGameを追加
@@ -787,6 +807,7 @@ func (i *Match) Update(
 					)
 
 					if err := tx.Save(gameModel).Error; err != nil {
+						logError(ctx, err)
 						return err
 					}
 				}
@@ -807,10 +828,12 @@ func (i *Match) Update(
 					)
 
 					if err := tx.Save(gameModel).Error; err != nil {
+						logError(ctx, err)
 						return err
 					}
 				} else { // 既存のGameを削除
 					if tx := tx.Where("id = ?", game.ID).Delete(&model.Game{}); tx.Error != nil {
+						logError(ctx, tx.Error)
 						return tx.Error
 					}
 				}
@@ -827,10 +850,12 @@ func (i *Match) Delete(
 ) error {
 	return i.db.Transaction(func(tx *gorm.DB) error {
 		if tx := tx.Where("match_id = ?", id).Delete(&model.Game{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
 		if tx := tx.Where("id = ?", id).Delete(&model.Match{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
@@ -866,6 +891,7 @@ func (i *Match) Reorder(
 				})
 
 			if result.Error != nil {
+				logError(ctx, result.Error)
 				return result.Error
 			}
 

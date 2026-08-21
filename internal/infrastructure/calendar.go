@@ -34,21 +34,25 @@ func (i *Calendar) FindByUserId(
 ) (*entity.Calendar, error) {
 	records, err := i.findRecords(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	matchesByRecordId, err := i.findMatchesByRecordId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	decks, err := i.findDecks(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	deckCodesByDeckId, err := i.findDeckCodesByDeckId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -70,11 +74,13 @@ func (i *Calendar) FindByUserId(
 
 	officialEvents, err := i.findOfficialEvents(ctx, records)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	unofficialEvents, err := i.findUnofficialEvents(ctx, records)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -179,6 +185,7 @@ func (i *Calendar) findMatchesByRecordId(
 
 	spritesByMatchId, err := findMatchPokemonSpritesByMatchIds(ctx, i.db, matchIdsOf(results))
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -262,6 +269,7 @@ func (i *Calendar) findDecks(
 
 	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, deckIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

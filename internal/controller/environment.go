@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -49,9 +48,9 @@ func (c *Environment) RegisterRoute(relativePath string) {
 }
 
 func (c *Environment) Get(ctx *gin.Context) {
-	environments, err := c.usecase.Find(context.Background())
+	environments, err := c.usecase.Find(ctx.Request.Context())
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -63,14 +62,14 @@ func (c *Environment) Get(ctx *gin.Context) {
 func (c *Environment) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	environment, err := c.usecase.FindById(context.Background(), id)
+	environment, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -86,14 +85,14 @@ func (c *Environment) GetByDate(ctx *gin.Context) {
 		return
 	}
 
-	environment, err := c.usecase.FindByDate(context.Background(), date)
+	environment, err := c.usecase.FindByDate(ctx.Request.Context(), date)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -111,14 +110,14 @@ func (c *Environment) GetByTerm(ctx *gin.Context) {
 		return
 	}
 
-	environments, err := c.usecase.FindByTerm(context.Background(), fromDate, toDate)
+	environments, err := c.usecase.FindByTerm(ctx.Request.Context(), fromDate, toDate)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

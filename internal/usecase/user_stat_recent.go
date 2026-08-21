@@ -46,11 +46,13 @@ func (u *UserStatRecent) GetRecentMatches(
 
 	rawMatches, err := u.repo.FindRecentMatches(ctx, userId, fetchCount, deckId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	environments, err := u.findEnvironmentsForMatches(ctx, rawMatches)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

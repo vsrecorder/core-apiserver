@@ -14,7 +14,7 @@ func DeckCodeCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.DeckCodeCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -46,7 +46,7 @@ func DeckCodeUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.DeckCodeUpdateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 

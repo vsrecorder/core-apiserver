@@ -1,7 +1,6 @@
 package authorization
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -44,6 +43,8 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
+		// Middlewareが ctx.Request.Context() を参照するため、pathは何でもよいがRequestは必要
+		ginContext.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
 		// authentication後に実行されるMiddlewareのため、uidをセットしておく
 		helper.SetUID(ginContext, uid)
@@ -61,7 +62,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 			ID: id,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(user, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(user, nil)
 
 		middleware := UserAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
@@ -73,6 +74,8 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 	t.Run("異常系_未認証なら403を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
+		// Middlewareが ctx.Request.Context() を参照するため、pathは何でもよいがRequestは必要
+		ginContext.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
 		middleware := UserAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
@@ -90,6 +93,8 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
+		// Middlewareが ctx.Request.Context() を参照するため、pathは何でもよいがRequestは必要
+		ginContext.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
 		// authentication後に実行されるMiddlewareのため、uidをセットしておく
 		helper.SetUID(ginContext, uid)
@@ -103,7 +108,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		middleware := UserAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
@@ -121,6 +126,8 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
+		// Middlewareが ctx.Request.Context() を参照するため、pathは何でもよいがRequestは必要
+		ginContext.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
 		// authentication後に実行されるMiddlewareのため、uidをセットしておく
 		helper.SetUID(ginContext, uid)
@@ -134,7 +141,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		middleware := UserAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
@@ -154,6 +161,8 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
+		// Middlewareが ctx.Request.Context() を参照するため、pathは何でもよいがRequestは必要
+		ginContext.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
 		// authentication後に実行されるMiddlewareのため、uidをセットしておく
 		helper.SetUID(ginContext, uid)
@@ -171,7 +180,7 @@ func test_UserAuthorizationMiddleware(t *testing.T) {
 			ID: id,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(user, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(user, nil)
 
 		middleware := UserAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)

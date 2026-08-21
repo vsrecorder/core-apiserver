@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -54,9 +53,9 @@ func (c *Designation) RegisterRoute(relativePath string) {
 }
 
 func (c *Designation) GetAllDefinitions(ctx *gin.Context) {
-	definitions, err := c.usecase.GetAllDefinitions(context.Background())
+	definitions, err := c.usecase.GetAllDefinitions(ctx.Request.Context())
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -70,28 +69,28 @@ func (c *Designation) GetByUserId(ctx *gin.Context) {
 
 	season, err := helper.ParseQuerySeason(ctx)
 	if err != nil {
-		apierror.ErrBadRequest.JSON(ctx)
+		apierror.ErrBadRequest.JSON(ctx, err)
 		return
 	}
 
 	if season == "" {
-		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, timeNow().Local())
+		season, err = usecase.CurrentSeasonLabel(ctx.Request.Context(), c.championshipSeriesRepo, timeNow().Local())
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 	}
 
-	view, err := c.usecase.GetByUserId(context.Background(), uid, season)
+	view, err := c.usecase.GetByUserId(ctx.Request.Context(), uid, season)
 	if err != nil {
 		// 形式は正しいが championship_series に存在しない season を指定された場合。
 		// クライアント起因のためサーバエラー(500)にはしない。
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -103,28 +102,28 @@ func (c *Designation) GetByUserId(ctx *gin.Context) {
 func (c *Designation) GetRankStats(ctx *gin.Context) {
 	season, err := helper.ParseQuerySeason(ctx)
 	if err != nil {
-		apierror.ErrBadRequest.JSON(ctx)
+		apierror.ErrBadRequest.JSON(ctx, err)
 		return
 	}
 
 	if season == "" {
-		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, timeNow().Local())
+		season, err = usecase.CurrentSeasonLabel(ctx.Request.Context(), c.championshipSeriesRepo, timeNow().Local())
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 	}
 
-	view, err := c.usecase.GetRankStats(context.Background(), season)
+	view, err := c.usecase.GetRankStats(ctx.Request.Context(), season)
 	if err != nil {
 		// 形式は正しいが championship_series に存在しない season を指定された場合。
 		// クライアント起因のためサーバエラー(500)にはしない。
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

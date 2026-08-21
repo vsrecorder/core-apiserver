@@ -30,6 +30,8 @@ func TestSelfOnlyAuthorizationMiddlewares(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		ctx, _ := gin.CreateTestContext(w)
+		// Middlewareが ctx.Request.Context() を参照するため、pathは何でもよいがRequestは必要
+		ctx.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
 		if uid != "" {
 			helper.SetUID(ctx, uid)

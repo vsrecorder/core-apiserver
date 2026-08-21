@@ -39,6 +39,7 @@ func (u *Calendar) GetCalendar(
 ) (*entity.Calendar, error) {
 	calendar, err := u.calendarRepo.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -76,7 +77,8 @@ func (u *Calendar) fetchTonamelEvents(
 
 	tonamelEvents, err := u.tonamelEventStore.FindByIds(ctx, ids)
 	if err != nil {
-		u.logger.Warn(
+		u.logger.WarnContext(
+			ctx,
 			"failed to fetch tonamel events for calendar",
 			slog.String("error_message", err.Error()),
 		)

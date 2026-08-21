@@ -86,6 +86,7 @@ func (i *Tag) FindById(
 	var m *model.Tag
 
 	if tx := dbFromContext(ctx, i.db).Where("id = ?", id).First(&m); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -151,14 +152,17 @@ func (i *Tag) Delete(
 	// 付与先(デッキ/デッキコード)が削除済みタグを参照し続けないよう、まとめて行う。
 	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("tag_id = ?", id).Delete(&model.DeckTag{}).Error; err != nil {
+			logError(ctx, err)
 			return err
 		}
 
 		if err := tx.Where("tag_id = ?", id).Delete(&model.DeckCodeTag{}).Error; err != nil {
+			logError(ctx, err)
 			return err
 		}
 
 		if err := tx.Where("tag_id = ?", id).Delete(&model.MatchTag{}).Error; err != nil {
+			logError(ctx, err)
 			return err
 		}
 

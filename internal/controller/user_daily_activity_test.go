@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -63,7 +62,7 @@ func TestUserDailyActivityController_Record(t *testing.T) {
 			entity.UserDailyActivityCategoryReview,
 		}
 
-		mockUsecase.EXPECT().Record(context.Background(), uid, categories).Return(nil)
+		mockUsecase.EXPECT().Record(gomock.Any(), uid, categories).Return(nil)
 
 		body, err := json.Marshal(dto.UserDailyActivityRequest{Categories: categories})
 		require.NoError(t, err)
@@ -78,7 +77,7 @@ func TestUserDailyActivityController_Record(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestUserDailyActivityController(t)
 
 		mockUsecase.EXPECT().Record(
-			context.Background(), uid, []string{entity.UserDailyActivityCategoryVisit},
+			gomock.Any(), uid, []string{entity.UserDailyActivityCategoryVisit},
 		).Return(nil)
 
 		w := httptest.NewRecorder()
@@ -92,7 +91,7 @@ func TestUserDailyActivityController_Record(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestUserDailyActivityController(t)
 
 		mockUsecase.EXPECT().Record(
-			context.Background(), uid, []string{entity.UserDailyActivityCategoryVisit},
+			gomock.Any(), uid, []string{entity.UserDailyActivityCategoryVisit},
 		).Return(nil)
 
 		w := httptest.NewRecorder()
@@ -104,7 +103,7 @@ func TestUserDailyActivityController_Record(t *testing.T) {
 	t.Run("異常系_既知のカテゴリが1つも無ければ400を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestUserDailyActivityController(t)
 
-		mockUsecase.EXPECT().Record(context.Background(), uid, []string{"unknown"}).
+		mockUsecase.EXPECT().Record(gomock.Any(), uid, []string{"unknown"}).
 			Return(apperror.ErrNoKnownActivityCategory)
 
 		w := httptest.NewRecorder()
@@ -116,7 +115,7 @@ func TestUserDailyActivityController_Record(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestUserDailyActivityController(t)
 
-		mockUsecase.EXPECT().Record(context.Background(), uid, gomock.Any()).Return(errors.New(""))
+		mockUsecase.EXPECT().Record(gomock.Any(), uid, gomock.Any()).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
 		c.router.ServeHTTP(w, newActivityRequest(t, `{"categories":["visit"]}`, uid, secretKey))

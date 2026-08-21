@@ -27,6 +27,7 @@ func (i *StandardRegulation) Find(
 	var models []*model.StandardRegulation
 
 	if tx := i.db.Order("from_date DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -51,6 +52,7 @@ func (i *StandardRegulation) FindById(
 	var model model.StandardRegulation
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -71,6 +73,7 @@ func (i *StandardRegulation) FindByDate(
 	var model model.StandardRegulation
 
 	if tx := i.db.Where("from_date <= ? AND to_date >= ?", date, date).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 

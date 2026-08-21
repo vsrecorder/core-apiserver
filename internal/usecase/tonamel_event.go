@@ -31,6 +31,7 @@ func (i *TonamelEvent) FindById(
 	tonamelEvent, err := i.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

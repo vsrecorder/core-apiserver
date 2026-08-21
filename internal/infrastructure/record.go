@@ -32,6 +32,7 @@ func (i *Record) FindById(
 	var model model.Record
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -67,18 +68,22 @@ func (i *Record) Find(
 	switch eventType {
 	case "official":
 		if tx := i.db.Where("official_event_id != 0 AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	case "tonamel":
 		if tx := i.db.Where("tonamel_event_id != '' AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	case "unofficial":
 		if tx := i.db.Where("unofficial_event_id != '' AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	default:
 		if tx := i.db.Where("private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	}
@@ -148,6 +153,7 @@ func (i *Record) FindOnCursor(
 	}
 
 	if tx := i.db.Where(cond, cursorArgs...).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -188,18 +194,22 @@ func (i *Record) FindByUserId(
 	switch eventType {
 	case "official":
 		if tx := i.db.Where("official_event_id != 0 AND user_id = ?", uid).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	case "tonamel":
 		if tx := i.db.Where("tonamel_event_id != '' AND user_id = ?", uid).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	case "unofficial":
 		if tx := i.db.Where("unofficial_event_id != '' AND user_id = ?", uid).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	default:
 		if tx := i.db.Where("user_id = ?", uid).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	}
@@ -255,6 +265,7 @@ func (i *Record) FindByUserIdOnCursor(
 	}
 
 	if tx := i.db.Where(cond, uidArgs...).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -292,6 +303,7 @@ func (i *Record) FindByOfficialEventId(
 	var models []*model.Record
 
 	if tx := i.db.Where("official_event_id = ? AND private_flg = ?", officialEventId, false).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -329,6 +341,7 @@ func (i *Record) FindByTonamelEventId(
 	var models []*model.Record
 
 	if tx := i.db.Where("tonamel_event_id = ? AND private_flg = ?", tonamelEventId, false).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -369,18 +382,22 @@ func (i *Record) FindByDeckId(
 	switch eventType {
 	case "official":
 		if tx := i.db.Where("official_event_id != 0 AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	case "tonamel":
 		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	case "unofficial":
 		if tx := i.db.Where("unofficial_event_id != '' AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	default:
 		if tx := i.db.Where("deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	}
@@ -436,6 +453,7 @@ func (i *Record) FindByDeckIdOnCursor(
 	}
 
 	if tx := i.db.Where(cond, deckArgs...).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -473,6 +491,7 @@ func (i *Record) FindByDeckCodeId(
 	var models []*model.Record
 
 	if tx := i.db.Where("deck_code_id = ?", deckCodeId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -546,6 +565,7 @@ func (i *Record) DeleteByUserId(
 
 		// 記録(records)
 		if tx := tx.Where("user_id = ?", uid).Delete(&model.Record{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
@@ -576,6 +596,7 @@ func (i *Record) Save(
 	model.DeckRegisteredAt = entity.DeckRegisteredAt
 
 	if tx := i.db.Save(model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 
@@ -592,6 +613,7 @@ func (i *Record) Delete(
 	// 先に record を取得しておく
 	var record model.Record
 	if tx := db.Where("id = ?", id).First(&record); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return wrapError(tx.Error)
 	}
 
@@ -608,16 +630,19 @@ func (i *Record) Delete(
 		}
 
 		if tx := tx.Where("record_id = ?", id).Delete(&model.Match{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
 		if tx := tx.Where("id = ?", id).Delete(&model.Record{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
 		// 自由形式イベントを参照していた場合、紐づく unofficial_event も削除する(孤立行を残さない)
 		if record.UnofficialEventId != "" {
 			if tx := tx.Where("id = ?", record.UnofficialEventId).Delete(&model.UnofficialEvent{}); tx.Error != nil {
+				logError(ctx, tx.Error)
 				return tx.Error
 			}
 		}

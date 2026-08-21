@@ -1,8 +1,6 @@
 package authorization
 
 import (
-	"context"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
@@ -21,18 +19,18 @@ func DeckCodeAuthorizationMiddleware(repository repository.DeckCodeInterface) gi
 			return
 		}
 
-		deckcode, err := repository.FindById(context.Background(), id)
+		deckcode, err := repository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if uid != deckcode.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}
@@ -52,30 +50,30 @@ func DeckCodeDeleteAuthorizationMiddleware(deckcodeRepository repository.DeckCod
 			return
 		}
 
-		deckcode, err := deckcodeRepository.FindById(context.Background(), id)
+		deckcode, err := deckcodeRepository.FindById(ctx.Request.Context(), id)
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if uid != deckcode.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 
 		limit := 1
 		offset := 0
-		records, err := recordRepository.FindByDeckCodeId(context.Background(), id, limit, offset)
+		records, err := recordRepository.FindByDeckCodeId(ctx.Request.Context(), id, limit, offset)
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if len(records) > 0 {
-			apierror.ErrDeckCodeHasRecords.JSON(ctx)
+			apierror.ErrDeckCodeHasRecords.JSON(ctx, err)
 			return
 		}
 	}

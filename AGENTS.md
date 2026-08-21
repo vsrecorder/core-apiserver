@@ -60,6 +60,7 @@ internal/
   infrastructure/            # リポジトリ実装（GORM / S3 / 外部サイトのスクレイピング）
     model/                   # GORMモデル（DBスキーマに対応）
   httpclient/                # タイムアウト付きの共用HTTPクライアント
+  logging/                   # 全レイヤー共通のログ土台（ContextHandler・各種ヘルパー）
   ratelimit/                 # インメモリの固定ウィンドウ制限（単一プロセス内のみ）
   mock/                      # mockgen生成物。手で編集しない
 db/schema.sql                # DBスキーマの正（マイグレーションツール・AutoMigrateは使わない）
@@ -92,6 +93,50 @@ authentication → authorization → validation → ハンドラ
   に変換する。上位層にgormの型を漏らさない。
 - 新しいエラー種別を足すときは apperror にセンチネルを定義し、対応するHTTPステータスを
   apierror 側にコメント付きで用意する。
+
+### ログ
+
+ログは `log/slog` のJSON出力。`internal/logger.go` の `InitLogger` が
+`logging.ContextHandler` でラップしたハンドラを作り、`main` が `slog.SetDefault` で
+既定のロガーとして設定する。各層は `*slog.Logger` をDIで受け取らず、この既定ロガーを
+使う（コンストラクタのシグネチャを変えずに全層でログを出せるようにするため）。
+
+`request_id` / `uid` は context に載せ、`ContextHandler` が全レコードへ自動付与する。
+そのため**ログを出すときは必ず ctx を渡す**（`ErrorContext` など `*Context` 系を使う）。
+
+- `request_id`: `internal.RequestIDMiddleware` が `c.Request` の context へ載せる。
+- `uid`: `helper.SetUID` が `c.Request` の context へ載せる。
+- コントローラは `context.Background()` ではなく **`ctx.Request.Context()`** を下層へ渡す。
+  これを忘れると request_id が伝播せず、層をまたいでリクエストを追えなくなる。
+
+各層のログの出し方:
+
+| 層 | 出し方 | レベル |
+| --- | --- | --- |
+| controller | `apierror.ErrXxx.JSON(ctx, err)` が自動でログ出力する | 5xx=Error / 4xx=Warn |
+| usecase | `logError(ctx, err)`（継続する場合は `logWarn(ctx, err)`） | Error / Warn |
+| infrastructure | `logError(ctx, err)` | Error |
+
+- エラー応答はすべて `apierror.Error.JSON` を通るため、コントローラ層は個別にログを
+  書かなくてよい。原因エラーがある場合は第2引数へ渡す（省略可）。
+- `logError` / `logWarn` は呼び出し元のメソッド名(`operation`)とソース位置を runtime から
+  解決するので、呼び出し側でメッセージや関数名を書く必要はない。
+- 「対象が存在しない」(`apperror.ErrRecordNotFound` / `gorm.ErrRecordNotFound`) は障害では
+  ないため `logError` が自動で Debug へ落とす。Error レベルを調査が必要なものだけに保つ。
+- 上記に加えて文脈固有の属性を出したい場合のみ、明示的に `slog` を呼ぶ
+  （例: `infrastructure/deck_asset.go` の `deck_code` / `request_url`）。
+  その際 `request_id` / `uid` は `ContextHandler` が付けるため**重複して指定しない**。
+
+`cmd/core-apiserver` の出力はすべてJSONに揃えてある。壊さないこと:
+
+- `main()` は最初に `InitLogger` + `slog.SetDefault` を実行する。設定不備やDB接続失敗など
+  最も見たい起動時エラーもJSONで出すため、`godotenv.Load()` より前に置いている。
+  `log` パッケージ（`log.Printf` など）は使わない。
+- panicは `gin.Recovery()` ではなく `internal.RecoveryMiddleware` で捕捉する。
+  gin側はスタックを独自形式のテキストで出すため、書き出し先をnilにして黙らせ、
+  slogでJSONとして出し直している。応答はgin同様ボディ無しの500。
+- GORMのロガーは `logger.Silent`（`infrastructure/postgres`）。SQLログを出したくなった場合も
+  GORM既定の形式ではなくslog経由にすること。
 
 ### entity と model
 
@@ -198,5 +243,7 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 - コメント・ドキュメント・テスト名は日本語。コメントには「何をしているか」ではなく
   **なぜそうしたか**（採用理由、避けたい事象）を書く既存の慣習に合わせる。
 - ログは `log/slog`。リクエストログは `internal/middleware.go` が `request_id` 付きで出力する。
+  各層でのログの出し方は「[ログ](#ログ)」を参照。ログメッセージ本文だけは英語で書く
+  （コメント・ドキュメントは日本語という他の規約とは異なる、既存の慣習）。
 - IDはULID（`generateId()`）。ユーザーIDだけはFirebase Authenticationのuidをそのまま使う。
 - 秘密情報は `.env`（gitignore済み）。`.env.sample` に変数を追加したら説明コメントも書く。

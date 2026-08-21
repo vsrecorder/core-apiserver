@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -52,14 +51,14 @@ func (c *OpponentDeckUsageStat) GetByUserId(ctx *gin.Context) {
 	regulationId := helper.GetRegulationId(ctx)
 	deckId := helper.GetDeckId(ctx)
 
-	stat, err := c.usecase.GetOpponentDeckUsageStat(context.Background(), uid, yearMonth, environmentId, season, regulationId, deckId)
+	stat, err := c.usecase.GetOpponentDeckUsageStat(ctx.Request.Context(), uid, yearMonth, environmentId, season, regulationId, deckId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

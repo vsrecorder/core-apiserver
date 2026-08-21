@@ -28,6 +28,7 @@ func (i *UserBadge) FindByUserId(
 	var models []*model.UserBadge
 
 	if tx := i.db.Where("user_id = ?", userId).Order("achieved_at ASC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -68,6 +69,7 @@ func (i *UserBadge) Save(
 		DoNothing: true,
 	}).Create(model)
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 

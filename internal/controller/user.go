@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -69,14 +68,14 @@ func (c *User) RegisterRoute(relativePath string) {
 func (c *User) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	user, err := c.usecase.FindById(context.Background(), id)
+	user, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -95,20 +94,20 @@ func (c *User) Create(ctx *gin.Context) {
 		req.ImageURL,
 	)
 
-	user, err := c.usecase.Create(context.Background(), param)
+	user, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
 		if errors.Is(err, apperror.ErrAlreadyExists) {
-			apierror.ErrConflict.JSON(ctx)
+			apierror.ErrConflict.JSON(ctx, err)
 			return
 		}
 
 		// 退会済みのユーザーによる再登録。未登録(404)と区別できるよう410で返す。
 		if errors.Is(err, apperror.ErrWithdrawn) {
-			apierror.ErrGone.JSON(ctx)
+			apierror.ErrGone.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -126,9 +125,9 @@ func (c *User) Update(ctx *gin.Context) {
 		req.ImageURL,
 	)
 
-	user, err := c.usecase.Update(context.Background(), id, param)
+	user, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -140,13 +139,13 @@ func (c *User) Update(ctx *gin.Context) {
 func (c *User) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	if err := c.usecase.Delete(context.Background(), id); err != nil {
+	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrBadRequestNotFound.JSON(ctx)
+			apierror.ErrBadRequestNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

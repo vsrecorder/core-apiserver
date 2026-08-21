@@ -28,6 +28,7 @@ func (i *UserEnvironmentBadge) FindByUserId(
 	var models []*model.UserEnvironmentBadge
 
 	if tx := i.db.Where("user_id = ?", userId).Order("achieved_at ASC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -68,6 +69,7 @@ func (i *UserEnvironmentBadge) Save(
 		DoUpdates: clause.AssignmentColumns([]string{"achieved_at", "created_at"}),
 	}).Create(model)
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 

@@ -14,25 +14,25 @@ func DeckGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		limit, err := helper.ParseQueryLimit(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		offset, err := helper.ParseQueryOffset(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		cursor, err := helper.ParseQuerySingleCursor(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		archived, err := helper.ParseQueryArchive(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -47,7 +47,7 @@ func DeckCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.DeckCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -82,7 +82,7 @@ func DeckUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.DeckUpdateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -20,6 +20,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 	"gorm.io/gorm"
 )
@@ -112,43 +113,56 @@ func (s *APIServer) Start(ctx context.Context) error {
 }
 
 func (s *APIServer) Shutdown() error {
-	log.Println("shutting down gracefully...")
+	slog.Info("shutting down gracefully")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	if err := s.httpServer.Shutdown(ctx); err != nil {
-		log.Printf("server forced to shutdown: %v", err)
+		slog.ErrorContext(ctx, "server forced to shutdown", logging.Err(err))
 		return err
 	}
 
-	log.Println("cleanup: closing DB connection...")
+	slog.InfoContext(ctx, "cleanup: closing DB connection")
 
 	if sqlDB, err := s.db.DB(); err != nil {
-		log.Printf("db close error: %v", err)
+		slog.ErrorContext(ctx, "db close error", logging.Err(err))
 	} else {
 		if err := sqlDB.Close(); err != nil {
-			log.Printf("db close error: %v", err)
+			slog.ErrorContext(ctx, "db close error", logging.Err(err))
 		}
 	}
 
-	log.Println("server exited cleanly")
+	slog.InfoContext(ctx, "server exited cleanly")
 
 	return nil
 }
 
 func main() {
+	// ロガーは何よりも先に初期化する。起動失敗(設定不備・DB接続失敗)は最も
+	// 調べたいログなので、これらも他のログと同じJSON形式で出す必要がある。
+	logger := internal.InitLogger(internal.LogConfig{
+		Level:   "info",
+		AppName: appName,
+	})
+
+	// controller / usecase / infrastructure の各層は *slog.Logger をDIで受け取らず
+	// slog のパッケージ関数を使うため、既定のロガーとして設定しておく。
+	// これによりコンストラクタのシグネチャを変えずに全層でログを出力できる。
+	slog.SetDefault(logger)
+
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	if err := validateJWTSecret(os.Getenv("VSRECORDER_JWT_SECRET")); err != nil {
-		log.Printf("failed to validate JWT secret: %v", err)
+		slog.Error("failed to validate JWT secret", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	if _, err := config.LoadDefaultConfig(context.Background()); err != nil {
-		log.Printf("failed to load default config: %v", err)
+		slog.Error("failed to load default config", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -160,14 +174,9 @@ func main() {
 
 	db, err := postgres.NewDB(dbHostname, dbPort, userName, userPassword, dbName)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
-
-	logger := internal.InitLogger(internal.LogConfig{
-		Level:   "info",
-		AppName: appName,
-	})
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -176,7 +185,7 @@ func main() {
 		internal.RequestIDMiddleware(),
 		internal.AccessLogMiddleware(logger),
 		internal.BodySizeLimitMiddleware(internal.MaxRequestBodyBytes),
-		gin.Recovery(),
+		internal.RecoveryMiddleware(logger),
 	)
 
 	r.SetTrustedProxies(nil)
@@ -497,7 +506,7 @@ func main() {
 		server := NewAPIServer(":8914", r, db)
 
 		if err := server.Start(ctx); err != nil {
-			log.Printf("server error: %v", err)
+			slog.ErrorContext(ctx, "server error", logging.Err(err))
 			os.Exit(ExitCodeNG)
 		}
 

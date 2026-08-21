@@ -56,6 +56,7 @@ func (i *UserStat) FindUserStat(
 	}
 
 	if tx := matchQuery.Scan(&matchResult); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -79,6 +80,7 @@ func (i *UserStat) FindUserStat(
 	}
 
 	if tx := recordQuery.Scan(&recordResult); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

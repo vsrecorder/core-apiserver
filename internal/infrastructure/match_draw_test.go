@@ -32,7 +32,7 @@ func newBO3DrawMatch(matchId string, games []*entity.Game) *entity.Match {
 
 func TestMatchBO3Draw(t *testing.T) {
 	for scenario, fn := range map[string]func(t *testing.T){
-		"Create_1勝1敗の両者引き分けを作成して取得できる": test_MatchBO3Draw_Create,
+		"Create_1勝1敗の両者引き分けを作成して取得できる":    test_MatchBO3Draw_Create,
 		"Update_勝ち(2-1)から引き分け(1-1)へ変更できる": test_MatchBO3Draw_UpdateWinToDraw,
 		"Update_引き分け(1-1)から勝ち(2-1)へ変更できる": test_MatchBO3Draw_UpdateDrawToWin,
 	} {

@@ -259,7 +259,7 @@ func TestUserPlayerController(t *testing.T) {
 			u := &stubUserPlayerUsecase{}
 			c, secretKey, mockSeriesRepo := setup4TestUserPlayerControllerWithMocks(t, u, true)
 
-			mockSeriesRepo.EXPECT().FindByDate(context.Background(), gomock.Any()).Return(
+			mockSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(
 				entity.NewChampionshipSeries(
 					"series_2026",
 					"チャンピオンシップシリーズ2026",

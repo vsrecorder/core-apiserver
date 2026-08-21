@@ -41,6 +41,7 @@ func (i *Notification) Save(
 	}
 
 	if tx := dbFromContext(ctx, i.db).Create(m); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 
@@ -64,6 +65,7 @@ func (i *Notification) UpdateContent(
 			"is_read":    isRead,
 		})
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 	if tx.RowsAffected == 0 {
@@ -145,6 +147,7 @@ func (i *Notification) MarkAsRead(
 			"read_at": &now,
 		})
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 	if tx.RowsAffected == 0 {
@@ -167,6 +170,7 @@ func (i *Notification) MarkAllAsReadByUserId(
 			"read_at": &now,
 		})
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 

@@ -27,6 +27,7 @@ func (i *Environment) Find(
 	var models []*model.Environment
 
 	if tx := i.db.Order("from_date DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -51,6 +52,7 @@ func (i *Environment) FindById(
 	var model *model.Environment
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -71,6 +73,7 @@ func (i *Environment) FindByDate(
 	var model *model.Environment
 
 	if tx := i.db.Where("from_date <= ?", date).Order("from_date DESC").First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -92,6 +95,7 @@ func (i *Environment) FindByTerm(
 	var models []*model.Environment
 
 	if tx := i.db.Where("to_date >= ? AND from_date <= ?", fromDate, toDate).Order("from_date DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

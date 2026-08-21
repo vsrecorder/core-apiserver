@@ -22,7 +22,7 @@ func UserStatHistoryGetMiddleware() gin.HandlerFunc {
 
 		season, err := helper.ParseQuerySeason(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 		helper.SetSeason(ctx, season)

@@ -85,6 +85,7 @@ func (i *OfficialEvent) Find(
 			).Find(&events)
 
 			if tx.Error != nil {
+				logError(ctx, tx.Error)
 				return nil, tx.Error
 			}
 		} else {
@@ -128,6 +129,7 @@ func (i *OfficialEvent) Find(
 			).Find(&events)
 
 			if tx.Error != nil {
+				logError(ctx, tx.Error)
 				return nil, tx.Error
 			}
 		}
@@ -186,6 +188,7 @@ func (i *OfficialEvent) Find(
 			).Find(&events)
 
 			if tx.Error != nil {
+				logError(ctx, tx.Error)
 				return nil, tx.Error
 			}
 		} else {
@@ -229,6 +232,7 @@ func (i *OfficialEvent) Find(
 			).Find(&events)
 
 			if tx.Error != nil {
+				logError(ctx, tx.Error)
 				return nil, tx.Error
 			}
 		}
@@ -311,6 +315,7 @@ func (i *OfficialEvent) FindById(
 	).Scan(&event)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

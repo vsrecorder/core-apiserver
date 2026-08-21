@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -61,14 +60,14 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 	season := helper.GetSeason(ctx)
 	regulationId := helper.GetRegulationId(ctx)
 
-	stats, err := c.usecase.GetUserStat(context.Background(), uid, yearMonth, environmentId, season, regulationId)
+	stats, err := c.usecase.GetUserStat(ctx.Request.Context(), uid, yearMonth, environmentId, season, regulationId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -83,9 +82,9 @@ func (c *UserStat) GetHistoryByUserId(ctx *gin.Context) {
 	season := helper.GetSeason(ctx)
 	deckId := helper.GetDeckId(ctx)
 
-	history, err := c.historyUsecase.GetUserStatHistory(context.Background(), uid, period, season, deckId)
+	history, err := c.historyUsecase.GetUserStatHistory(ctx.Request.Context(), uid, period, season, deckId)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -99,9 +98,9 @@ func (c *UserStat) GetRecentByUserId(ctx *gin.Context) {
 	count := helper.GetLimit(ctx)
 	deckId := helper.GetDeckId(ctx)
 
-	stat, err := c.recentUsecase.GetRecentMatches(context.Background(), uid, count, deckId)
+	stat, err := c.recentUsecase.GetRecentMatches(ctx.Request.Context(), uid, count, deckId)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

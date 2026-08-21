@@ -8,10 +8,14 @@
 package apierror
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
 
 // Error は HTTP ステータスコードとエラー内容を保持する独自エラー。
@@ -44,10 +48,59 @@ func (e *Error) Status() int {
 }
 
 // JSON は gin コンテキストへステータスコードとメッセージを書き込み、
-// 後続ハンドラの実行を中断する。
-func (e *Error) JSON(ctx *gin.Context) {
+// 後続ハンドラの実行を中断する。同時にコントローラ層のログも出力する。
+//
+// cause には応答の原因となったエラーを渡せる(可変長にしているのは、原因を
+// 持たない呼び出し側をそのまま使えるようにするため)。エラー応答を返す経路は
+// 必ずここを通るため、ログの書き漏れが構造上起きない。
+func (e *Error) JSON(ctx *gin.Context, cause ...error) {
+	e.log(ctx, cause...)
+
 	ctx.JSON(e.status, gin.H{"message": e.err.Error()})
 	ctx.Abort()
+}
+
+// log はエラー応答をコントローラ層のログとして出力する。
+func (e *Error) log(ctx *gin.Context, cause ...error) {
+	// 5xx はサーバ側の異常、4xx はクライアント起因の想定内の失敗であるため
+	// レベルを分け、アラート対象を 5xx に絞れるようにしている。
+	level := slog.LevelWarn
+	if e.status >= http.StatusInternalServerError {
+		level = slog.LevelError
+	}
+
+	attrs := []slog.Attr{
+		// skip=2 は log → JSON → 呼び出し元(ハンドラ/ミドルウェア)。
+		logging.Operation(logging.CallerOperation(2)),
+		slog.Int("status_code", e.status),
+		slog.String("response_message", e.err.Error()),
+	}
+
+	if len(cause) > 0 && cause[0] != nil {
+		attrs = append(attrs, logging.Err(cause[0]))
+	}
+
+	logging.LogAt(
+		requestContext(ctx),
+		logging.Layered(logging.LayerController),
+		level,
+		2,
+		"error response",
+		attrs...,
+	)
+}
+
+// requestContext は request_id / uid を載せた *http.Request の context を返す。
+//
+// gin.Context 自体も context.Context を満たすが、値の参照を Request の context へ
+// 委譲するのは ContextWithFallback を有効にした場合だけなので、確実に値を拾える
+// Request の context を直接使う。
+func requestContext(ctx *gin.Context) context.Context {
+	if ctx == nil || ctx.Request == nil {
+		return context.Background()
+	}
+
+	return ctx.Request.Context()
 }
 
 // 定義済みエラー。コントローラ層で頻出する応答を集約する。

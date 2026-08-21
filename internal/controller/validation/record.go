@@ -13,19 +13,19 @@ func RecordGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		limit, err := helper.ParseQueryLimit(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		offset, err := helper.ParseQueryOffset(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		cursorEventDate, cursorCreatedAt, err := helper.ParseQueryCursor(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -45,7 +45,7 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.RecordCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -72,7 +72,7 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.RecordUpdateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 

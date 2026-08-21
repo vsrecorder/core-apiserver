@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -46,7 +45,7 @@ func TestOldestRecordController_GetByUserId(t *testing.T) {
 
 		eventDate := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
 
-		mockUsecase.EXPECT().GetOldestRecord(context.Background(), uid, "").Return(entity.NewOldestRecord(&eventDate), nil)
+		mockUsecase.EXPECT().GetOldestRecord(gomock.Any(), uid, "").Return(entity.NewOldestRecord(&eventDate), nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+OldestRecordPath, nil)
@@ -66,7 +65,7 @@ func TestOldestRecordController_GetByUserId(t *testing.T) {
 
 		deckId := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-		mockUsecase.EXPECT().GetOldestRecord(context.Background(), uid, deckId).Return(entity.NewOldestRecord(nil), nil)
+		mockUsecase.EXPECT().GetOldestRecord(gomock.Any(), uid, deckId).Return(entity.NewOldestRecord(nil), nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+OldestRecordPath+"?deck_id="+deckId, nil)
@@ -105,7 +104,7 @@ func TestOldestRecordController_GetByUserId(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestOldestRecordController(t)
 
-		mockUsecase.EXPECT().GetOldestRecord(context.Background(), uid, "").Return(nil, errors.New(""))
+		mockUsecase.EXPECT().GetOldestRecord(gomock.Any(), uid, "").Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+OldestRecordPath, nil)

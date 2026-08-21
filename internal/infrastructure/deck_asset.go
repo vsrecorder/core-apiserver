@@ -72,6 +72,7 @@ func NewDeckAsset(logger *slog.Logger) repository.DeckAssetInterface {
 func (i *DeckAsset) defaultS3Client(ctx context.Context) (deckAssetS3API, error) {
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -126,6 +127,7 @@ func (i *DeckAsset) UploadDeckResultHTML(
 ) error {
 	s3client, err := i.newS3Client(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -134,6 +136,7 @@ func (i *DeckAsset) UploadDeckResultHTML(
 	// すでにアップロードされている場合はスキップする
 	notFound, err := isNotFound(ctx, s3client, key)
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 	if !notFound {
@@ -144,7 +147,8 @@ func (i *DeckAsset) UploadDeckResultHTML(
 
 	resp, err := httpclient.Get(url)
 	if err != nil {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"failed to fetch deck result HTML page",
 			slog.String("deck_code", deckCode),
 			slog.String("request_url", url),
@@ -159,7 +163,8 @@ func (i *DeckAsset) UploadDeckResultHTML(
 	// HeadObjectで存在確認をしているため以降ずっと壊れたページを配信し続けることになる。
 	// そのためステータスが200以外のときはアップロードせずにエラーを返す。
 	if resp.StatusCode != http.StatusOK {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"deck result HTML page returned non-200 status",
 			slog.String("deck_code", deckCode),
 			slog.String("request_url", url),
@@ -171,7 +176,8 @@ func (i *DeckAsset) UploadDeckResultHTML(
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"failed to read deck result HTML page body",
 			slog.String("deck_code", deckCode),
 			slog.String("request_url", url),
@@ -200,6 +206,7 @@ func (i *DeckAsset) UploadDeckImage(
 ) error {
 	s3client, err := i.newS3Client(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -208,6 +215,7 @@ func (i *DeckAsset) UploadDeckImage(
 	// すでにアップロードされている場合はスキップする
 	notFound, err := isNotFound(ctx, s3client, key)
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 	if !notFound {
@@ -218,7 +226,8 @@ func (i *DeckAsset) UploadDeckImage(
 
 	resp, err := httpclient.Get(url)
 	if err != nil {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"failed to fetch deck image",
 			slog.String("deck_code", deckCode),
 			slog.String("request_url", url),
@@ -230,7 +239,8 @@ func (i *DeckAsset) UploadDeckImage(
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"deck image returned non-200 status",
 			slog.String("deck_code", deckCode),
 			slog.String("request_url", url),
@@ -242,7 +252,8 @@ func (i *DeckAsset) UploadDeckImage(
 
 	srcImg, _, err := image.Decode(resp.Body)
 	if err != nil {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"failed to decode deck image",
 			slog.String("deck_code", deckCode),
 			slog.String("request_url", url),
@@ -254,11 +265,13 @@ func (i *DeckAsset) UploadDeckImage(
 
 	var w bytes.Buffer
 	if err := png.Encode(&w, srcImg); err != nil {
+		logError(ctx, err)
 		return err
 	}
 
 	imageBytes, err := convertPNG2JPG(w.Bytes())
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 

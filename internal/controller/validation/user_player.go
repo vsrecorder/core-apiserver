@@ -22,7 +22,7 @@ func UserPlayerCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.UserPlayerCreateRequest{}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 

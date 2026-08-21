@@ -53,6 +53,7 @@ func (u *UserStat) GetUserStat(
 	if yearMonth != "" {
 		t, err := time.Parse("2006-01", yearMonth)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 		fromDate = time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.Local)
@@ -61,6 +62,7 @@ func (u *UserStat) GetUserStat(
 		var err error
 		fromDate, toDate, err = seasonRange(ctx, u.championshipSeriesRepo, season, timeNow().Local())
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 	}
@@ -68,6 +70,7 @@ func (u *UserStat) GetUserStat(
 	if environmentId != "" {
 		env, err := u.environmentRepo.FindById(ctx, environmentId)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 
@@ -87,6 +90,7 @@ func (u *UserStat) GetUserStat(
 	if regulationId != "" {
 		reg, err := u.standardRegulationRepo.FindById(ctx, regulationId)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 

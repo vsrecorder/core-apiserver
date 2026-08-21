@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -76,7 +75,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
-		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", OfficialEventsPath, nil)
@@ -111,7 +110,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
-		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"?type_id=%d", typeId), nil)
@@ -146,7 +145,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
-		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), typeId, leagueType, startDate, endDate).Return(officialEvents, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"?type_id=%d&league_type=%d", typeId, leagueType), nil)
@@ -184,7 +183,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		expectedEndDate, _ := time.Parse(DateLayout, endDate)
 		expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 0, 0, 0, 0, time.Local)
 
-		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, expectedStartDate, expectedEndDate).Return(officialEvents, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), typeId, leagueType, expectedStartDate, expectedEndDate).Return(officialEvents, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"?type_id=%d&league_type=%d&start_date=%s&end_date=%s", typeId, leagueType, startDate, endDate), nil)
@@ -210,7 +209,7 @@ func test_OfficialEventController_Get(t *testing.T) {
 		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 
-		mockUsecase.EXPECT().Find(context.Background(), typeId, leagueType, startDate, endDate).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Find(gomock.Any(), typeId, leagueType, startDate, endDate).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", OfficialEventsPath, nil)
@@ -234,7 +233,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 			ID: id,
 		}
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(officialEvent, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(officialEvent, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"/%d", id), nil)
@@ -250,7 +249,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 	t.Run("異常系_イベントが存在しなければ404を返す", func(t *testing.T) {
 		id := uint(606466)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"/%d", id), nil)
@@ -265,7 +264,7 @@ func test_OfficialEventController_GetById(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id := uint(606466)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", fmt.Sprintf(OfficialEventsPath+"/%d", id), nil)

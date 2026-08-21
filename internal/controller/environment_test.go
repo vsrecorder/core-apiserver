@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,7 +74,7 @@ func test_EnvironmentController_Get(t *testing.T) {
 			&environment,
 		}
 
-		mockUsecase.EXPECT().Find(context.Background()).Return(environments, nil)
+		mockUsecase.EXPECT().Find(gomock.Any()).Return(environments, nil)
 
 		w := httptest.NewRecorder()
 
@@ -95,7 +94,7 @@ func test_EnvironmentController_Get(t *testing.T) {
 	})
 
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-		mockUsecase.EXPECT().Find(context.Background()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Find(gomock.Any()).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -125,7 +124,7 @@ func test_EnvironmentController_GetById(t *testing.T) {
 			toDate,
 		)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(environment, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(environment, nil)
 
 		w := httptest.NewRecorder()
 
@@ -146,7 +145,7 @@ func test_EnvironmentController_GetById(t *testing.T) {
 
 	t.Run("異常系_環境が存在しなければ404を返す", func(t *testing.T) {
 		id := "sv11"
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -160,7 +159,7 @@ func test_EnvironmentController_GetById(t *testing.T) {
 
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id := "sv11"
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -198,7 +197,7 @@ func test_EnvironmentController_GetByDate(t *testing.T) {
 			toDate,
 		)
 
-		mockUsecase.EXPECT().FindByDate(context.Background(), date).Return(environment, nil)
+		mockUsecase.EXPECT().FindByDate(gomock.Any(), date).Return(environment, nil)
 
 		w := httptest.NewRecorder()
 
@@ -220,7 +219,7 @@ func test_EnvironmentController_GetByDate(t *testing.T) {
 	t.Run("異常系_該当環境がなければ404を返す", func(t *testing.T) {
 		date, _ := time.Parse(DateLayout, "2025-06-06")
 		date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
-		mockUsecase.EXPECT().FindByDate(context.Background(), date).Return(nil, apperror.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindByDate(gomock.Any(), date).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -235,7 +234,7 @@ func test_EnvironmentController_GetByDate(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		date, _ := time.Parse(DateLayout, "2025-06-06")
 		date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
-		mockUsecase.EXPECT().FindByDate(context.Background(), date).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByDate(gomock.Any(), date).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -276,7 +275,7 @@ func test_EnvironmentController_GetByTerm(t *testing.T) {
 			&environment,
 		}
 
-		mockUsecase.EXPECT().FindByTerm(context.Background(), argFromDate, argToDate).Return(environments, nil)
+		mockUsecase.EXPECT().FindByTerm(gomock.Any(), argFromDate, argToDate).Return(environments, nil)
 
 		w := httptest.NewRecorder()
 
@@ -301,7 +300,7 @@ func test_EnvironmentController_GetByTerm(t *testing.T) {
 		argToDate, _ := time.Parse(DateLayout, "2025-06-07")
 		argToDate = time.Date(argToDate.Year(), argToDate.Month(), argToDate.Day(), 0, 0, 0, 0, time.Local)
 
-		mockUsecase.EXPECT().FindByTerm(context.Background(), argFromDate, argToDate).Return(nil, apperror.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindByTerm(gomock.Any(), argFromDate, argToDate).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -318,7 +317,7 @@ func test_EnvironmentController_GetByTerm(t *testing.T) {
 		argFromDate = time.Date(argFromDate.Year(), argFromDate.Month(), argFromDate.Day(), 0, 0, 0, 0, time.Local)
 		argToDate, _ := time.Parse(DateLayout, "2025-06-07")
 		argToDate = time.Date(argToDate.Year(), argToDate.Month(), argToDate.Day(), 0, 0, 0, 0, time.Local)
-		mockUsecase.EXPECT().FindByTerm(context.Background(), argFromDate, argToDate).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByTerm(gomock.Any(), argFromDate, argToDate).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 

@@ -25,6 +25,7 @@ func CurrentSeasonLabel(
 ) (string, error) {
 	cs, err := championshipSeriesRepo.FindByDate(ctx, now)
 	if err != nil {
+		logError(ctx, err)
 		return "", err
 	}
 
@@ -48,6 +49,7 @@ func seasonRange(
 		cs, err = championshipSeriesRepo.FindById(ctx, championshipSeriesIdPrefix+season)
 	}
 	if err != nil {
+		logError(ctx, err)
 		return time.Time{}, time.Time{}, err
 	}
 
@@ -81,6 +83,7 @@ func PeriodDateRange(
 	if season != "" {
 		fromDate, toDate, err = seasonRange(ctx, championshipSeriesRepo, season, now)
 		if err != nil {
+			logError(ctx, err)
 			return time.Time{}, time.Time{}, err
 		}
 	}
@@ -88,6 +91,7 @@ func PeriodDateRange(
 	if environmentId != "" {
 		env, err := environmentRepo.FindById(ctx, environmentId)
 		if err != nil {
+			logError(ctx, err)
 			return time.Time{}, time.Time{}, err
 		}
 
@@ -107,6 +111,7 @@ func PeriodDateRange(
 	if regulationId != "" {
 		reg, err := standardRegulationRepo.FindById(ctx, regulationId)
 		if err != nil {
+			logError(ctx, err)
 			return time.Time{}, time.Time{}, err
 		}
 
@@ -141,11 +146,13 @@ func previousSeasonRange(
 ) (fromDate time.Time, toDate time.Time, exists bool, err error) {
 	currentFromDate, _, err := seasonRange(ctx, championshipSeriesRepo, season, now)
 	if err != nil {
+		logError(ctx, err)
 		return time.Time{}, time.Time{}, false, err
 	}
 
 	cs, err := championshipSeriesRepo.FindByDate(ctx, currentFromDate.AddDate(0, 0, -1))
 	if err != nil {
+		logError(ctx, err)
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			return time.Time{}, time.Time{}, false, nil
 		}
@@ -155,6 +162,7 @@ func previousSeasonRange(
 
 	fromDate, toDate, err = championshipSeriesDateRange(cs, now.Location())
 	if err != nil {
+		logError(ctx, err)
 		return time.Time{}, time.Time{}, false, err
 	}
 

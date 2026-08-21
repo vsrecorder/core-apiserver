@@ -190,7 +190,7 @@ func TestDeckCodeController(t *testing.T) {
 			c, mockDeckCodeRepository, _, secretKey := setup4TestDeckCodeController(t, stubDeckCodeUsecase{deckCode: newTestDeckCodeEntity(id, uid, true)})
 
 			// DeckCodeUpdateAuthorizationMiddlewareが本人確認のために参照する
-			mockDeckCodeRepository.EXPECT().FindById(context.Background(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
+			mockDeckCodeRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
 
 			w := httptest.NewRecorder()
 			req := newRequestBody(t)
@@ -203,7 +203,7 @@ func TestDeckCodeController(t *testing.T) {
 		t.Run("異常系_他人のデッキコードは403を返す", func(t *testing.T) {
 			c, mockDeckCodeRepository, _, secretKey := setup4TestDeckCodeController(t, stubDeckCodeUsecase{})
 
-			mockDeckCodeRepository.EXPECT().FindById(context.Background(), id).Return(
+			mockDeckCodeRepository.EXPECT().FindById(gomock.Any(), id).Return(
 				&entity.DeckCode{ID: id, UserId: "KBp7roRDZobZg1t0OPzFR1kvLeO2"}, nil,
 			)
 
@@ -220,8 +220,8 @@ func TestDeckCodeController(t *testing.T) {
 		t.Run("正常系_記録に未使用の本人デッキコードを削除する", func(t *testing.T) {
 			c, mockDeckCodeRepository, mockRecordRepository, secretKey := setup4TestDeckCodeController(t, stubDeckCodeUsecase{})
 
-			mockDeckCodeRepository.EXPECT().FindById(context.Background(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
-			mockRecordRepository.EXPECT().FindByDeckCodeId(context.Background(), id, 1, 0).Return([]*entity.Record{}, nil)
+			mockDeckCodeRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
+			mockRecordRepository.EXPECT().FindByDeckCodeId(gomock.Any(), id, 1, 0).Return([]*entity.Record{}, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("DELETE", DeckCodesPath+"/"+id, nil)
@@ -234,8 +234,8 @@ func TestDeckCodeController(t *testing.T) {
 		t.Run("異常系_記録に使用中のデッキコードは409を返す", func(t *testing.T) {
 			c, mockDeckCodeRepository, mockRecordRepository, secretKey := setup4TestDeckCodeController(t, stubDeckCodeUsecase{})
 
-			mockDeckCodeRepository.EXPECT().FindById(context.Background(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
-			mockRecordRepository.EXPECT().FindByDeckCodeId(context.Background(), id, 1, 0).Return(
+			mockDeckCodeRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
+			mockRecordRepository.EXPECT().FindByDeckCodeId(gomock.Any(), id, 1, 0).Return(
 				[]*entity.Record{{ID: "01HD7Y3K8D6FDHMHTZ2GT41TR1"}}, nil,
 			)
 

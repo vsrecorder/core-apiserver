@@ -11,14 +11,14 @@ func DeckUsageStatGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		allTime, err := helper.ParseQueryAllTime(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 		helper.SetAllTime(ctx, allTime)
 
 		yearMonth, err := helper.ParseQueryYearMonth(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 		helper.SetYearMonth(ctx, yearMonth)
@@ -28,7 +28,7 @@ func DeckUsageStatGetMiddleware() gin.HandlerFunc {
 
 		season, err := helper.ParseQuerySeason(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 		helper.SetSeason(ctx, season)

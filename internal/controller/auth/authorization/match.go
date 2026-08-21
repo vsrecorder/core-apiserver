@@ -1,8 +1,6 @@
 package authorization
 
 import (
-	"context"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
@@ -21,18 +19,18 @@ func MatchAuthorizationMiddleware(repository repository.MatchInterface) gin.Hand
 			return
 		}
 
-		match, err := repository.FindById(context.Background(), id)
+		match, err := repository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if uid != match.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}
@@ -43,28 +41,28 @@ func MatchGetByIdAuthorizationMiddleware(matchRepository repository.MatchInterfa
 		id := helper.GetId(ctx)
 		uid := helper.GetUID(ctx)
 
-		match, err := matchRepository.FindById(context.Background(), id)
+		match, err := matchRepository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
-		record, err := recordRepository.FindById(context.Background(), match.RecordId)
+		record, err := recordRepository.FindById(ctx.Request.Context(), match.RecordId)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if record.PrivateFlg && uid != record.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}
@@ -75,18 +73,18 @@ func MatchGetByRecordIdAuthorizationMiddleware(recordRepository repository.Recor
 		recordId := helper.GetId(ctx)
 		uid := helper.GetUID(ctx)
 
-		record, err := recordRepository.FindById(context.Background(), recordId)
+		record, err := recordRepository.FindById(ctx.Request.Context(), recordId)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if record.PrivateFlg && uid != record.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}
@@ -107,18 +105,18 @@ func MatchReorderAuthorizationMiddleware(recordRepository repository.RecordInter
 		recordId := helper.GetId(ctx)
 		uid := helper.GetUID(ctx)
 
-		record, err := recordRepository.FindById(context.Background(), recordId)
+		record, err := recordRepository.FindById(ctx.Request.Context(), recordId)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if uid != record.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}

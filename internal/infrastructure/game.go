@@ -27,6 +27,7 @@ func (i *Game) FindById(
 	var model *model.Game
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -52,6 +53,7 @@ func (i *Game) FindByMatchId(
 	var models []*model.Game
 
 	if tx := i.db.Where("match_id = ?", matchId).Order("created_at ASC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

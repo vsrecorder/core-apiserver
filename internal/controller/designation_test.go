@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -51,7 +50,7 @@ func TestDesignationController(t *testing.T) {
 		t.Run("正常系_称号定義一覧を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestDesignationController(t)
 
-			mockUsecase.EXPECT().GetAllDefinitions(context.Background()).Return(
+			mockUsecase.EXPECT().GetAllDefinitions(gomock.Any()).Return(
 				[]*entity.Designation{newTestDesignation("designation-rookie", 1)}, nil,
 			)
 
@@ -65,7 +64,7 @@ func TestDesignationController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestDesignationController(t)
 
-			mockUsecase.EXPECT().GetAllDefinitions(context.Background()).Return(nil, errors.New(""))
+			mockUsecase.EXPECT().GetAllDefinitions(gomock.Any()).Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", DesignationsPath, nil)
@@ -81,7 +80,7 @@ func TestDesignationController(t *testing.T) {
 
 			view := &usecase.UserDesignationView{Current: newTestDesignation("designation-rookie", 1)}
 
-			mockUsecase.EXPECT().GetByUserId(context.Background(), uid, "2026").Return(view, nil)
+			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2026").Return(view, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath+"?season=2026", nil)
@@ -98,10 +97,10 @@ func TestDesignationController(t *testing.T) {
 		t.Run("正常系_season未指定なら現在のシーズンで判定する", func(t *testing.T) {
 			c, mockUsecase, mockSeriesRepo := setup4TestDesignationController(t)
 
-			mockSeriesRepo.EXPECT().FindByDate(context.Background(), gomock.Any()).Return(
+			mockSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(
 				&entity.ChampionshipSeries{ID: "series_2026"}, nil,
 			)
-			mockUsecase.EXPECT().GetByUserId(context.Background(), uid, "2026").Return(&usecase.UserDesignationView{}, nil)
+			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2026").Return(&usecase.UserDesignationView{}, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath, nil)
@@ -123,7 +122,7 @@ func TestDesignationController(t *testing.T) {
 		t.Run("異常系_存在しないseasonなら404を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestDesignationController(t)
 
-			mockUsecase.EXPECT().GetByUserId(context.Background(), uid, "2022").Return(nil, apperror.ErrRecordNotFound)
+			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2022").Return(nil, apperror.ErrRecordNotFound)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath+"?season=2022", nil)
@@ -135,7 +134,7 @@ func TestDesignationController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestDesignationController(t)
 
-			mockUsecase.EXPECT().GetByUserId(context.Background(), uid, "2026").Return(nil, errors.New(""))
+			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2026").Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath+"?season=2026", nil)
@@ -151,7 +150,7 @@ func TestDesignationController(t *testing.T) {
 
 			view := &usecase.DesignationRankStatsView{}
 
-			mockUsecase.EXPECT().GetRankStats(context.Background(), "2026").Return(view, nil)
+			mockUsecase.EXPECT().GetRankStats(gomock.Any(), "2026").Return(view, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", DesignationsPath+DesignationStatsPath+"?season=2026", nil)
@@ -167,7 +166,7 @@ func TestDesignationController(t *testing.T) {
 		t.Run("異常系_存在しないseasonなら404を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestDesignationController(t)
 
-			mockUsecase.EXPECT().GetRankStats(context.Background(), "2022").Return(nil, apperror.ErrRecordNotFound)
+			mockUsecase.EXPECT().GetRankStats(gomock.Any(), "2022").Return(nil, apperror.ErrRecordNotFound)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", DesignationsPath+DesignationStatsPath+"?season=2022", nil)
@@ -179,7 +178,7 @@ func TestDesignationController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestDesignationController(t)
 
-			mockUsecase.EXPECT().GetRankStats(context.Background(), "2026").Return(nil, errors.New(""))
+			mockUsecase.EXPECT().GetRankStats(gomock.Any(), "2026").Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", DesignationsPath+DesignationStatsPath+"?season=2026", nil)

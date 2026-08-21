@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -59,7 +58,7 @@ func test_TonamelEventController_GetById(t *testing.T) {
 			ID: id,
 		}
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(tonamelEvent, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(tonamelEvent, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", TonamelEventsPath+"/"+id, nil)
@@ -75,7 +74,7 @@ func test_TonamelEventController_GetById(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id := "61ozP"
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", TonamelEventsPath+"/"+id, nil)

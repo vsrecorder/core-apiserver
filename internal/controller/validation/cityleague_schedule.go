@@ -11,7 +11,7 @@ func CityleagueScheduleGetByDateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		date, err := helper.ParseQueryDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 

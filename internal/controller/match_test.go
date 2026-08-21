@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -84,10 +83,10 @@ func test_MatchController_GetById(t *testing.T) {
 		}
 
 		// MatchGetByIdAuthorizationMiddlewareが参照する
-		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
+		mockMatchRepository.EXPECT().FindById(gomock.Any(), id).Return(match, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(match, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(match, nil)
 
 		w := httptest.NewRecorder()
 
@@ -121,10 +120,10 @@ func test_MatchController_GetById(t *testing.T) {
 		}
 
 		// MatchGetByIdAuthorizationMiddlewareが参照する
-		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
+		mockMatchRepository.EXPECT().FindById(gomock.Any(), id).Return(match, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -154,10 +153,10 @@ func test_MatchController_GetById(t *testing.T) {
 		}
 
 		// MatchGetByIdAuthorizationMiddlewareが参照する
-		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(match, nil)
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
+		mockMatchRepository.EXPECT().FindById(gomock.Any(), id).Return(match, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -196,9 +195,9 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 		}
 
 		// MatchGetByRecordIdAuthorizationMiddlewareが参照する
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
-		mockUsecase.EXPECT().FindByRecordId(context.Background(), recordId).Return(matches, nil)
+		mockUsecase.EXPECT().FindByRecordId(gomock.Any(), recordId).Return(matches, nil)
 
 		w := httptest.NewRecorder()
 
@@ -225,9 +224,9 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 		// MatchGetByRecordIdAuthorizationMiddlewareが参照する
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
-		mockUsecase.EXPECT().FindByRecordId(context.Background(), recordId).Return(nil, apperror.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindByRecordId(gomock.Any(), recordId).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -250,9 +249,9 @@ func test_MatchController_GetByRecordId(t *testing.T) {
 		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 		// MatchGetByRecordIdAuthorizationMiddlewareが参照する
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid, PrivateFlg: false}, nil)
 
-		mockUsecase.EXPECT().FindByRecordId(context.Background(), recordId).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByRecordId(gomock.Any(), recordId).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -341,7 +340,7 @@ func test_MatchController_Create(t *testing.T) {
 			pokemonSprites,
 		)
 
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(match, nil)
+		mockUsecase.EXPECT().Create(gomock.Any(), param).Return(match, nil)
 
 		gameRequest := []*dto.GameRequest{
 			{
@@ -414,7 +413,7 @@ func test_MatchController_Create(t *testing.T) {
 			},
 		}
 
-		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		dataBytes, err := json.Marshal(data)
 		require.NoError(t, err)
@@ -470,7 +469,7 @@ func test_MatchController_Update(t *testing.T) {
 		}
 
 		// MatchUpdateAuthorizationMiddlewareが本人確認のために参照する
-		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
+		mockMatchRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
 
 		var games []*usecase.GameParam
 		games = append(
@@ -507,7 +506,7 @@ func test_MatchController_Update(t *testing.T) {
 			pokemonSprites,
 		)
 
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(match, nil)
+		mockUsecase.EXPECT().Update(gomock.Any(), id, param).Return(match, nil)
 
 		gameRequest := []*dto.GameRequest{
 			{
@@ -565,7 +564,7 @@ func test_MatchController_Update(t *testing.T) {
 		deckId := ""
 
 		// MatchUpdateAuthorizationMiddlewareが本人確認のために参照する
-		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
+		mockMatchRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
 
 		gameRequest := []*dto.GameRequest{
 			{
@@ -586,7 +585,7 @@ func test_MatchController_Update(t *testing.T) {
 			},
 		}
 
-		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Update(gomock.Any(), id, gomock.Any()).Return(nil, errors.New(""))
 
 		dataBytes, err := json.Marshal(data)
 		require.NoError(t, err)
@@ -617,8 +616,8 @@ func test_MatchController_Delete(t *testing.T) {
 		require.NoError(t, err)
 
 		// MatchDeleteAuthorizationMiddlewareが本人確認のために参照する
-		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
+		mockMatchRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(nil)
 
 		w := httptest.NewRecorder()
 
@@ -635,8 +634,8 @@ func test_MatchController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
+		mockMatchRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -653,8 +652,8 @@ func test_MatchController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockMatchRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
+		mockMatchRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Match{ID: id, UserId: uid}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -683,13 +682,13 @@ func test_MatchController_Reorder(t *testing.T) {
 		id2, _ := generateId()
 
 		// MatchReorderAuthorizationMiddlewareが本人確認のために参照する
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
 
 		orders := []*entity.MatchOrder{
 			{ID: id1, QualifyingRoundFlg: false, FinalTournamentFlg: true},
 			{ID: id2, QualifyingRoundFlg: true, FinalTournamentFlg: false},
 		}
-		mockUsecase.EXPECT().Reorder(context.Background(), recordId, orders).Return(nil)
+		mockUsecase.EXPECT().Reorder(gomock.Any(), recordId, orders).Return(nil)
 
 		data := dto.MatchReorderRequest{
 			Matches: []*dto.MatchOrderItem{
@@ -716,7 +715,7 @@ func test_MatchController_Reorder(t *testing.T) {
 		id1, _ := generateId()
 
 		// record所有者が別のユーザー
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: "other-user"}, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: "other-user"}, nil)
 
 		data := dto.MatchReorderRequest{
 			Matches: []*dto.MatchOrderItem{
@@ -741,7 +740,7 @@ func test_MatchController_Reorder(t *testing.T) {
 		recordId, _ := generateId()
 
 		// MatchReorderAuthorizationMiddlewareが本人確認のために参照する
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
 
 		data := dto.MatchReorderRequest{
 			Matches: []*dto.MatchOrderItem{},
@@ -764,12 +763,12 @@ func test_MatchController_Reorder(t *testing.T) {
 		recordId, _ := generateId()
 		id1, _ := generateId()
 
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
+		mockRecordRepository.EXPECT().FindById(gomock.Any(), recordId).Return(&entity.Record{ID: recordId, UserId: uid}, nil)
 
 		orders := []*entity.MatchOrder{
 			{ID: id1, QualifyingRoundFlg: false, FinalTournamentFlg: false},
 		}
-		mockUsecase.EXPECT().Reorder(context.Background(), recordId, orders).Return(apperror.ErrInvalidMatchOrder)
+		mockUsecase.EXPECT().Reorder(gomock.Any(), recordId, orders).Return(apperror.ErrInvalidMatchOrder)
 
 		data := dto.MatchReorderRequest{
 			Matches: []*dto.MatchOrderItem{

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
 
 func SetLimit(ctx *gin.Context, value int) {
@@ -173,6 +174,15 @@ func GetDeckId(ctx *gin.Context) string {
 
 func SetUID(ctx *gin.Context, value string) {
 	ctx.Set("uid", value)
+
+	// uid を Request の context にも載せることで、controller が下層へ渡した ctx を
+	// 経由して usecase / infrastructure のログにも uid が自動で付与される。
+	// 未認証を許容するエンドポイントでは空文字が渡るため、その場合は載せない。
+	if value != "" && ctx.Request != nil {
+		ctx.Request = ctx.Request.WithContext(
+			logging.ContextWithUID(ctx.Request.Context(), value),
+		)
+	}
 }
 
 func GetUID(ctx *gin.Context) string {

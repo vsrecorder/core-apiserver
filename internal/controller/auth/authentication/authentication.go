@@ -64,7 +64,7 @@ func RequiredAuthenticationMiddleware() gin.HandlerFunc {
 
 		token, err := parseToken(tokenString, secretKey)
 		if err != nil {
-			apierror.ErrUnauthorized.JSON(ctx)
+			apierror.ErrUnauthorized.JSON(ctx, err)
 			return
 		}
 
@@ -95,7 +95,7 @@ func OptionalAuthenticationMiddleware() gin.HandlerFunc {
 
 		token, err := parseToken(tokenString, secretKey)
 		if err != nil {
-			apierror.ErrUnauthorized.JSON(ctx)
+			apierror.ErrUnauthorized.JSON(ctx, err)
 			return
 		}
 

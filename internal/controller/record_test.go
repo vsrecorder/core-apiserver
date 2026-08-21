@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -88,7 +87,7 @@ func test_RecordController_Get(t *testing.T) {
 		offset := 0
 		eventType := ""
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -116,7 +115,7 @@ func test_RecordController_Get(t *testing.T) {
 		offset := 0
 		eventType := ""
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -142,7 +141,7 @@ func test_RecordController_Get(t *testing.T) {
 		cursor := encodeTestCursor(time.Time{}, time.Time{})
 		eventType := ""
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -175,7 +174,7 @@ func test_RecordController_Get(t *testing.T) {
 		require.NoError(t, err)
 		eventType := ""
 
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
+		mockUsecase.EXPECT().FindOnCursor(gomock.Any(), limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
 
 		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
 
@@ -197,7 +196,7 @@ func test_RecordController_Get(t *testing.T) {
 	})
 
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-		mockUsecase.EXPECT().Find(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Find(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -215,7 +214,7 @@ func test_RecordController_Get(t *testing.T) {
 		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindOnCursor(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
 
@@ -250,8 +249,8 @@ func test_RecordController_GetById(t *testing.T) {
 		}
 
 		// RecordGetByIdAuthorizationMiddlewareが参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(record, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(record, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(record, nil)
 
 		w := httptest.NewRecorder()
 
@@ -275,8 +274,8 @@ func test_RecordController_GetById(t *testing.T) {
 		require.NoError(t, err)
 
 		// RecordGetByIdAuthorizationMiddlewareが参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, PrivateFlg: false}, nil)
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Record{ID: id, PrivateFlg: false}, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", RecordsPath+"/"+id, nil)
@@ -290,8 +289,8 @@ func test_RecordController_GetById(t *testing.T) {
 		require.NoError(t, err)
 
 		// RecordGetByIdAuthorizationMiddlewareが参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, PrivateFlg: false}, nil)
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Record{ID: id, PrivateFlg: false}, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", RecordsPath+"/"+id, nil)
@@ -325,7 +324,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		offset := 0
 		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserId(gomock.Any(), uid, limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -358,7 +357,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		offset := 0
 		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserId(gomock.Any(), uid, limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -386,7 +385,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		cursor := encodeTestCursor(time.Time{}, time.Time{})
 		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserId(gomock.Any(), uid, limit, offset, eventType).Return(records, nil)
 
 		w := httptest.NewRecorder()
 
@@ -423,7 +422,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		require.NoError(t, err)
 		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
+		mockUsecase.EXPECT().FindByUserIdOnCursor(gomock.Any(), uid, limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
 
 		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
 
@@ -451,7 +450,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		offset := 0
 		eventType := ""
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, limit, offset, eventType).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByUserId(gomock.Any(), uid, limit, offset, eventType).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -470,7 +469,7 @@ func test_RecordController_GetByUserId(t *testing.T) {
 		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
 		require.NoError(t, err)
 
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByUserIdOnCursor(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
 
@@ -527,7 +526,7 @@ func test_RecordController_Create(t *testing.T) {
 			"",
 		)
 
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(record, nil)
+		mockUsecase.EXPECT().Create(gomock.Any(), param).Return(record, nil)
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
@@ -576,7 +575,7 @@ func test_RecordController_Create(t *testing.T) {
 
 		c, _, mockUsecase := setup4TestRecordController(t, r)
 
-		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		officialEventId := uint(10000)
 		privateFlg := false
@@ -638,7 +637,7 @@ func test_RecordController_Update(t *testing.T) {
 		}
 
 		// RecordUpdateAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
 
 		param := usecase.NewRecordParam(
 			officialEventId,
@@ -655,7 +654,7 @@ func test_RecordController_Update(t *testing.T) {
 			"",
 		)
 
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(record, nil)
+		mockUsecase.EXPECT().Update(gomock.Any(), id, param).Return(record, nil)
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
@@ -711,7 +710,7 @@ func test_RecordController_Update(t *testing.T) {
 		privateFlg := false
 
 		// RecordUpdateAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
 
 		param := usecase.NewRecordParam(
 			officialEventId,
@@ -728,7 +727,7 @@ func test_RecordController_Update(t *testing.T) {
 			"",
 		)
 
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Update(gomock.Any(), id, param).Return(nil, errors.New(""))
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
@@ -776,8 +775,8 @@ func test_RecordController_Delete(t *testing.T) {
 		require.NoError(t, err)
 
 		// RecordDeleteAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(nil)
 
 		w := httptest.NewRecorder()
 
@@ -794,8 +793,8 @@ func test_RecordController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -812,8 +811,8 @@ func test_RecordController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
 

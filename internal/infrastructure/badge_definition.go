@@ -26,6 +26,7 @@ func (i *BadgeDefinition) FindAll(
 	var models []*model.BadgeDefinition
 
 	if tx := i.db.Order("created_at ASC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -57,7 +56,7 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 		}
 
 		mockUsecase.EXPECT().FindEvents(
-			context.Background(),
+			gomock.Any(),
 			uint(0),
 			time.Time{},
 			time.Time{},
@@ -93,7 +92,7 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 		}
 
 		mockUsecase.EXPECT().FindEvents(
-			context.Background(),
+			gomock.Any(),
 			uint(1),
 			fromDate,
 			toDate,
@@ -143,7 +142,7 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 
 	t.Run("異常系_ユースケースがエラーを返した場合は500を返す", func(t *testing.T) {
 		mockUsecase.EXPECT().FindEvents(
-			context.Background(),
+			gomock.Any(),
 			uint(0),
 			time.Time{},
 			time.Time{},

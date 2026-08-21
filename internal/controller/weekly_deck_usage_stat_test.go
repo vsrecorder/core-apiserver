@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -38,7 +37,7 @@ func TestWeeklyDeckUsageStatController_GetWeeklyUsage(t *testing.T) {
 		weekStart := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
 		stat := entity.NewWeeklyDeckUsageStat(weekStart, 10, 3, []*entity.DeckUsageVariant{})
 
-		mockUsecase.EXPECT().GetWeeklyDeckUsageStat(context.Background(), "2026-07-13").Return(stat, nil)
+		mockUsecase.EXPECT().GetWeeklyDeckUsageStat(gomock.Any(), "2026-07-13").Return(stat, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", DeckMetaPath+WeeklyDeckUsagePath+"?week=2026-07-13", nil)
@@ -65,7 +64,7 @@ func TestWeeklyDeckUsageStatController_GetWeeklyUsage(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase := setup4TestWeeklyDeckUsageStatController(t)
 
-		mockUsecase.EXPECT().GetWeeklyDeckUsageStat(context.Background(), "").Return(nil, errors.New(""))
+		mockUsecase.EXPECT().GetWeeklyDeckUsageStat(gomock.Any(), "").Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", DeckMetaPath+WeeklyDeckUsagePath, nil)

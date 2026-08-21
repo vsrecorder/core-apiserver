@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -66,14 +65,14 @@ func (c *UnofficialEvent) RegisterRoute(relativePath string) {
 func (c *UnofficialEvent) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	unofficialEvent, err := c.usecase.FindById(context.Background(), id)
+	unofficialEvent, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -92,9 +91,9 @@ func (c *UnofficialEvent) Create(ctx *gin.Context) {
 		req.Date,
 	)
 
-	unofficialEvent, err := c.usecase.Create(context.Background(), param)
+	unofficialEvent, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -114,14 +113,14 @@ func (c *UnofficialEvent) Update(ctx *gin.Context) {
 		req.Date,
 	)
 
-	unofficialEvent, err := c.usecase.Update(context.Background(), id, param)
+	unofficialEvent, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -133,13 +132,13 @@ func (c *UnofficialEvent) Update(ctx *gin.Context) {
 func (c *UnofficialEvent) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	if err := c.usecase.Delete(context.Background(), id); err != nil {
+	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrBadRequestNotFound.JSON(ctx)
+			apierror.ErrBadRequestNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

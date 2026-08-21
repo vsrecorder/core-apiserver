@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -57,15 +56,15 @@ func (c *UserDailyActivity) Record(ctx *gin.Context) {
 		categories = []string{entity.UserDailyActivityCategoryVisit}
 	}
 
-	if err := c.usecase.Record(context.Background(), uid, categories); err != nil {
+	if err := c.usecase.Record(ctx.Request.Context(), uid, categories); err != nil {
 		// 既知のカテゴリが1つも無いときだけ400。未知が混ざっているだけなら
 		// 既知のぶんを記録して204を返す(webapp先行デプロイ時に計測を落とさないため)。
 		if errors.Is(err, apperror.ErrNoKnownActivityCategory) {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

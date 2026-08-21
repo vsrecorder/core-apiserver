@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -84,14 +83,14 @@ func (c *DeckCode) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 	uid := helper.GetUID(ctx)
 
-	deckcode, err := c.usecase.FindById(context.Background(), id)
+	deckcode, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -108,14 +107,14 @@ func (c *DeckCode) GetByDeckId(ctx *gin.Context) {
 	deckId := helper.GetId(ctx)
 	uid := helper.GetUID(ctx)
 
-	deckcodes, err := c.usecase.FindByDeckId(context.Background(), deckId)
+	deckcodes, err := c.usecase.FindByDeckId(ctx.Request.Context(), deckId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -143,9 +142,9 @@ func (c *DeckCode) Create(ctx *gin.Context) {
 		req.TagIds,
 	)
 
-	deckcode, err := c.usecase.Create(context.Background(), param)
+	deckcode, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -164,9 +163,9 @@ func (c *DeckCode) Update(ctx *gin.Context) {
 		req.TagIds,
 	)
 
-	deckcode, err := c.usecase.Update(context.Background(), id, param)
+	deckcode, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -178,13 +177,13 @@ func (c *DeckCode) Update(ctx *gin.Context) {
 func (c *DeckCode) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	if err := c.usecase.Delete(context.Background(), id); err != nil {
+	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrBadRequestNotFound.JSON(ctx)
+			apierror.ErrBadRequestNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

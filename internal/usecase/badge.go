@@ -71,11 +71,13 @@ func (u *Badge) GetByUserId(
 ) ([]*UserBadgeView, error) {
 	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	userBadges, err := u.userBadgeRepo.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -86,16 +88,19 @@ func (u *Badge) GetByUserId(
 
 	allTimeValues, err := u.allTimeValuesByCriteriaType(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	seasonAggregate, err := u.seasonAggregateByCriteriaType(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -138,16 +143,19 @@ func (u *Badge) allTimeValuesByCriteriaType(
 ) (map[string]int, error) {
 	recordCount, err := u.badgeStatsRepo.CountRecordsByUserId(ctx, userId, time.Time{}, time.Time{})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	matchCount, err := u.badgeStatsRepo.CountMatchesByUserId(ctx, userId, time.Time{}, time.Time{})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	deckCount, err := u.badgeStatsRepo.CountDecksByUserId(ctx, userId, time.Time{}, time.Time{})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -209,44 +217,52 @@ func (u *Badge) seasonAggregateByCriteriaType(
 ) (*seasonAggregate, error) {
 	recordCount, err := u.badgeStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	matchCount, err := u.badgeStatsRepo.CountMatchesByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	deckCount, err := u.badgeStatsRepo.CountDecksByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	recordDates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	sort.Slice(recordDates, func(i, j int) bool { return recordDates[i].Before(recordDates[j]) })
 
 	deckDates, err := u.badgeStatsRepo.FindDeckDatesByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	sort.Slice(deckDates, func(i, j int) bool { return deckDates[i].Before(deckDates[j]) })
 
 	deckCodeCount, err := u.badgeStatsRepo.CountDeckCodesByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	deckCodeDates, err := u.badgeStatsRepo.FindDeckCodeDatesByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	sort.Slice(deckCodeDates, func(i, j int) bool { return deckCodeDates[i].Before(deckCodeDates[j]) })
 
 	matchDates, err := u.badgeStatsRepo.FindMatchDatesByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	sort.Slice(matchDates, func(i, j int) bool { return matchDates[i].Before(matchDates[j]) })

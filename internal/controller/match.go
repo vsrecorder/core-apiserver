@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -105,18 +104,18 @@ func (c *Match) RegisterRoute(relativePath string) {
 func (c *Match) GetLatest(ctx *gin.Context) {
 	limit, err := helper.ParseQueryLimit(ctx)
 	if err != nil {
-		apierror.ErrBadRequest.JSON(ctx)
+		apierror.ErrBadRequest.JSON(ctx, err)
 		return
 	}
 
-	matches, err := c.usecase.FindLatest(context.Background(), limit)
+	matches, err := c.usecase.FindLatest(ctx.Request.Context(), limit)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			ctx.JSON(http.StatusOK, []*dto.MatchResponse{})
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -128,14 +127,14 @@ func (c *Match) GetLatest(ctx *gin.Context) {
 func (c *Match) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	match, err := c.usecase.FindById(context.Background(), id)
+	match, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -147,14 +146,14 @@ func (c *Match) GetById(ctx *gin.Context) {
 func (c *Match) GetByRecordId(ctx *gin.Context) {
 	recordId := helper.GetId(ctx)
 
-	matches, err := c.usecase.FindByRecordId(context.Background(), recordId)
+	matches, err := c.usecase.FindByRecordId(ctx.Request.Context(), recordId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			ctx.JSON(http.StatusOK, []*dto.MatchGetByRecordIdResponse{})
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -174,18 +173,18 @@ func (c *Match) GetByUserId(ctx *gin.Context) {
 
 	limit, err := helper.ParseQueryLimit(ctx)
 	if err != nil {
-		apierror.ErrBadRequest.JSON(ctx)
+		apierror.ErrBadRequest.JSON(ctx, err)
 		return
 	}
 
-	matches, err := c.usecase.FindByUserId(context.Background(), userId, limit)
+	matches, err := c.usecase.FindByUserId(ctx.Request.Context(), userId, limit)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			ctx.JSON(http.StatusOK, []*dto.MatchResponse{})
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -243,15 +242,15 @@ func (c *Match) Create(ctx *gin.Context) {
 	// TagIds は NewMatchParam の引数に含めていないため、ここで直接設定する。
 	param.TagIds = req.TagIds
 
-	match, err := c.usecase.Create(context.Background(), param)
+	match, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
 		// 対戦結果の整合性エラーは 400。middleware を通れば通常は発生しないが、
 		// usecase 層でも検証しているため防御的に 400 を返す。
 		if errors.Is(err, apperror.ErrInvalidMatch) {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -310,14 +309,14 @@ func (c *Match) Update(ctx *gin.Context) {
 	// TagIds は NewMatchParam の引数に含めていないため、ここで直接設定する。
 	param.TagIds = req.TagIds
 
-	match, err := c.usecase.Update(context.Background(), id, param)
+	match, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
 		// 対戦結果の整合性エラーは 400。
 		if errors.Is(err, apperror.ErrInvalidMatch) {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -329,13 +328,13 @@ func (c *Match) Update(ctx *gin.Context) {
 func (c *Match) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	if err := c.usecase.Delete(context.Background(), id); err != nil {
+	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrBadRequestNotFound.JSON(ctx)
+			apierror.ErrBadRequestNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -355,13 +354,13 @@ func (c *Match) Reorder(ctx *gin.Context) {
 		})
 	}
 
-	if err := c.usecase.Reorder(context.Background(), recordId, orders); err != nil {
+	if err := c.usecase.Reorder(ctx.Request.Context(), recordId, orders); err != nil {
 		if err == apperror.ErrInvalidMatchOrder {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

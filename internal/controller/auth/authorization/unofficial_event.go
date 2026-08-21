@@ -1,8 +1,6 @@
 package authorization
 
 import (
-	"context"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
@@ -21,18 +19,18 @@ func UnofficialEventAuthorizationMiddleware(repository repository.UnofficialEven
 			return
 		}
 
-		unofficialEvent, err := repository.FindById(context.Background(), id)
+		unofficialEvent, err := repository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if uid != unofficialEvent.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}

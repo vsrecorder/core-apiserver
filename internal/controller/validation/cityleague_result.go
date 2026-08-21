@@ -13,19 +13,19 @@ func CityleagueResultGetEventsMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		leagueType, err := helper.ParseQueryLeagueType(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		fromDate, err := helper.ParseQueryFromDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		toDate, err := helper.ParseQueryToDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -51,13 +51,13 @@ func CityleagueResultGetByDateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		leagueType, err := helper.ParseQueryLeagueType(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		date, err := helper.ParseQueryDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -70,24 +70,24 @@ func CityleagueResultGetByTermMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		leagueType, err := helper.ParseQueryLeagueType(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		fromDate, err := helper.ParseQueryFromDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		toDate, err := helper.ParseQueryToDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		if (fromDate.Equal(time.Time{})) != (toDate.Equal(time.Time{})) {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -108,7 +108,7 @@ func CityleagueResultGetByOfficialEventIdMiddleware() gin.HandlerFunc {
 		officialEventId, err := helper.ParseQueryOfficialEventId(ctx)
 
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 

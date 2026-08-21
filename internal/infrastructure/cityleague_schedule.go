@@ -27,6 +27,7 @@ func (i *CityleagueSchedule) Find(
 	var models []*model.CityleagueSchedule
 
 	if tx := i.db.Order("from_date DESC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -52,6 +53,7 @@ func (i *CityleagueSchedule) FindById(
 	var model model.CityleagueSchedule
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -72,6 +74,7 @@ func (i *CityleagueSchedule) FindByDate(
 	var model model.CityleagueSchedule
 
 	if tx := i.db.Where("from_date <= ? AND to_date >= ?", date, date).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 

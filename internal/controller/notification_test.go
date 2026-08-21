@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -63,7 +62,7 @@ func test_NotificationController_GetByUID(t *testing.T) {
 			entity.NewNotification("n-1", time.Now(), uid, "badge", "バッジを獲得しました", "「初記録」バッジを獲得しました！", "/users"),
 		}
 
-		mockUsecase.EXPECT().ListByUserId(context.Background(), uid, gomock.Any()).Return(notifications, nil)
+		mockUsecase.EXPECT().ListByUserId(gomock.Any(), uid, gomock.Any()).Return(notifications, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", NotificationsPath, nil)
@@ -98,7 +97,7 @@ func test_NotificationController_CountUnread(t *testing.T) {
 	c, mockUsecase := setup4TestNotificationController(t, r)
 
 	t.Run("正常系", func(t *testing.T) {
-		mockUsecase.EXPECT().CountUnreadByUserId(context.Background(), uid).Return(2, nil)
+		mockUsecase.EXPECT().CountUnreadByUserId(gomock.Any(), uid).Return(2, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", NotificationsPath+"/unread_count", nil)
@@ -124,7 +123,7 @@ func test_NotificationController_MarkAsRead(t *testing.T) {
 	c, mockUsecase := setup4TestNotificationController(t, r)
 
 	t.Run("正常系", func(t *testing.T) {
-		mockUsecase.EXPECT().MarkAsRead(context.Background(), uid, "n-1").Return(nil)
+		mockUsecase.EXPECT().MarkAsRead(gomock.Any(), uid, "n-1").Return(nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("PATCH", NotificationsPath+"/n-1/read", nil)
@@ -135,7 +134,7 @@ func test_NotificationController_MarkAsRead(t *testing.T) {
 	})
 
 	t.Run("異常系_他人の通知や存在しないIDは404", func(t *testing.T) {
-		mockUsecase.EXPECT().MarkAsRead(context.Background(), uid, "n-2").Return(apperror.ErrRecordNotFound)
+		mockUsecase.EXPECT().MarkAsRead(gomock.Any(), uid, "n-2").Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("PATCH", NotificationsPath+"/n-2/read", nil)
@@ -146,7 +145,7 @@ func test_NotificationController_MarkAsRead(t *testing.T) {
 	})
 
 	t.Run("異常系_その他のエラーは500", func(t *testing.T) {
-		mockUsecase.EXPECT().MarkAsRead(context.Background(), uid, "n-3").Return(errors.New("db error"))
+		mockUsecase.EXPECT().MarkAsRead(gomock.Any(), uid, "n-3").Return(errors.New("db error"))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("PATCH", NotificationsPath+"/n-3/read", nil)
@@ -168,7 +167,7 @@ func test_NotificationController_MarkAllAsRead(t *testing.T) {
 	c, mockUsecase := setup4TestNotificationController(t, r)
 
 	t.Run("正常系", func(t *testing.T) {
-		mockUsecase.EXPECT().MarkAllAsRead(context.Background(), uid).Return(nil)
+		mockUsecase.EXPECT().MarkAllAsRead(gomock.Any(), uid).Return(nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", NotificationsPath+"/read_all", nil)

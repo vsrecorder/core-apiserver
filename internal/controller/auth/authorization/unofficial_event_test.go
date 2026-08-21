@@ -1,7 +1,6 @@
 package authorization
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -76,7 +75,7 @@ func test_UnofficialEventAuthorizationMiddleware(t *testing.T) {
 			UserId: uid,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(unofficialEvent, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(unofficialEvent, nil)
 
 		UnofficialEventAuthorizationMiddleware(mockRepository)(ginContext)
 
@@ -94,7 +93,7 @@ func test_UnofficialEventAuthorizationMiddleware(t *testing.T) {
 	t.Run("異常系_自由形式イベントが存在しなければ404を返す", func(t *testing.T) {
 		ginContext, w, id := setup(t, true)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		UnofficialEventAuthorizationMiddleware(mockRepository)(ginContext)
 
@@ -104,7 +103,7 @@ func test_UnofficialEventAuthorizationMiddleware(t *testing.T) {
 	t.Run("異常系_取得エラーなら500を返す", func(t *testing.T) {
 		ginContext, w, id := setup(t, true)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		UnofficialEventAuthorizationMiddleware(mockRepository)(ginContext)
 
@@ -119,7 +118,7 @@ func test_UnofficialEventAuthorizationMiddleware(t *testing.T) {
 			UserId: uid,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(unofficialEvent, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(unofficialEvent, nil)
 
 		UnofficialEventDeleteAuthorizationMiddleware(mockRepository)(ginContext)
 
@@ -134,7 +133,7 @@ func test_UnofficialEventAuthorizationMiddleware(t *testing.T) {
 			UserId: "KBp7roRDZobZg1t0OPzFR1kvLeO2",
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(unofficialEvent, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(unofficialEvent, nil)
 
 		UnofficialEventAuthorizationMiddleware(mockRepository)(ginContext)
 

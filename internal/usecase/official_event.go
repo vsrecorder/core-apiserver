@@ -43,6 +43,7 @@ func (u *OfficialEvent) Find(
 	officialEvents, err := u.repository.Find(ctx, typeId, leagueType, startDate, endDate)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -56,6 +57,7 @@ func (u *OfficialEvent) FindById(
 	officialEvent, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

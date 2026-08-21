@@ -94,6 +94,7 @@ func (u *User) FindById(
 	user, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -125,16 +126,19 @@ func (u *User) Create(
 	// 実体が無いまま作成に成功したことになってしまうので、明示的に弾く。
 	withdrawn, err := u.repository.IsWithdrawn(ctx, user.ID)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	} else if withdrawn {
 		return nil, apperror.ErrWithdrawn
 	}
 
 	if err := u.repository.Save(ctx, user); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	if _, err := u.badgeEvaluation.EvaluateOnUserCreated(ctx, user.ID, user.CreatedAt); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -150,6 +154,7 @@ func (u *User) Update(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -161,6 +166,7 @@ func (u *User) Update(
 	)
 
 	if err := u.repository.Save(ctx, user); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -181,10 +187,12 @@ func (u *User) Delete(
 	// トランザクションの保持時間が線形に伸びるため、まとめて削除する。
 	return u.transactionManager.Do(ctx, func(ctx context.Context) error {
 		if err := u.recordRepository.DeleteByUserId(ctx, id); err != nil {
+			logError(ctx, err)
 			return err
 		}
 
 		if err := u.deckRepository.DeleteByUserId(ctx, id); err != nil {
+			logError(ctx, err)
 			return err
 		}
 
@@ -192,6 +200,7 @@ func (u *User) Delete(
 		// 対して作成できてしまう)ため、上記のデッキ連鎖削除だけでは削除しきれない
 		// ケースがある。user_id でも直接削除する。
 		if err := u.deckCodeRepository.DeleteByUserId(ctx, id); err != nil {
+			logError(ctx, err)
 			return err
 		}
 
@@ -199,10 +208,12 @@ func (u *User) Delete(
 		// 存在すればそのまま削除する(無ければ ErrRecordNotFound なので無視する)。
 		userPlayer, err := u.userPlayerRepository.FindByUserId(ctx, id)
 		if err != nil && err != apperror.ErrRecordNotFound {
+			logError(ctx, err)
 			return err
 		}
 		if userPlayer != nil {
 			if err := u.userPlayerRepository.Delete(ctx, userPlayer.ID); err != nil {
+				logError(ctx, err)
 				return err
 			}
 		}

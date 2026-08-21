@@ -14,14 +14,14 @@ var pokemonSpriteColumns = []string{"id", "name"}
 
 func TestNormalizeDeckName(t *testing.T) {
 	for scenario, fn := range map[string]func(t *testing.T){
-		"半角カナは全角カナになる":     test_NormalizeDeckName_FoldsHalfWidthKana,
-		"ひらがなはカタカナになる":     test_NormalizeDeckName_HiraganaToKatakana,
-		"アルファベットは除去される":    test_NormalizeDeckName_StripsAlphabet,
-		"漢字は除去される":         test_NormalizeDeckName_StripsKanji,
-		"空白と記号は除去される":      test_NormalizeDeckName_StripsSpacesAndSymbols,
-		"長音と数字は保持される":      test_NormalizeDeckName_KeepsChoonAndDigits,
-		"空文字は空文字のまま":       test_NormalizeDeckName_Empty,
-		"記号のみは空文字になる":      test_NormalizeDeckName_SymbolsOnly,
+		"半角カナは全角カナになる":  test_NormalizeDeckName_FoldsHalfWidthKana,
+		"ひらがなはカタカナになる":  test_NormalizeDeckName_HiraganaToKatakana,
+		"アルファベットは除去される": test_NormalizeDeckName_StripsAlphabet,
+		"漢字は除去される":      test_NormalizeDeckName_StripsKanji,
+		"空白と記号は除去される":   test_NormalizeDeckName_StripsSpacesAndSymbols,
+		"長音と数字は保持される":   test_NormalizeDeckName_KeepsChoonAndDigits,
+		"空文字は空文字のまま":    test_NormalizeDeckName_Empty,
+		"記号のみは空文字になる":   test_NormalizeDeckName_SymbolsOnly,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)

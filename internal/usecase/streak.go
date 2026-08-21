@@ -33,6 +33,7 @@ func (u *Streak) GetByUserId(
 ) (*entity.UserStreak, error) {
 	streak, err := u.repository.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			// まだ一度も記録していないユーザーは0件のストリークとして返す
 			return entity.NewUserStreak(userId, 0, 0, 0, 0, time.Time{}, time.Time{}), nil

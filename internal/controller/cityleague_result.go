@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -60,9 +59,9 @@ func (c *CityleagueResult) GetEvents(ctx *gin.Context) {
 	fromDate := helper.GetFromDate(ctx)
 	toDate := helper.GetToDate(ctx)
 
-	cityleagueResultEvents, err := c.usecase.FindEvents(context.Background(), leagueType, fromDate, toDate)
+	cityleagueResultEvents, err := c.usecase.FindEvents(ctx.Request.Context(), leagueType, fromDate, toDate)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -79,14 +78,14 @@ func (c *CityleagueResult) GetByDate(ctx *gin.Context) {
 		return
 	}
 
-	cityleagueResults, err := c.usecase.FindByDate(context.Background(), leagueType, date)
+	cityleagueResults, err := c.usecase.FindByDate(ctx.Request.Context(), leagueType, date)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -105,14 +104,14 @@ func (c *CityleagueResult) GetByTerm(ctx *gin.Context) {
 		return
 	}
 
-	cityleagueResults, err := c.usecase.FindByTerm(context.Background(), leagueType, fromDate, toDate)
+	cityleagueResults, err := c.usecase.FindByTerm(ctx.Request.Context(), leagueType, fromDate, toDate)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -129,14 +128,14 @@ func (c *CityleagueResult) GetByOfficialEventId(ctx *gin.Context) {
 		return
 	}
 
-	cityleagueResults, err := c.usecase.FindByOfficialEventId(context.Background(), id)
+	cityleagueResults, err := c.usecase.FindByOfficialEventId(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -153,14 +152,14 @@ func (c *CityleagueResult) Get(ctx *gin.Context) {
 	fromDate = time.Date(fromDate.Year(), fromDate.Month(), fromDate.Day(), 0, 0, 0, 0, time.Local)
 	toDate := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
 
-	cityleagueResults, err := c.usecase.FindByTerm(context.Background(), leagueType, fromDate, toDate)
+	cityleagueResults, err := c.usecase.FindByTerm(ctx.Request.Context(), leagueType, fromDate, toDate)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

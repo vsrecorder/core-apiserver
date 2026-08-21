@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -44,9 +43,9 @@ func (c *WeeklyDeckUsageStat) RegisterRoute(relativePath string) {
 func (c *WeeklyDeckUsageStat) GetWeeklyUsage(ctx *gin.Context) {
 	week := helper.GetWeek(ctx)
 
-	stat, err := c.usecase.GetWeeklyDeckUsageStat(context.Background(), week)
+	stat, err := c.usecase.GetWeeklyDeckUsageStat(ctx.Request.Context(), week)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

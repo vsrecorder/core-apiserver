@@ -87,6 +87,7 @@ func (u *EnvironmentBadgeEvaluation) NotifyAchieved(
 ) (string, error) {
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return "", err
 	}
 
@@ -104,6 +105,7 @@ func (u *EnvironmentBadgeEvaluation) NotifyAchieved(
 	notification.IsRead = isRead
 
 	if err := u.notificationRepo.Save(ctx, notification); err != nil {
+		logError(ctx, err)
 		return "", err
 	}
 
@@ -129,6 +131,7 @@ func (u *EnvironmentBadgeEvaluation) EvaluateOnMatchCreated(
 ) (*entity.Environment, error) {
 	env, err := u.environmentRepo.FindByDate(ctx, basisTime)
 	if err != nil {
+		logError(ctx, err)
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -137,6 +140,7 @@ func (u *EnvironmentBadgeEvaluation) EvaluateOnMatchCreated(
 
 	existing, err := u.userEnvironmentBadgeRepo.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -163,6 +167,7 @@ func (u *EnvironmentBadgeEvaluation) EvaluateOnMatchCreated(
 	err = u.transactionManager.Do(ctx, func(ctx context.Context) error {
 		notificationId, err := u.NotifyAchieved(ctx, userId, env, match.CreatedAt, false)
 		if err != nil {
+			logError(ctx, err)
 			return err
 		}
 		userEnvironmentBadge.NotificationId = notificationId
@@ -170,6 +175,7 @@ func (u *EnvironmentBadgeEvaluation) EvaluateOnMatchCreated(
 		return u.userEnvironmentBadgeRepo.Save(ctx, userEnvironmentBadge)
 	})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

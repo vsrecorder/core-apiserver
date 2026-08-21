@@ -66,6 +66,7 @@ func (u *UnofficialEvent) FindById(
 	unofficialEvent, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -78,6 +79,7 @@ func (u *UnofficialEvent) Create(
 ) (*entity.UnofficialEvent, error) {
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -89,6 +91,7 @@ func (u *UnofficialEvent) Create(
 	)
 
 	if err := u.repository.Save(ctx, unofficialEvent); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -103,6 +106,7 @@ func (u *UnofficialEvent) Update(
 	// 指定されたidのUnofficialEventが存在するか確認
 	ret, err := u.repository.FindById(ctx, id)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -116,6 +120,7 @@ func (u *UnofficialEvent) Update(
 	unofficialEvent.CreatedAt = ret.CreatedAt
 
 	if err := u.repository.Save(ctx, unofficialEvent); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -128,6 +133,7 @@ func (u *UnofficialEvent) Delete(
 ) error {
 	// 指定されたidのUnofficialEventが存在するか確認
 	if _, err := u.repository.FindById(ctx, id); err != nil {
+		logError(ctx, err)
 		return err
 	}
 

@@ -17,10 +17,10 @@ var (
 
 func TestParseDeckNameLayout(t *testing.T) {
 	for scenario, fn := range map[string]func(t *testing.T){
-		"1体":            test_parseDeckNameLayout_Single,
+		"1体":           test_parseDeckNameLayout_Single,
 		"2体はposition順": test_parseDeckNameLayout_SortedByPosition,
-		"空文字はnil":       test_parseDeckNameLayout_Empty,
-		"壊れた要素は読み飛ばす":   test_parseDeckNameLayout_SkipsBroken,
+		"空文字はnil":      test_parseDeckNameLayout_Empty,
+		"壊れた要素は読み飛ばす":  test_parseDeckNameLayout_SkipsBroken,
 		"3体目以降は落とす":    test_parseDeckNameLayout_CapsAtTwoSlots,
 	} {
 		t.Run(scenario, func(t *testing.T) {

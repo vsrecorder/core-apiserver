@@ -1,8 +1,6 @@
 package authorization
 
 import (
-	"context"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
@@ -21,18 +19,18 @@ func DeckAuthorizationMiddleware(repository repository.DeckInterface) gin.Handle
 			return
 		}
 
-		deck, err := repository.FindById(context.Background(), id)
+		deck, err := repository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if uid != deck.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}
@@ -43,18 +41,18 @@ func DeckGetByIdAuthorizationMiddleware(repository repository.DeckInterface) gin
 		id := helper.GetId(ctx)
 		uid := helper.GetUID(ctx)
 
-		deck, err := repository.FindById(context.Background(), id)
+		deck, err := repository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if deck.PrivateFlg && uid != deck.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}
@@ -90,32 +88,32 @@ func DeckDeleteAuthorizationMiddleware(deckRepository repository.DeckInterface, 
 			return
 		}
 
-		deck, err := deckRepository.FindById(context.Background(), id)
+		deck, err := deckRepository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if uid != deck.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 
 		limit := 1
 		offset := 0
 		eventType := ""
-		records, err := recordRepository.FindByDeckId(context.Background(), id, limit, offset, eventType)
+		records, err := recordRepository.FindByDeckId(ctx.Request.Context(), id, limit, offset, eventType)
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if len(records) > 0 {
-			apierror.ErrDeckHasRecords.JSON(ctx)
+			apierror.ErrDeckHasRecords.JSON(ctx, err)
 			return
 		}
 	}

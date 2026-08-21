@@ -127,12 +127,10 @@ type DeckIDCheckResponse struct {
 
 // deckCodeCheckLogAttrs はデッキコード確認APIのログに共通で付与する属性を返す。
 // request_idはアクセスログと突き合わせるためにRequestIDMiddlewareが設定した値を利用する。
-func deckCodeCheckLogAttrs(ctx *gin.Context, deckCode string) []any {
-	requestID, _ := ctx.Get("request_id")
-	requestIDStr, _ := requestID.(string)
-
+// deckCodeCheckLogAttrs はデッキコード検証APIのログに共通で載せる属性を返す。
+// request_id は ContextHandler が ctx から付与するためここには含めない。
+func deckCodeCheckLogAttrs(deckCode string) []any {
 	return []any{
-		slog.String("request_id", requestIDStr),
 		slog.String("deck_code", deckCode),
 		slog.String("request_url", DeckIDCheckURL),
 	}
@@ -149,12 +147,12 @@ func checkDeckCode(ctx *gin.Context, logger *slog.Logger, deckCode string) {
 			ctx.Request.Context(),
 			"failed to request deck code check API",
 			append(
-				deckCodeCheckLogAttrs(ctx, deckCode),
+				deckCodeCheckLogAttrs(deckCode),
 				slog.String("error_message", err.Error()),
 			)...,
 		)
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -165,7 +163,7 @@ func checkDeckCode(ctx *gin.Context, logger *slog.Logger, deckCode string) {
 			ctx.Request.Context(),
 			"deck code check API returned non-200 status",
 			append(
-				deckCodeCheckLogAttrs(ctx, deckCode),
+				deckCodeCheckLogAttrs(deckCode),
 				slog.Int("status_code", resp.StatusCode),
 			)...,
 		)
@@ -186,18 +184,18 @@ func checkDeckCode(ctx *gin.Context, logger *slog.Logger, deckCode string) {
 	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
 	var res DeckIDCheckResponse
 	if err := json.Unmarshal(body, &res); err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
 	if res.Existence == 0 {
-		apierror.ErrBadRequest.JSON(ctx)
+		apierror.ErrBadRequest.JSON(ctx, err)
 		return
 	}
 }

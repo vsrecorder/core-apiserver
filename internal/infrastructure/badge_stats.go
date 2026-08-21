@@ -44,6 +44,7 @@ func (i *BadgeStats) CountRecordsByUserId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -69,6 +70,7 @@ func (i *BadgeStats) CountMatchesByUserId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -92,6 +94,7 @@ func (i *BadgeStats) CountDecksByUserId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -117,6 +120,7 @@ func (i *BadgeStats) CountDeckCodesByUserId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -146,6 +150,7 @@ func (i *BadgeStats) FindRecordDatesByUserId(
 	}
 
 	if tx := query.Scan(&rows); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -178,6 +183,7 @@ func (i *BadgeStats) FindDeckDatesByUserId(
 	}
 
 	if tx := query.Order("created_at ASC").Pluck("created_at", &dates); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -203,6 +209,7 @@ func (i *BadgeStats) FindDeckCodeDatesByUserId(
 	}
 
 	if tx := query.Order("deck_codes.created_at ASC").Pluck("deck_codes.created_at", &dates); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -228,6 +235,7 @@ func (i *BadgeStats) FindMatchDatesByUserId(
 	}
 
 	if tx := query.Order("matches.created_at ASC").Pluck("matches.created_at", &dates); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

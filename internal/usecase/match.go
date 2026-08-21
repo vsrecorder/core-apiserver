@@ -175,6 +175,7 @@ func (u *Match) syncMatchTags(
 ) ([]*entity.Tag, error) {
 	tags, err := u.tag.FindAttachableByIds(ctx, tagIds, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -182,6 +183,7 @@ func (u *Match) syncMatchTags(
 	orderedTags, attachableTagIds := orderAttachableTagsByIds(tags, tagIds)
 
 	if err := u.tag.ReplaceMatchTags(ctx, matchId, attachableTagIds); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -195,6 +197,7 @@ func (u *Match) FindById(
 	match, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -208,6 +211,7 @@ func (u *Match) FindByRecordId(
 	matches, err := u.repository.FindByRecordId(ctx, recordId)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -222,6 +226,7 @@ func (u *Match) FindByUserId(
 	matches, err := u.repository.FindByUserId(ctx, userId, limit)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -235,6 +240,7 @@ func (u *Match) FindLatest(
 	matches, err := u.repository.FindLatest(ctx, limit)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -271,11 +277,13 @@ func (u *Match) Create(
 	param *MatchParam,
 ) (*entity.Match, error) {
 	if err := validateMatchParam(param); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	matchId, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -290,6 +298,7 @@ func (u *Match) Create(
 	for _, game := range param.Games {
 		gameId, err := generateId()
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 
@@ -343,12 +352,14 @@ func (u *Match) Create(
 	)
 
 	if err := u.repository.Create(ctx, match); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	// タグの付与は対戦結果本体とは別テーブルのため Create とは分けて反映する。
 	tags, err := u.syncMatchTags(ctx, match.ID, param.UserId, param.TagIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	match.Tags = tags
@@ -358,6 +369,7 @@ func (u *Match) Create(
 	// ランクアップ」にすることで、表示順序は下から「ユーザバッジ→環境バッジ→称号/
 	// ランクアップ」(=上から称号/ランクアップ→環境バッジ→ユーザバッジ)になる。
 	if _, err := u.badgeEvaluation.EvaluateOnMatchCreated(ctx, param.UserId, match); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -369,6 +381,7 @@ func (u *Match) Create(
 		basisTime := RecordBasisTime(record.EventDate, record.CreatedAt)
 
 		if _, err := u.environmentBadgeEval.EvaluateOnMatchCreated(ctx, param.UserId, match, basisTime); err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 	}
@@ -390,6 +403,7 @@ func (u *Match) Update(
 	param *MatchParam,
 ) (*entity.Match, error) {
 	if err := validateMatchParam(param); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -398,6 +412,7 @@ func (u *Match) Update(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -424,6 +439,7 @@ func (u *Match) Update(
 			} else { // 新しくGameを追加
 				gameId, err := generateId()
 				if err != nil {
+					logError(ctx, err)
 					return nil, err
 				}
 
@@ -498,12 +514,14 @@ func (u *Match) Update(
 	match.Position = ret.Position
 
 	if err := u.repository.Update(ctx, match); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	// タグの付与を param.TagIds の集合に合わせて更新する。
 	tags, err := u.syncMatchTags(ctx, match.ID, param.UserId, param.TagIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	match.Tags = tags
@@ -517,6 +535,7 @@ func (u *Match) Delete(
 ) error {
 	match, err := u.repository.FindById(ctx, id)
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -524,6 +543,7 @@ func (u *Match) Delete(
 	beforeTier, tierErr := u.designationEvaluation.CurrentTier(ctx, match.UserId)
 
 	if err := u.repository.Delete(ctx, id); err != nil {
+		logError(ctx, err)
 		return err
 	}
 

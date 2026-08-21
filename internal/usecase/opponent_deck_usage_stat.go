@@ -55,6 +55,7 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 	if yearMonth != "" {
 		t, err := time.Parse("2006-01", yearMonth)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 		fromDate = time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.Local)
@@ -63,6 +64,7 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 		var err error
 		fromDate, toDate, err = seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 	}
@@ -70,6 +72,7 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 	if environmentId != "" {
 		env, err := u.environmentRepo.FindById(ctx, environmentId)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 
@@ -87,6 +90,7 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 	if regulationId != "" {
 		reg, err := u.standardRegulationRepo.FindById(ctx, regulationId)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 

@@ -149,6 +149,7 @@ func (u *DesignationEvaluation) CurrentTier(
 ) (int, error) {
 	def, _, _, err := u.currentDesignationForRecordCriteria(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return 0, err
 	}
 	if def == nil {
@@ -165,6 +166,7 @@ func (u *DesignationEvaluation) TierAsOf(
 ) (int, error) {
 	def, _, _, err := u.currentDesignationForRecordCriteriaAsOf(ctx, userId, asOf, true)
 	if err != nil {
+		logError(ctx, err)
 		return 0, err
 	}
 	if def == nil {
@@ -196,6 +198,7 @@ func (u *DesignationEvaluation) NotifyIfTierChanged(
 		}
 
 		if err := u.notifyDesignationAchieved(ctx, userId, tierDef, seasonLabel, achievedAt); err != nil {
+			logWarn(ctx, err)
 			continue
 		}
 
@@ -218,6 +221,7 @@ func (u *DesignationEvaluation) NotifyIfTierLost(
 
 	def, definitions, seasonLabel, err := u.currentDesignationForRecordCriteria(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return
 	}
 
@@ -235,6 +239,7 @@ func (u *DesignationEvaluation) NotifyIfTierLost(
 	}
 
 	if err := u.notifyDesignationLost(ctx, userId, lostDef, seasonLabel); err != nil {
+		logError(ctx, err)
 		return
 	}
 
@@ -292,6 +297,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 ) (*entity.Designation, []*entity.Designation, string, error) {
 	definitions, err := u.designationRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, "", err
 	}
 
@@ -299,6 +305,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 
 	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, "", now)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, "", err
 	}
 	if !asOf.IsZero() && asOf.Before(toDate) {
@@ -307,6 +314,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 
 	seasonLabel, err := CurrentSeasonLabel(ctx, u.championshipSeriesRepo, now)
 	if err != nil {
+		logWarn(ctx, err)
 		seasonLabel = ""
 	}
 
@@ -323,21 +331,25 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 		recordCount, err = u.designationStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate)
 	}
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, "", err
 	}
 
 	leagueCount, err := u.designationStatsRepo.CountLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, "", err
 	}
 
 	cityLeagueCount, err := u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, "", err
 	}
 
 	previousFromDate, previousToDate, previousExists, err := previousSeasonRange(ctx, u.championshipSeriesRepo, "", now)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, "", err
 	}
 
@@ -346,6 +358,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 	if previousExists {
 		previousCityLeagueCount, err = u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, previousFromDate, previousToDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, nil, "", err
 		}
 	}
@@ -364,6 +377,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 
 		userPlayer, err := u.userPlayerRepo.FindByUserId(ctx, userId)
 		if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
+			logError(ctx, err)
 			return nil, nil, "", err
 		}
 
@@ -384,6 +398,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 				exists, err = u.designationStatsRepo.ExistsCityLeagueResultByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
 			}
 			if err != nil {
+				logError(ctx, err)
 				return nil, nil, "", err
 			}
 			if exists {
@@ -396,6 +411,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 				existsFinalTournament, err = u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
 			}
 			if err != nil {
+				logError(ctx, err)
 				return nil, nil, "", err
 			}
 			if existsFinalTournament {
@@ -412,6 +428,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 				existsChampion, err = u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
 			}
 			if err != nil {
+				logError(ctx, err)
 				return nil, nil, "", err
 			}
 			if existsChampion {
@@ -429,6 +446,7 @@ func (u *DesignationEvaluation) currentDesignationForRecordCriteriaAsOf(
 				existsRecordWithoutPlacement, err = u.designationStatsRepo.ExistsCityLeagueRecordWithoutPlacementByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
 			}
 			if err != nil {
+				logError(ctx, err)
 				return nil, nil, "", err
 			}
 			if cityLeagueChampion == 1 && !existsRecordWithoutPlacement && cityLeagueCount >= DesignationCityLeagueSeasonEventCount {
@@ -454,6 +472,7 @@ func (u *DesignationEvaluation) notifyDesignationAchieved(
 ) error {
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -484,6 +503,7 @@ func (u *DesignationEvaluation) notifyRankUp(
 ) error {
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -513,6 +533,7 @@ func (u *DesignationEvaluation) notifyDesignationLost(
 ) error {
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -542,6 +563,7 @@ func (u *DesignationEvaluation) notifyRankDown(
 ) error {
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 

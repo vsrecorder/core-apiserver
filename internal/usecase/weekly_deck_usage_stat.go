@@ -33,6 +33,7 @@ func (u *WeeklyDeckUsageStat) GetWeeklyDeckUsageStat(
 	// week（週内の任意日 "YYYY-MM-DD"。未指定なら今週）から月曜始まりの週の期間を求める。
 	fromDate, toDate, err := weekRange(week, timeNow().Local())
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

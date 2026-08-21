@@ -13,7 +13,7 @@ func EnvironmentGetByDateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		date, err := helper.ParseQueryDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -25,18 +25,18 @@ func EnvironmentGetByTermMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		fromDate, err := helper.ParseQueryFromDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		toDate, err := helper.ParseQueryToDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		if (fromDate.Equal(time.Time{})) != (toDate.Equal(time.Time{})) {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 

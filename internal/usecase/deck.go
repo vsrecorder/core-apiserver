@@ -182,6 +182,7 @@ func (u *Deck) syncDeckTags(
 ) ([]*entity.Tag, error) {
 	tags, err := u.tag.FindAttachableByIds(ctx, tagIds, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -189,6 +190,7 @@ func (u *Deck) syncDeckTags(
 	orderedTags, attachableTagIds := orderAttachableTagsByIds(tags, tagIds)
 
 	if err := u.tag.ReplaceDeckTags(ctx, deckId, attachableTagIds); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -203,6 +205,7 @@ func (u *Deck) Find(
 	decks, err := u.repository.Find(ctx, limit, offset)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -216,6 +219,7 @@ func (u *Deck) FindAll(
 	decks, err := u.repository.FindAll(ctx, uid)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -230,6 +234,7 @@ func (u *Deck) FindOnCursor(
 	decks, err := u.repository.FindOnCursor(ctx, limit, cursor)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -243,6 +248,7 @@ func (u *Deck) FindById(
 	deck, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -259,6 +265,7 @@ func (u *Deck) FindByUserId(
 	decks, err := u.repository.FindByUserId(ctx, uid, archivedFlg, limit, offset)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -275,6 +282,7 @@ func (u *Deck) FindByUserIdOnCursor(
 	decks, err := u.repository.FindByUserIdOnCursor(ctx, uid, archivedFlg, limit, cursor)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -287,6 +295,7 @@ func (u *Deck) Create(
 ) (*entity.Deck, error) {
 	deckId, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -298,6 +307,7 @@ func (u *Deck) Create(
 	if param.DeckCode != "" {
 		deckCodeId, err := generateId()
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 
@@ -319,10 +329,12 @@ func (u *Deck) Create(
 			// 先にデッキコードのHTMLページをアップロードすることで、デッキコードが正しいかどうかを確認することができる。
 			// アップロードに失敗した場合はデッキ作成を中止する。
 			if err := u.deckAsset.UploadDeckResultHTML(ctx, LatestDeckCode.Code); err != nil {
+				logError(ctx, err)
 				return nil, err
 			}
 
 			if err := u.deckAsset.UploadDeckImage(ctx, LatestDeckCode.Code); err != nil {
+				logError(ctx, err)
 				return nil, err
 			}
 		}
@@ -349,12 +361,14 @@ func (u *Deck) Create(
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	// タグの付与はデッキ本体とは別テーブルのため Save とは分けて反映する。
 	tags, err := u.syncDeckTags(ctx, deck.ID, param.UserId, param.TagIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	deck.Tags = tags
@@ -367,6 +381,7 @@ func (u *Deck) Create(
 			tagIds = append(tagIds, tag.ID)
 		}
 		if err := u.tag.ReplaceDeckCodeTags(ctx, LatestDeckCode.ID, tagIds); err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 		// deck.LatestDeckCode は LatestDeckCode と同じ実体を指すため、レスポンスにも反映される。
@@ -374,6 +389,7 @@ func (u *Deck) Create(
 	}
 
 	if _, err := u.badgeEvaluation.EvaluateOnDeckCreated(ctx, param.UserId, deck); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -390,6 +406,7 @@ func (u *Deck) Update(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -414,12 +431,14 @@ func (u *Deck) Update(
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	// タグの付与を param.TagIds の集合に合わせて更新する。
 	tags, err := u.syncDeckTags(ctx, deck.ID, ret.UserId, param.TagIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	deck.Tags = tags
@@ -436,6 +455,7 @@ func (u *Deck) Archive(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -462,6 +482,7 @@ func (u *Deck) Archive(
 	// 片方だけが成功して食い違わないよう1つのトランザクションにまとめる。
 	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
 		if err := u.repository.Save(ctx, deck); err != nil {
+			logError(ctx, err)
 			return err
 		}
 
@@ -485,6 +506,7 @@ func (u *Deck) Unarchive(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -505,6 +527,7 @@ func (u *Deck) Unarchive(
 	)
 
 	if err := u.repository.Save(ctx, deck); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -528,6 +551,7 @@ func (u *Deck) Favorite(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -538,6 +562,7 @@ func (u *Deck) Favorite(
 	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
 		favorites, err := u.userFavoriteDeck.FindByUserId(ctx, ret.UserId)
 		if err != nil {
+			logError(ctx, err)
 			return err
 		}
 
@@ -583,10 +608,12 @@ func (u *Deck) Unfavorite(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	if err := u.userFavoriteDeck.Delete(ctx, ret.UserId, id); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -602,6 +629,7 @@ func (u *Deck) Delete(
 	err := u.repository.Delete(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 

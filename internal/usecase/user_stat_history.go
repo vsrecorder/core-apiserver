@@ -54,6 +54,7 @@ func (u *UserStatHistory) GetUserStatHistory(
 	default: // "season"
 		fromDate, toDate, err = seasonRange(ctx, u.championshipSeriesRepo, season, now)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 	}

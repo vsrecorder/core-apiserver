@@ -27,6 +27,7 @@ func (i *UnofficialEvent) FindById(
 	var model model.UnofficialEvent
 
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -56,6 +57,7 @@ func (i *UnofficialEvent) Save(
 	model.CreatedAt = entity.CreatedAt
 
 	if tx := i.db.Save(model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 
@@ -72,6 +74,7 @@ func (i *UnofficialEvent) Delete(
 	db := dbFromContext(ctx, i.db)
 
 	if tx := db.Where("id = ?", id).Delete(&model.UnofficialEvent{}); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 

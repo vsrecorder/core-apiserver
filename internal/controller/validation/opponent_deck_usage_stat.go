@@ -11,7 +11,7 @@ func OpponentDeckUsageStatGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		yearMonth, err := helper.ParseQueryYearMonth(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 		helper.SetYearMonth(ctx, yearMonth)
@@ -21,7 +21,7 @@ func OpponentDeckUsageStatGetMiddleware() gin.HandlerFunc {
 
 		season, err := helper.ParseQuerySeason(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 		helper.SetSeason(ctx, season)

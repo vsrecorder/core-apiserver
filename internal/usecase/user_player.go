@@ -77,11 +77,13 @@ func (u *UserPlayer) FindCityleagueResultsByUserId(
 ) ([]*entity.PlayerCityleagueResult, error) {
 	userPlayer, err := u.repository.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepository, season, timeNow().Local())
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -95,6 +97,7 @@ func (u *UserPlayer) FindByUserId(
 	userPlayer, err := u.repository.FindByUserId(ctx, userId)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -115,6 +118,7 @@ func (u *UserPlayer) Create(
 ) (*entity.UserPlayer, error) {
 	existing, err := u.repository.FindByUserId(ctx, param.UserId)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -132,6 +136,7 @@ func (u *UserPlayer) Create(
 
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -146,6 +151,7 @@ func (u *UserPlayer) Create(
 		// 既存の紐付けがある場合(=1ヶ月経過後の変更)は旧レコードをsoft deleteしてから新規作成する
 		if existing != nil {
 			if err := u.repository.Delete(ctx, existing.ID); err != nil {
+				logError(ctx, err)
 				return err
 			}
 		}
@@ -153,6 +159,7 @@ func (u *UserPlayer) Create(
 		return u.repository.Save(ctx, userPlayer)
 	})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

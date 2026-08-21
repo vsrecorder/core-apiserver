@@ -36,6 +36,7 @@ func (u *Game) FindById(
 	game, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -49,6 +50,7 @@ func (u *Game) FindByMatchId(
 	games, err := u.repository.FindByMatchId(ctx, matchId)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

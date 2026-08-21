@@ -59,6 +59,7 @@ func (i *UserStatRecent) FindRecentMatches(
 		Limit(count)
 
 	if tx := query.Scan(&results); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -73,6 +74,7 @@ func (i *UserStatRecent) FindRecentMatches(
 
 	var spriteModels []*model.MatchPokemonSprite
 	if tx := i.db.Where("match_id IN ?", matchIds).Order("position ASC").Find(&spriteModels); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -85,7 +84,7 @@ func test_UserController_GetById(t *testing.T) {
 			ImageURL: "",
 		}
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(user, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(user, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+id, nil)
@@ -101,7 +100,7 @@ func test_UserController_GetById(t *testing.T) {
 	t.Run("異常系_ユーザが存在しなければ404を返す", func(t *testing.T) {
 		id, _ := generateId()
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+id, nil)
@@ -113,7 +112,7 @@ func test_UserController_GetById(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		id, _ := generateId()
 
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+id, nil)
@@ -153,7 +152,7 @@ func test_UserController_Create(t *testing.T) {
 			imageURL,
 		)
 
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(user, nil)
+		mockUsecase.EXPECT().Create(gomock.Any(), param).Return(user, nil)
 
 		data := dto.UserCreateRequest{
 			UserRequest: dto.UserRequest{
@@ -197,7 +196,7 @@ func test_UserController_Create(t *testing.T) {
 		name := "test"
 		imageURL := "https://example.com/image.png"
 
-		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, apperror.ErrAlreadyExists)
+		mockUsecase.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrAlreadyExists)
 
 		data := dto.UserCreateRequest{
 			UserRequest: dto.UserRequest{
@@ -234,7 +233,7 @@ func test_UserController_Create(t *testing.T) {
 		name := "test"
 		imageURL := "https://example.com/image.png"
 
-		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		data := dto.UserCreateRequest{
 			UserRequest: dto.UserRequest{
@@ -271,7 +270,7 @@ func test_UserController_Update(t *testing.T) {
 		c, mockRepository, mockUsecase := setup4TestUserController(t, l, r)
 
 		// UserUpdateAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.User{ID: id}, nil)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
@@ -290,7 +289,7 @@ func test_UserController_Update(t *testing.T) {
 			imageURL,
 		)
 
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(user, nil)
+		mockUsecase.EXPECT().Update(gomock.Any(), id, param).Return(user, nil)
 
 		data := dto.UserUpdateRequest{
 			UserRequest: dto.UserRequest{
@@ -332,12 +331,12 @@ func test_UserController_Update(t *testing.T) {
 		c, mockRepository, mockUsecase := setup4TestUserController(t, l, r)
 
 		// UserUpdateAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.User{ID: id}, nil)
 
 		name := "test"
 		imageURL := "https://example.com/image.png"
 
-		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Update(gomock.Any(), id, gomock.Any()).Return(nil, errors.New(""))
 
 		data := dto.UserUpdateRequest{
 			UserRequest: dto.UserRequest{
@@ -374,8 +373,8 @@ func test_UserController_Delete(t *testing.T) {
 		require.NoError(t, err)
 
 		// UserDeleteAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.User{ID: id}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(nil)
 
 		w := httptest.NewRecorder()
 
@@ -392,8 +391,8 @@ func test_UserController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.User{ID: id}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -410,8 +409,8 @@ func test_UserController_Delete(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(&entity.User{ID: id}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.User{ID: id}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
 

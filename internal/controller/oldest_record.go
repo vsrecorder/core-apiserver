@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -46,9 +45,9 @@ func (c *OldestRecord) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetId(ctx)
 	deckId := helper.GetDeckId(ctx)
 
-	record, err := c.usecase.GetOldestRecord(context.Background(), uid, deckId)
+	record, err := c.usecase.GetOldestRecord(ctx.Request.Context(), uid, deckId)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

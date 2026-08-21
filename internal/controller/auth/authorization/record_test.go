@@ -1,7 +1,6 @@
 package authorization
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +60,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 			UserId: uid,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(record, nil)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -111,7 +110,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -145,7 +144,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -184,7 +183,7 @@ func test_RecordAuthorizationMiddleware(t *testing.T) {
 			UserId: "KBp7roRDZobZg1t0OPzFR1kvLeO2",
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(record, nil)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -228,7 +227,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 			UserId: uid,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(record, nil)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -265,7 +264,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 			UserId: uid,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(record, nil)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -289,7 +288,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 
 		ginContext.Request = req
 
-		mockRepository.EXPECT().FindById(context.Background(), "").Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), "").Return(nil, apperror.ErrRecordNotFound)
 
 		middleware := RecordGetByIdAuthorizationMiddleware(mockRepository)
 		middleware(ginContext)
@@ -317,7 +316,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -351,7 +350,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 			},
 		)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -387,7 +386,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 			PrivateFlg: true,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(record, nil)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)
@@ -427,7 +426,7 @@ func test_RecordGetByIdAuthorizationMiddleware(t *testing.T) {
 			PrivateFlg: true,
 		}
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(record, nil)
 
 		// Middlewareのテストのためpathは何でもよい
 		req, err := http.NewRequest("GET", "/", nil)

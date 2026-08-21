@@ -109,6 +109,7 @@ func (u *DeckCode) syncDeckCodeTags(
 ) ([]*entity.Tag, error) {
 	tags, err := u.tag.FindAttachableByIds(ctx, tagIds, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -116,6 +117,7 @@ func (u *DeckCode) syncDeckCodeTags(
 	orderedTags, attachableTagIds := orderAttachableTagsByIds(tags, tagIds)
 
 	if err := u.tag.ReplaceDeckCodeTags(ctx, deckCodeId, attachableTagIds); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -129,6 +131,7 @@ func (u *DeckCode) FindById(
 	deckcode, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -142,6 +145,7 @@ func (u *DeckCode) FindByDeckId(
 	deckcodes, err := u.repository.FindByDeckId(ctx, deckId)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -154,6 +158,7 @@ func (u *DeckCode) Create(
 ) (*entity.DeckCode, error) {
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -176,21 +181,25 @@ func (u *DeckCode) Create(
 		// 先にデッキコードのHTMLページをアップロードすることで、デッキコードが正しいかどうかを確認することができる。
 		// アップロードに失敗した場合はデッキ作成を中止する。
 		if err := u.deckAsset.UploadDeckResultHTML(ctx, deckcode.Code); err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 
 		if err := u.deckAsset.UploadDeckImage(ctx, deckcode.Code); err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 	}
 
 	if err := u.repository.Save(ctx, deckcode); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	// タグの付与はデッキコード本体とは別テーブルのため Save とは分けて反映する。
 	tags, err := u.syncDeckCodeTags(ctx, deckcode.ID, param.UserId, param.TagIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	deckcode.Tags = tags
@@ -212,6 +221,7 @@ func (u *DeckCode) Update(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -226,12 +236,14 @@ func (u *DeckCode) Update(
 	)
 
 	if err := u.repository.Save(ctx, deckcode); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	// タグの付与を param.TagIds の集合に合わせて更新する。
 	tags, err := u.syncDeckCodeTags(ctx, deckcode.ID, ret.UserId, param.TagIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 	deckcode.Tags = tags
@@ -246,6 +258,7 @@ func (u *DeckCode) Delete(
 	err := u.repository.Delete(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 

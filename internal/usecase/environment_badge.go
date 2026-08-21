@@ -44,11 +44,13 @@ func (u *EnvironmentBadge) GetByUserId(
 ) ([]*EnvironmentBadgeView, error) {
 	environments, err := u.environmentRepo.Find(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	userEnvironmentBadges, err := u.userEnvironmentBadgeRepo.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

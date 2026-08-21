@@ -27,6 +27,7 @@ func (i *User) FindById(
 ) (*entity.User, error) {
 	var model *model.User
 	if tx := i.db.Where("id = ?", id).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -76,6 +77,7 @@ func (i *User) Save(
 	)
 
 	if tx := i.db.Save(model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 
@@ -87,6 +89,7 @@ func (i *User) Delete(
 	id string,
 ) error {
 	if tx := dbFromContext(ctx, i.db).Where("id = ?", id).Delete(&model.User{}); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 

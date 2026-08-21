@@ -207,6 +207,7 @@ func (u *BadgeEvaluation) updateStreak(
 
 	current, err := u.userStreakRepo.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		if !errors.Is(err, apperror.ErrRecordNotFound) {
 			return nil, err
 		}
@@ -216,6 +217,7 @@ func (u *BadgeEvaluation) updateStreak(
 	if current == nil {
 		streak := entity.NewUserStreak(userId, 1, 1, 0, 0, week, time.Now().Local())
 		if err := u.userStreakRepo.Save(ctx, streak); err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 		return streak, nil
@@ -263,6 +265,7 @@ func (u *BadgeEvaluation) updateStreak(
 
 	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek, time.Now().Local())
 	if err := u.userStreakRepo.Save(ctx, streak); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -440,6 +443,7 @@ func (u *BadgeEvaluation) achievedBadgeDefinitionIds(
 ) (map[string]bool, error) {
 	userBadges, err := u.userBadgeRepo.FindByUserId(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -505,6 +509,7 @@ func (u *BadgeEvaluation) notifyBadgeAchieved(
 ) error {
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -557,6 +562,7 @@ func (u *BadgeEvaluation) notifySeasonalCountMilestones(
 		}
 
 		if err := u.notifyBadgeAchieved(ctx, userId, def, seasonLabel, achievedAt); err != nil {
+			logError(ctx, err)
 			return err
 		}
 	}
@@ -602,6 +608,7 @@ func (u *BadgeEvaluation) notifySeasonalStreakMilestones(
 		// 実際の処理時刻(createdAt)を使う。対戦日を使うと他の通知とのcreated_at
 		// 基準がずれて並び順が崩れるため。
 		if err := u.notifyBadgeAchieved(ctx, userId, def, seasonLabel, createdAt); err != nil {
+			logError(ctx, err)
 			return err
 		}
 	}
@@ -628,6 +635,7 @@ func (u *BadgeEvaluation) notifySeasonalMilestonesOnRecordCreated(
 
 	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, "", now)
 	if err != nil {
+		logError(ctx, err)
 		return
 	}
 
@@ -635,6 +643,7 @@ func (u *BadgeEvaluation) notifySeasonalMilestonesOnRecordCreated(
 	// (通常発生しない)通知自体は空文字のまま作成し、判定を止めない。
 	seasonLabel, err := CurrentSeasonLabel(ctx, u.championshipSeriesRepo, now)
 	if err != nil {
+		logWarn(ctx, err)
 		seasonLabel = ""
 	}
 
@@ -662,11 +671,13 @@ func (u *BadgeEvaluation) notifySeasonalCountMilestonesForCriteria(
 
 	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, "", now)
 	if err != nil {
+		logError(ctx, err)
 		return
 	}
 
 	seasonLabel, err := CurrentSeasonLabel(ctx, u.championshipSeriesRepo, now)
 	if err != nil {
+		logWarn(ctx, err)
 		seasonLabel = ""
 	}
 
@@ -680,6 +691,7 @@ func (u *BadgeEvaluation) notifySeasonalCountMilestonesForCriteria(
 		return
 	}
 	if err != nil {
+		logError(ctx, err)
 		return
 	}
 
@@ -716,12 +728,14 @@ func (u *BadgeEvaluation) award(
 
 		id, err := generateId()
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 
 		userBadge := entity.NewUserBadge(id, time.Now().Local(), userId, def.ID, recordId, achievedAt)
 
 		if err := u.userBadgeRepo.Save(ctx, userBadge); err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 
@@ -730,6 +744,7 @@ func (u *BadgeEvaluation) award(
 		// created_at同値時のid DESCタイブレークが機能し、通知一覧の並び順を呼び出し順で
 		// 制御できるようにするため。
 		if err := u.notifyBadgeAchieved(ctx, userId, def, "", achievedAt); err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 
@@ -748,21 +763,25 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 	// user_streaks(StreakPanel用の全期間ストリーク)は引き続きここで更新する。
 	// バッジとしての週次ストリーク判定はシーズンごとにライブ集計するため、ここでは行わない。
 	if _, err := u.updateStreak(ctx, userId, record.EventDate, record.CreatedAt); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	achieved, err := u.achievedBadgeDefinitionIds(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	recordCount, err := u.badgeStatsRepo.CountRecordsByUserId(ctx, userId, time.Time{}, time.Time{})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -776,6 +795,7 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 	// 表す入力値であり、backfill入力等でachieved_atが過去日にずれてしまうのを避ける。
 	awarded, err := u.award(ctx, userId, record.ID, onboardingDefinitions(definitions), BadgeCriteriaTypeRecordCount, recordCount, achieved, record.CreatedAt)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -792,6 +812,7 @@ func (u *BadgeEvaluation) EvaluateOnRecordDeleted(
 ) error {
 	dates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, time.Time{}, time.Time{})
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -808,16 +829,19 @@ func (u *BadgeEvaluation) EvaluateOnMatchCreated(
 ) ([]*entity.UserBadge, error) {
 	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	achieved, err := u.achievedBadgeDefinitionIds(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	matchCount, err := u.badgeStatsRepo.CountMatchesByUserId(ctx, userId, time.Time{}, time.Time{})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -825,6 +849,7 @@ func (u *BadgeEvaluation) EvaluateOnMatchCreated(
 	// 先に評価する(record作成時のEvaluateOnRecordCreatedと同じ理由)。
 	awarded, err := u.award(ctx, userId, match.RecordId, onboardingDefinitions(definitions), BadgeCriteriaTypeMatchCount, matchCount, achieved, match.CreatedAt)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -840,16 +865,19 @@ func (u *BadgeEvaluation) EvaluateOnDeckCreated(
 ) ([]*entity.UserBadge, error) {
 	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	achieved, err := u.achievedBadgeDefinitionIds(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	deckCount, err := u.badgeStatsRepo.CountDecksByUserId(ctx, userId, time.Time{}, time.Time{})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -858,6 +886,7 @@ func (u *BadgeEvaluation) EvaluateOnDeckCreated(
 	// デッキ起点のバッジ獲得のため、紐づく record は存在しない
 	awarded, err := u.award(ctx, userId, "", onboardingDefinitions(definitions), BadgeCriteriaTypeDeckCount, deckCount, achieved, deck.CreatedAt)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -881,6 +910,7 @@ func (u *BadgeEvaluation) EvaluateOnDeckCodeCreated(
 ) {
 	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return
 	}
 
@@ -894,11 +924,13 @@ func (u *BadgeEvaluation) EvaluateOnUserCreated(
 ) ([]*entity.UserBadge, error) {
 	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	achieved, err := u.achievedBadgeDefinitionIds(ctx, userId)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

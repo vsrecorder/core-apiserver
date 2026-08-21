@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -45,7 +44,7 @@ func TestUserStatController(t *testing.T) {
 
 			stat := entity.NewUserStat(uid, 5, 2, 1, 1, 10, 6, 4, 0.6)
 
-			mockUsecase.EXPECT().GetUserStat(context.Background(), uid, "2026-07", "sv11", "", "").Return(stat, nil)
+			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "2026-07", "sv11", "", "").Return(stat, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath+"?year_month=2026-07&environment_id=sv11", nil)
@@ -67,7 +66,7 @@ func TestUserStatController(t *testing.T) {
 		t.Run("異常系_該当なしはErrRecordNotFoundから404を返す", func(t *testing.T) {
 			c, mockUsecase, _, _ := setup4TestUserStatController(t)
 
-			mockUsecase.EXPECT().GetUserStat(context.Background(), uid, "", "", "", "").Return(nil, apperror.ErrRecordNotFound)
+			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "", "", "", "").Return(nil, apperror.ErrRecordNotFound)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath, nil)
@@ -79,7 +78,7 @@ func TestUserStatController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase, _, _ := setup4TestUserStatController(t)
 
-			mockUsecase.EXPECT().GetUserStat(context.Background(), uid, "", "", "", "").Return(nil, errors.New(""))
+			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "", "", "", "").Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath, nil)
@@ -95,7 +94,7 @@ func TestUserStatController(t *testing.T) {
 
 			history := []*entity.UserStatMonthly{entity.NewUserStatMonthly("2026-06", 4, 3, 1, 0.75)}
 
-			mockHistoryUsecase.EXPECT().GetUserStatHistory(context.Background(), uid, "6months", "", "").Return(history, nil)
+			mockHistoryUsecase.EXPECT().GetUserStatHistory(gomock.Any(), uid, "6months", "", "").Return(history, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath+"/history?period=6months", nil)
@@ -117,7 +116,7 @@ func TestUserStatController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, _, mockHistoryUsecase, _ := setup4TestUserStatController(t)
 
-			mockHistoryUsecase.EXPECT().GetUserStatHistory(context.Background(), uid, "3months", "", "").Return(nil, errors.New(""))
+			mockHistoryUsecase.EXPECT().GetUserStatHistory(gomock.Any(), uid, "3months", "", "").Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath+"/history", nil)
@@ -131,7 +130,7 @@ func TestUserStatController(t *testing.T) {
 		t.Run("正常系_指定件数の直近対戦の統計を返す", func(t *testing.T) {
 			c, _, _, mockRecentUsecase := setup4TestUserStatController(t)
 
-			mockRecentUsecase.EXPECT().GetRecentMatches(context.Background(), uid, 50, "").Return(&entity.RecentMatchStat{}, nil)
+			mockRecentUsecase.EXPECT().GetRecentMatches(gomock.Any(), uid, 50, "").Return(&entity.RecentMatchStat{}, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath+"/recent?count=50", nil)
@@ -153,7 +152,7 @@ func TestUserStatController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, _, _, mockRecentUsecase := setup4TestUserStatController(t)
 
-			mockRecentUsecase.EXPECT().GetRecentMatches(context.Background(), uid, 20, "").Return(nil, errors.New(""))
+			mockRecentUsecase.EXPECT().GetRecentMatches(gomock.Any(), uid, 20, "").Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath+"/recent", nil)

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -41,14 +40,14 @@ func (c *TonamelEvent) RegisterRoute(relativePath string) {
 func (c *TonamelEvent) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	tonamelEvent, err := c.usecase.FindById(context.Background(), id)
+	tonamelEvent, err := c.usecase.FindById(ctx.Request.Context(), id)
 
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

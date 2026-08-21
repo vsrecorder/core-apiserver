@@ -59,6 +59,7 @@ func (i *DesignationStats) CountRecordsByUserId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -113,6 +114,7 @@ func (i *DesignationStats) CountRecordsAsOfByUserId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -141,6 +143,7 @@ func (i *DesignationStats) CountCityLeagueRecordsByUserId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -169,6 +172,7 @@ func (i *DesignationStats) CountLeagueRecordsByUserId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -268,6 +272,7 @@ func (i *DesignationStats) ExistsCityLeagueResultByPlayerId(
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return false, tx.Error
 	}
 
@@ -300,6 +305,7 @@ func (i *DesignationStats) ExistsCityLeagueResultAsOfByPlayerId(
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return false, tx.Error
 	}
 
@@ -351,6 +357,7 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultByPlayerId(
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return false, tx.Error
 	}
 
@@ -376,6 +383,7 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultAsOfByPlayerId(
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return false, tx.Error
 	}
 
@@ -428,6 +436,7 @@ func (i *DesignationStats) ExistsCityLeagueResultWithoutMatchingRecordByPlayerId
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return false, tx.Error
 	}
 
@@ -455,6 +464,7 @@ func (i *DesignationStats) ExistsCityLeagueFinalTournamentResultWithoutMatchingR
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return false, tx.Error
 	}
 
@@ -518,6 +528,7 @@ func (i *DesignationStats) ExistsCityLeagueRecordWithoutPlacementByPlayerId(
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return false, tx.Error
 	}
 
@@ -547,6 +558,7 @@ func (i *DesignationStats) ExistsCityLeagueRecordWithoutPlacementAsOfByPlayerId(
 	}
 
 	if tx := query.Limit(1).Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return false, tx.Error
 	}
 
@@ -587,6 +599,7 @@ func (i *DesignationStats) CountCityLeaguePlacementRecordsByPlayerId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 
@@ -618,6 +631,7 @@ func (i *DesignationStats) CountCityLeagueRecordsWithinRankByPlayerId(
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return 0, tx.Error
 	}
 

@@ -193,16 +193,19 @@ func (u *Designation) GetByUserId(
 ) (*UserDesignationView, error) {
 	definitions, err := u.designationRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	currentValues, hints, err := u.seasonValuesByCriteriaType(ctx, userId, season)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	previousCityLeagueCount, err := u.previousSeasonCityLeagueCount(ctx, userId, season)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -315,31 +318,37 @@ func (u *Designation) GetRankStats(
 ) (*DesignationRankStatsView, error) {
 	definitions, err := u.designationRepo.FindAll(ctx)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	recordCounts, err := u.designationStatsRepo.CountRecordsGroupByUserId(ctx, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	leagueCounts, err := u.designationStatsRepo.CountLeagueRecordsGroupByUserId(ctx, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	cityLeagueCounts, err := u.designationStatsRepo.CountCityLeagueRecordsGroupByUserId(ctx, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	previousFromDate, previousToDate, previousExists, err := previousSeasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -348,17 +357,20 @@ func (u *Designation) GetRankStats(
 	if previousExists {
 		previousCityLeagueCounts, err = u.designationStatsRepo.CountCityLeagueRecordsGroupByUserId(ctx, previousFromDate, previousToDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 	}
 
 	cityLeaguePlacements, err := u.designationStatsRepo.ExistsCityLeagueResultGroupByUserId(ctx, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	cityLeagueFinalTournaments, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -366,6 +378,7 @@ func (u *Designation) GetRankStats(
 	// しきい値 DesignationCityLeagueChampionMaxRank(=1)で流用する。
 	cityLeagueChampions, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultGroupByUserId(ctx, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -373,6 +386,7 @@ func (u *Designation) GetRankStats(
 	// このマップに含まれない(=入賞を逃した記録が無い)ことが「常に入賞以上」を意味する。
 	cityLeagueRecordsWithoutPlacement, err := u.designationStatsRepo.ExistsCityLeagueRecordWithoutPlacementGroupByUserId(ctx, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -467,21 +481,25 @@ func (u *Designation) seasonValuesByCriteriaType(
 ) (map[string]int, *designationSeasonHints, error) {
 	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, err
 	}
 
 	recordCount, err := u.designationStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, err
 	}
 
 	leagueCount, err := u.designationStatsRepo.CountLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, err
 	}
 
 	cityLeagueCount, err := u.designationStatsRepo.CountCityLeagueRecordsByUserId(ctx, userId, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, err
 	}
 
@@ -494,6 +512,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 	}
 	userPlayer, err := u.userPlayerRepo.FindByUserId(ctx, userId)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
+		logError(ctx, err)
 		return nil, nil, err
 	}
 
@@ -504,6 +523,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 	if userPlayer != nil {
 		exists, err := u.designationStatsRepo.ExistsCityLeagueResultByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, nil, err
 		}
 		if exists {
@@ -511,6 +531,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 		} else {
 			missingRecord, err := u.designationStatsRepo.ExistsCityLeagueResultWithoutMatchingRecordByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
 			if err != nil {
+				logError(ctx, err)
 				return nil, nil, err
 			}
 			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeaguePlacement] = missingRecord
@@ -518,6 +539,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 
 		existsFinalTournament, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, nil, err
 		}
 		if existsFinalTournament {
@@ -525,6 +547,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 		} else {
 			missingRecord, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueFinalTournamentMaxRank, fromDate, toDate)
 			if err != nil {
+				logError(ctx, err)
 				return nil, nil, err
 			}
 			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeagueFinalTournament] = missingRecord
@@ -535,6 +558,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 		// DesignationCityLeagueChampionMaxRank(=1)にして流用する。
 		existsChampion, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, nil, err
 		}
 		if existsChampion {
@@ -542,6 +566,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 		} else {
 			missingRecord, err := u.designationStatsRepo.ExistsCityLeagueFinalTournamentResultWithoutMatchingRecordByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
 			if err != nil {
+				logError(ctx, err)
 				return nil, nil, err
 			}
 			hints.MissingOfficialEventRecord[DesignationCriteriaTypeOfficialCityLeagueChampion] = missingRecord
@@ -554,6 +579,7 @@ func (u *Designation) seasonValuesByCriteriaType(
 		// 優勝も条件に含めておくことで、進捗値(current_value)と達成状態が食い違わないようにする。
 		existsRecordWithoutPlacement, err := u.designationStatsRepo.ExistsCityLeagueRecordWithoutPlacementByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, nil, err
 		}
 		if cityLeagueChampion == 1 && !existsRecordWithoutPlacement && cityLeagueCount >= DesignationCityLeagueSeasonEventCount {
@@ -569,10 +595,12 @@ func (u *Designation) seasonValuesByCriteriaType(
 		// これにより「入賞 == 参加(=max(4,記録数))」は「全4大会で常に入賞以上(名人条件)」と一致する。
 		hints.CityLeagueWinCount, err = u.designationStatsRepo.CountCityLeagueRecordsWithinRankByPlayerId(ctx, userId, userPlayer.PlayerId, DesignationCityLeagueChampionMaxRank, fromDate, toDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, nil, err
 		}
 		hints.CityLeaguePlacementCount, err = u.designationStatsRepo.CountCityLeaguePlacementRecordsByPlayerId(ctx, userId, userPlayer.PlayerId, fromDate, toDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, nil, err
 		}
 	}
@@ -600,6 +628,7 @@ func (u *Designation) previousSeasonCityLeagueCount(
 ) (int, error) {
 	fromDate, toDate, exists, err := previousSeasonRange(ctx, u.championshipSeriesRepo, season, time.Now().Local())
 	if err != nil {
+		logError(ctx, err)
 		return 0, err
 	}
 

@@ -185,6 +185,7 @@ func (u *Record) FindById(
 	record, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -200,6 +201,7 @@ func (u *Record) Find(
 	records, err := u.repository.Find(ctx, limit, offset, eventType)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -216,6 +218,7 @@ func (u *Record) FindOnCursor(
 	records, err := u.repository.FindOnCursor(ctx, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -232,6 +235,7 @@ func (u *Record) FindByUserId(
 	records, err := u.repository.FindByUserId(ctx, uid, limit, offset, eventType)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -249,6 +253,7 @@ func (u *Record) FindByUserIdOnCursor(
 	records, err := u.repository.FindByUserIdOnCursor(ctx, uid, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -264,6 +269,7 @@ func (u *Record) FindByOfficialEventId(
 	records, err := u.repository.FindByOfficialEventId(ctx, officialEventId, limit, offset)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -279,6 +285,7 @@ func (u *Record) FindByTonamelEventId(
 	records, err := u.repository.FindByTonamelEventId(ctx, tonamelEventId, limit, offset)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -295,6 +302,7 @@ func (u *Record) FindByDeckId(
 	records, err := u.repository.FindByDeckId(ctx, deckId, limit, offset, eventType)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -312,6 +320,7 @@ func (u *Record) FindByDeckIdOnCursor(
 	records, err := u.repository.FindByDeckIdOnCursor(ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -326,6 +335,7 @@ func (u *Record) FindByDeckCodeId(
 ) ([]*entity.Record, error) {
 	records, err := u.repository.FindByDeckCodeId(ctx, deckCodeId, limit, offset)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -353,11 +363,13 @@ func (u *Record) Create(
 	param *RecordParam,
 ) (*entity.Record, error) {
 	if err := validateRecordParam(param); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -389,6 +401,7 @@ func (u *Record) Create(
 	}
 
 	if err := u.repository.Save(ctx, record); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -401,6 +414,7 @@ func (u *Record) Create(
 	// することで、表示順序は下から「ユーザバッジ→称号/ランクアップ」(=上から称号/
 	// ランクアップ→ユーザバッジ)になる。
 	if _, err := u.badgeEvaluation.EvaluateOnRecordCreated(ctx, param.userId, record); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -432,7 +446,8 @@ func (u *Record) persistTonamelEvent(
 
 	existing, err := u.tonamelEventStore.FindByIds(ctx, []string{tonamelEventId})
 	if err != nil {
-		u.logger.Warn(
+		u.logger.WarnContext(
+			ctx,
 			"failed to look up tonamel event before persisting",
 			slog.String("tonamel_event_id", tonamelEventId),
 			slog.String("error_message", err.Error()),
@@ -445,7 +460,8 @@ func (u *Record) persistTonamelEvent(
 
 	tonamelEvent, err := u.tonamelEventRepo.FindById(ctx, tonamelEventId)
 	if err != nil {
-		u.logger.Warn(
+		u.logger.WarnContext(
+			ctx,
 			"failed to fetch tonamel event for persisting",
 			slog.String("tonamel_event_id", tonamelEventId),
 			slog.String("error_message", err.Error()),
@@ -454,7 +470,8 @@ func (u *Record) persistTonamelEvent(
 	}
 
 	if err := u.tonamelEventStore.Save(ctx, tonamelEvent); err != nil {
-		u.logger.Warn(
+		u.logger.WarnContext(
+			ctx,
 			"failed to save tonamel event",
 			slog.String("tonamel_event_id", tonamelEventId),
 			slog.String("error_message", err.Error()),
@@ -468,6 +485,7 @@ func (u *Record) Update(
 	param *RecordParam,
 ) (*entity.Record, error) {
 	if err := validateRecordParam(param); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -476,6 +494,7 @@ func (u *Record) Update(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -510,6 +529,7 @@ func (u *Record) Update(
 	}
 
 	if err := u.repository.Save(ctx, record); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -531,6 +551,7 @@ func (u *Record) Delete(
 ) error {
 	record, err := u.repository.FindById(ctx, id)
 	if err != nil {
+		logError(ctx, err)
 		return err
 	}
 
@@ -538,10 +559,12 @@ func (u *Record) Delete(
 	beforeTier, tierErr := u.designationEvaluation.CurrentTier(ctx, record.UserId)
 
 	if err := u.repository.Delete(ctx, id); err != nil {
+		logError(ctx, err)
 		return err
 	}
 
 	if err := u.badgeEvaluation.EvaluateOnRecordDeleted(ctx, record.UserId); err != nil {
+		logError(ctx, err)
 		return err
 	}
 

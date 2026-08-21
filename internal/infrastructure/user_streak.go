@@ -27,6 +27,7 @@ func (i *UserStreak) FindByUserId(
 	var model model.UserStreak
 
 	if tx := i.db.Where("user_id = ?", userId).First(&model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
@@ -56,6 +57,7 @@ func (i *UserStreak) Save(
 	}
 
 	if tx := i.db.Save(model); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 

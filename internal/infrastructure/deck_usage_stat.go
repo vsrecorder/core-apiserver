@@ -70,6 +70,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	query = query.Group("records.deck_id, decks.name").Order("count DESC")
 
 	if tx := query.Scan(&results); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -96,6 +97,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 
 	var ignoredResults []deckIgnoredResult
 	if tx := ignoredQuery.Scan(&ignoredResults); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -134,6 +136,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 
 	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, i.db, spriteDeckIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -72,9 +71,9 @@ func (c *Tag) RegisterRoute(relativePath string) {
 func (c *Tag) GetByUID(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 
-	tags, err := c.usecase.FindByUserId(context.Background(), uid)
+	tags, err := c.usecase.FindByUserId(ctx.Request.Context(), uid)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -86,9 +85,9 @@ func (c *Tag) GetByUID(ctx *gin.Context) {
 // GetPresets は全ユーザー共通のプリセットタグ(ACE SPEC など)を返す。
 // 認証は必須だがユーザーに依らず同じ結果を返す。
 func (c *Tag) GetPresets(ctx *gin.Context) {
-	tags, err := c.usecase.FindPresets(context.Background())
+	tags, err := c.usecase.FindPresets(ctx.Request.Context())
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -103,9 +102,9 @@ func (c *Tag) Create(ctx *gin.Context) {
 
 	param := usecase.NewTagCreateParam(uid, req.Name, req.Color)
 
-	tag, err := c.usecase.Create(context.Background(), param)
+	tag, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -120,18 +119,18 @@ func (c *Tag) Update(ctx *gin.Context) {
 
 	param := usecase.NewTagUpdateParam(req.Name, req.Color)
 
-	tag, err := c.usecase.Update(context.Background(), id, param)
+	tag, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 		if errors.Is(err, apperror.ErrAlreadyExists) {
-			apierror.ErrConflict.JSON(ctx)
+			apierror.ErrConflict.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -143,13 +142,13 @@ func (c *Tag) Update(ctx *gin.Context) {
 func (c *Tag) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	if err := c.usecase.Delete(context.Background(), id); err != nil {
+	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrBadRequestNotFound.JSON(ctx)
+			apierror.ErrBadRequestNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

@@ -75,6 +75,7 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	query = query.Order("records.event_date ASC")
 
 	if tx := query.Scan(&rows); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -89,6 +90,7 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 
 	var spriteModels []*model.MatchPokemonSprite
 	if tx := i.db.Where("match_id IN ?", matchIds).Order("position ASC").Find(&spriteModels); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

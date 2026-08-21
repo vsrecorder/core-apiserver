@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -39,9 +38,9 @@ func (c *EnvironmentBadge) RegisterRoute(relativePath string) {
 func (c *EnvironmentBadge) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetId(ctx)
 
-	views, err := c.usecase.GetByUserId(context.Background(), uid)
+	views, err := c.usecase.GetByUserId(ctx.Request.Context(), uid)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

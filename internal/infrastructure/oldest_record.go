@@ -42,6 +42,7 @@ func (i *OldestRecord) FindOldestRecord(
 	}
 
 	if tx := query.Scan(&row); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

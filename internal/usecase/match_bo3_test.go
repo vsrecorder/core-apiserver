@@ -27,10 +27,10 @@ func TestMatchUsecaseBO3(t *testing.T) {
 		mockRecordRepository *mock_repository.MockRecordInterface,
 		usecase MatchInterface,
 	){
-		"Create_BO3は3ゲームがそのまま永続化される":       test_MatchUsecaseBO3_Create,
-		"Update_3ゲームから2ゲームへ減らせる":           test_MatchUsecaseBO3_UpdateShrink,
-		"Update_1ゲームから3ゲームへ増やせる":           test_MatchUsecaseBO3_UpdateGrow,
-		"Update_既存GameのIDとCreatedAtを引き継ぐ":  test_MatchUsecaseBO3_UpdateKeepsIdentity,
+		"Create_BO3は3ゲームがそのまま永続化される":        test_MatchUsecaseBO3_Create,
+		"Update_3ゲームから2ゲームへ減らせる":            test_MatchUsecaseBO3_UpdateShrink,
+		"Update_1ゲームから3ゲームへ増やせる":            test_MatchUsecaseBO3_UpdateGrow,
+		"Update_既存GameのIDとCreatedAtを引き継ぐ":   test_MatchUsecaseBO3_UpdateKeepsIdentity,
 		"Create_不整合なBO3はErrInvalidMatchで弾く": test_MatchUsecaseBO3_CreateRejectsInvalid,
 	} {
 		t.Run(scenario, func(t *testing.T) {
@@ -288,7 +288,7 @@ func test_MatchUsecaseBO3_CreateRejectsInvalid(t *testing.T, mockRepository *moc
 		// 2勝なのに victoryFlg=false という不整合(ゲーム勝敗と対戦勝敗が食い違う)
 		param := NewMatchParam(
 			"rec-1", "", "", "user-1", "",
-			true,  // bo3Flg
+			true, // bo3Flg
 			false, false, false, false, false,
 			false, // victoryFlg（2連勝なのに false = 不整合）
 			false, // drawFlg

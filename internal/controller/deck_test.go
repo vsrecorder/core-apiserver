@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -120,7 +119,7 @@ func test_DeckController_Get(t *testing.T) {
 			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "5dbFbk-uBwjqP-VVk5Vv", false),
 		}
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(decks, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
@@ -148,7 +147,7 @@ func test_DeckController_Get(t *testing.T) {
 			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "5dbFbk-uBwjqP-VVk5Vv", true),
 		}
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(decks, nil)
+		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
@@ -173,7 +172,7 @@ func test_DeckController_Get(t *testing.T) {
 			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "", false),
 		}
 
-		mockUsecase.EXPECT().FindOnCursor(context.Background(), limit, cursorEq(cursor)).Return(decks, nil)
+		mockUsecase.EXPECT().FindOnCursor(gomock.Any(), limit, cursorEq(cursor)).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
@@ -193,7 +192,7 @@ func test_DeckController_Get(t *testing.T) {
 		limit := 10
 		offset := 0
 
-		mockUsecase.EXPECT().Find(context.Background(), limit, offset).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -245,7 +244,7 @@ func test_DeckController_GetAll(t *testing.T) {
 			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", uid, "5dbFbk-uBwjqP-VVk5Vv", false),
 		}
 
-		mockUsecase.EXPECT().FindAll(context.Background(), uid).Return(decks, nil)
+		mockUsecase.EXPECT().FindAll(gomock.Any(), uid).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
@@ -276,7 +275,7 @@ func test_DeckController_GetAll(t *testing.T) {
 	})
 
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-		mockUsecase.EXPECT().FindAll(context.Background(), uid).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindAll(gomock.Any(), uid).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -301,8 +300,8 @@ func test_DeckController_GetById(t *testing.T) {
 		deck := newTestDeck(id, uid, "5dbFbk-uBwjqP-VVk5Vv", false)
 
 		// DeckGetByIdAuthorizationMiddlewareが公開設定の確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
 
 		w := httptest.NewRecorder()
 
@@ -326,8 +325,8 @@ func test_DeckController_GetById(t *testing.T) {
 
 		deck := newTestDeck(id, uid, "5dbFbk-uBwjqP-VVk5Vv", true)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
 
 		w := httptest.NewRecorder()
 
@@ -355,8 +354,8 @@ func test_DeckController_GetById(t *testing.T) {
 
 		deck := newTestDeck(id, uid, "5dbFbk-uBwjqP-VVk5Vv", true)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
 
 		w := httptest.NewRecorder()
 
@@ -381,7 +380,7 @@ func test_DeckController_GetById(t *testing.T) {
 		deck := newTestDeck(id, uid, "", false)
 		deck.PrivateFlg = true
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
 
 		w := httptest.NewRecorder()
 
@@ -397,7 +396,7 @@ func test_DeckController_GetById(t *testing.T) {
 		r := gin.Default()
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -413,8 +412,8 @@ func test_DeckController_GetById(t *testing.T) {
 		r := gin.Default()
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockUsecase.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -447,7 +446,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", uid, "5dbFbk-uBwjqP-VVk5Vv", true),
 		}
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
+		mockUsecase.EXPECT().FindByUserId(gomock.Any(), uid, archived, limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
@@ -480,7 +479,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		}
 		decks[0].ArchivedAt = time.Now().Local()
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
+		mockUsecase.EXPECT().FindByUserId(gomock.Any(), uid, archived, limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
@@ -508,7 +507,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", uid, "", false),
 		}
 
-		mockUsecase.EXPECT().FindByUserIdOnCursor(context.Background(), uid, archived, limit, cursorEq(cursor)).Return(decks, nil)
+		mockUsecase.EXPECT().FindByUserIdOnCursor(gomock.Any(), uid, archived, limit, cursorEq(cursor)).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
@@ -535,7 +534,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "5dbFbk-uBwjqP-VVk5Vv", true),
 		}
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(decks, nil)
+		mockUsecase.EXPECT().FindByUserId(gomock.Any(), uid, archived, limit, offset).Return(decks, nil)
 
 		w := httptest.NewRecorder()
 
@@ -557,7 +556,7 @@ func test_DeckController_GetByUserId(t *testing.T) {
 		offset := 0
 		archived := false
 
-		mockUsecase.EXPECT().FindByUserId(context.Background(), uid, archived, limit, offset).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindByUserId(gomock.Any(), uid, archived, limit, offset).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -611,7 +610,7 @@ func test_DeckController_Create(t *testing.T) {
 			nil,
 		)
 
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
+		mockUsecase.EXPECT().Create(gomock.Any(), param).Return(deck, nil)
 
 		data := dto.DeckCreateRequest{
 			Name:       "テストデッキ",
@@ -661,7 +660,7 @@ func test_DeckController_Create(t *testing.T) {
 			nil,
 		)
 
-		mockUsecase.EXPECT().Create(context.Background(), param).Return(deck, nil)
+		mockUsecase.EXPECT().Create(gomock.Any(), param).Return(deck, nil)
 
 		data := dto.DeckCreateRequest{
 			Name:           "テストデッキ",
@@ -742,7 +741,7 @@ func test_DeckController_Create(t *testing.T) {
 
 		c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
-		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 		dataBytes, err := json.Marshal(dto.DeckCreateRequest{Name: "テストデッキ"})
 		require.NoError(t, err)
@@ -769,7 +768,7 @@ func test_DeckController_Create(t *testing.T) {
 
 		c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
-		mockUsecase.EXPECT().Create(context.Background(), gomock.Any()).Return(nil, apperror.ErrUnderMaintenance)
+		mockUsecase.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrUnderMaintenance)
 
 		dataBytes, err := json.Marshal(dto.DeckCreateRequest{Name: "テストデッキ"})
 		require.NoError(t, err)
@@ -803,7 +802,7 @@ func test_DeckController_Update(t *testing.T) {
 		deck := newTestDeck(id, uid, "", false)
 
 		// DeckUpdateAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
 
 		param := usecase.NewDeckUpdateParam(
 			"更新後のデッキ",
@@ -812,7 +811,7 @@ func test_DeckController_Update(t *testing.T) {
 			nil,
 		)
 
-		mockUsecase.EXPECT().Update(context.Background(), id, param).Return(deck, nil)
+		mockUsecase.EXPECT().Update(gomock.Any(), id, param).Return(deck, nil)
 
 		data := dto.DeckUpdateRequest{
 			Name:           "更新後のデッキ",
@@ -849,7 +848,7 @@ func test_DeckController_Update(t *testing.T) {
 
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(
 			newTestDeck(id, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "", false), nil,
 		)
 
@@ -878,7 +877,7 @@ func test_DeckController_Update(t *testing.T) {
 
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
 
 		dataBytes, err := json.Marshal(dto.DeckUpdateRequest{Name: ""})
 		require.NoError(t, err)
@@ -904,8 +903,8 @@ func test_DeckController_Update(t *testing.T) {
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockUsecase.EXPECT().Update(context.Background(), id, gomock.Any()).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockUsecase.EXPECT().Update(gomock.Any(), id, gomock.Any()).Return(nil, errors.New(""))
 
 		dataBytes, err := json.Marshal(dto.DeckUpdateRequest{Name: "更新後のデッキ"})
 		require.NoError(t, err)
@@ -941,8 +940,8 @@ func test_DeckController_Archive(t *testing.T) {
 		archivedDeck.ArchivedAt = time.Now().Local()
 
 		// DeckArchiveAuthorizationMiddlewareが本人確認のために参照する
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
-		mockUsecase.EXPECT().Archive(context.Background(), id).Return(archivedDeck, nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
+		mockUsecase.EXPECT().Archive(gomock.Any(), id).Return(archivedDeck, nil)
 
 		w := httptest.NewRecorder()
 
@@ -969,7 +968,7 @@ func test_DeckController_Archive(t *testing.T) {
 
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(
 			newTestDeck(id, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "", false), nil,
 		)
 
@@ -993,8 +992,8 @@ func test_DeckController_Archive(t *testing.T) {
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockUsecase.EXPECT().Archive(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockUsecase.EXPECT().Archive(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -1024,8 +1023,8 @@ func test_DeckController_Unarchive(t *testing.T) {
 		archivedDeck := newTestDeck(id, uid, "", false)
 		archivedDeck.ArchivedAt = time.Now().Local()
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(archivedDeck, nil)
-		mockUsecase.EXPECT().Unarchive(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(archivedDeck, nil)
+		mockUsecase.EXPECT().Unarchive(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
 
 		w := httptest.NewRecorder()
 
@@ -1051,7 +1050,7 @@ func test_DeckController_Unarchive(t *testing.T) {
 
 		c, mockRepository, _, _ := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(
 			newTestDeck(id, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "", false), nil,
 		)
 
@@ -1075,8 +1074,8 @@ func test_DeckController_Unarchive(t *testing.T) {
 
 		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
 
-		mockRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockUsecase.EXPECT().Unarchive(context.Background(), id).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockUsecase.EXPECT().Unarchive(gomock.Any(), id).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -1105,9 +1104,9 @@ func test_DeckController_Delete(t *testing.T) {
 
 		// DeckDeleteAuthorizationMiddlewareが本人確認と、
 		// 紐づく対戦記録が無いことの確認のために参照する
-		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockRecordRepository.EXPECT().FindByDeckId(context.Background(), id, 1, 0, "").Return([]*entity.Record{}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(nil)
+		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), id, 1, 0, "").Return([]*entity.Record{}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(nil)
 
 		w := httptest.NewRecorder()
 
@@ -1130,8 +1129,8 @@ func test_DeckController_Delete(t *testing.T) {
 
 		c, mockDeckRepository, mockRecordRepository, _ := setup4TestDeckController(t, r)
 
-		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockRecordRepository.EXPECT().FindByDeckId(context.Background(), id, 1, 0, "").Return(
+		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), id, 1, 0, "").Return(
 			[]*entity.Record{{ID: "01HD7Y3K8D6FDHMHTZ2GT41TR1"}}, nil,
 		)
 
@@ -1156,7 +1155,7 @@ func test_DeckController_Delete(t *testing.T) {
 
 		c, mockDeckRepository, _, _ := setup4TestDeckController(t, r)
 
-		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(
+		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(
 			newTestDeck(id, "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "", false), nil,
 		)
 
@@ -1180,9 +1179,9 @@ func test_DeckController_Delete(t *testing.T) {
 
 		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
 
-		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockRecordRepository.EXPECT().FindByDeckId(context.Background(), id, 1, 0, "").Return([]*entity.Record{}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
+		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), id, 1, 0, "").Return([]*entity.Record{}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
 
@@ -1205,9 +1204,9 @@ func test_DeckController_Delete(t *testing.T) {
 
 		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
 
-		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockRecordRepository.EXPECT().FindByDeckId(context.Background(), id, 1, 0, "").Return([]*entity.Record{}, nil)
-		mockUsecase.EXPECT().Delete(context.Background(), id).Return(apperror.ErrRecordNotFound)
+		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
+		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), id, 1, 0, "").Return([]*entity.Record{}, nil)
+		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 
@@ -1230,7 +1229,7 @@ func test_DeckController_Delete(t *testing.T) {
 
 		c, mockDeckRepository, _, _ := setup4TestDeckController(t, r)
 
-		mockDeckRepository.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
 

@@ -13,31 +13,31 @@ func OfficialEventGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		typeId, err := helper.ParseQueryTypeId(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		leagueType, err := helper.ParseQueryLeagueType(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		date, err := helper.ParseQueryDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		startDate, err := helper.ParseQueryStartDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
 		endDate, err := helper.ParseQueryEndDate(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -61,10 +61,10 @@ func OfficialEventGetByIdMiddleware() gin.HandlerFunc {
 
 		officialEventId, err := strconv.Atoi(id)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		} else if officialEventId <= 0 {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 

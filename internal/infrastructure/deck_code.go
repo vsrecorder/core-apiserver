@@ -28,11 +28,13 @@ func (i *DeckCode) FindById(
 	var deckcode *model.DeckCode
 
 	if tx := i.db.Where("id = ?", id).First(&deckcode); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, wrapError(tx.Error)
 	}
 
 	tagsByDeckCodeId, err := findTagsByDeckCodeIds(ctx, i.db, []string{deckcode.ID})
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -57,6 +59,7 @@ func (i *DeckCode) FindByDeckId(
 	var deckcodes []*model.DeckCode
 
 	if tx := i.db.Where("deck_id = ? ", deckId).Order("created_at DESC, updated_at DESC").Find(&deckcodes); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -67,6 +70,7 @@ func (i *DeckCode) FindByDeckId(
 
 	tagsByDeckCodeId, err := findTagsByDeckCodeIds(ctx, i.db, deckCodeIds)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -93,6 +97,7 @@ func (i *DeckCode) DeleteByUserId(
 	uid string,
 ) error {
 	if tx := dbFromContext(ctx, i.db).Where("user_id = ?", uid).Delete(&model.DeckCode{}); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 
@@ -115,6 +120,7 @@ func (i *DeckCode) Save(
 
 	return i.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(deckcode).Error; err != nil {
+			logError(ctx, err)
 			return err
 		}
 
@@ -127,6 +133,7 @@ func (i *DeckCode) Delete(
 	id string,
 ) error {
 	if tx := dbFromContext(ctx, i.db).Where("id = ?", id).Delete(&model.DeckCode{}); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return tx.Error
 	}
 

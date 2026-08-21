@@ -1,8 +1,6 @@
 package authorization
 
 import (
-	"context"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
@@ -21,18 +19,18 @@ func RecordAuthorizationMiddleware(repository repository.RecordInterface) gin.Ha
 			return
 		}
 
-		record, err := repository.FindById(context.Background(), id)
+		record, err := repository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
 		if uid != record.UserId {
-			apierror.ErrForbidden.JSON(ctx)
+			apierror.ErrForbidden.JSON(ctx, err)
 			return
 		}
 	}
@@ -43,13 +41,13 @@ func RecordGetByIdAuthorizationMiddleware(repository repository.RecordInterface)
 		id := helper.GetId(ctx)
 		uid := helper.GetUID(ctx)
 
-		record, err := repository.FindById(context.Background(), id)
+		record, err := repository.FindById(ctx.Request.Context(), id)
 
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		} else if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 

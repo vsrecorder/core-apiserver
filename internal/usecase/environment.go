@@ -46,6 +46,7 @@ func (u *Environment) Find(
 	environments, err := u.repository.Find(ctx)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -59,6 +60,7 @@ func (u *Environment) FindById(
 	environment, err := u.repository.FindById(ctx, id)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -72,6 +74,7 @@ func (u *Environment) FindByDate(
 	environment, err := u.repository.FindByDate(ctx, date)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -86,6 +89,7 @@ func (u *Environment) FindByTerm(
 	environments, err := u.repository.FindByTerm(ctx, fromDate, toDate)
 
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

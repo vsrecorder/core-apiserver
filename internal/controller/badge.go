@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -45,9 +44,9 @@ func (c *Badge) RegisterRoute(relativePath string) {
 }
 
 func (c *Badge) GetAllDefinitions(ctx *gin.Context) {
-	definitions, err := c.usecase.GetAllDefinitions(context.Background())
+	definitions, err := c.usecase.GetAllDefinitions(ctx.Request.Context())
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -61,21 +60,21 @@ func (c *Badge) GetByUserId(ctx *gin.Context) {
 
 	season, err := helper.ParseQuerySeason(ctx)
 	if err != nil {
-		apierror.ErrBadRequest.JSON(ctx)
+		apierror.ErrBadRequest.JSON(ctx, err)
 		return
 	}
 
 	if season == "" {
-		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, timeNow().Local())
+		season, err = usecase.CurrentSeasonLabel(ctx.Request.Context(), c.championshipSeriesRepo, timeNow().Local())
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 	}
 
-	views, err := c.usecase.GetByUserId(context.Background(), uid, season)
+	views, err := c.usecase.GetByUserId(ctx.Request.Context(), uid, season)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

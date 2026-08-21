@@ -74,6 +74,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 ) (*entity.WeeklyDeckUsageStat, error) {
 	stat, err := i.aggregateWeek(ctx, fromDate, toDate)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -82,6 +83,7 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	if len(stat.Decks) > 0 && !fromDate.IsZero() {
 		prev, err := i.aggregateWeek(ctx, fromDate.AddDate(0, 0, -7), fromDate)
 		if err != nil {
+			logError(ctx, err)
 			return nil, err
 		}
 		annotatePreviousWeek(stat, prev)
@@ -135,6 +137,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	query = query.Order("records.event_date ASC")
 
 	if tx := query.Scan(&rows); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -158,6 +161,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	{
 		var spriteModels []*model.MatchPokemonSprite
 		if tx := i.db.Where("match_id IN ?", matchIds).Order("position ASC").Find(&spriteModels); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 		for _, s := range spriteModels {
@@ -175,6 +179,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 
 		var spriteModels []*model.DeckPokemonSprite
 		if tx := i.db.Where("deck_id IN ?", deckIds).Order("position ASC").Find(&spriteModels); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 		for _, s := range spriteModels {
@@ -205,6 +210,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		if len(nameDeckIds) > 0 {
 			names, err := findDeckNamesByDeckIds(ctx, i.db, nameDeckIds)
 			if err != nil {
+				logError(ctx, err)
 				return nil, err
 			}
 			deckNames = names
@@ -219,6 +225,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		if needMatcher {
 			m, err := loadDeckNameMatcher(ctx, i.db)
 			if err != nil {
+				logError(ctx, err)
 				return nil, err
 			}
 			matcher = m

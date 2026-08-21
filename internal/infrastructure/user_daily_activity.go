@@ -56,6 +56,7 @@ func (i *UserDailyActivity) Touch(
 	}).Create(&models)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return wrapError(tx.Error)
 	}
 

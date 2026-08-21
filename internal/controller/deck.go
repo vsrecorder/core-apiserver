@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -113,9 +112,9 @@ func (c *Deck) Get(ctx *gin.Context) {
 		cursor := helper.GetCursor(ctx)
 
 		if !cursor.IsZero() {
-			decks, err := c.usecase.FindOnCursor(context.Background(), limit, cursor)
+			decks, err := c.usecase.FindOnCursor(ctx.Request.Context(), limit, cursor)
 			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx)
+				apierror.ErrInternalServerError.JSON(ctx, err)
 				return
 			}
 
@@ -129,9 +128,9 @@ func (c *Deck) Get(ctx *gin.Context) {
 
 			ctx.JSON(http.StatusOK, res)
 		} else {
-			decks, err := c.usecase.Find(context.Background(), limit, offset)
+			decks, err := c.usecase.Find(ctx.Request.Context(), limit, offset)
 			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx)
+				apierror.ErrInternalServerError.JSON(ctx, err)
 				return
 			}
 
@@ -150,9 +149,9 @@ func (c *Deck) Get(ctx *gin.Context) {
 
 func (c *Deck) GetAll(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
-	decks, err := c.usecase.FindAll(context.Background(), uid)
+	decks, err := c.usecase.FindAll(ctx.Request.Context(), uid)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -169,9 +168,9 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 		cursor := helper.GetCursor(ctx)
 
 		if !cursor.IsZero() {
-			decks, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, archived, limit, cursor)
+			decks, err := c.usecase.FindByUserIdOnCursor(ctx.Request.Context(), uid, archived, limit, cursor)
 			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx)
+				apierror.ErrInternalServerError.JSON(ctx, err)
 				return
 			}
 
@@ -185,9 +184,9 @@ func (c *Deck) GetByUserId(ctx *gin.Context) {
 
 			ctx.JSON(http.StatusOK, res)
 		} else {
-			decks, err := c.usecase.FindByUserId(context.Background(), uid, archived, limit, offset)
+			decks, err := c.usecase.FindByUserId(ctx.Request.Context(), uid, archived, limit, offset)
 			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx)
+				apierror.ErrInternalServerError.JSON(ctx, err)
 				return
 			}
 
@@ -207,14 +206,14 @@ func (c *Deck) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 	uid := helper.GetUID(ctx)
 
-	deck, err := c.usecase.FindById(context.Background(), id)
+	deck, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -249,15 +248,15 @@ func (c *Deck) Create(ctx *gin.Context) {
 		req.TagIds,
 	)
 
-	deck, err := c.usecase.Create(context.Background(), param)
+	deck, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
 		// デッキコード取得元(ポケモンカード公式サイト)がメンテナンス中の場合は 503 を返す
 		if errors.Is(err, apperror.ErrUnderMaintenance) {
-			apierror.ErrServiceUnavailable.JSON(ctx)
+			apierror.ErrServiceUnavailable.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -285,9 +284,9 @@ func (c *Deck) Update(ctx *gin.Context) {
 		req.TagIds,
 	)
 
-	deck, err := c.usecase.Update(context.Background(), id, param)
+	deck, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -299,9 +298,9 @@ func (c *Deck) Update(ctx *gin.Context) {
 func (c *Deck) Archive(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	deck, err := c.usecase.Archive(context.Background(), id)
+	deck, err := c.usecase.Archive(ctx.Request.Context(), id)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -313,9 +312,9 @@ func (c *Deck) Archive(ctx *gin.Context) {
 func (c *Deck) Unarchive(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	deck, err := c.usecase.Unarchive(context.Background(), id)
+	deck, err := c.usecase.Unarchive(ctx.Request.Context(), id)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -327,9 +326,9 @@ func (c *Deck) Unarchive(ctx *gin.Context) {
 func (c *Deck) Favorite(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	deck, err := c.usecase.Favorite(context.Background(), id)
+	deck, err := c.usecase.Favorite(ctx.Request.Context(), id)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -341,9 +340,9 @@ func (c *Deck) Favorite(ctx *gin.Context) {
 func (c *Deck) Unfavorite(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	deck, err := c.usecase.Unfavorite(context.Background(), id)
+	deck, err := c.usecase.Unfavorite(ctx.Request.Context(), id)
 	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -355,13 +354,13 @@ func (c *Deck) Unfavorite(ctx *gin.Context) {
 func (c *Deck) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	if err := c.usecase.Delete(context.Background(), id); err != nil {
+	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrBadRequestNotFound.JSON(ctx)
+			apierror.ErrBadRequestNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

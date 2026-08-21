@@ -102,6 +102,7 @@ func (u *Tag) Create(
 ) (*entity.Tag, error) {
 	existing, err := u.repository.FindByUserIdAndName(ctx, param.UserId, param.Name)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
+		logError(ctx, err)
 		return nil, err
 	}
 	if existing != nil {
@@ -110,6 +111,7 @@ func (u *Tag) Create(
 
 	id, err := generateId()
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -118,6 +120,7 @@ func (u *Tag) Create(
 	tag := entity.NewTag(id, now, now, param.UserId, param.Name, param.Color, false)
 
 	if err := u.repository.Save(ctx, tag); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -133,6 +136,7 @@ func (u *Tag) Update(
 ) (*entity.Tag, error) {
 	ret, err := u.repository.FindById(ctx, id)
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
@@ -140,6 +144,7 @@ func (u *Tag) Update(
 	if param.Name != ret.Name {
 		conflict, err := u.repository.FindByUserIdAndName(ctx, ret.UserId, param.Name)
 		if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
+			logError(ctx, err)
 			return nil, err
 		}
 		if conflict != nil && conflict.ID != id {
@@ -150,6 +155,7 @@ func (u *Tag) Update(
 	tag := entity.NewTag(id, ret.CreatedAt, time.Now().Local(), ret.UserId, param.Name, param.Color, ret.PresetFlg)
 
 	if err := u.repository.Save(ctx, tag); err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 

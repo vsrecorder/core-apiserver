@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -55,7 +54,7 @@ func TestBadgeController(t *testing.T) {
 
 			definitions := []*entity.BadgeDefinition{newTestBadgeDefinition("badge-first-record")}
 
-			mockUsecase.EXPECT().GetAllDefinitions(context.Background()).Return(definitions, nil)
+			mockUsecase.EXPECT().GetAllDefinitions(gomock.Any()).Return(definitions, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", BadgesPath, nil)
@@ -71,7 +70,7 @@ func TestBadgeController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestBadgeController(t)
 
-			mockUsecase.EXPECT().GetAllDefinitions(context.Background()).Return(nil, errors.New(""))
+			mockUsecase.EXPECT().GetAllDefinitions(gomock.Any()).Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", BadgesPath, nil)
@@ -89,7 +88,7 @@ func TestBadgeController(t *testing.T) {
 				{Definition: newTestBadgeDefinition("badge-first-record"), Achieved: true, CurrentValue: 1},
 			}
 
-			mockUsecase.EXPECT().GetByUserId(context.Background(), uid, "2026").Return(views, nil)
+			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2026").Return(views, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath+"?season=2026", nil)
@@ -102,10 +101,10 @@ func TestBadgeController(t *testing.T) {
 			c, mockUsecase, mockSeriesRepo := setup4TestBadgeController(t)
 
 			// championship_seriesのIDから現在のシーズン識別子を解決する
-			mockSeriesRepo.EXPECT().FindByDate(context.Background(), gomock.Any()).Return(
+			mockSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(
 				&entity.ChampionshipSeries{ID: "series_2026"}, nil,
 			)
-			mockUsecase.EXPECT().GetByUserId(context.Background(), uid, "2026").Return([]*usecase.UserBadgeView{}, nil)
+			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2026").Return([]*usecase.UserBadgeView{}, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath, nil)
@@ -127,7 +126,7 @@ func TestBadgeController(t *testing.T) {
 		t.Run("異常系_現在のシーズンが引けなければ500を返す", func(t *testing.T) {
 			c, _, mockSeriesRepo := setup4TestBadgeController(t)
 
-			mockSeriesRepo.EXPECT().FindByDate(context.Background(), gomock.Any()).Return(nil, errors.New(""))
+			mockSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath, nil)
@@ -139,7 +138,7 @@ func TestBadgeController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase, _ := setup4TestBadgeController(t)
 
-			mockUsecase.EXPECT().GetByUserId(context.Background(), uid, "2026").Return(nil, errors.New(""))
+			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2026").Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath+"?season=2026", nil)

@@ -49,6 +49,7 @@ func (i *CityleagueResult) FindEvents(
 
 	var rows []*cityleagueResultEventRow
 	if tx := query.Order("event_date DESC, league_type ASC, official_event_id ASC").Scan(&rows); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -93,16 +94,16 @@ func (i *CityleagueResult) FindByPlayerId(
 	// official_events 側の行が欠けていても入賞自体は表示したいのでLEFT JOINにする。
 	query := i.db.Table("cityleague_results").
 		Select(
-			"cityleague_results.cityleague_schedule_id AS cityleague_schedule_id," +
-				"cityleague_results.official_event_id AS official_event_id," +
-				"cityleague_results.league_type AS league_type," +
-				"cityleague_results.event_date AS event_date," +
-				"cityleague_results.rank AS rank," +
-				"cityleague_results.point AS point," +
-				"cityleague_results.deck_code AS deck_code," +
-				"official_events.title AS event_title," +
-				"official_events.shop_name AS shop_name," +
-				"prefectures.name AS prefecture_name," +
+			"cityleague_results.cityleague_schedule_id AS cityleague_schedule_id,"+
+				"cityleague_results.official_event_id AS official_event_id,"+
+				"cityleague_results.league_type AS league_type,"+
+				"cityleague_results.event_date AS event_date,"+
+				"cityleague_results.rank AS rank,"+
+				"cityleague_results.point AS point,"+
+				"cityleague_results.deck_code AS deck_code,"+
+				"official_events.title AS event_title,"+
+				"official_events.shop_name AS shop_name,"+
+				"prefectures.name AS prefecture_name,"+
 				"environments.title AS environment_title",
 		).
 		Joins(
@@ -163,6 +164,7 @@ func (i *CityleagueResult) FindByOfficialEventId(
 ) (*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
 	if tx := i.db.Where("official_event_id = ?", officialEventId).Order("point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -199,6 +201,7 @@ func (i *CityleagueResult) FindByCityleagueScheduleId(
 ) ([]*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
 	if tx := i.db.Where("league_type = ? AND cityleague_id = ?", leagueType, cityleagueScheduleId).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
@@ -250,10 +253,12 @@ func (i *CityleagueResult) FindByDate(
 	var models []*model.CityleagueResult
 	if leagueType == 0 {
 		if tx := i.db.Where("event_date = ?", date).Order("league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
 		if tx := i.db.Where("league_type = ? AND event_date = ?", leagueType, date).Order("league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	}
@@ -307,10 +312,12 @@ func (i *CityleagueResult) FindByTerm(
 	var models []*model.CityleagueResult
 	if leagueType == 0 {
 		if tx := i.db.Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
 		if tx := i.db.Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	}

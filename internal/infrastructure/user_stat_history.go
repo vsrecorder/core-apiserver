@@ -55,6 +55,7 @@ func (i *UserStatHistory) FindUserStatHistory(
 		Scan(&results)
 
 	if tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

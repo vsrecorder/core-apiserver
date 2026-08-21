@@ -26,6 +26,7 @@ func (i *Designation) FindAll(
 	var models []*model.Designation
 
 	if tx := i.db.Order("tier ASC").Find(&models); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

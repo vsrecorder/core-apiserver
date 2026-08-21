@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -81,9 +80,9 @@ func (c *Record) Get(ctx *gin.Context) {
 		eventType := helper.GetEventType(ctx)
 
 		if !cursorCreatedAt.IsZero() {
-			records, err := c.usecase.FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType)
+			records, err := c.usecase.FindOnCursor(ctx.Request.Context(), limit, cursorEventDate, cursorCreatedAt, eventType)
 			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx)
+				apierror.ErrInternalServerError.JSON(ctx, err)
 				return
 			}
 
@@ -91,9 +90,9 @@ func (c *Record) Get(ctx *gin.Context) {
 
 			ctx.JSON(http.StatusOK, res)
 		} else {
-			records, err := c.usecase.Find(context.Background(), limit, offset, eventType)
+			records, err := c.usecase.Find(ctx.Request.Context(), limit, offset, eventType)
 			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx)
+				apierror.ErrInternalServerError.JSON(ctx, err)
 				return
 			}
 
@@ -115,10 +114,10 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 
 		if !cursorCreatedAt.IsZero() {
 			if deckId != "" {
-				records, err := c.usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
+				records, err := c.usecase.FindByDeckIdOnCursor(ctx.Request.Context(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 				if err != nil {
-					apierror.ErrInternalServerError.JSON(ctx)
+					apierror.ErrInternalServerError.JSON(ctx, err)
 					return
 				}
 
@@ -126,10 +125,10 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 
 				ctx.JSON(http.StatusOK, res)
 			} else {
-				records, err := c.usecase.FindByUserIdOnCursor(context.Background(), uid, limit, cursorEventDate, cursorCreatedAt, eventType)
+				records, err := c.usecase.FindByUserIdOnCursor(ctx.Request.Context(), uid, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 				if err != nil {
-					apierror.ErrInternalServerError.JSON(ctx)
+					apierror.ErrInternalServerError.JSON(ctx, err)
 					return
 				}
 
@@ -139,10 +138,10 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 			}
 		} else {
 			if deckId != "" {
-				records, err := c.usecase.FindByDeckId(context.Background(), deckId, limit, offset, eventType)
+				records, err := c.usecase.FindByDeckId(ctx.Request.Context(), deckId, limit, offset, eventType)
 
 				if err != nil {
-					apierror.ErrInternalServerError.JSON(ctx)
+					apierror.ErrInternalServerError.JSON(ctx, err)
 					return
 				}
 
@@ -151,10 +150,10 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 				ctx.JSON(http.StatusOK, res)
 				return
 			} else {
-				records, err := c.usecase.FindByUserId(context.Background(), uid, limit, offset, eventType)
+				records, err := c.usecase.FindByUserId(ctx.Request.Context(), uid, limit, offset, eventType)
 
 				if err != nil {
-					apierror.ErrInternalServerError.JSON(ctx)
+					apierror.ErrInternalServerError.JSON(ctx, err)
 					return
 				}
 
@@ -170,14 +169,14 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 func (c *Record) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	record, err := c.usecase.FindById(context.Background(), id)
+	record, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -205,15 +204,15 @@ func (c *Record) Create(ctx *gin.Context) {
 		req.Memo,
 	)
 
-	record, err := c.usecase.Create(context.Background(), param)
+	record, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
 		// 記録の整合性エラーは 400。middleware を通れば通常は発生しないが、
 		// usecase 層でも検証しているため防御的に 400 を返す。
 		if errors.Is(err, apperror.ErrInvalidRecord) {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -242,14 +241,14 @@ func (c *Record) Update(ctx *gin.Context) {
 		req.Memo,
 	)
 
-	record, err := c.usecase.Update(context.Background(), id, param)
+	record, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
 		// 記録の整合性エラーは 400。
 		if errors.Is(err, apperror.ErrInvalidRecord) {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -261,13 +260,13 @@ func (c *Record) Update(ctx *gin.Context) {
 func (c *Record) Delete(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 
-	if err := c.usecase.Delete(context.Background(), id); err != nil {
+	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
 		if err == apperror.ErrRecordNotFound {
-			apierror.ErrBadRequestNotFound.JSON(ctx)
+			apierror.ErrBadRequestNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

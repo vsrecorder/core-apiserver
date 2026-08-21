@@ -36,7 +36,8 @@ func (i *TonamelEvent) FindById(
 
 	res, err := httpclient.Get(url)
 	if err != nil {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"failed to fetch Tonamel event page",
 			slog.String("tonamel_id", id),
 			slog.String("request_url", url),
@@ -48,7 +49,8 @@ func (i *TonamelEvent) FindById(
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusNotFound {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"Tonamel event not found",
 			slog.String("tonamel_id", id),
 			slog.String("request_url", url),
@@ -59,7 +61,8 @@ func (i *TonamelEvent) FindById(
 	}
 
 	if res.StatusCode != http.StatusOK {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"Tonamel event page returned non-200 status",
 			slog.String("tonamel_id", id),
 			slog.String("request_url", url),
@@ -71,7 +74,8 @@ func (i *TonamelEvent) FindById(
 
 	ogpTitle, ogpDescription, ogpImage, err := extractOGP(res.Body)
 	if err != nil {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"failed to parse Tonamel event page HTML",
 			slog.String("tonamel_id", id),
 			slog.String("request_url", url),
@@ -82,7 +86,8 @@ func (i *TonamelEvent) FindById(
 	}
 
 	if ogpTitle == "" {
-		i.logger.Error(
+		i.logger.ErrorContext(
+			ctx,
 			"Tonamel OGP title not found",
 			slog.String("tonamel_id", id),
 			slog.String("request_url", url),

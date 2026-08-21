@@ -1,8 +1,10 @@
 package infrastructure
 
 import (
+	"context"
 	"database/sql/driver"
 	"errors"
+	"log/slog"
 	"math/rand"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
 
 var (
@@ -42,4 +45,33 @@ func wrapError(err error) error {
 	}
 
 	return err
+}
+
+// logError は永続化層(DB・S3・外部サイト)で発生したエラーをログへ出力する。
+//
+// 呼び出し元のメソッド名とソース位置は runtime から解決するため、呼び出し側は
+// logError(ctx, err) と書くだけでよい。request_id / uid は ctx から
+// ContextHandler が自動で付与する。
+//
+// レコードが存在しないことは障害ではなく想定内の結果(未登録ユーザの初回アクセス等)
+// であるため Debug へ落とし、Error レベルを実際に調査が必要なものだけに保つ。
+func logError(ctx context.Context, err error) {
+	if err == nil {
+		return
+	}
+
+	level := slog.LevelError
+	if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, apperror.ErrRecordNotFound) {
+		level = slog.LevelDebug
+	}
+
+	logging.LogAt(
+		ctx,
+		logging.Layered(logging.LayerInfrastructure),
+		level,
+		1,
+		"repository operation failed",
+		logging.Operation(logging.CallerOperation(1)),
+		logging.Err(err),
+	)
 }

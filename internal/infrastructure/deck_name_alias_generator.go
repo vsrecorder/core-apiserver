@@ -151,11 +151,13 @@ func GenerateDeckNameAliasCandidates(
 ) ([]*DeckNameAliasCandidate, []*DeckNameAliasRejection, error) {
 	supply, err := aggregateDeckNameSupply(ctx, db, cfg.SupplyFrom, cfg.SupplyTo)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, err
 	}
 
 	demand, err := aggregateDeckNameDemand(ctx, db, cfg.DemandFrom, cfg.DemandTo)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, err
 	}
 
@@ -164,6 +166,7 @@ func GenerateDeckNameAliasCandidates(
 	// 正式名の解決は1体止まりで実構成と指紋が分裂しがちなため、代表構成で上書きする。
 	manualAliases, err := loadDeckNameAliasMap(ctx, db, model.DeckNameAliasSourceManual)
 	if err != nil {
+		logError(ctx, err)
 		return nil, nil, err
 	}
 	manualMatcher := buildDeckNameMatcher(manualAliases)
@@ -374,6 +377,7 @@ func ReplaceAutoDeckNameAliases(
 		// (手動側で既に解決できる名前は候補生成の時点で除いているが、念のため防ぐ)
 		var existing []*model.DeckNameAlias
 		if result := tx.Find(&existing); result.Error != nil {
+			logError(ctx, result.Error)
 			return result.Error
 		}
 		existingAliases := make(map[string]struct{}, len(existing))
@@ -401,6 +405,7 @@ func ReplaceAutoDeckNameAliases(
 		}
 
 		if result := tx.Create(&rows); result.Error != nil {
+			logError(ctx, result.Error)
 			return result.Error
 		}
 
@@ -408,6 +413,7 @@ func ReplaceAutoDeckNameAliases(
 		return nil
 	})
 	if err != nil {
+		logError(ctx, err)
 		return 0, err
 	}
 
@@ -460,6 +466,7 @@ func aggregateDeckNameSupply(
 
 		var rows []deckNameSupplyRow
 		if tx := query.Scan(&rows); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 
@@ -543,6 +550,7 @@ func aggregateDeckNameDemand(
 
 		var rows []deckNameDemandRow
 		if tx := query.Scan(&rows); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 

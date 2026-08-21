@@ -73,12 +73,14 @@ type deckNameMatcher struct {
 func loadDeckNameMatcher(ctx context.Context, db *gorm.DB) (*deckNameMatcher, error) {
 	byAlias, err := loadDeckNameAliasMap(ctx, db, "")
 	if err != nil {
+		logError(ctx, err)
 		return nil, err
 	}
 
 	// 正式名はエイリアス辞書に無いキーだけ取り込む(辞書側の代表2体定義を優先する)。
 	var spriteModels []*model.PokemonSprite
 	if tx := db.WithContext(ctx).Order("id ASC").Find(&spriteModels); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 	for _, s := range spriteModels {
@@ -105,6 +107,7 @@ func loadDeckNameAliasMap(ctx context.Context, db *gorm.DB, source string) (map[
 
 	var aliasModels []*model.DeckNameAlias
 	if tx := query.Find(&aliasModels); tx.Error != nil {
+		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 

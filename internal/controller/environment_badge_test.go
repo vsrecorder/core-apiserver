@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -46,7 +45,7 @@ func TestEnvironmentBadgeController_GetByUserId(t *testing.T) {
 			},
 		}
 
-		mockUsecase.EXPECT().GetByUserId(context.Background(), uid).Return(views, nil)
+		mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid).Return(views, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+EnvironmentBadgesPath, nil)
@@ -63,7 +62,7 @@ func TestEnvironmentBadgeController_GetByUserId(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase := setup4TestEnvironmentBadgeController(t)
 
-		mockUsecase.EXPECT().GetByUserId(context.Background(), uid).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+EnvironmentBadgesPath, nil)

@@ -5,20 +5,20 @@ import (
 )
 
 type Match struct {
-	ID                   string
-	CreatedAt            time.Time
-	RecordId             string
-	DeckId               string
-	DeckCodeId           string
-	UserId               string
-	OpponentsUserId      string
-	BO3Flg               bool
-	GroupMatchFlg        bool
-	QualifyingRoundFlg   bool
-	FinalTournamentFlg   bool
-	DefaultVictoryFlg    bool
-	DefaultDefeatFlg     bool
-	VictoryFlg           bool
+	ID                 string
+	CreatedAt          time.Time
+	RecordId           string
+	DeckId             string
+	DeckCodeId         string
+	UserId             string
+	OpponentsUserId    string
+	BO3Flg             bool
+	GroupMatchFlg      bool
+	QualifyingRoundFlg bool
+	FinalTournamentFlg bool
+	DefaultVictoryFlg  bool
+	DefaultDefeatFlg   bool
+	VictoryFlg         bool
 	// DrawFlg は両者引き分け(ダブルドロー)を表す。BO3で2本先取に届かず
 	// 1勝1敗のまま決着した場合のみ true になる(BO1/チーム戦では常に false)。
 	DrawFlg              bool

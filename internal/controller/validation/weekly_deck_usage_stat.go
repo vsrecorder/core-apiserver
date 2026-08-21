@@ -11,7 +11,7 @@ func WeeklyDeckUsageStatGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		week, err := helper.ParseQueryWeek(ctx)
 		if err != nil {
-			apierror.ErrBadRequest.JSON(ctx)
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 		helper.SetWeek(ctx, week)

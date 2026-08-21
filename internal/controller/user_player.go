@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -85,28 +84,28 @@ func (c *UserPlayer) GetCityleagueResultsByUID(ctx *gin.Context) {
 
 	season, err := helper.ParseQuerySeason(ctx)
 	if err != nil {
-		apierror.ErrBadRequest.JSON(ctx)
+		apierror.ErrBadRequest.JSON(ctx, err)
 		return
 	}
 
 	if season == "" {
-		season, err = usecase.CurrentSeasonLabel(context.Background(), c.championshipSeriesRepo, timeNow().Local())
+		season, err = usecase.CurrentSeasonLabel(ctx.Request.Context(), c.championshipSeriesRepo, timeNow().Local())
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 	}
 
-	playerCityleagueResults, err := c.usecase.FindCityleagueResultsByUserId(context.Background(), uid, season)
+	playerCityleagueResults, err := c.usecase.FindCityleagueResultsByUserId(ctx.Request.Context(), uid, season)
 	if err != nil {
 		// 紐付けが無い場合と、形式は正しいが championship_series に存在しない season を
 		// 指定された場合。いずれもクライアント起因のためサーバエラー(500)にはしない。
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -118,14 +117,14 @@ func (c *UserPlayer) GetCityleagueResultsByUID(ctx *gin.Context) {
 func (c *UserPlayer) GetByUID(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 
-	userPlayer, err := c.usecase.FindByUserId(context.Background(), uid)
+	userPlayer, err := c.usecase.FindByUserId(ctx.Request.Context(), uid)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
@@ -145,20 +144,20 @@ func (c *UserPlayer) Create(ctx *gin.Context) {
 		req.PlayerId,
 	)
 
-	userPlayer, err := c.usecase.Create(context.Background(), param)
+	userPlayer, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
 		if errors.Is(err, apperror.ErrLocked) {
-			apierror.ErrUserPlayerLocked.JSON(ctx)
+			apierror.ErrUserPlayerLocked.JSON(ctx, err)
 			return
 		}
 
-		c.logger.Error("controller_user_player_create_failed",
-			slog.String("uid", uid),
+		// uid と request_id は ContextHandler が ctx から付与するため指定しない。
+		c.logger.ErrorContext(ctx.Request.Context(), "controller_user_player_create_failed",
 			slog.String("player_id", req.PlayerId),
 			slog.String("error_message", err.Error()),
 		)
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

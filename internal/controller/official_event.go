@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -54,9 +53,9 @@ func (c *OfficialEvent) Get(ctx *gin.Context) {
 	endDate := helper.GetEndDate(ctx)
 
 	if !date.Equal((time.Time{})) {
-		officialEvents, err := c.usecase.Find(context.Background(), typeId, leagueType, date, date)
+		officialEvents, err := c.usecase.Find(ctx.Request.Context(), typeId, leagueType, date, date)
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
@@ -65,9 +64,9 @@ func (c *OfficialEvent) Get(ctx *gin.Context) {
 
 		ctx.JSON(http.StatusOK, res)
 	} else {
-		officialEvents, err := c.usecase.Find(context.Background(), typeId, leagueType, startDate, endDate)
+		officialEvents, err := c.usecase.Find(ctx.Request.Context(), typeId, leagueType, startDate, endDate)
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx)
+			apierror.ErrInternalServerError.JSON(ctx, err)
 			return
 		}
 
@@ -81,14 +80,14 @@ func (c *OfficialEvent) Get(ctx *gin.Context) {
 func (c *OfficialEvent) GetById(ctx *gin.Context) {
 	id := helper.GetOfficialEventId(ctx)
 
-	officialEvent, err := c.usecase.FindById(context.Background(), id)
+	officialEvent, err := c.usecase.FindById(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

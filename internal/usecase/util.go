@@ -1,9 +1,15 @@
 package usecase
 
 import (
+	"context"
+	"errors"
+	"log/slog"
 	"time"
 
 	ulid "github.com/oklog/ulid/v2"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
 
 // entropy はULID生成用の乱数源。DefaultEntropyはプロセス全体で単調増加する
@@ -49,4 +55,51 @@ func generateId() (string, error) {
 	id, err := ulid.New(ms, entropy)
 
 	return id.String(), err
+}
+
+// logError はユースケース層で処理を中断させたエラーをログへ出力する。
+//
+// 呼び出し元のユースケース名とソース位置は runtime から解決するため、呼び出し側は
+// logError(ctx, err) と書くだけでよい。下位層でも同じエラーがログに出るが、
+// 「どのユースケースの処理が落ちたか」はこの層にしか無い情報のため重複して残す。
+//
+// 対象が存在しないことは想定内の結果であるため Debug へ落とす。
+func logError(ctx context.Context, err error) {
+	if err == nil {
+		return
+	}
+
+	level := slog.LevelError
+	if errors.Is(err, apperror.ErrRecordNotFound) {
+		level = slog.LevelDebug
+	}
+
+	logging.LogAt(
+		ctx,
+		logging.Layered(logging.LayerUsecase),
+		level,
+		1,
+		"usecase failed",
+		logging.Operation(logging.CallerOperation(1)),
+		logging.Err(err),
+	)
+}
+
+// logWarn は処理を継続できるエラー(バッジ評価の失敗など、本処理の結果を
+// 左右しないもの)をログへ出力する。Error にすると本質的な障害が埋もれるため
+// レベルを分けている。
+func logWarn(ctx context.Context, err error) {
+	if err == nil {
+		return
+	}
+
+	logging.LogAt(
+		ctx,
+		logging.Layered(logging.LayerUsecase),
+		slog.LevelWarn,
+		1,
+		"usecase continued after error",
+		logging.Operation(logging.CallerOperation(1)),
+		logging.Err(err),
+	)
 }

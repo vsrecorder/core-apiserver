@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -47,14 +46,14 @@ func (c *Kizuna) RegisterRoute(relativePath string) {
 func (c *Kizuna) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetId(ctx)
 
-	kizuna, err := c.usecase.GetKizuna(context.Background(), uid)
+	kizuna, err := c.usecase.GetKizuna(ctx.Request.Context(), uid)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
-			apierror.ErrNotFound.JSON(ctx)
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 
-		apierror.ErrInternalServerError.JSON(ctx)
+		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 

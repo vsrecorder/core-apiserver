@@ -14,6 +14,7 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 func TestRecordValidation(t *testing.T) {
@@ -441,6 +442,86 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := RecordCreateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("正常系_レギュレーション指定のリクエストを受理する", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		expected := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: uint(10000),
+				RegulationId:    entity.RegulationIdExtra,
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := RecordCreateMiddleware()
+		middleware(ginContext)
+
+		actual := helper.GetRecordCreateRequest(ginContext)
+
+		require.Equal(t, expected, actual)
+	})
+
+	// regulation_id を送らない旧クライアントを弾かないこと(usecase層でスタンダードへ寄せる)
+	t.Run("正常系_レギュレーション未指定のリクエストを受理する", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		expected := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: uint(10000),
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := RecordCreateMiddleware()
+		middleware(ginContext)
+
+		actual := helper.GetRecordCreateRequest(ginContext)
+
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("異常系_存在しないレギュレーションは400を返す", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: uint(10000),
+				RegulationId:    999,
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
 		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
 		require.NoError(t, err)
 

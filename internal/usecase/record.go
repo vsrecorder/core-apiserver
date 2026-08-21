@@ -21,6 +21,7 @@ type RecordParam struct {
 	eventDate         time.Time
 	privateFlg        bool
 	ignoreStatsFlg    bool
+	regulationId      uint
 	tcgMeisterURL     string
 	memo              string
 }
@@ -36,6 +37,7 @@ func NewRecordParam(
 	eventDate time.Time,
 	privateFlg bool,
 	ignoreStatsFlg bool,
+	regulationId uint,
 	tcgMeisterURL string,
 	memo string,
 ) *RecordParam {
@@ -50,6 +52,7 @@ func NewRecordParam(
 		eventDate:         eventDate,
 		privateFlg:        privateFlg,
 		ignoreStatsFlg:    ignoreStatsFlg,
+		regulationId:      regulationId,
 		tcgMeisterURL:     tcgMeisterURL,
 		memo:              memo,
 	}
@@ -342,16 +345,23 @@ func (u *Record) FindByDeckCodeId(
 	return records, nil
 }
 
-// validateRecordParam は記録の整合性を domain 層の共通関数で検証する。
+// normalizeAndValidateRecordParam は記録の整合性を domain 層の共通関数で検証する。
 // controller の middleware と同じルールを使い、middleware を通らない経路でも
 // 不整合な記録が保存されないようにする。
-func validateRecordParam(param *RecordParam) error {
+// レギュレーション未指定(0)だけは弾かずに既定値へ寄せる(regulation_id を送らない
+// 旧クライアントからの記録作成を、DB側の DEFAULT と同じ扱いで受け付けるため)。
+func normalizeAndValidateRecordParam(param *RecordParam) error {
 	if !entity.IsValidRecordEventSource(entity.RecordEventSource{
 		OfficialEventId:   param.officialEventId,
 		TonamelEventId:    param.tonamelEventId,
 		FriendId:          param.friendId,
 		UnofficialEventId: param.unofficialEventId,
 	}) {
+		return apperror.ErrInvalidRecord
+	}
+
+	param.regulationId = entity.NormalizeRegulationId(param.regulationId)
+	if !entity.IsValidRegulationId(param.regulationId) {
 		return apperror.ErrInvalidRecord
 	}
 
@@ -362,7 +372,7 @@ func (u *Record) Create(
 	ctx context.Context,
 	param *RecordParam,
 ) (*entity.Record, error) {
-	if err := validateRecordParam(param); err != nil {
+	if err := normalizeAndValidateRecordParam(param); err != nil {
 		logError(ctx, err)
 		return nil, err
 	}
@@ -393,6 +403,7 @@ func (u *Record) Create(
 		param.eventDate,
 		param.privateFlg,
 		param.ignoreStatsFlg,
+		param.regulationId,
 		param.tcgMeisterURL,
 		param.memo,
 	)
@@ -484,7 +495,7 @@ func (u *Record) Update(
 	id string,
 	param *RecordParam,
 ) (*entity.Record, error) {
-	if err := validateRecordParam(param); err != nil {
+	if err := normalizeAndValidateRecordParam(param); err != nil {
 		logError(ctx, err)
 		return nil, err
 	}
@@ -516,6 +527,7 @@ func (u *Record) Update(
 		param.eventDate,
 		param.privateFlg,
 		param.ignoreStatsFlg,
+		param.regulationId,
 		param.tcgMeisterURL,
 		param.memo,
 	)

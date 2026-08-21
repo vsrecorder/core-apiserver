@@ -58,9 +58,10 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 	yearMonth := helper.GetYearMonth(ctx)
 	environmentId := helper.GetEnvironmentId(ctx)
 	season := helper.GetSeason(ctx)
+	standardRegulationId := helper.GetStandardRegulationId(ctx)
 	regulationId := helper.GetRegulationId(ctx)
 
-	stats, err := c.usecase.GetUserStat(ctx.Request.Context(), uid, yearMonth, environmentId, season, regulationId)
+	stats, err := c.usecase.GetUserStat(ctx.Request.Context(), uid, yearMonth, environmentId, season, standardRegulationId, regulationId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)
@@ -71,7 +72,7 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewUserStatResponse(stats, yearMonth, environmentId, season, regulationId)
+	res := presenter.NewUserStatResponse(stats, yearMonth, environmentId, season, standardRegulationId, regulationId)
 
 	ctx.JSON(http.StatusOK, res)
 }
@@ -81,14 +82,15 @@ func (c *UserStat) GetHistoryByUserId(ctx *gin.Context) {
 	period := helper.GetPeriod(ctx)
 	season := helper.GetSeason(ctx)
 	deckId := helper.GetDeckId(ctx)
+	regulationId := helper.GetRegulationId(ctx)
 
-	history, err := c.historyUsecase.GetUserStatHistory(ctx.Request.Context(), uid, period, season, deckId)
+	history, err := c.historyUsecase.GetUserStatHistory(ctx.Request.Context(), uid, period, season, deckId, regulationId)
 	if err != nil {
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
-	res := presenter.NewUserStatHistoryResponse(uid, period, season, deckId, history)
+	res := presenter.NewUserStatHistoryResponse(uid, period, season, deckId, regulationId, history)
 
 	ctx.JSON(http.StatusOK, res)
 }
@@ -97,14 +99,15 @@ func (c *UserStat) GetRecentByUserId(ctx *gin.Context) {
 	uid := helper.GetId(ctx)
 	count := helper.GetLimit(ctx)
 	deckId := helper.GetDeckId(ctx)
+	regulationId := helper.GetRegulationId(ctx)
 
-	stat, err := c.recentUsecase.GetRecentMatches(ctx.Request.Context(), uid, count, deckId)
+	stat, err := c.recentUsecase.GetRecentMatches(ctx.Request.Context(), uid, count, deckId, regulationId)
 	if err != nil {
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
-	res := presenter.NewRecentMatchStatResponse(stat, deckId)
+	res := presenter.NewRecentMatchStatResponse(stat, deckId, regulationId)
 
 	ctx.JSON(http.StatusOK, res)
 }

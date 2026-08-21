@@ -257,6 +257,18 @@ CREATE INDEX idx_deck_code_tags_tag_id ON deck_code_tags(tag_id);
 -- 対戦結果(match) ⇔ タグの中間テーブルは、FK参照先の matches を定義した後で作成する
 -- (matches の CREATE TABLE 直後、下の方に定義してある)。
 
+-- 対戦記録のレギュレーション(使用可能カードの範囲)。記録作成時にユーザが選ぶ。
+-- 既存の standard_regulations は「スタンダードで使えるレギュレーションマークの
+-- 組み合わせと、その適用期間」を表す別物なので混同しないこと。
+CREATE TABLE regulations (
+    id   SMALLINT NOT NULL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+INSERT INTO regulations VALUES (1,'スタンダード');
+INSERT INTO regulations VALUES (2,'エクストラ');
+INSERT INTO regulations VALUES (3,'殿堂');
+
 CREATE TABLE records (
     id                        VARCHAR(26) PRIMARY KEY,
     created_at                TIMESTAMP NOT NULL,
@@ -275,8 +287,12 @@ CREATE TABLE records (
     event_date                DATE DEFAULT NULL,
     private_flg               BOOLEAN DEFAULT NULL,
     ignore_stats_flg          BOOLEAN NOT NULL DEFAULT false,
+    -- レギュレーション。既存の記録と、未指定でPOSTしてくる旧クライアントは
+    -- スタンダード(1)として扱うため NOT NULL DEFAULT 1 にしてある。
+    regulation_id             SMALLINT NOT NULL DEFAULT 1,
     tcg_meister_url           TEXT,
-    memo                      TEXT
+    memo                      TEXT,
+    FOREIGN KEY (regulation_id) REFERENCES regulations (id)
 );
 
 
@@ -423,6 +439,7 @@ CREATE TABLE environments (
     to_date    DATE NOT NULL
 );
 
+INSERT INTO environments VALUES ('m6a','30th CELEBRATION','2026-09-16','2026-11-26');
 INSERT INTO environments VALUES ('m6','ストームエメラルダ','2026-07-31','2026-09-15');
 INSERT INTO environments VALUES ('m5','アビスアイ','2026-05-22','2026-07-30');
 INSERT INTO environments VALUES ('m4','ニンジャスピナー','2026-03-13','2026-05-21');
@@ -480,6 +497,8 @@ CREATE TABLE cityleague_schedules (
     from_date   DATE NOT NULL,
     to_date     DATE NOT NULL
 );
+
+INSERT INTO cityleague_schedules VALUES ('2027s1','シティリーグ2027 シーズン1','2026-09-26','2026-11-15');
 
 INSERT INTO cityleague_schedules VALUES ('2026s4','シティリーグ2026 シーズン4','2026-03-14','2026-05-06');
 INSERT INTO cityleague_schedules VALUES ('2026s3','シティリーグ2026 シーズン3','2026-01-10','2026-03-08');
@@ -998,6 +1017,7 @@ GRANT SELECT ON match_tags              TO grafana;
 
 GRANT SELECT ON championship_series     TO grafana;
 GRANT SELECT ON standard_regulations    TO grafana;
+GRANT SELECT ON regulations             TO grafana;
 GRANT SELECT ON environments            TO grafana;
 
 GRANT SELECT ON cityleague_schedules    TO grafana;

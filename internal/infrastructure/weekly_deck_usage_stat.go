@@ -105,6 +105,8 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	// - 論理削除は deleted_at IS NULL で除外。
 	// - private_flg は現状すべて true の予約フラグのため、フィルタ条件には入れない。
 	// - ignore_stats_flg が立っている記録は、個人の戦績だけでなくこの公開レポートからも除外する。
+	// - レギュレーションはスタンダードの記録だけを集計する。エクストラ・殿堂は使える
+	//   カードプールがそもそも違い、同じ「対戦環境」のメタとして混ぜると分布が歪むため。
 	// - 退会済みユーザー（users.deleted_at IS NOT NULL）の記録は【意図的に除外しない】。
 	//   users と JOIN していないのは書き漏れではない。これは環境（メタ）の分析であって
 	//   ユーザーの分析ではなく、「その週に実際に使われたデッキ」の母数は一つでも多いほど
@@ -117,15 +119,19 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	//   マッチをデッキ名から推測するフォールバック（deck_name.go）のために取得する。
 	query := i.db.Table("matches").
 		Select(
-			"matches.id AS match_id, " +
-				"records.user_id AS user_id, " +
-				"records.deck_id AS deck_id, " +
-				"matches.victory_flg AS victory_flg, " +
-				"matches.draw_flg AS draw_flg, " +
+			"matches.id AS match_id, "+
+				"records.user_id AS user_id, "+
+				"records.deck_id AS deck_id, "+
+				"matches.victory_flg AS victory_flg, "+
+				"matches.draw_flg AS draw_flg, "+
 				"matches.opponents_deck_info AS opponents_deck_info",
 		).
 		Joins("JOIN records ON matches.record_id = records.id").
-		Where("records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL")
+		Where(
+			"records.deleted_at IS NULL AND records.ignore_stats_flg = false"+
+				" AND records.regulation_id = ? AND matches.deleted_at IS NULL",
+			entity.RegulationIdStandard,
+		)
 
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)

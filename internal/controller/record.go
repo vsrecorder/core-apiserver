@@ -200,6 +200,7 @@ func (c *Record) Create(ctx *gin.Context) {
 		req.EventDate,
 		req.PrivateFlg,
 		req.IgnoreStatsFlg,
+		req.RegulationId,
 		req.TCGMeisterURL,
 		req.Memo,
 	)
@@ -237,6 +238,7 @@ func (c *Record) Update(ctx *gin.Context) {
 		req.EventDate,
 		req.PrivateFlg,
 		req.IgnoreStatsFlg,
+		req.RegulationId,
 		req.TCGMeisterURL,
 		req.Memo,
 	)

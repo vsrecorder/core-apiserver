@@ -8,6 +8,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 var weeklyMatchRowColumns = []string{"match_id", "user_id", "deck_id", "victory_flg", "opponents_deck_info"}
@@ -18,14 +20,18 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 
 	const weeklyMatchQueryPattern = `SELECT matches\.id AS match_id, records\.user_id AS user_id, records\.deck_id AS deck_id, matches\.victory_flg AS victory_flg, matches\.draw_flg AS draw_flg, matches\.opponents_deck_info AS opponents_deck_info FROM "matches" JOIN records`
 
+	// スタンダード(regulation_id)の記録だけを集計するため、期間の前に
+	// レギュレーションが引数として渡る。
 	expectWeeklyMatchQuery := func(mock sqlmock.Sqlmock) *sqlmock.ExpectedQuery {
-		return mock.ExpectQuery(weeklyMatchQueryPattern).WithArgs(fromDate, toDate)
+		return mock.ExpectQuery(weeklyMatchQueryPattern).
+			WithArgs(int(entity.RegulationIdStandard), fromDate, toDate)
 	}
 
 	// 変種が1件でもあると前週 [from-7d, from) の比較集計が走る。
 	prevFromDate := fromDate.AddDate(0, 0, -7)
 	expectPrevWeekQuery := func(mock sqlmock.Sqlmock) *sqlmock.ExpectedQuery {
-		return mock.ExpectQuery(weeklyMatchQueryPattern).WithArgs(prevFromDate, fromDate)
+		return mock.ExpectQuery(weeklyMatchQueryPattern).
+			WithArgs(int(entity.RegulationIdStandard), prevFromDate, fromDate)
 	}
 	// 前週にデータが無いケースの共通形(比較値はすべて nil になる)。
 	expectPrevWeekEmpty := func(mock sqlmock.Sqlmock) {

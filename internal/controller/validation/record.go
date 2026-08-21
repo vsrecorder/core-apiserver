@@ -64,6 +64,11 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if !isValidRecordRegulation(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetRecordCreateRequest(ctx, req)
 	}
 }
@@ -91,6 +96,11 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if !isValidRecordRegulation(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetRecordUpdateRequest(ctx, req)
 	}
 }
@@ -112,6 +122,13 @@ func isValidRecordEventSource(req dto.RecordRequest) bool {
 		FriendId:          req.FriendId,
 		UnofficialEventId: req.UnofficialEventId,
 	})
+}
+
+// isValidRecordRegulation はレギュレーションが regulations に存在するIDかを確認する。
+// 未指定(0)は許容し、usecase 層で既定のスタンダードへ寄せる
+// (regulation_id を送らない旧クライアントからの記録作成を弾かないため)。
+func isValidRecordRegulation(req dto.RecordRequest) bool {
+	return entity.IsValidRegulationId(entity.NormalizeRegulationId(req.RegulationId))
 }
 
 // isValidRecordLength は自由入力欄が上限内に収まっているかを確認する。

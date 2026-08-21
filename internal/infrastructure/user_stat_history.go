@@ -31,6 +31,7 @@ func (i *UserStatHistory) FindUserStatHistory(
 	fromDate time.Time,
 	toDate time.Time,
 	deckId string,
+	regulationId uint,
 ) ([]*entity.UserStatMonthly, error) {
 	var results []monthlyMatchResult
 
@@ -47,6 +48,11 @@ func (i *UserStatHistory) FindUserStatHistory(
 
 	if deckId != "" {
 		query = query.Where("matches.deck_id = ?", deckId)
+	}
+
+	// レギュレーション(スタンダード/エクストラ/殿堂)での絞り込み。0 は絞り込みなし。
+	if regulationId != 0 {
+		query = query.Where("records.regulation_id = ?", regulationId)
 	}
 
 	tx := query.

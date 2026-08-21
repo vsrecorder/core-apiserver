@@ -19,8 +19,11 @@ type Record struct {
 	DeckCodeId      string
 	PrivateFlg      bool
 	IgnoreStatsFlg  bool
-	TCGMeisterURL   string
-	Memo            string
+	// レギュレーション。未設定(ゼロ値)のときはDB側の DEFAULT(スタンダード)に任せる。
+	// records.regulation_id は regulations へのFK制約付きで、0のままでは保存できない。
+	RegulationId  uint `gorm:"default:1"`
+	TCGMeisterURL string
+	Memo          string
 	// 自由形式イベント用。開催日(EventDate)はユーザ入力値を保持し、
 	// イベント本体は unofficial_events テーブルへ分離して UnofficialEventId で参照する。
 	EventDate         time.Time
@@ -43,6 +46,7 @@ func NewRecord(
 	deckCodeId string,
 	privateFlg bool,
 	ignoreStatsFlg bool,
+	regulationId uint,
 	tcgMeisterURL string,
 	memo string,
 	eventDate time.Time,
@@ -59,6 +63,7 @@ func NewRecord(
 		DeckCodeId:        deckCodeId,
 		PrivateFlg:        privateFlg,
 		IgnoreStatsFlg:    ignoreStatsFlg,
+		RegulationId:      regulationId,
 		TCGMeisterURL:     tcgMeisterURL,
 		Memo:              memo,
 		EventDate:         eventDate,

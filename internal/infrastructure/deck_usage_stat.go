@@ -44,6 +44,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	userId string,
 	fromDate time.Time,
 	toDate time.Time,
+	regulationId uint,
 ) (*entity.DeckUsageStat, error) {
 	var results []deckUsageResult
 
@@ -59,6 +60,11 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		Joins("LEFT JOIN decks ON records.deck_id = decks.id").
 		Joins("LEFT JOIN games ON games.match_id = matches.id AND games.deleted_at IS NULL").
 		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND records.deck_id != ''", userId)
+
+	// レギュレーション(スタンダード/エクストラ/殿堂)での絞り込み。0 は絞り込みなし。
+	if regulationId != 0 {
+		query = query.Where("records.regulation_id = ?", regulationId)
+	}
 
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)
@@ -85,6 +91,10 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		Select("records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT records.id) AS ignored_count").
 		Joins("LEFT JOIN decks ON records.deck_id = decks.id").
 		Where("records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = true AND records.deck_id != ''", userId)
+
+	if regulationId != 0 {
+		ignoredQuery = ignoredQuery.Where("records.regulation_id = ?", regulationId)
+	}
 
 	if !fromDate.IsZero() {
 		ignoredQuery = ignoredQuery.Where("records.event_date >= ?", fromDate)

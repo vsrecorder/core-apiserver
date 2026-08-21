@@ -40,6 +40,7 @@ func (i *UserStat) FindUserStat(
 	userId string,
 	fromDate time.Time,
 	toDate time.Time,
+	regulationId uint,
 ) (*entity.UserStat, error) {
 	var matchResult matchStatsResult
 
@@ -47,6 +48,11 @@ func (i *UserStat) FindUserStat(
 		Select("COUNT(*) AS total_matches, SUM(CASE WHEN matches.victory_flg = true THEN 1 ELSE 0 END) AS wins, SUM(CASE WHEN matches.draw_flg = true THEN 1 ELSE 0 END) AS draws").
 		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.ignore_stats_flg = false").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
+
+	// レギュレーション(スタンダード/エクストラ/殿堂)での絞り込み。0 は絞り込みなし。
+	if regulationId != 0 {
+		matchQuery = matchQuery.Where("records.regulation_id = ?", regulationId)
+	}
 
 	if !fromDate.IsZero() {
 		matchQuery = matchQuery.Where("records.event_date >= ?", fromDate)
@@ -71,6 +77,10 @@ func (i *UserStat) FindUserStat(
 			"COUNT(DISTINCT CASE WHEN tonamel_event_id != '' THEN tonamel_event_id END) AS tonamel_event_count, "+
 			"COUNT(DISTINCT CASE WHEN unofficial_event_id != '' THEN unofficial_event_id END) AS unofficial_event_count").
 		Where("user_id = ? AND deleted_at IS NULL AND ignore_stats_flg = false", userId)
+
+	if regulationId != 0 {
+		recordQuery = recordQuery.Where("regulation_id = ?", regulationId)
+	}
 
 	if !fromDate.IsZero() {
 		recordQuery = recordQuery.Where("event_date >= ?", fromDate)

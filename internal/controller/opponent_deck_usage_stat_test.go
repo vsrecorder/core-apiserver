@@ -42,7 +42,7 @@ func TestOpponentDeckUsageStatController_GetByUserId(t *testing.T) {
 
 		deckId := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "2026-07", "", "", "", deckId).
+		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "2026-07", "", "", "", uint(0), deckId).
 			Return(&entity.OpponentDeckUsageStat{}, nil)
 
 		w := httptest.NewRecorder()
@@ -77,7 +77,7 @@ func TestOpponentDeckUsageStatController_GetByUserId(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestOpponentDeckUsageStatController(t)
 
-		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "", "", "", "", "").
+		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "", "", "", "", uint(0), "").
 			Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()

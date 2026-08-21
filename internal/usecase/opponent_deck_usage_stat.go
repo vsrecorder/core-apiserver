@@ -15,7 +15,8 @@ type OpponentDeckUsageStatInterface interface {
 		yearMonth string,
 		environmentId string,
 		season string,
-		regulationId string,
+		standardRegulationId string,
+		regulationId uint,
 		deckId string,
 	) (*entity.OpponentDeckUsageStat, error)
 }
@@ -47,7 +48,8 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 	yearMonth string,
 	environmentId string,
 	season string,
-	regulationId string,
+	standardRegulationId string,
+	regulationId uint,
 	deckId string,
 ) (*entity.OpponentDeckUsageStat, error) {
 	var fromDate, toDate time.Time
@@ -87,8 +89,8 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 		}
 	}
 
-	if regulationId != "" {
-		reg, err := u.standardRegulationRepo.FindById(ctx, regulationId)
+	if standardRegulationId != "" {
+		reg, err := u.standardRegulationRepo.FindById(ctx, standardRegulationId)
 		if err != nil {
 			logError(ctx, err)
 			return nil, err
@@ -105,8 +107,8 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 		}
 	}
 
-	// yearMonth/season/environmentId/regulationIdのいずれも未指定の場合は、
+	// yearMonth/season/environmentId/standard_regulation_idのいずれも未指定の場合は、
 	// fromDate/toDateをゼロ値のまま渡し「全期間」として扱う
 	// （repository側はゼロ値の場合event_dateによる絞り込みを行わない）
-	return u.opponentDeckUsageStatRepo.FindOpponentDeckUsageStat(ctx, userId, fromDate, toDate, deckId)
+	return u.opponentDeckUsageStatRepo.FindOpponentDeckUsageStat(ctx, userId, fromDate, toDate, deckId, regulationId)
 }

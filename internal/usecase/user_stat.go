@@ -15,7 +15,8 @@ type UserStatInterface interface {
 		yearMonth string,
 		environmentId string,
 		season string,
-		regulationId string,
+		standardRegulationId string,
+		regulationId uint,
 	) (*entity.UserStat, error)
 }
 
@@ -46,7 +47,8 @@ func (u *UserStat) GetUserStat(
 	yearMonth string,
 	environmentId string,
 	season string,
-	regulationId string,
+	standardRegulationId string,
+	regulationId uint,
 ) (*entity.UserStat, error) {
 	var fromDate, toDate time.Time
 
@@ -87,8 +89,8 @@ func (u *UserStat) GetUserStat(
 		}
 	}
 
-	if regulationId != "" {
-		reg, err := u.standardRegulationRepo.FindById(ctx, regulationId)
+	if standardRegulationId != "" {
+		reg, err := u.standardRegulationRepo.FindById(ctx, standardRegulationId)
 		if err != nil {
 			logError(ctx, err)
 			return nil, err
@@ -114,5 +116,5 @@ func (u *UserStat) GetUserStat(
 		toDate = fromDate.AddDate(0, 1, 0)
 	}
 
-	return u.userStatRepo.FindUserStat(ctx, userId, fromDate, toDate)
+	return u.userStatRepo.FindUserStat(ctx, userId, fromDate, toDate, regulationId)
 }

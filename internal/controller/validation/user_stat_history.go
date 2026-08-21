@@ -28,5 +28,8 @@ func UserStatHistoryGetMiddleware() gin.HandlerFunc {
 		helper.SetSeason(ctx, season)
 
 		helper.SetDeckId(ctx, helper.GetQueryDeckId(ctx))
+
+		// レギュレーション区分(スタンダード/エクストラ/殿堂)での絞り込み
+		helper.SetRegulationId(ctx, helper.ParseQueryRegulationId(ctx))
 	}
 }

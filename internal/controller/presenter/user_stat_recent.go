@@ -8,6 +8,7 @@ import (
 func NewRecentMatchStatResponse(
 	stat *entity.RecentMatchStat,
 	deckId string,
+	regulationId uint,
 ) *dto.RecentMatchStatResponse {
 	matches := make([]dto.RecentMatchItem, 0, len(stat.Matches))
 	for _, m := range stat.Matches {
@@ -37,6 +38,7 @@ func NewRecentMatchStatResponse(
 		UserId:       stat.UserId,
 		Count:        stat.Count,
 		DeckId:       deckId,
+		RegulationId: regulationId,
 		TotalMatches: stat.TotalMatches,
 		Wins:         stat.Wins,
 		WinRate:      stat.WinRate,

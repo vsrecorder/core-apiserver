@@ -25,5 +25,8 @@ func UserStatRecentGetMiddleware() gin.HandlerFunc {
 		helper.SetLimit(ctx, count)
 
 		helper.SetDeckId(ctx, helper.GetQueryDeckId(ctx))
+
+		// レギュレーション区分(スタンダード/エクストラ/殿堂)での絞り込み
+		helper.SetRegulationId(ctx, helper.ParseQueryRegulationId(ctx))
 	}
 }

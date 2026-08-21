@@ -21,11 +21,12 @@ type DeckUsageItemResponse struct {
 }
 
 type DeckUsageStatResponse struct {
-	UserId        string                   `json:"user_id"`
-	YearMonth     string                   `json:"year_month,omitempty"`
-	EnvironmentId string                   `json:"environment_id,omitempty"`
-	Season        string                   `json:"season,omitempty"`
-	RegulationId  string                   `json:"regulation_id,omitempty"`
-	TotalRecords  int                      `json:"total_records"`
-	Decks         []*DeckUsageItemResponse `json:"decks"`
+	UserId               string                   `json:"user_id"`
+	YearMonth            string                   `json:"year_month,omitempty"`
+	EnvironmentId        string                   `json:"environment_id,omitempty"`
+	Season               string                   `json:"season,omitempty"`
+	StandardRegulationId string                   `json:"standard_regulation_id,omitempty"`
+	RegulationId         uint                     `json:"regulation_id,omitempty"`
+	TotalRecords         int                      `json:"total_records"`
+	Decks                []*DeckUsageItemResponse `json:"decks"`
 }

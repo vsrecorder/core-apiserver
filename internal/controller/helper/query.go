@@ -76,6 +76,13 @@ func GetQueryEnvironmentId(ctx *gin.Context) string {
 	return ctx.Query("environment_id")
 }
 
+// GetQueryStandardRegulationId は期間の絞り込みに使うスタンダードレギュレーション
+// (『H・I・J』などのマークの組み合わせと、その適用期間)のID。
+// レギュレーション区分(スタンダード/エクストラ/殿堂)の regulation_id とは別物。
+func GetQueryStandardRegulationId(ctx *gin.Context) string {
+	return ctx.Query("standard_regulation_id")
+}
+
 func GetQueryRegulationId(ctx *gin.Context) string {
 	return ctx.Query("regulation_id")
 }

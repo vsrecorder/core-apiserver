@@ -62,10 +62,10 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 			entity.NewRecentMatch(0, date4, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil), // 表示4戦目: 負け
 		}
 
-		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId).Return(rawMatches, nil)
+		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId, uint(0)).Return(rawMatches, nil)
 		mockEnvironmentRepository.EXPECT().FindByTerm(context.Background(), date0, date4).Return(nil, nil)
 
-		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId)
+		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId, 0)
 
 		require.NoError(t, err)
 		require.Equal(t, count, ret.Count)
@@ -107,10 +107,10 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 			entity.NewRecentMatch(0, date2, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil),
 		}
 
-		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId).Return(rawMatches, nil)
+		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId, uint(0)).Return(rawMatches, nil)
 		mockEnvironmentRepository.EXPECT().FindByTerm(context.Background(), date1, date2).Return(nil, nil)
 
-		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId)
+		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId, 0)
 
 		require.NoError(t, err)
 		require.Equal(t, 2, ret.TotalMatches)
@@ -125,9 +125,9 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 		deckId := "deck-99"
 		fetchCount := 14 // windowSize = 10/2 = 5 → count + windowSize - 1
 
-		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId).Return([]*entity.RecentMatch{}, nil)
+		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId, uint(0)).Return([]*entity.RecentMatch{}, nil)
 
-		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId)
+		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId, 0)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, ret.TotalMatches)
@@ -141,9 +141,9 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 		deckId := ""
 		fetchCount := 14
 
-		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId).Return(nil, errors.New("db error"))
+		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId, uint(0)).Return(nil, errors.New("db error"))
 
-		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId)
+		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId, 0)
 
 		require.Error(t, err)
 		require.Nil(t, ret)
@@ -180,10 +180,10 @@ func test_UserStatRecentUsecase_GetRecentMatches_DrawExcluded(
 			entity.NewRecentMatch(0, date4, "deck-01", "E", false, false, 0, "", "", nil), // 表示4: 負け
 		}
 
-		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId).Return(rawMatches, nil)
+		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId, uint(0)).Return(rawMatches, nil)
 		mockEnvironmentRepository.EXPECT().FindByTerm(context.Background(), date0, date4).Return(nil, nil)
 
-		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId)
+		ret, err := usecase.GetRecentMatches(context.Background(), userId, count, deckId, 0)
 
 		require.NoError(t, err)
 		require.Equal(t, 4, ret.TotalMatches)

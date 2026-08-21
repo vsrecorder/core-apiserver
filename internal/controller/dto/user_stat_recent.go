@@ -17,6 +17,7 @@ type RecentMatchStatResponse struct {
 	UserId       string            `json:"user_id"`
 	Count        int               `json:"count"`
 	DeckId       string            `json:"deck_id,omitempty"`
+	RegulationId uint              `json:"regulation_id,omitempty"`
 	TotalMatches int               `json:"total_matches"`
 	Wins         int               `json:"wins"`
 	WinRate      float64           `json:"win_rate"`

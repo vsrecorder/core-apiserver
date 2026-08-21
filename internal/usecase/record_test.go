@@ -224,10 +224,10 @@ func TestRecordUsecase_Update_NotifiesDesignationChange(t *testing.T) {
 	require.NoError(t, err)
 
 	record := entity.NewRecord(
-		id, time.Now().Local(), 0, "", "", "", "", deckId, "", time.Time{}, false, false, "", "",
+		id, time.Now().Local(), 0, "", "", "", "", deckId, "", time.Time{}, false, false, entity.RegulationIdStandard, "", "",
 	)
 
-	param := NewRecordParam(1, "", "", "", "", deckId, "", time.Time{}, false, false, "", "")
+	param := NewRecordParam(1, "", "", "", "", deckId, "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 
 	mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
 	mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -252,7 +252,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 
 		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
-		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
 		_, err := usecase.Create(context.Background(), param)
@@ -272,7 +272,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 
 		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
-		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
 		_, err := usecase.Create(context.Background(), param)
@@ -288,7 +288,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 
 		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
-		param := NewRecordParam(1, "", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		param := NewRecordParam(1, "", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
 		_, err := usecase.Create(context.Background(), param)
@@ -305,7 +305,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 
 		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
-		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
 
 		ret, err := usecase.Create(context.Background(), param)
@@ -803,6 +803,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -818,6 +819,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -845,6 +847,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -861,7 +864,7 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 	// ErrInvalidRecord で弾かれ、repository の Save が呼ばれないこと。
 	t.Run("異常系_イベント種別が1つも指定されていない記録は弾く", func(t *testing.T) {
 		// 公式/Tonamel/フレンド/自由形式 のどれも指定なし = 不整合
-		param := NewRecordParam(0, "", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		param := NewRecordParam(0, "", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 
 		// Save は EXPECT しない(検証で弾かれ、呼ばれない)
 		ret, err := usecase.Create(context.Background(), param)
@@ -872,8 +875,31 @@ func test_RecordUsecase_Create(t *testing.T, mockRepository *mock_repository.Moc
 
 	t.Run("異常系_イベント種別が2つ指定されている記録は弾く", func(t *testing.T) {
 		// 公式イベントとTonamelの両方 = 不整合
-		param := NewRecordParam(1, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, "", "")
+		param := NewRecordParam(1, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 
+		ret, err := usecase.Create(context.Background(), param)
+
+		require.ErrorIs(t, err, apperror.ErrInvalidRecord)
+		require.Nil(t, ret)
+	})
+
+	// regulation_id を送らない旧クライアントからの記録作成でも、DB側のDEFAULTと同じ
+	// スタンダードで保存されること(0のまま保存するとFK違反になる)。
+	t.Run("正常系_レギュレーション未指定はスタンダードとして保存する", func(t *testing.T) {
+		param := NewRecordParam(1, "", "", "", "user-1", "", "", time.Time{}, false, false, 0, "", "")
+
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		ret, err := usecase.Create(context.Background(), param)
+
+		require.NoError(t, err)
+		require.Equal(t, entity.RegulationIdStandard, ret.RegulationId)
+	})
+
+	t.Run("異常系_存在しないレギュレーションの記録は弾く", func(t *testing.T) {
+		param := NewRecordParam(1, "", "", "", "user-1", "", "", time.Time{}, false, false, 999, "", "")
+
+		// Save は EXPECT しない(検証で弾かれ、呼ばれない)
 		ret, err := usecase.Create(context.Background(), param)
 
 		require.ErrorIs(t, err, apperror.ErrInvalidRecord)
@@ -899,6 +925,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -914,6 +941,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -941,6 +969,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -970,6 +999,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -985,6 +1015,7 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -1016,6 +1047,7 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)
@@ -1054,6 +1086,7 @@ func test_RecordUsecase_Delete(t *testing.T, mockRepository *mock_repository.Moc
 			time.Time{},
 			false,
 			false,
+			entity.RegulationIdStandard,
 			"",
 			"",
 		)

@@ -42,16 +42,16 @@ func (m *MockUserStatHistoryInterface) EXPECT() *MockUserStatHistoryInterfaceMoc
 }
 
 // GetUserStatHistory mocks base method.
-func (m *MockUserStatHistoryInterface) GetUserStatHistory(ctx context.Context, userId, period, season, deckId string) ([]*entity.UserStatMonthly, error) {
+func (m *MockUserStatHistoryInterface) GetUserStatHistory(ctx context.Context, userId, period, season, deckId string, regulationId uint) ([]*entity.UserStatMonthly, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserStatHistory", ctx, userId, period, season, deckId)
+	ret := m.ctrl.Call(m, "GetUserStatHistory", ctx, userId, period, season, deckId, regulationId)
 	ret0, _ := ret[0].([]*entity.UserStatMonthly)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUserStatHistory indicates an expected call of GetUserStatHistory.
-func (mr *MockUserStatHistoryInterfaceMockRecorder) GetUserStatHistory(ctx, userId, period, season, deckId any) *gomock.Call {
+func (mr *MockUserStatHistoryInterfaceMockRecorder) GetUserStatHistory(ctx, userId, period, season, deckId, regulationId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserStatHistory", reflect.TypeOf((*MockUserStatHistoryInterface)(nil).GetUserStatHistory), ctx, userId, period, season, deckId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserStatHistory", reflect.TypeOf((*MockUserStatHistoryInterface)(nil).GetUserStatHistory), ctx, userId, period, season, deckId, regulationId)
 }

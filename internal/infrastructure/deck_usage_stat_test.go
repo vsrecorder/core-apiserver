@@ -75,7 +75,7 @@ func test_DeckUsageStatInfrastructure_AggregatesWinsAndGoFirstCountsPerDeck(t *t
 		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
 	)).WithArgs("deck-01").WillReturnRows(sqlmock.NewRows([]string{"deck_id", "position", "pokemon_sprite_id"}))
 
-	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{})
+	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, 0)
 
 	require.NoError(t, err)
 	require.Equal(t, 3, stat.TotalRecords)
@@ -122,7 +122,7 @@ func test_DeckUsageStatInfrastructure_DrawsAreNotCountedAsLosses(t *testing.T) {
 		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
 	)).WithArgs("deck-01").WillReturnRows(sqlmock.NewRows([]string{"deck_id", "position", "pokemon_sprite_id"}))
 
-	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{})
+	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, 0)
 
 	require.NoError(t, err)
 	require.Len(t, stat.Decks, 1)
@@ -150,7 +150,7 @@ func test_DeckUsageStatInfrastructure_NoMatches(t *testing.T) {
 		WithArgs(userId).
 		WillReturnRows(sqlmock.NewRows(deckUsageIgnoredColumns))
 
-	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{})
+	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, 0)
 
 	require.NoError(t, err)
 	require.Equal(t, 0, stat.TotalRecords)
@@ -189,7 +189,7 @@ func test_DeckUsageStatInfrastructure_IncludesIgnoredCounts(t *testing.T) {
 		`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1,$2) ORDER BY position ASC`,
 	)).WithArgs("deck-01", "deck-02").WillReturnRows(sqlmock.NewRows([]string{"deck_id", "position", "pokemon_sprite_id"}))
 
-	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{})
+	stat, err := i.FindDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, 0)
 
 	require.NoError(t, err)
 	require.Equal(t, 3, stat.TotalRecords)

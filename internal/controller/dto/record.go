@@ -14,6 +14,7 @@ type RecordRequest struct {
 	EventDate         time.Time `json:"event_date"`
 	PrivateFlg        bool      `json:"private_flg"`
 	IgnoreStatsFlg    bool      `json:"ignore_stats_flg"`
+	RegulationId      uint      `json:"regulation_id"`
 	TCGMeisterURL     string    `json:"tcg_meister_url"`
 	Memo              string    `json:"memo"`
 }
@@ -44,6 +45,7 @@ type RecordResponse struct {
 	EventDate         time.Time `json:"event_date"`
 	PrivateFlg        bool      `json:"private_flg"`
 	IgnoreStatsFlg    bool      `json:"ignore_stats_flg"`
+	RegulationId      uint      `json:"regulation_id"`
 	TCGMeisterURL     string    `json:"tcg_meister_url"`
 	Memo              string    `json:"memo"`
 }

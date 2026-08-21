@@ -7,11 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 func TestDeckUsageStatGetMiddleware(t *testing.T) {
 	t.Run("正常系_指定した集計条件をコンテキストに設定する", func(t *testing.T) {
-		ctx, w := newValidationGETContext(t, "all_time=true&year_month=2026-07&environment_id=sv11&season=2026&regulation_id=regulation-g")
+		ctx, w := newValidationGETContext(t, "all_time=true&year_month=2026-07&environment_id=sv11&season=2026&standard_regulation_id=regulation-g&regulation_id=2")
 
 		DeckUsageStatGetMiddleware()(ctx)
 
@@ -20,7 +21,8 @@ func TestDeckUsageStatGetMiddleware(t *testing.T) {
 		require.Equal(t, "2026-07", helper.GetYearMonth(ctx))
 		require.Equal(t, "sv11", helper.GetEnvironmentId(ctx))
 		require.Equal(t, "2026", helper.GetSeason(ctx))
-		require.Equal(t, "regulation-g", helper.GetRegulationId(ctx))
+		require.Equal(t, "regulation-g", helper.GetStandardRegulationId(ctx))
+		require.Equal(t, entity.RegulationIdExtra, helper.GetRegulationId(ctx))
 	})
 
 	t.Run("正常系_未指定ならデフォルト値を設定して通過する", func(t *testing.T) {
@@ -60,7 +62,7 @@ func TestDeckUsageStatGetMiddleware(t *testing.T) {
 
 func TestOpponentDeckUsageStatGetMiddleware(t *testing.T) {
 	t.Run("正常系_指定した集計条件とdeck_idをコンテキストに設定する", func(t *testing.T) {
-		ctx, w := newValidationGETContext(t, "year_month=2026-07&environment_id=sv11&season=2026&regulation_id=regulation-g&deck_id=01HD7Y3K8D6FDHMHTZ2GT41TN2")
+		ctx, w := newValidationGETContext(t, "year_month=2026-07&environment_id=sv11&season=2026&standard_regulation_id=regulation-g&regulation_id=2&deck_id=01HD7Y3K8D6FDHMHTZ2GT41TN2")
 
 		OpponentDeckUsageStatGetMiddleware()(ctx)
 
@@ -68,7 +70,8 @@ func TestOpponentDeckUsageStatGetMiddleware(t *testing.T) {
 		require.Equal(t, "2026-07", helper.GetYearMonth(ctx))
 		require.Equal(t, "sv11", helper.GetEnvironmentId(ctx))
 		require.Equal(t, "2026", helper.GetSeason(ctx))
-		require.Equal(t, "regulation-g", helper.GetRegulationId(ctx))
+		require.Equal(t, "regulation-g", helper.GetStandardRegulationId(ctx))
+		require.Equal(t, entity.RegulationIdExtra, helper.GetRegulationId(ctx))
 		require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", helper.GetDeckId(ctx))
 	})
 
@@ -91,7 +94,7 @@ func TestOpponentDeckUsageStatGetMiddleware(t *testing.T) {
 
 func TestUserStatGetMiddleware(t *testing.T) {
 	t.Run("正常系_指定した集計条件をコンテキストに設定する", func(t *testing.T) {
-		ctx, w := newValidationGETContext(t, "year_month=2026-07&environment_id=sv11&season=2026&regulation_id=regulation-g")
+		ctx, w := newValidationGETContext(t, "year_month=2026-07&environment_id=sv11&season=2026&standard_regulation_id=regulation-g&regulation_id=2")
 
 		UserStatGetMiddleware()(ctx)
 
@@ -99,7 +102,8 @@ func TestUserStatGetMiddleware(t *testing.T) {
 		require.Equal(t, "2026-07", helper.GetYearMonth(ctx))
 		require.Equal(t, "sv11", helper.GetEnvironmentId(ctx))
 		require.Equal(t, "2026", helper.GetSeason(ctx))
-		require.Equal(t, "regulation-g", helper.GetRegulationId(ctx))
+		require.Equal(t, "regulation-g", helper.GetStandardRegulationId(ctx))
+		require.Equal(t, entity.RegulationIdExtra, helper.GetRegulationId(ctx))
 	})
 
 	t.Run("異常系_year_monthの形式が不正なら400を返す", func(t *testing.T) {

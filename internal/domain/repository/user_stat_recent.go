@@ -13,5 +13,6 @@ type UserStatRecentInterface interface {
 		userId string,
 		count int,
 		deckId string,
+		regulationId uint,
 	) ([]*entity.RecentMatch, error)
 }

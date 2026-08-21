@@ -658,9 +658,10 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(
 		`UPDATE "records" SET "created_at"=$1,"updated_at"=$2,"deleted_at"=$3,"official_event_id"=$4,"tonamel_event_id"=$5,`+
-			`"friend_id"=$6,"user_id"=$7,"deck_id"=$8,"deck_code_id"=$9,"private_flg"=$10,"ignore_stats_flg"=$11,"tcg_meister_url"=$12,"memo"=$13,`+
-			`"event_date"=$14,"unofficial_event_id"=$15,"deck_registered_at"=$16 `+
-			`WHERE "records"."deleted_at" IS NULL AND "id" = $17`,
+			`"friend_id"=$6,"user_id"=$7,"deck_id"=$8,"deck_code_id"=$9,"private_flg"=$10,"ignore_stats_flg"=$11,"regulation_id"=$12,`+
+			`"tcg_meister_url"=$13,"memo"=$14,`+
+			`"event_date"=$15,"unofficial_event_id"=$16,"deck_registered_at"=$17 `+
+			`WHERE "records"."deleted_at" IS NULL AND "id" = $18`,
 	)).WithArgs(
 		datetime,
 		AnyTime{},
@@ -673,6 +674,7 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 		"",
 		false,
 		false,
+		int(entity.RegulationIdStandard),
 		"",
 		"",
 		AnyTime{},
@@ -692,6 +694,7 @@ func test_RecordInfrastructure_Save(t *testing.T) {
 		DeckId:          "",
 		DeckCodeId:      "",
 		PrivateFlg:      false,
+		RegulationId:    entity.RegulationIdStandard,
 		TCGMeisterURL:   "",
 		Memo:            "",
 	}

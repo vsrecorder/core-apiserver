@@ -122,6 +122,7 @@ func (i *Calendar) findRecords(
 			m.EventDate,
 			m.PrivateFlg,
 			m.IgnoreStatsFlg,
+			m.RegulationId,
 			m.TCGMeisterURL,
 			m.Memo,
 		)

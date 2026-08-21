@@ -35,6 +35,7 @@ func (i *UserStatRecent) FindRecentMatches(
 	userId string,
 	count int,
 	deckId string,
+	regulationId uint,
 ) ([]*entity.RecentMatch, error) {
 	var results []recentMatchResult
 
@@ -52,6 +53,11 @@ func (i *UserStatRecent) FindRecentMatches(
 
 	if deckId != "" {
 		query = query.Where("matches.deck_id = ?", deckId)
+	}
+
+	// レギュレーション(スタンダード/エクストラ/殿堂)での絞り込み。0 は絞り込みなし。
+	if regulationId != 0 {
+		query = query.Where("records.regulation_id = ?", regulationId)
 	}
 
 	query = query.

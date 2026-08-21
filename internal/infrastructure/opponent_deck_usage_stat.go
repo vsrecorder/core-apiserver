@@ -45,6 +45,7 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	fromDate time.Time,
 	toDate time.Time,
 	deckId string,
+	regulationId uint,
 ) (*entity.OpponentDeckUsageStat, error) {
 	var rows []opponentMatchResult
 
@@ -57,6 +58,11 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 			"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != ''",
 			userId,
 		)
+
+	// レギュレーション(スタンダード/エクストラ/殿堂)での絞り込み。0 は絞り込みなし。
+	if regulationId != 0 {
+		query = query.Where("records.regulation_id = ?", regulationId)
+	}
 
 	if !fromDate.IsZero() {
 		query = query.Where("records.event_date >= ?", fromDate)

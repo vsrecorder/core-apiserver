@@ -42,16 +42,16 @@ func (m *MockDeckUsageStatInterface) EXPECT() *MockDeckUsageStatInterfaceMockRec
 }
 
 // GetDeckUsageStat mocks base method.
-func (m *MockDeckUsageStatInterface) GetDeckUsageStat(ctx context.Context, userId, yearMonth, environmentId, season, regulationId string, allTime bool) (*entity.DeckUsageStat, error) {
+func (m *MockDeckUsageStatInterface) GetDeckUsageStat(ctx context.Context, userId, yearMonth, environmentId, season, standardRegulationId string, regulationId uint, allTime bool) (*entity.DeckUsageStat, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDeckUsageStat", ctx, userId, yearMonth, environmentId, season, regulationId, allTime)
+	ret := m.ctrl.Call(m, "GetDeckUsageStat", ctx, userId, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime)
 	ret0, _ := ret[0].(*entity.DeckUsageStat)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetDeckUsageStat indicates an expected call of GetDeckUsageStat.
-func (mr *MockDeckUsageStatInterfaceMockRecorder) GetDeckUsageStat(ctx, userId, yearMonth, environmentId, season, regulationId, allTime any) *gomock.Call {
+func (mr *MockDeckUsageStatInterfaceMockRecorder) GetDeckUsageStat(ctx, userId, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeckUsageStat", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).GetDeckUsageStat), ctx, userId, yearMonth, environmentId, season, regulationId, allTime)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeckUsageStat", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).GetDeckUsageStat), ctx, userId, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime)
 }

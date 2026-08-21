@@ -11,12 +11,13 @@ type OpponentDeckUsageItemResponse struct {
 }
 
 type OpponentDeckUsageStatResponse struct {
-	UserId        string                           `json:"user_id"`
-	YearMonth     string                           `json:"year_month,omitempty"`
-	EnvironmentId string                           `json:"environment_id,omitempty"`
-	Season        string                           `json:"season,omitempty"`
-	RegulationId  string                           `json:"regulation_id,omitempty"`
-	DeckId        string                           `json:"deck_id,omitempty"`
-	TotalMatches  int                              `json:"total_matches"`
-	Decks         []*OpponentDeckUsageItemResponse `json:"decks"`
+	UserId               string                           `json:"user_id"`
+	YearMonth            string                           `json:"year_month,omitempty"`
+	EnvironmentId        string                           `json:"environment_id,omitempty"`
+	Season               string                           `json:"season,omitempty"`
+	StandardRegulationId string                           `json:"standard_regulation_id,omitempty"`
+	RegulationId         uint                             `json:"regulation_id,omitempty"`
+	DeckId               string                           `json:"deck_id,omitempty"`
+	TotalMatches         int                              `json:"total_matches"`
+	Decks                []*OpponentDeckUsageItemResponse `json:"decks"`
 }

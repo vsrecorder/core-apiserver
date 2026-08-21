@@ -13,5 +13,6 @@ type DeckUsageStatInterface interface {
 		userId string,
 		fromDate time.Time,
 		toDate time.Time,
+		regulationId uint,
 	) (*entity.DeckUsageStat, error)
 }

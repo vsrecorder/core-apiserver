@@ -39,12 +39,12 @@ func test_DeckUsageStatUsecase_AllTime(t *testing.T, mockRepository *mock_reposi
 	want := entity.NewDeckUsageStat(userId, 0, []*entity.DeckUsage{})
 
 	mockRepository.EXPECT().
-		FindDeckUsageStat(gomock.Any(), userId, time.Time{}, time.Time{}).
+		FindDeckUsageStat(gomock.Any(), userId, time.Time{}, time.Time{}, uint(0)).
 		Return(want, nil)
 
 	// year_month/season/regulation_idを指定していても all_time=true の場合は無視され、
 	// 期間条件なしでrepositoryが呼ばれる。
-	got, err := usecase.GetDeckUsageStat(context.Background(), userId, "2026-06", "", "spring", "", true)
+	got, err := usecase.GetDeckUsageStat(context.Background(), userId, "2026-06", "", "spring", "", 0, true)
 
 	require.NoError(t, err)
 	require.Equal(t, want, got)

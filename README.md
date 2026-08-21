@@ -77,7 +77,7 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 | `/designations`          | 称号                       |
 | `/notifications`         | 通知                       |
 | `/usersplayers`          | プレイヤーズクラブID連携   |
-| `/championship_series`, `/cityleague_schedules`, `/cityleague_results`, `/standard_regulations`, `/environments` | マスタ／参照系 |
+| `/championship_series`, `/cityleague_schedules`, `/cityleague_results`, `/standard_regulations`, `/regulations`, `/environments` | マスタ／参照系 |
 
 認証が必要なエンドポイントは `Authorization: Bearer <JWT>` ヘッダを要求します。
 

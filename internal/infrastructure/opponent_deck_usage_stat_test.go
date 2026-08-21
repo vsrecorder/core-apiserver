@@ -68,7 +68,7 @@ func test_OpponentDeckUsageStatInfrastructure_SameDeckInfoDifferentSpritesAreTre
 		`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1,$2) ORDER BY position ASC`,
 	)).WithArgs("match-01", "match-02").WillReturnRows(spriteRows)
 
-	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, "")
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, "", 0)
 
 	require.NoError(t, err)
 	require.Equal(t, 2, stat.TotalMatches)
@@ -102,7 +102,7 @@ func test_OpponentDeckUsageStatInfrastructure_SameDeckInfoSameSpritesAreAggregat
 		`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1,$2) ORDER BY position ASC`,
 	)).WithArgs("match-01", "match-02").WillReturnRows(spriteRows)
 
-	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, "")
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, "", 0)
 
 	require.NoError(t, err)
 	require.Equal(t, 2, stat.TotalMatches)
@@ -127,7 +127,7 @@ func test_OpponentDeckUsageStatInfrastructure_NoMatches(t *testing.T) {
 		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg, matches.draw_flg AS draw_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '' ORDER BY records.event_date ASC`,
 	)).WithArgs(userId).WillReturnRows(matchRows)
 
-	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, "")
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, "", 0)
 
 	require.NoError(t, err)
 	require.Equal(t, 0, stat.TotalMatches)
@@ -159,7 +159,7 @@ func test_OpponentDeckUsageStatInfrastructure_FilterByDeckIdUsesRecordsDeckId(t 
 		`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1) ORDER BY position ASC`,
 	)).WithArgs("match-01").WillReturnRows(spriteRows)
 
-	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, deckId)
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, deckId, 0)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, stat.TotalMatches)

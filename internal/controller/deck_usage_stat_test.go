@@ -41,7 +41,7 @@ func TestDeckUsageStatController_GetByUserId(t *testing.T) {
 	t.Run("正常系_本人なら集計条件を渡してデッキ使用統計を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestDeckUsageStatController(t)
 
-		mockUsecase.EXPECT().GetDeckUsageStat(gomock.Any(), uid, "2026-07", "", "", "", true).
+		mockUsecase.EXPECT().GetDeckUsageStat(gomock.Any(), uid, "2026-07", "", "", "", uint(0), true).
 			Return(&entity.DeckUsageStat{}, nil)
 
 		w := httptest.NewRecorder()
@@ -76,7 +76,7 @@ func TestDeckUsageStatController_GetByUserId(t *testing.T) {
 	t.Run("異常系_該当なしはErrRecordNotFoundから404を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestDeckUsageStatController(t)
 
-		mockUsecase.EXPECT().GetDeckUsageStat(gomock.Any(), uid, "", "", "", "", false).
+		mockUsecase.EXPECT().GetDeckUsageStat(gomock.Any(), uid, "", "", "", "", uint(0), false).
 			Return(nil, apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()
@@ -90,7 +90,7 @@ func TestDeckUsageStatController_GetByUserId(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestDeckUsageStatController(t)
 
-		mockUsecase.EXPECT().GetDeckUsageStat(gomock.Any(), uid, "", "", "", "", false).
+		mockUsecase.EXPECT().GetDeckUsageStat(gomock.Any(), uid, "", "", "", "", uint(0), false).
 			Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()

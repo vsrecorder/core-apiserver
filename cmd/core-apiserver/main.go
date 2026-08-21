@@ -419,6 +419,13 @@ func main() {
 		infrastructure.NewStandardRegulation(db),
 	).RegisterRoute(relativePath)
 
+	controller.NewRegulation(
+		r,
+		usecase.NewRegulation(
+			infrastructure.NewRegulation(db),
+		),
+	).RegisterRoute(relativePath)
+
 	controller.NewChampionshipSeries(
 		r,
 		infrastructure.NewChampionshipSeries(db),

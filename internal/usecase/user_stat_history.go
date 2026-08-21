@@ -15,6 +15,7 @@ type UserStatHistoryInterface interface {
 		period string,
 		season string,
 		deckId string,
+		regulationId uint,
 	) ([]*entity.UserStatMonthly, error)
 }
 
@@ -36,6 +37,7 @@ func (u *UserStatHistory) GetUserStatHistory(
 	period string,
 	season string,
 	deckId string,
+	regulationId uint,
 ) ([]*entity.UserStatMonthly, error) {
 	now := time.Now().Local()
 	thisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
@@ -59,5 +61,5 @@ func (u *UserStatHistory) GetUserStatHistory(
 		}
 	}
 
-	return u.repo.FindUserStatHistory(ctx, userId, fromDate, toDate, deckId)
+	return u.repo.FindUserStatHistory(ctx, userId, fromDate, toDate, deckId, regulationId)
 }

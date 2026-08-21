@@ -249,13 +249,26 @@ func GetEnvironmentId(ctx *gin.Context) string {
 	return environmentId
 }
 
-func SetRegulationId(ctx *gin.Context, value string) {
+func SetStandardRegulationId(ctx *gin.Context, value string) {
+	ctx.Set("standard_regulation_id", value)
+}
+
+func GetStandardRegulationId(ctx *gin.Context) string {
+	value, _ := ctx.Get("standard_regulation_id")
+	standardRegulationId, _ := value.(string)
+
+	return standardRegulationId
+}
+
+// レギュレーション区分(スタンダード/エクストラ/殿堂)での絞り込み。
+// 0 は「絞り込まない(全レギュレーション)」を表す。
+func SetRegulationId(ctx *gin.Context, value uint) {
 	ctx.Set("regulation_id", value)
 }
 
-func GetRegulationId(ctx *gin.Context) string {
+func GetRegulationId(ctx *gin.Context) uint {
 	value, _ := ctx.Get("regulation_id")
-	regulationId, _ := value.(string)
+	regulationId, _ := value.(uint)
 
 	return regulationId
 }

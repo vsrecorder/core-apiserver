@@ -49,6 +49,7 @@ func (i *Record) FindById(
 		model.EventDate,
 		model.PrivateFlg,
 		model.IgnoreStatsFlg,
+		model.RegulationId,
 		model.TCGMeisterURL,
 		model.Memo,
 	)
@@ -103,6 +104,7 @@ func (i *Record) Find(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -172,6 +174,7 @@ func (i *Record) FindOnCursor(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -229,6 +232,7 @@ func (i *Record) FindByUserId(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -284,6 +288,7 @@ func (i *Record) FindByUserIdOnCursor(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -322,6 +327,7 @@ func (i *Record) FindByOfficialEventId(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -360,6 +366,7 @@ func (i *Record) FindByTonamelEventId(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -417,6 +424,7 @@ func (i *Record) FindByDeckId(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -472,6 +480,7 @@ func (i *Record) FindByDeckIdOnCursor(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -510,6 +519,7 @@ func (i *Record) FindByDeckCodeId(
 			model.EventDate,
 			model.PrivateFlg,
 			model.IgnoreStatsFlg,
+			model.RegulationId,
 			model.TCGMeisterURL,
 			model.Memo,
 		)
@@ -573,6 +583,14 @@ func (i *Record) DeleteByUserId(
 	}, &sql.TxOptions{Isolation: sql.LevelDefault})
 }
 
+// normalizeRegulationId は未設定(0)のレギュレーションを、DB側の DEFAULT と同じ
+// スタンダードへ寄せる。records.regulation_id は regulations へのFK制約付きで
+// 0のままでは保存できないため、Save(GORMは全カラムを書く)の前に必ず通す。
+// Save の引数名 entity が entity パッケージを隠すため、関数へ切り出している。
+func normalizeRegulationId(record *entity.Record) uint {
+	return entity.NormalizeRegulationId(record.RegulationId)
+}
+
 func (i *Record) Save(
 	ctx context.Context,
 	entity *entity.Record,
@@ -588,6 +606,7 @@ func (i *Record) Save(
 		entity.DeckCodeId,
 		entity.PrivateFlg,
 		entity.IgnoreStatsFlg,
+		normalizeRegulationId(entity),
 		entity.TCGMeisterURL,
 		entity.Memo,
 		entity.EventDate,

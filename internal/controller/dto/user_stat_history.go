@@ -9,9 +9,10 @@ type UserStatHistoryItem struct {
 }
 
 type UserStatHistoryResponse struct {
-	UserId  string                `json:"user_id"`
-	Period  string                `json:"period"`
-	Season  string                `json:"season,omitempty"`
-	DeckId  string                `json:"deck_id,omitempty"`
-	History []UserStatHistoryItem `json:"history"`
+	UserId       string                `json:"user_id"`
+	Period       string                `json:"period"`
+	Season       string                `json:"season,omitempty"`
+	DeckId       string                `json:"deck_id,omitempty"`
+	RegulationId uint                  `json:"regulation_id,omitempty"`
+	History      []UserStatHistoryItem `json:"history"`
 }

@@ -130,7 +130,7 @@ func test_MatchUsecaseBO3_Create(t *testing.T, mockRepository *mock_repository.M
 		)
 		// 環境バッジ判定用に親recordを引くが、公式イベント以外(officialEventId=0)なら判定しない
 		mockRecordRepository.EXPECT().FindById(ctx, recordId).Return(
-			entity.NewRecord(recordId, time.Now(), 0, "", "", "", userId, "", "", time.Now(), false, false, "", ""),
+			entity.NewRecord(recordId, time.Now(), 0, "", "", "", userId, "", "", time.Now(), false, false, entity.RegulationIdStandard, "", ""),
 			nil,
 		).AnyTimes()
 

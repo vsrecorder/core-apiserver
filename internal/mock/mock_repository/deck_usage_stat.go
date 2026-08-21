@@ -43,16 +43,16 @@ func (m *MockDeckUsageStatInterface) EXPECT() *MockDeckUsageStatInterfaceMockRec
 }
 
 // FindDeckUsageStat mocks base method.
-func (m *MockDeckUsageStatInterface) FindDeckUsageStat(ctx context.Context, userId string, fromDate, toDate time.Time) (*entity.DeckUsageStat, error) {
+func (m *MockDeckUsageStatInterface) FindDeckUsageStat(ctx context.Context, userId string, fromDate, toDate time.Time, regulationId uint) (*entity.DeckUsageStat, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindDeckUsageStat", ctx, userId, fromDate, toDate)
+	ret := m.ctrl.Call(m, "FindDeckUsageStat", ctx, userId, fromDate, toDate, regulationId)
 	ret0, _ := ret[0].(*entity.DeckUsageStat)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindDeckUsageStat indicates an expected call of FindDeckUsageStat.
-func (mr *MockDeckUsageStatInterfaceMockRecorder) FindDeckUsageStat(ctx, userId, fromDate, toDate any) *gomock.Call {
+func (mr *MockDeckUsageStatInterfaceMockRecorder) FindDeckUsageStat(ctx, userId, fromDate, toDate, regulationId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDeckUsageStat", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).FindDeckUsageStat), ctx, userId, fromDate, toDate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDeckUsageStat", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).FindDeckUsageStat), ctx, userId, fromDate, toDate, regulationId)
 }

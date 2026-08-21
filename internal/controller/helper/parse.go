@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 const (
@@ -19,6 +21,8 @@ const (
 	DefaultEventType       = ""
 	DefaultArchived        = false
 	DefaultAllTime         = false
+	// DefaultRegulationId は「レギュレーションで絞り込まない」を表す。
+	DefaultRegulationId = 0
 
 	DateLayout = time.DateOnly
 )
@@ -39,6 +43,31 @@ func ParseQueryLimit(ctx *gin.Context) (int, error) {
 	}
 
 	return limit, nil
+}
+
+// ParseQueryRegulationId はレギュレーション区分(スタンダード/エクストラ/殿堂)での
+// 絞り込みを解析する。未指定は 0(絞り込みなし)。
+//
+// 数値でない値・未知のIDもエラーにせず 0 として扱う。この regulation_id は以前は
+// スタンダードレギュレーションのID(『H・I・J』などの文字列)を渡すクエリだったため、
+// 更新前の webapp から文字列が飛んできても 400 にせず、絞り込み無しで応答する。
+func ParseQueryRegulationId(ctx *gin.Context) uint {
+	query := GetQueryRegulationId(ctx)
+
+	if query == "" {
+		return DefaultRegulationId
+	}
+
+	regulationId, err := strconv.Atoi(query)
+	if err != nil || regulationId < 0 {
+		return DefaultRegulationId
+	}
+
+	if !entity.IsValidRegulationId(uint(regulationId)) {
+		return DefaultRegulationId
+	}
+
+	return uint(regulationId)
 }
 
 func ParseQueryOffset(ctx *gin.Context) (int, error) {

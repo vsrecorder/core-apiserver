@@ -42,7 +42,11 @@
 
 母数 `total_votes` はこの票の総数であり、**対戦数より多くなる**。UIにもその旨を注記している。貢献者数 `contributor_count` は票を投じた実ユーザー数(重複なし)。
 
-集計対象の絞り込みは `records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL`。期間は `records.event_date` の半開区間 `[週の月曜, 翌週の月曜)`。
+集計対象の絞り込みは `records.deleted_at IS NULL AND records.ignore_stats_flg = false AND records.regulation_id = 1(スタンダード) AND matches.deleted_at IS NULL`。期間は `records.event_date` の半開区間 `[週の月曜, 翌週の月曜)`。
+
+**レギュレーションはスタンダードのみを集計する。** エクストラ・殿堂は使えるカードプールが
+そもそも違うため、同じ「対戦環境」のメタとして混ぜると分布が歪む(2026-08-21 決定)。
+レギュレーション追加前の記録はすべてスタンダード(`regulation_id` の DEFAULT = 1)として扱う。
 
 **`private_flg` はフィルタしない。** 現状すべて true の予約フラグであり、条件に入れると全件が消えるため。
 

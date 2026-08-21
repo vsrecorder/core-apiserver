@@ -28,7 +28,7 @@ func TestUserStatHistoryInfrastructure(t *testing.T) {
 				AddRow("2026-06", 5, 0),
 			)
 
-		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "")
+		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "", 0)
 
 		require.NoError(t, err)
 		require.Len(t, ret, 2)
@@ -54,7 +54,7 @@ func TestUserStatHistoryInfrastructure(t *testing.T) {
 			WithArgs(uid, fromDate, toDate, deckId).
 			WillReturnRows(sqlmock.NewRows(monthlyColumns))
 
-		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, deckId)
+		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, deckId, 0)
 
 		require.NoError(t, err)
 		require.Empty(t, ret)
@@ -67,7 +67,7 @@ func TestUserStatHistoryInfrastructure(t *testing.T) {
 
 		mock.ExpectQuery(`SELECT TO_CHAR`).WillReturnError(sql.ErrConnDone)
 
-		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "")
+		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "", 0)
 
 		require.Error(t, err)
 		require.Nil(t, ret)

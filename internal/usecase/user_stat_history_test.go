@@ -42,10 +42,10 @@ func test_UserStatHistoryUsecase_GetUserStatHistory(t *testing.T, mockRepository
 		}
 
 		mockRepository.EXPECT().
-			FindUserStatHistory(context.Background(), userId, gomock.Any(), gomock.Any(), deckId).
+			FindUserStatHistory(context.Background(), userId, gomock.Any(), gomock.Any(), deckId, uint(0)).
 			Return(history, nil)
 
-		ret, err := usecase.GetUserStatHistory(context.Background(), userId, period, season, deckId)
+		ret, err := usecase.GetUserStatHistory(context.Background(), userId, period, season, deckId, 0)
 
 		require.NoError(t, err)
 		require.Equal(t, history, ret)
@@ -58,10 +58,10 @@ func test_UserStatHistoryUsecase_GetUserStatHistory(t *testing.T, mockRepository
 		deckId := ""
 
 		mockRepository.EXPECT().
-			FindUserStatHistory(context.Background(), userId, gomock.Any(), gomock.Any(), deckId).
+			FindUserStatHistory(context.Background(), userId, gomock.Any(), gomock.Any(), deckId, uint(0)).
 			Return([]*entity.UserStatMonthly{}, nil)
 
-		ret, err := usecase.GetUserStatHistory(context.Background(), userId, period, season, deckId)
+		ret, err := usecase.GetUserStatHistory(context.Background(), userId, period, season, deckId, 0)
 
 		require.NoError(t, err)
 		require.Empty(t, ret)

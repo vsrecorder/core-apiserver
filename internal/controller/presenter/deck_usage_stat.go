@@ -10,7 +10,8 @@ func NewDeckUsageStatResponse(
 	yearMonth string,
 	environmentId string,
 	season string,
-	regulationId string,
+	standardRegulationId string,
+	regulationId uint,
 ) *dto.DeckUsageStatResponse {
 	decks := []*dto.DeckUsageItemResponse{}
 	for _, deck := range stat.Decks {
@@ -44,12 +45,13 @@ func NewDeckUsageStatResponse(
 	}
 
 	return &dto.DeckUsageStatResponse{
-		UserId:        stat.UserId,
-		YearMonth:     yearMonth,
-		EnvironmentId: environmentId,
-		Season:        season,
-		RegulationId:  regulationId,
-		TotalRecords:  stat.TotalRecords,
-		Decks:         decks,
+		UserId:               stat.UserId,
+		YearMonth:            yearMonth,
+		EnvironmentId:        environmentId,
+		Season:               season,
+		StandardRegulationId: standardRegulationId,
+		RegulationId:         regulationId,
+		TotalRecords:         stat.TotalRecords,
+		Decks:                decks,
 	}
 }

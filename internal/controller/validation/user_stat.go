@@ -26,7 +26,11 @@ func UserStatGetMiddleware() gin.HandlerFunc {
 		}
 		helper.SetSeason(ctx, season)
 
-		regulationId := helper.GetQueryRegulationId(ctx)
-		helper.SetRegulationId(ctx, regulationId)
+		// 期間の絞り込みに使うスタンダードレギュレーション(マーク期間)
+		standardRegulationId := helper.GetQueryStandardRegulationId(ctx)
+		helper.SetStandardRegulationId(ctx, standardRegulationId)
+
+		// レギュレーション区分(スタンダード/エクストラ/殿堂)での絞り込み
+		helper.SetRegulationId(ctx, helper.ParseQueryRegulationId(ctx))
 	}
 }

@@ -42,16 +42,16 @@ func (m *MockUserStatRecentInterface) EXPECT() *MockUserStatRecentInterfaceMockR
 }
 
 // GetRecentMatches mocks base method.
-func (m *MockUserStatRecentInterface) GetRecentMatches(ctx context.Context, userId string, count int, deckId string) (*entity.RecentMatchStat, error) {
+func (m *MockUserStatRecentInterface) GetRecentMatches(ctx context.Context, userId string, count int, deckId string, regulationId uint) (*entity.RecentMatchStat, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecentMatches", ctx, userId, count, deckId)
+	ret := m.ctrl.Call(m, "GetRecentMatches", ctx, userId, count, deckId, regulationId)
 	ret0, _ := ret[0].(*entity.RecentMatchStat)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRecentMatches indicates an expected call of GetRecentMatches.
-func (mr *MockUserStatRecentInterfaceMockRecorder) GetRecentMatches(ctx, userId, count, deckId any) *gomock.Call {
+func (mr *MockUserStatRecentInterfaceMockRecorder) GetRecentMatches(ctx, userId, count, deckId, regulationId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecentMatches", reflect.TypeOf((*MockUserStatRecentInterface)(nil).GetRecentMatches), ctx, userId, count, deckId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecentMatches", reflect.TypeOf((*MockUserStatRecentInterface)(nil).GetRecentMatches), ctx, userId, count, deckId, regulationId)
 }

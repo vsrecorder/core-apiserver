@@ -794,3 +794,198 @@ func TestIntegrationCityleagueResultFindByPlayerId(t *testing.T) {
 		require.Empty(t, ret)
 	})
 }
+
+// 記録のレギュレーション(records.regulation_id)。FK制約とDEFAULTの効き方は
+// sqlmockでは確認できないため、実DBで往復させる。
+func TestIntegrationRecordRegulation(t *testing.T) {
+	db := setupIntegrationDB(t, "matches", "records")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	ctx := context.Background()
+	r := NewRecord(db, slog.Default())
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	t.Run("正常系_指定したレギュレーションを保存して読み戻せる", func(t *testing.T) {
+		record := entity.NewRecord(
+			"rec-reg-1", now, 0, "", "", "", uid, "", "", now, false, false,
+			entity.RegulationIdHallOfFame, "", "",
+		)
+
+		require.NoError(t, r.Save(ctx, record))
+
+		ret, err := r.FindById(ctx, "rec-reg-1")
+		require.NoError(t, err)
+		require.Equal(t, entity.RegulationIdHallOfFame, ret.RegulationId)
+	})
+
+	// 旧クライアントからの記録や、レギュレーションを埋めない書き込み経路が
+	// FK違反にならず、DB側のDEFAULTと同じスタンダードで保存されること。
+	t.Run("正常系_レギュレーション未設定はスタンダードとして保存される", func(t *testing.T) {
+		record := entity.NewRecord(
+			"rec-reg-2", now, 0, "", "", "", uid, "", "", now, false, false,
+			0, "", "",
+		)
+
+		require.NoError(t, r.Save(ctx, record))
+
+		ret, err := r.FindById(ctx, "rec-reg-2")
+		require.NoError(t, err)
+		require.Equal(t, entity.RegulationIdStandard, ret.RegulationId)
+	})
+
+	t.Run("異常系_存在しないレギュレーションはFK制約で弾かれる", func(t *testing.T) {
+		record := entity.NewRecord(
+			"rec-reg-3", now, 0, "", "", "", uid, "", "", now, false, false,
+			999, "", "",
+		)
+
+		require.Error(t, r.Save(ctx, record))
+	})
+}
+
+// 対戦環境分析(週次デッキ使用率)がスタンダードの記録だけを集計すること。
+// レギュレーションでの絞り込みはSQLの条件のため、実DBで効いていることを確認する。
+func TestIntegrationWeeklyDeckUsageStatRegulation(t *testing.T) {
+	db := setupIntegrationDB(t, "match_pokemon_sprites", "matches", "records", "pokemon_sprites")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	// 週の半開区間 [月, 翌月) に収まる開催日で記録を作る
+	fromDate := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
+	toDate := fromDate.AddDate(0, 0, 7)
+	eventDate := fromDate.AddDate(0, 0, 1)
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	require.NoError(t, db.Create(&model.PokemonSprite{ID: "0025", Name: "ピカチュウ"}).Error)
+
+	// 相手デッキのスプライトから票が立つよう、記録・対戦・スプライトを組で作る
+	createMatchWithSprite := func(recordId string, matchId string, regulationId uint) {
+		t.Helper()
+
+		require.NoError(t, db.Create(&model.Record{
+			ID: recordId, CreatedAt: now, UpdatedAt: now, UserId: uid,
+			EventDate: eventDate, RegulationId: regulationId,
+		}).Error)
+		require.NoError(t, db.Create(&model.Match{
+			ID: matchId, CreatedAt: now, UpdatedAt: now, RecordId: recordId, UserId: uid,
+		}).Error)
+		require.NoError(t, db.Create(&model.MatchPokemonSprite{
+			MatchId: matchId, Position: 1, PokemonSpriteId: "0025",
+		}).Error)
+	}
+
+	createMatchWithSprite("rec-wk-std", "mat-wk-std", entity.RegulationIdStandard)
+	createMatchWithSprite("rec-wk-ext", "mat-wk-ext", entity.RegulationIdExtra)
+	createMatchWithSprite("rec-wk-hof", "mat-wk-hof", entity.RegulationIdHallOfFame)
+
+	r := NewWeeklyDeckUsageStat(db)
+
+	stat, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+	require.NoError(t, err)
+
+	// スタンダードの1マッチぶん(相手側の1票)だけが集計される。
+	// エクストラ・殿堂も混ざるなら3票になる。
+	require.Equal(t, 1, stat.TotalVotes)
+	require.Equal(t, 1, stat.ContributorCount)
+}
+
+// 個人の戦績分析(勝率・月次推移・直近N戦・デッキ使用率・相手デッキ分布)を
+// レギュレーションで絞り込めること。5つの集計すべてで同じ条件が効くかを実DBで確認する。
+func TestIntegrationStatsRegulationFilter(t *testing.T) {
+	db := setupIntegrationDB(t, "games", "matches", "records", "decks")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	const deckId = "deck-reg-filter"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	eventDate := time.Date(2026, 7, 15, 0, 0, 0, 0, time.Local)
+	fromDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local)
+	toDate := fromDate.AddDate(0, 1, 0)
+
+	require.NoError(t, db.Create(&model.Deck{
+		ID: deckId, CreatedAt: now, UpdatedAt: now, UserId: uid, Name: "テストデッキ",
+	}).Error)
+
+	createRecord := func(recordId string, regulationId uint) {
+		t.Helper()
+
+		require.NoError(t, db.Create(&model.Record{
+			ID: recordId, CreatedAt: now, UpdatedAt: now, UserId: uid, DeckId: deckId,
+			EventDate: eventDate, RegulationId: regulationId,
+		}).Error)
+	}
+	createMatch := func(matchId string, recordId string, victory bool, opponentsDeckInfo string) {
+		t.Helper()
+
+		require.NoError(t, db.Create(&model.Match{
+			ID: matchId, CreatedAt: now, UpdatedAt: now, RecordId: recordId, UserId: uid,
+			DeckId: deckId, VictoryFlg: victory, OpponentsDeckInfo: opponentsDeckInfo,
+		}).Error)
+	}
+
+	// スタンダード: 1勝1敗。エクストラ: 1勝(絞り込みで落ちるべき分)。
+	createRecord("rec-std", entity.RegulationIdStandard)
+	createMatch("mat-std-1", "rec-std", true, "リザードンex")
+	createMatch("mat-std-2", "rec-std", false, "リザードンex")
+
+	createRecord("rec-ext", entity.RegulationIdExtra)
+	createMatch("mat-ext-1", "rec-ext", true, "ミュウツーGX")
+
+	ctx := context.Background()
+	standard := entity.RegulationIdStandard
+
+	t.Run("正常系_戦績はスタンダードの対戦だけを数える", func(t *testing.T) {
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, fromDate, toDate, standard)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, stat.TotalRecords)
+		require.Equal(t, 2, stat.TotalMatches)
+		require.Equal(t, 1, stat.Wins)
+		require.Equal(t, 1, stat.Losses)
+	})
+
+	t.Run("正常系_月毎の勝率推移はスタンダードの対戦だけを数える", func(t *testing.T) {
+		history, err := NewUserStatHistory(db).FindUserStatHistory(ctx, uid, fromDate, toDate, "", standard)
+
+		require.NoError(t, err)
+		require.Len(t, history, 1)
+		require.Equal(t, 2, history[0].TotalMatches)
+		require.Equal(t, 1, history[0].Wins)
+	})
+
+	t.Run("正常系_直近N戦はスタンダードの対戦だけを返す", func(t *testing.T) {
+		matches, err := NewUserStatRecent(db).FindRecentMatches(ctx, uid, 10, "", standard)
+
+		require.NoError(t, err)
+		require.Len(t, matches, 2)
+	})
+
+	t.Run("正常系_デッキ使用率はスタンダードの対戦だけを数える", func(t *testing.T) {
+		stat, err := NewDeckUsageStat(db).FindDeckUsageStat(ctx, uid, fromDate, toDate, standard)
+
+		require.NoError(t, err)
+		require.Len(t, stat.Decks, 1)
+		require.Equal(t, deckId, stat.Decks[0].DeckId)
+		require.Equal(t, 2, stat.Decks[0].Count)
+	})
+
+	t.Run("正常系_相手デッキ分布はスタンダードの対戦だけを数える", func(t *testing.T) {
+		stat, err := NewOpponentDeckUsageStat(db).FindOpponentDeckUsageStat(ctx, uid, fromDate, toDate, "", standard)
+
+		require.NoError(t, err)
+		require.Equal(t, 2, stat.TotalMatches)
+		// エクストラの対戦相手(ミュウツーGX)は含まれない
+		for _, deck := range stat.Decks {
+			require.NotEqual(t, "ミュウツーGX", deck.DeckInfo)
+		}
+	})
+
+	t.Run("正常系_未指定なら全レギュレーションを数える", func(t *testing.T) {
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, fromDate, toDate, 0)
+
+		require.NoError(t, err)
+		require.Equal(t, 2, stat.TotalRecords)
+		require.Equal(t, 3, stat.TotalMatches)
+	})
+}

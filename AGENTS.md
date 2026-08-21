@@ -159,7 +159,12 @@ Deck・User の各usecaseへ注入され、書き込み処理の中でバッジ�
   `CurrentSeasonLabel` / `PeriodDateRange` を使い、年やシーズン境界をハードコードしない。
   season識別子は `championship_series.id` から接頭辞 `series_` を除いた文字列（例 `"2026"`）。
 - 期間は `from_date`（0時始まり）〜 `to_date` の翌日0時（exclusive上限）の半開区間で扱う。
-  environment / season / regulation が複数指定された場合は期間の交差を取る。
+  environment / season / standard_regulation が複数指定された場合は期間の交差を取る。
+- **`standard_regulation_id` と `regulation_id` は別物**。前者は『H・I・J』などのマークの
+  組み合わせとその適用期間（`standard_regulations`）で、統計APIでは期間の絞り込みに使う。
+  後者は記録のレギュレーション区分（`regulations` = スタンダード / エクストラ / 殿堂）で、
+  期間とは直交する絞り込み。統計APIでは未指定＝全レギュレーション、`records.regulation_id`
+  と突き合わせる。webapp は既定でスタンダード（`regulation_id=1`）を送る。
 - 週は月曜始まり（`usecase/week.go`）。週次デッキ使用率の `week` クエリは月曜日の `YYYY-MM-DD`。
 
 ### トランザクション

@@ -14,6 +14,7 @@ type UserStatRecentInterface interface {
 		userId string,
 		count int,
 		deckId string,
+		regulationId uint,
 	) (*entity.RecentMatchStat, error)
 }
 
@@ -34,6 +35,7 @@ func (u *UserStatRecent) GetRecentMatches(
 	userId string,
 	count int,
 	deckId string,
+	regulationId uint,
 ) (*entity.RecentMatchStat, error) {
 	// 1試合目が必ず0%/100%になる「先頭からの通算勝率」を避けるため、
 	// 表示件数の半分を移動平均のウィンドウ幅とし、表示区間より前の試合も
@@ -44,7 +46,7 @@ func (u *UserStatRecent) GetRecentMatches(
 	}
 	fetchCount := count + windowSize - 1
 
-	rawMatches, err := u.repo.FindRecentMatches(ctx, userId, fetchCount, deckId)
+	rawMatches, err := u.repo.FindRecentMatches(ctx, userId, fetchCount, deckId, regulationId)
 	if err != nil {
 		logError(ctx, err)
 		return nil, err

@@ -67,7 +67,7 @@ func test_UserStatRecentInfrastructure_FindRecentMatches(t *testing.T) {
 		count,
 	).WillReturnRows(rows)
 
-	matches, err := i.FindRecentMatches(context.Background(), userId, count, "")
+	matches, err := i.FindRecentMatches(context.Background(), userId, count, "", 0)
 
 	require.NoError(t, err)
 	require.Empty(t, matches)
@@ -97,7 +97,7 @@ func test_UserStatRecentInfrastructure_FindRecentMatchesWithDeckId(t *testing.T)
 		count,
 	).WillReturnRows(rows)
 
-	matches, err := i.FindRecentMatches(context.Background(), userId, count, deckId)
+	matches, err := i.FindRecentMatches(context.Background(), userId, count, deckId, 0)
 
 	require.NoError(t, err)
 	require.Empty(t, matches)
@@ -141,7 +141,7 @@ func test_UserStatRecentInfrastructure_FindRecentMatchesOrdersAscending(t *testi
 		`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1,$2) ORDER BY position ASC`,
 	)).WithArgs("match-02", "match-01").WillReturnRows(spriteRows)
 
-	matches, err := i.FindRecentMatches(context.Background(), userId, count, "")
+	matches, err := i.FindRecentMatches(context.Background(), userId, count, "", 0)
 
 	require.NoError(t, err)
 	require.Len(t, matches, 2)

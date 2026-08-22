@@ -268,6 +268,8 @@ CREATE TABLE regulations (
 INSERT INTO regulations VALUES (1,'スタンダード');
 INSERT INTO regulations VALUES (2,'エクストラ');
 INSERT INTO regulations VALUES (3,'殿堂');
+-- 上のいずれにも当てはまらない対戦(独自ルールの自主大会など)を記録するための受け皿。
+INSERT INTO regulations VALUES (4,'その他');
 
 CREATE TABLE records (
     id                        VARCHAR(26) PRIMARY KEY,

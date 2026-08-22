@@ -11,9 +11,10 @@ func TestIsValidRegulationId(t *testing.T) {
 		{"スタンダード", RegulationIdStandard, true},
 		{"エクストラ", RegulationIdExtra, true},
 		{"殿堂", RegulationIdHallOfFame, true},
+		{"その他", RegulationIdOther, true},
 
 		{"未指定", 0, false},
-		{"存在しないID", 4, false},
+		{"存在しないID", 5, false},
 	}
 
 	for _, tt := range tests {
@@ -33,7 +34,7 @@ func TestNormalizeRegulationId(t *testing.T) {
 	}{
 		{"未指定はスタンダードへ寄せる", 0, RegulationIdStandard},
 		{"指定済みはそのまま", RegulationIdExtra, RegulationIdExtra},
-		{"存在しないIDは寄せずにそのまま(検証側で弾く)", 4, 4},
+		{"存在しないIDは寄せずにそのまま(検証側で弾く)", 5, 5},
 	}
 
 	for _, tt := range tests {

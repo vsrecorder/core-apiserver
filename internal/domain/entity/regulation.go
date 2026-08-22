@@ -28,12 +28,14 @@ const (
 	RegulationIdStandard   uint = 1
 	RegulationIdExtra      uint = 2
 	RegulationIdHallOfFame uint = 3
+	// RegulationIdOther は上のいずれにも当てはまらない対戦(独自ルールの自主大会など)。
+	RegulationIdOther uint = 4
 )
 
 // IsValidRegulationId は regulations に存在するIDかを判定する。
 func IsValidRegulationId(id uint) bool {
 	switch id {
-	case RegulationIdStandard, RegulationIdExtra, RegulationIdHallOfFame:
+	case RegulationIdStandard, RegulationIdExtra, RegulationIdHallOfFame, RegulationIdOther:
 		return true
 	default:
 		return false

@@ -1,5 +1,12 @@
 # core-apiserver 関連バッチの定期実行定義（ホストOSの cron。サーバ常駐で実行する）
 #
+# ■■ このファイルは「反映用の雛形」であって、本番の実体ではない ■■
+#   自動デプロイはされない。本番で何が動いているかを知りたいときは、必ずサーバ上で
+#     sudo crontab -l
+#   を見ること。このファイルの内容を本番の状態だと読むと誤る（2026-08-17・08-24 の
+#   週次レポートで実際に2週連続で誤読した）。内容を変えたらサーバへ反映し、逆に
+#   サーバ側だけ変えたときは**このファイルも必ず追従させる**。
+#
 # ■ 反映方法（どちらか）
 #   1) 実行ユーザーの crontab に取り込む:
 #        crontab core-apiserver/crontab
@@ -22,12 +29,15 @@
 #   cd /opt/vsrecorder/core-apiserver \
 #     && go build -o /opt/vsrecorder/bin/notify-streak-nudge ./cmd/notify-streak-nudge
 
+# cron のタイムゾーン指定
+CRON_TZ=Asia/Tokyo
+
 # ── B-5 ストリーク途切れ防止 nudge（B5_STREAK_NUDGE_PLAN.md）──
 # 毎週日曜 20:00 JST。今週まだ記録がなく、今週書かないと連続が途切れる瀬戸際の
 # ユーザーへアプリ内通知を作成する。
-# 検証中は -dry-run=true（対象者をログ出力するだけ）。対象者数を確認できたら
-# 下の本番行に切り替える（この行はコメントアウトする）。
-0 20 * * 0 cd /home/ubuntu/vsrecorder/core-apiserver && /home/ubuntu/vsrecorder/core-apiserver/bin/notify-streak-nudge -dry-run=true  >> /var/log/vsrecorder/streak-nudge.log 2>&1
+# 2026-08 時点で本番切替済み（-dry-run=false）。検証時は -dry-run=true にすると
+# 対象者をログ出力するだけで通知は作られない。
+# DB_MAX_OPEN_CONNS=5 はバッチが API サーバの接続枠を食い潰さないための上限。
 
-# ── 本番切替時: 上をコメントアウトし、こちらを有効にする ──
-# 0 20 * * 0 cd /home/ubuntu/vsrecorder/core-apiserver && /home/ubuntu/vsrecorder/core-apiserver/bin/notify-streak-nudge -dry-run=false >> /var/log/vsrecorder/streak-nudge.log 2>&1
+# 毎週日曜 20:00 JST — ストリーク途切れ防止 nudge
+0 20 * * 0 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 /home/ubuntu/vsrecorder/core-apiserver/bin/notify-streak-nudge -dry-run=false >> /var/log/vsrecorder/streak-nudge.log 2>&1

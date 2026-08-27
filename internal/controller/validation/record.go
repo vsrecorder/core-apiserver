@@ -69,6 +69,11 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if !validateTagIds(req.TagIds) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetRecordCreateRequest(ctx, req)
 	}
 }
@@ -97,6 +102,11 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 		}
 
 		if !isValidRecordRegulation(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if !validateTagIds(req.TagIds) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

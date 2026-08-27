@@ -16,6 +16,10 @@ type Tag struct {
 	Name      string
 	Color     string
 	PresetFlg bool
+	// PresetCategory はプリセットの群('acespec' / 'placement')。ユーザー個別タグは空文字。
+	PresetCategory string
+	// TextColor は Color の上に乗せる文字色。空なら表示側が Color から決める。
+	TextColor string
 }
 
 func NewTag(
@@ -26,15 +30,19 @@ func NewTag(
 	name string,
 	color string,
 	presetFlg bool,
+	presetCategory string,
+	textColor string,
 ) *Tag {
 	return &Tag{
-		ID:        id,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
-		UserId:    userId,
-		Name:      name,
-		Color:     color,
-		PresetFlg: presetFlg,
+		ID:             id,
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
+		UserId:         userId,
+		Name:           name,
+		Color:          color,
+		PresetFlg:      presetFlg,
+		PresetCategory: presetCategory,
+		TextColor:      textColor,
 	}
 }
 
@@ -84,5 +92,21 @@ func NewMatchTag(
 	return &MatchTag{
 		MatchId: matchId,
 		TagId:   tagId,
+	}
+}
+
+// RecordTag は record_tags 中間テーブル(記録 ⇔ タグ)。
+type RecordTag struct {
+	RecordId string `gorm:"primaryKey"`
+	TagId    string `gorm:"primaryKey"`
+}
+
+func NewRecordTag(
+	recordId string,
+	tagId string,
+) *RecordTag {
+	return &RecordTag{
+		RecordId: recordId,
+		TagId:    tagId,
 	}
 }

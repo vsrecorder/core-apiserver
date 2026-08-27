@@ -321,6 +321,18 @@ func ParseQueryEventType(ctx *gin.Context) (string, error) {
 	}
 }
 
+// ParseQueryTagPresetCategory は GET /tags/presets の category クエリを解釈する。
+// 未定義の値は空文字(群で絞らない=全プリセット)へ丸める(ParseQueryEventType と同じ方針)。
+func ParseQueryTagPresetCategory(ctx *gin.Context) string {
+	query := GetQueryTagPresetCategory(ctx)
+
+	if !entity.IsValidTagPresetCategory(query) {
+		return ""
+	}
+
+	return query
+}
+
 func ParseQueryArchive(ctx *gin.Context) (bool, error) {
 	query := GetQueryArchived(ctx)
 

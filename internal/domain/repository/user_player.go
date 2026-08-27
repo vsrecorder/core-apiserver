@@ -21,4 +21,12 @@ type UserPlayerInterface interface {
 		ctx context.Context,
 		id string,
 	) error
+
+	// DeleteByUserId は退会時に、そのユーザのプレイヤーID紐付けをまとめて論理削除する。
+	// 紐付けは1ユーザーにつき有効な行が最大1件の想定だが、
+	// 何らかの理由で2件以上あっても消し残さないよう user_id でまとめて消す。
+	DeleteByUserId(
+		ctx context.Context,
+		uid string,
+	) error
 }

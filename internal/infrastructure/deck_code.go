@@ -96,12 +96,24 @@ func (i *DeckCode) DeleteByUserId(
 	ctx context.Context,
 	uid string,
 ) error {
-	if tx := dbFromContext(ctx, i.db).Where("user_id = ?", uid).Delete(&model.DeckCode{}); tx.Error != nil {
-		logError(ctx, tx.Error)
-		return tx.Error
-	}
+	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
+		// 付与タグ(中間テーブル)を先に物理削除する。deck_codes は論理削除のため、
+		// 先に消すとサブクエリが deleted_at IS NULL で0件になり、タグの行が消し残る。
+		if tx := tx.Where(
+			"deck_code_id IN (?)",
+			tx.Model(&model.DeckCode{}).Select("id").Where("user_id = ?", uid),
+		).Delete(&model.DeckCodeTag{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
 
-	return nil
+		if tx := tx.Where("user_id = ?", uid).Delete(&model.DeckCode{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
+		return nil
+	})
 }
 
 func (i *DeckCode) Save(

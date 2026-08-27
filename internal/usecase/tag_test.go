@@ -15,7 +15,7 @@ import (
 func TestOrderAttachableTagsByIds(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	newTag := func(id string) *entity.Tag {
-		return entity.NewTag(id, now, now, "u1", id, "", false)
+		return entity.NewTag(id, now, now, "u1", id, "", false, "", "")
 	}
 
 	t.Run("正常系_付与順(tagIds)の並びに整列し直す", func(t *testing.T) {

@@ -871,23 +871,47 @@ func (i *Deck) DeleteByUserId(
 
 	// アーカイブ済みデッキも含めて全件対象にする
 	return db.Transaction(func(tx *gorm.DB) error {
-		// デッキコードを先に消す。decks を先に消すとサブクエリが0件になり消し残る。
-		// ここで消えるのは「このユーザのデッキに紐づくコード」であり、
-		// 作成者が他人のものも含む(デッキが消える以上、残しても参照先が無い)。
+		// 消す順序は「参照する側が先」。decks / deck_codes は論理削除のため、先に消すと
+		// 以降のサブクエリが deleted_at IS NULL で0件になり、子の行が消し残る。
+		//
+		// 各サブクエリは毎回 tx.Model(...) から組み立てる。GORM の *gorm.DB は
+		// 条件を積んでいくため、同じインスタンスを使い回すと条件が混ざる。
+		deckIds := func() *gorm.DB {
+			return tx.Model(&model.Deck{}).Select("id").Where("user_id = ?", uid)
+		}
+
+		// デッキコードに紐づくタグを、デッキコードより先に消す。
 		if tx := tx.Where(
-			"deck_id IN (?)",
-			tx.Model(&model.Deck{}).Select("id").Where("user_id = ?", uid),
-		).Delete(&model.DeckCode{}); tx.Error != nil {
+			"deck_code_id IN (?)",
+			tx.Model(&model.DeckCode{}).Select("id").Where("deck_id IN (?)", deckIds()),
+		).Delete(&model.DeckCodeTag{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
-		// お気に入りも同様に、decks を消す前にまとめて消す。
+		// デッキコードを先に消す。decks を先に消すとサブクエリが0件になり消し残る。
+		// ここで消えるのは「このユーザのデッキに紐づくコード」であり、
+		// 作成者が他人のものも含む(デッキが消える以上、残しても参照先が無い)。
+		if tx := tx.Where("deck_id IN (?)", deckIds()).Delete(&model.DeckCode{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
+		// デッキに紐づくタグ・スプライト・お気に入りも、decks を消す前にまとめて消す。
 		// 論理削除の decks と違いこちらは実削除のため、消し残すと
 		// 参照先の無い行が残る。
-		if tx := tx.Where(
-			"deck_id IN (?)",
-			tx.Model(&model.Deck{}).Select("id").Where("user_id = ?", uid),
-		).Delete(&model.UserFavoriteDeck{}); tx.Error != nil {
+		if tx := tx.Where("deck_id IN (?)", deckIds()).Delete(&model.DeckTag{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
+		if tx := tx.Where("deck_id IN (?)", deckIds()).Delete(&model.DeckPokemonSprite{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
+		if tx := tx.Where("deck_id IN (?)", deckIds()).Delete(&model.UserFavoriteDeck{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 

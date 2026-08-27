@@ -144,8 +144,9 @@ func main() {
 
 	// 3. 既存のプリセットタグと名前で突き合わせ、未登録は新規作成、
 	//    既存でも色が変わっていれば色だけ更新する(色の定義を変えても再実行で反映される)。
+	//    突き合わせ対象は ACE SPEC の群だけ(大会順位など他の群とは名前空間が別)。
 	tagRepo := infrastructure.NewTag(db)
-	existing, err := tagRepo.FindPresets(context.Background())
+	existing, err := tagRepo.FindPresets(context.Background(), entity.TagPresetCategoryAceSpec)
 	if err != nil {
 		log.Printf("failed to list preset tags: %v\n", err)
 		os.Exit(ExitCodeNG)
@@ -188,8 +189,8 @@ func main() {
 			continue
 		}
 
-		// プリセットタグ: user_id='' / preset_flg=true。
-		tag := entity.NewTag(id, now, now, "", name, aceSpecTagColor, true)
+		// プリセットタグ: user_id='' / preset_flg=true / 群は ACE SPEC。
+		tag := entity.NewTag(id, now, now, "", name, aceSpecTagColor, true, entity.TagPresetCategoryAceSpec, "")
 		if err := tagRepo.Save(context.Background(), tag); err != nil {
 			log.Printf("failed to save preset tag %s: %v\n", name, err)
 			continue
@@ -199,8 +200,9 @@ func main() {
 
 	recolored := 0
 	for _, tag := range toRecolor {
-		// 既存の id / created_at は保ち、色と updated_at だけ更新する。
-		updated := entity.NewTag(tag.ID, tag.CreatedAt, now, "", tag.Name, aceSpecTagColor, true)
+		// 既存の id / created_at / 文字色は保ち、背景色と updated_at だけ更新する。
+		// Save は全カラムを書くため、ここで持ち回らない値は空で上書きされてしまう。
+		updated := entity.NewTag(tag.ID, tag.CreatedAt, now, "", tag.Name, aceSpecTagColor, true, entity.TagPresetCategoryAceSpec, tag.TextColor)
 		if err := tagRepo.Save(context.Background(), updated); err != nil {
 			log.Printf("failed to recolor preset tag %s: %v\n", tag.Name, err)
 			continue

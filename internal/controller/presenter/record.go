@@ -50,6 +50,7 @@ func NewRecordGetResponse(
 				RegulationId:      record.RegulationId,
 				TCGMeisterURL:     record.TCGMeisterURL,
 				Memo:              record.Memo,
+				Tags:              newTagResponses(record.Tags),
 			},
 		})
 	}
@@ -82,6 +83,7 @@ func NewRecordGetByIdResponse(
 			RegulationId:      record.RegulationId,
 			TCGMeisterURL:     record.TCGMeisterURL,
 			Memo:              record.Memo,
+			Tags:              newTagResponses(record.Tags),
 		},
 	}
 }
@@ -114,6 +116,7 @@ func NewRecordGetByUserIdResponse(
 				RegulationId:      record.RegulationId,
 				TCGMeisterURL:     record.TCGMeisterURL,
 				Memo:              record.Memo,
+				Tags:              newTagResponses(record.Tags),
 			},
 		})
 	}
@@ -146,6 +149,7 @@ func NewRecordCreateResponse(
 			RegulationId:      record.RegulationId,
 			TCGMeisterURL:     record.TCGMeisterURL,
 			Memo:              record.Memo,
+			Tags:              newTagResponses(record.Tags),
 		},
 	}
 }
@@ -170,6 +174,7 @@ func NewRecordUpdateResponse(
 			RegulationId:      record.RegulationId,
 			TCGMeisterURL:     record.TCGMeisterURL,
 			Memo:              record.Memo,
+			Tags:              newTagResponses(record.Tags),
 		},
 	}
 }

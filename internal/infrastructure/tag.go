@@ -22,7 +22,7 @@ func NewTag(
 }
 
 // tagLinkTable は「エンティティ ⇔ タグ」中間テーブルのメタ情報。
-// 記録/対戦結果へ広げるときは、この値を1つ足して Replace メソッドを薄く生やすだけでよい。
+// 新しい付与先へ広げるときは、この値を1つ足して Replace メソッドを薄く生やすだけでよい。
 // name / ownerColumn はコード内定数のみを渡す前提で、SQLへ直接埋め込む。
 type tagLinkTable struct {
 	name        string // 例: "deck_tags"
@@ -33,7 +33,7 @@ var (
 	deckTagLink     = tagLinkTable{name: "deck_tags", ownerColumn: "deck_id"}
 	deckCodeTagLink = tagLinkTable{name: "deck_code_tags", ownerColumn: "deck_code_id"}
 	matchTagLink    = tagLinkTable{name: "match_tags", ownerColumn: "match_id"}
-	// 将来: recordTagLink = tagLinkTable{name: "record_tags", ownerColumn: "record_id"}
+	recordTagLink   = tagLinkTable{name: "record_tags", ownerColumn: "record_id"}
 )
 
 func (i *Tag) FindByUserId(
@@ -51,7 +51,7 @@ func (i *Tag) FindByUserId(
 
 	ret := make([]*entity.Tag, 0, len(tagModels))
 	for _, m := range tagModels {
-		ret = append(ret, entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg))
+		ret = append(ret, entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg, m.PresetCategory, m.TextColor))
 	}
 
 	return ret, nil
@@ -59,21 +59,26 @@ func (i *Tag) FindByUserId(
 
 func (i *Tag) FindPresets(
 	ctx context.Context,
+	category string,
 ) ([]*entity.Tag, error) {
 	var tagModels []*model.Tag
 
-	if tx := dbFromContext(ctx, i.db).
-		Where("preset_flg = ?", true).
-		// プリセット(ACE SPEC)は card id 昇順で作成し、ULIDは生成順に単調増加するため、
-		// id 昇順で引くと card id 昇順(≒収録順)で並ぶ。
-		Order("id ASC").
-		Find(&tagModels); tx.Error != nil {
+	tx := dbFromContext(ctx, i.db).Where("preset_flg = ?", true)
+	// category 指定があればその群だけに絞る(空文字は全プリセット)。
+	if category != "" {
+		tx = tx.Where("preset_category = ?", category)
+	}
+
+	// プリセット(ACE SPEC)は card id 昇順で作成し、ULIDは生成順に単調増加するため、
+	// id 昇順で引くと card id 昇順(≒収録順)で並ぶ。
+	// 大会順位のプリセットも同じ規約で、優勝から順に並ぶIDを振ってある。
+	if tx := tx.Order("id ASC").Find(&tagModels); tx.Error != nil {
 		return nil, tx.Error
 	}
 
 	ret := make([]*entity.Tag, 0, len(tagModels))
 	for _, m := range tagModels {
-		ret = append(ret, entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg))
+		ret = append(ret, entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg, m.PresetCategory, m.TextColor))
 	}
 
 	return ret, nil
@@ -90,7 +95,7 @@ func (i *Tag) FindById(
 		return nil, wrapError(tx.Error)
 	}
 
-	return entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg), nil
+	return entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg, m.PresetCategory, m.TextColor), nil
 }
 
 func (i *Tag) FindAttachableByIds(
@@ -113,7 +118,7 @@ func (i *Tag) FindAttachableByIds(
 
 	ret := make([]*entity.Tag, 0, len(tagModels))
 	for _, m := range tagModels {
-		ret = append(ret, entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg))
+		ret = append(ret, entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg, m.PresetCategory, m.TextColor))
 	}
 
 	return ret, nil
@@ -132,14 +137,14 @@ func (i *Tag) FindByUserIdAndName(
 		return nil, wrapError(tx.Error)
 	}
 
-	return entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg), nil
+	return entity.NewTag(m.ID, m.CreatedAt, m.UpdatedAt, m.UserId, m.Name, m.Color, m.PresetFlg, m.PresetCategory, m.TextColor), nil
 }
 
 func (i *Tag) Save(
 	ctx context.Context,
 	e *entity.Tag,
 ) error {
-	tag := model.NewTag(e.ID, e.CreatedAt, e.UpdatedAt, e.UserId, e.Name, e.Color, e.PresetFlg)
+	tag := model.NewTag(e.ID, e.CreatedAt, e.UpdatedAt, e.UserId, e.Name, e.Color, e.PresetFlg, e.PresetCategory, e.TextColor)
 
 	return dbFromContext(ctx, i.db).Save(tag).Error
 }
@@ -149,7 +154,7 @@ func (i *Tag) Delete(
 	id string,
 ) error {
 	// タグ本体は論理削除、中間テーブルの行は物理削除する。
-	// 付与先(デッキ/デッキコード)が削除済みタグを参照し続けないよう、まとめて行う。
+	// 付与先(デッキ/デッキコード/記録/対戦結果)が削除済みタグを参照し続けないよう、まとめて行う。
 	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("tag_id = ?", id).Delete(&model.DeckTag{}).Error; err != nil {
 			logError(ctx, err)
@@ -166,7 +171,55 @@ func (i *Tag) Delete(
 			return err
 		}
 
+		if err := tx.Where("tag_id = ?", id).Delete(&model.RecordTag{}).Error; err != nil {
+			logError(ctx, err)
+			return err
+		}
+
 		return tx.Where("id = ?", id).Delete(&model.Tag{}).Error
+	})
+}
+
+// DeleteByUserId は退会時に、そのユーザのタグをまとめて論理削除し、
+// 併せてそのタグの中間テーブルの行を物理削除する(Delete の一括版)。
+func (i *Tag) DeleteByUserId(
+	ctx context.Context,
+	uid string,
+) error {
+	// プリセットは user_id='' で全ユーザー共通のため、空のIDで消しにいかせない。
+	// 呼び出し側の取り違えでプリセットが全消しになるのを防ぐ。
+	if uid == "" {
+		return nil
+	}
+
+	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
+		// 中間テーブルを先に消す。tags を論理削除した後だと、GORM が付ける
+		// deleted_at IS NULL でサブクエリが0件になり、中間テーブルの行が消し残る。
+		//
+		// サブクエリは毎回 tx.Model(...) から組み立てる。GORM の *gorm.DB は
+		// 条件を積んでいくため、同じインスタンスを使い回すと条件が混ざる。
+		tagIds := func() *gorm.DB {
+			return tx.Model(&model.Tag{}).Select("id").Where("user_id = ?", uid)
+		}
+
+		for _, link := range []any{
+			&model.DeckTag{},
+			&model.DeckCodeTag{},
+			&model.MatchTag{},
+			&model.RecordTag{},
+		} {
+			if err := tx.Where("tag_id IN (?)", tagIds()).Delete(link).Error; err != nil {
+				logError(ctx, err)
+				return err
+			}
+		}
+
+		if err := tx.Where("user_id = ?", uid).Delete(&model.Tag{}).Error; err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		return nil
 	})
 }
 
@@ -192,6 +245,14 @@ func (i *Tag) ReplaceMatchTags(
 	tagIds []string,
 ) error {
 	return i.replaceTags(ctx, matchTagLink, matchId, tagIds)
+}
+
+func (i *Tag) ReplaceRecordTags(
+	ctx context.Context,
+	recordId string,
+	tagIds []string,
+) error {
+	return i.replaceTags(ctx, recordTagLink, recordId, tagIds)
 }
 
 // replaceTags は ownerId が持つ中間テーブルの行を tagIds の集合に一致させる。
@@ -237,14 +298,16 @@ func (i *Tag) replaceTags(
 
 // tagJoinOwner はタグと中間テーブルを JOIN した結果を受けるための構造体。
 type tagJoinOwner struct {
-	OwnerId   string
-	ID        string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	UserId    string
-	Name      string
-	Color     string
-	PresetFlg bool
+	OwnerId        string
+	ID             string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	UserId         string
+	Name           string
+	Color          string
+	PresetFlg      bool
+	PresetCategory string
+	TextColor      string
 }
 
 // findTagsByOwnerIds は中間テーブル(link)経由で、複数の付与先のタグを1クエリでまとめて取得し、
@@ -266,7 +329,9 @@ func findTagsByOwnerIds(
 		Select(
 			link.name+"."+link.ownerColumn+" AS owner_id, "+
 				"tags.id AS id, tags.created_at AS created_at, tags.updated_at AS updated_at, "+
-				"tags.user_id AS user_id, tags.name AS name, tags.color AS color, tags.preset_flg AS preset_flg",
+				"tags.user_id AS user_id, tags.name AS name, tags.color AS color, "+
+				"tags.preset_flg AS preset_flg, tags.preset_category AS preset_category, "+
+				"tags.text_color AS text_color",
 		).
 		Joins("JOIN tags ON tags.id = "+link.name+".tag_id AND tags.deleted_at IS NULL").
 		Where(link.name+"."+link.ownerColumn+" IN ?", ownerIds).
@@ -281,7 +346,7 @@ func findTagsByOwnerIds(
 	for _, r := range rows {
 		ret[r.OwnerId] = append(
 			ret[r.OwnerId],
-			entity.NewTag(r.ID, r.CreatedAt, r.UpdatedAt, r.UserId, r.Name, r.Color, r.PresetFlg),
+			entity.NewTag(r.ID, r.CreatedAt, r.UpdatedAt, r.UserId, r.Name, r.Color, r.PresetFlg, r.PresetCategory, r.TextColor),
 		)
 	}
 
@@ -311,4 +376,12 @@ func findTagsByMatchIds(
 	matchIds []string,
 ) (map[string][]*entity.Tag, error) {
 	return findTagsByOwnerIds(ctx, db, matchTagLink, matchIds)
+}
+
+func findTagsByRecordIds(
+	ctx context.Context,
+	db *gorm.DB,
+	recordIds []string,
+) (map[string][]*entity.Tag, error) {
+	return findTagsByOwnerIds(ctx, db, recordTagLink, recordIds)
 }

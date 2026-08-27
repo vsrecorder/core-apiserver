@@ -192,6 +192,7 @@ func newRecordUsecaseForTest(
 	return NewRecord(
 		testLogger(),
 		repo,
+		stubTagRepository{},
 		badgeEval,
 		designationEval,
 		&stubTonamelEventFetcher{},
@@ -250,7 +251,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		}}
 		store := &stubTonamelEventStore{} // 事前に保存済みのものは無い
 
-		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -270,7 +271,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 			"61ozP": {ID: "61ozP"}, // 既に保存済み
 		}}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -286,7 +287,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		fetcher := &stubTonamelEventFetcher{}
 		store := &stubTonamelEventStore{}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
 		param := NewRecordParam(1, "", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -303,7 +304,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		fetcher := &stubTonamelEventFetcher{err: errors.New("")} // tonamel.com取得に失敗
 		store := &stubTonamelEventStore{}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", time.Time{}, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -952,6 +953,9 @@ func test_RecordUsecase_Update(t *testing.T, mockRepository *mock_repository.Moc
 		ret, err := usecase.Update(context.Background(), id, param)
 
 		require.NoError(t, err)
+		// タグ未指定の更新では付与タグが空になる(record_tags もクリアされる)。
+		// Save の後にセットされるため、Save の引数照合には影響しない。
+		record.Tags = []*entity.Tag{}
 		require.Equal(t, ret, record)
 	})
 

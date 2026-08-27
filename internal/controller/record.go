@@ -204,6 +204,8 @@ func (c *Record) Create(ctx *gin.Context) {
 		req.TCGMeisterURL,
 		req.Memo,
 	)
+	// TagIds は NewRecordParam の引数に含めていないため、ここで直接設定する。
+	param.TagIds = req.TagIds
 
 	record, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
@@ -242,6 +244,8 @@ func (c *Record) Update(ctx *gin.Context) {
 		req.TCGMeisterURL,
 		req.Memo,
 	)
+	// TagIds は NewRecordParam の引数に含めていないため、ここで直接設定する。
+	param.TagIds = req.TagIds
 
 	record, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {

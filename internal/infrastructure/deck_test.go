@@ -73,7 +73,8 @@ var deckPokemonSpriteColumns = []string{"deck_id", "position", "pokemon_sprite_i
 
 // deckTagColumns は findTagsByDeckIds が deck_tags と tags を JOIN して取り出すカラム。
 var deckTagColumns = []string{
-	"owner_id", "id", "created_at", "updated_at", "user_id", "name", "color", "preset_flg",
+	"owner_id", "id", "created_at", "updated_at", "user_id", "name", "color", "preset_flg", "preset_category",
+	"text_color",
 }
 
 // expectDeckTagsQuery は各Findの後に走るタグのバッチ取得(findTagsByDeckIds)に対する
@@ -656,8 +657,10 @@ func test_DeckInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 }
 
 func test_DeckInfrastructure_DeleteByUserId(t *testing.T) {
-	// 退会時の一括削除。デッキの件数によらずクエリは3文で、
+	// 退会時の一括削除。デッキの件数によらずクエリの本数は一定で、
 	// アーカイブ済みのデッキも対象になる(archived_at を条件に入れない)。
+	// デッキに紐づくもの(コード・タグ・スプライト・お気に入り)を先に消し、
+	// 最後にデッキ本体を消す。
 	t.Run("正常系_デッキコードとデッキをまとめて削除する", func(t *testing.T) {
 		r, mock, err := setup4DeckInfrastructure()
 		require.NoError(t, err)
@@ -666,6 +669,13 @@ func test_DeckInfrastructure_DeleteByUserId(t *testing.T) {
 
 		mock.ExpectBegin()
 
+		// デッキコードのタグは、デッキコードを論理削除する前に消す
+		mock.ExpectExec(regexp.QuoteMeta(
+			`DELETE FROM "deck_code_tags" WHERE deck_code_id IN (SELECT "id" FROM "deck_codes" WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $1 AND "decks"."deleted_at" IS NULL) AND "deck_codes"."deleted_at" IS NULL)`,
+		)).WithArgs(
+			uid,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
 		mock.ExpectExec(regexp.QuoteMeta(
 			`UPDATE "deck_codes" SET "deleted_at"=$1 WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $2 AND "decks"."deleted_at" IS NULL) AND "deck_codes"."deleted_at" IS NULL`,
 		)).WithArgs(
@@ -673,7 +683,19 @@ func test_DeckInfrastructure_DeleteByUserId(t *testing.T) {
 			uid,
 		).WillReturnResult(sqlmock.NewResult(0, 2))
 
-		// お気に入りは論理削除ではなく実削除する
+		// タグ・スプライト・お気に入りは論理削除ではなく実削除する
+		mock.ExpectExec(regexp.QuoteMeta(
+			`DELETE FROM "deck_tags" WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $1 AND "decks"."deleted_at" IS NULL)`,
+		)).WithArgs(
+			uid,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectExec(regexp.QuoteMeta(
+			`DELETE FROM "deck_pokemon_sprites" WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $1 AND "decks"."deleted_at" IS NULL)`,
+		)).WithArgs(
+			uid,
+		).WillReturnResult(sqlmock.NewResult(0, 2))
+
 		mock.ExpectExec(regexp.QuoteMeta(
 			`DELETE FROM "user_favorite_decks" WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $1 AND "decks"."deleted_at" IS NULL)`,
 		)).WithArgs(

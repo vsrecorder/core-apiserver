@@ -48,4 +48,11 @@ type NotificationInterface interface {
 		ctx context.Context,
 		userId string,
 	) error
+
+	// DeleteByUserId は退会時に、そのユーザの通知をまとめて削除する。
+	// このテーブルは論理削除を持たないため行ごと物理削除する。
+	DeleteByUserId(
+		ctx context.Context,
+		uid string,
+	) error
 }

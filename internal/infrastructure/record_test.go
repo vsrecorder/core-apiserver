@@ -33,6 +33,15 @@ func setupMock4RecordInfrastructure() (*gorm.DB, sqlmock.Sqlmock, error) {
 	return db, mock, err
 }
 
+// expectRecordTagsQuery は各Recordの読み込み後に走るタグのバッチ取得(findTagsByRecordIds)に
+// 対する期待を空の結果で登録する。deckTagColumns(JOIN出力カラム)を流用する。
+// タグSQLの正しさは統合テストが実DBで検証するため、ここではクエリが走ることだけを押さえる。
+// 0件のFindではタグ取得自体を省くため(newRecordEntitiesWithTags)、そこでは登録しない。
+func expectRecordTagsQuery(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(`FROM "record_tags"`)).
+		WillReturnRows(sqlmock.NewRows(deckTagColumns))
+}
+
 func setup4RecordInfrastructure() (repository.RecordInterface, sqlmock.Sqlmock, error) {
 	db, mock, err := setupMock4RecordInfrastructure()
 
@@ -115,6 +124,8 @@ func test_RecordInfrastructure_Find(t *testing.T) {
 			limit,
 			offset,
 		).WillReturnRows(rows)
+
+		expectRecordTagsQuery(mock)
 
 		records, err := r.Find(context.Background(), limit, offset, eventType)
 
@@ -206,6 +217,8 @@ func test_RecordInfrastructure_FindOnCursor(t *testing.T) {
 			limit,
 		).WillReturnRows(rows)
 
+		expectRecordTagsQuery(mock)
+
 		records, err := r.FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType)
 
 		require.NoError(t, err)
@@ -288,6 +301,8 @@ func test_RecordInfrastructure_FindById(t *testing.T) {
 		1,
 	).WillReturnRows(rows)
 
+	expectRecordTagsQuery(mock)
+
 	record, err := r.FindById(context.Background(), "01HD7Y3K8D6FDHMHTZ2GT41TN2")
 
 	require.NoError(t, err)
@@ -340,6 +355,8 @@ func test_RecordInfrastructure_FindByUserId(t *testing.T) {
 		limit,
 		offset,
 	).WillReturnRows(rows)
+
+	expectRecordTagsQuery(mock)
 
 	records, err := r.FindByUserId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, offset, eventType)
 
@@ -399,6 +416,8 @@ func test_RecordInfrastructure_FindByUserIdOnCursor(t *testing.T) {
 			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 			limit,
 		).WillReturnRows(rows)
+
+		expectRecordTagsQuery(mock)
 
 		records, err := r.FindByUserIdOnCursor(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", limit, cursorEventDate, cursorCreatedAt, eventType)
 
@@ -487,6 +506,8 @@ func test_RecordInfrastructure_FindByOfficialEventId(t *testing.T) {
 		offset,
 	).WillReturnRows(rows)
 
+	expectRecordTagsQuery(mock)
+
 	records, err := r.FindByOfficialEventId(context.Background(), 236790, limit, offset)
 
 	require.NoError(t, err)
@@ -540,6 +561,8 @@ func test_RecordInfrastructure_FindByTonamelEventId(t *testing.T) {
 		limit,
 		offset,
 	).WillReturnRows(rows)
+
+	expectRecordTagsQuery(mock)
 
 	records, err := r.FindByTonamelEventId(context.Background(), "YFUVY", limit, offset)
 
@@ -595,6 +618,8 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 		offset,
 	).WillReturnRows(rows)
 
+	expectRecordTagsQuery(mock)
+
 	records, err := r.FindByDeckId(context.Background(), "01JHAKSVXZ4XW91TDQ8EDP1N8P", limit, offset, eventType)
 
 	require.NoError(t, err)
@@ -612,23 +637,50 @@ func test_RecordInfrastructure_DeleteByUserId(t *testing.T) {
 
 	mock.ExpectBegin()
 
-	// 対局: このユーザの記録に紐づく対戦結果のものを、2段のサブクエリで指定する
+	// 対戦結果に紐づく中間テーブル。対戦結果は「自分が作ったもの」と
+	// 「自分の記録に紐づくもの」の両方をサブクエリで拾う。
 	mock.ExpectExec(regexp.QuoteMeta(
-		`UPDATE "games" SET "deleted_at"=$1 WHERE match_id IN (SELECT "id" FROM "matches" WHERE record_id IN (SELECT "id" FROM "records" WHERE user_id = $2 AND "records"."deleted_at" IS NULL) AND "matches"."deleted_at" IS NULL) AND "games"."deleted_at" IS NULL`,
+		`DELETE FROM "match_pokemon_sprites" WHERE match_id IN (SELECT "id" FROM "matches" WHERE (user_id = $1 OR record_id IN (SELECT "id" FROM "records" WHERE user_id = $2 AND "records"."deleted_at" IS NULL)) AND "matches"."deleted_at" IS NULL)`,
 	)).WithArgs(
-		AnyTime{},
 		uid,
-	).WillReturnResult(sqlmock.NewResult(0, 3))
-
-	mock.ExpectExec(regexp.QuoteMeta(
-		`UPDATE "matches" SET "deleted_at"=$1 WHERE record_id IN (SELECT "id" FROM "records" WHERE user_id = $2 AND "records"."deleted_at" IS NULL) AND "matches"."deleted_at" IS NULL`,
-	)).WithArgs(
-		AnyTime{},
 		uid,
 	).WillReturnResult(sqlmock.NewResult(0, 2))
 
 	mock.ExpectExec(regexp.QuoteMeta(
-		`UPDATE "unofficial_events" SET "deleted_at"=$1 WHERE id IN (SELECT "unofficial_event_id" FROM "records" WHERE (user_id = $2 AND unofficial_event_id IS NOT NULL AND unofficial_event_id != '') AND "records"."deleted_at" IS NULL) AND "unofficial_events"."deleted_at" IS NULL`,
+		`DELETE FROM "match_tags" WHERE match_id IN (SELECT "id" FROM "matches" WHERE (user_id = $1 OR record_id IN (SELECT "id" FROM "records" WHERE user_id = $2 AND "records"."deleted_at" IS NULL)) AND "matches"."deleted_at" IS NULL)`,
+	)).WithArgs(
+		uid,
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	// 記録に紐づく中間テーブル
+	mock.ExpectExec(regexp.QuoteMeta(
+		`DELETE FROM "record_tags" WHERE record_id IN (SELECT "id" FROM "records" WHERE user_id = $1 AND "records"."deleted_at" IS NULL)`,
+	)).WithArgs(
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	// 対局
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "games" SET "deleted_at"=$1 WHERE (user_id = $2 OR match_id IN (SELECT "id" FROM "matches" WHERE (user_id = $3 OR record_id IN (SELECT "id" FROM "records" WHERE user_id = $4 AND "records"."deleted_at" IS NULL)) AND "matches"."deleted_at" IS NULL)) AND "games"."deleted_at" IS NULL`,
+	)).WithArgs(
+		AnyTime{},
+		uid,
+		uid,
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 3))
+
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "matches" SET "deleted_at"=$1 WHERE (user_id = $2 OR record_id IN (SELECT "id" FROM "records" WHERE user_id = $3 AND "records"."deleted_at" IS NULL)) AND "matches"."deleted_at" IS NULL`,
+	)).WithArgs(
+		AnyTime{},
+		uid,
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 2))
+
+	// 自由形式イベントは、記録から参照されていないものも含めて user_id で消す
+	mock.ExpectExec(regexp.QuoteMeta(
+		`UPDATE "unofficial_events" SET "deleted_at"=$1 WHERE user_id = $2 AND "unofficial_events"."deleted_at" IS NULL`,
 	)).WithArgs(
 		AnyTime{},
 		uid,

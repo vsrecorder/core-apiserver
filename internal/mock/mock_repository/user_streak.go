@@ -41,6 +41,20 @@ func (m *MockUserStreakInterface) EXPECT() *MockUserStreakInterfaceMockRecorder 
 	return m.recorder
 }
 
+// DeleteByUserId mocks base method.
+func (m *MockUserStreakInterface) DeleteByUserId(ctx context.Context, uid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUserId", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUserId indicates an expected call of DeleteByUserId.
+func (mr *MockUserStreakInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockUserStreakInterface)(nil).DeleteByUserId), ctx, uid)
+}
+
 // FindByUserId mocks base method.
 func (m *MockUserStreakInterface) FindByUserId(ctx context.Context, userId string) (*entity.UserStreak, error) {
 	m.ctrl.T.Helper()

@@ -26,6 +26,10 @@ type Record struct {
 	// (称号判定のasOf集計で使う。usecase.Record.Create/Updateが設定する)。
 	// nil = 未設定。
 	DeckRegisteredAt *time.Time
+	// Tags は付与されたタグ。読み込み時にインフラ層が詰める。
+	// 付与の書き込みは TagRepository.ReplaceRecordTags が担うため、
+	// NewRecord のコンストラクタ引数には含めない(deck / match の Tags と同じ扱い)。
+	Tags []*Tag
 }
 
 func NewRecord(

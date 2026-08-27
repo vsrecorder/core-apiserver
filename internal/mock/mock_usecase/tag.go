@@ -87,18 +87,18 @@ func (mr *MockTagInterfaceMockRecorder) FindByUserId(ctx, uid any) *gomock.Call 
 }
 
 // FindPresets mocks base method.
-func (m *MockTagInterface) FindPresets(ctx context.Context) ([]*entity.Tag, error) {
+func (m *MockTagInterface) FindPresets(ctx context.Context, category string) ([]*entity.Tag, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindPresets", ctx)
+	ret := m.ctrl.Call(m, "FindPresets", ctx, category)
 	ret0, _ := ret[0].([]*entity.Tag)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindPresets indicates an expected call of FindPresets.
-func (mr *MockTagInterfaceMockRecorder) FindPresets(ctx any) *gomock.Call {
+func (mr *MockTagInterfaceMockRecorder) FindPresets(ctx, category any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPresets", reflect.TypeOf((*MockTagInterface)(nil).FindPresets), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPresets", reflect.TypeOf((*MockTagInterface)(nil).FindPresets), ctx, category)
 }
 
 // Update mocks base method.

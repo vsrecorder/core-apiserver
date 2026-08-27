@@ -16,6 +16,7 @@ func newTagResponses(tags []*entity.Tag) []*dto.TagResponse {
 			Name:      tag.Name,
 			Color:     tag.Color,
 			PresetFlg: tag.PresetFlg,
+			TextColor: tag.TextColor,
 		})
 	}
 
@@ -33,6 +34,7 @@ func NewTagGetResponse(
 			Name:      tag.Name,
 			Color:     tag.Color,
 			PresetFlg: tag.PresetFlg,
+			TextColor: tag.TextColor,
 		})
 	}
 
@@ -49,6 +51,7 @@ func NewTagCreateResponse(
 			Name:      tag.Name,
 			Color:     tag.Color,
 			PresetFlg: tag.PresetFlg,
+			TextColor: tag.TextColor,
 		},
 	}
 }
@@ -63,6 +66,7 @@ func NewTagUpdateResponse(
 			Name:      tag.Name,
 			Color:     tag.Color,
 			PresetFlg: tag.PresetFlg,
+			TextColor: tag.TextColor,
 		},
 	}
 }

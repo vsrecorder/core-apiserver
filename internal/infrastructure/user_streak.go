@@ -63,3 +63,17 @@ func (i *UserStreak) Save(
 
 	return nil
 }
+
+// DeleteByUserId は退会時に、そのユーザのストリーク状態を行ごと削除する。
+// このテーブルは論理削除を持たないため、残すと参照先の無い行になる。
+func (i *UserStreak) DeleteByUserId(
+	ctx context.Context,
+	uid string,
+) error {
+	if tx := dbFromContext(ctx, i.db).Where("user_id = ?", uid).Delete(&model.UserStreak{}); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return tx.Error
+	}
+
+	return nil
+}

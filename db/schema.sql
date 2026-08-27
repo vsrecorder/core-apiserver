@@ -197,7 +197,7 @@ CREATE INDEX idx_deck_codes_user_id ON deck_codes(user_id);
 CREATE INDEX idx_deck_codes_deck_id_created_at ON deck_codes(deck_id, created_at DESC, updated_at DESC);
 
 -- タグマスタ。ユーザーごとにタグの名前空間を持つ(あるユーザーの「アグロ」と
--- 別ユーザーの「アグロ」は別レコード)。付与先(デッキ/デッキコード、将来は記録/対戦結果)は
+-- 別ユーザーの「アグロ」は別レコード)。付与先(デッキ/デッキコード/記録/対戦結果)は
 -- エンティティごとの中間テーブルで表す。単一のポリモーフィック中間テーブルにしないのは、
 -- 参照先IDの型が混在してFK制約を張れず、既存の *_pokemon_sprites の規約に反するため。
 CREATE TABLE tags (
@@ -212,7 +212,17 @@ CREATE TABLE tags (
     -- (例: ACE SPECカード)。プリセットは user_id='' を持ち特定ユーザーに属さない。
     -- 誰でも自分のデッキ/デッキコードに付与できるが、編集・削除はできない
     -- (投入は cmd/backfill-acespec-tags が担う)。
-    preset_flg  BOOLEAN NOT NULL DEFAULT false
+    preset_flg  BOOLEAN NOT NULL DEFAULT false,
+    -- プリセットの群。付与先ごとに出し分けるために使う
+    -- ('acespec'=ACE SPECカード / 'placement'=大会順位)。
+    -- ACE SPECはデッキ・デッキコード・対戦結果に、順位は記録に出す。
+    -- ユーザー個別タグ(preset_flg=false)は常に空文字。
+    preset_category VARCHAR(16) NOT NULL DEFAULT '',
+    -- '#RRGGBB' 任意。color の上に乗せる文字色で、配色を指定したいプリセット用。
+    -- 空なら表示側が color の明るさから白/黒を選ぶ(webapp の utils/tagColor.ts)。
+    -- 大会順位のプリセットだけは、参照元のシティリーグ入賞バッジと寸分違わず揃えたいので
+    -- 自動判定に任せず明示する。
+    text_color      VARCHAR(7)  NOT NULL DEFAULT ''
 );
 
 CREATE INDEX idx_tags_created_at ON tags(created_at);
@@ -222,8 +232,27 @@ CREATE INDEX idx_tags_user_id    ON tags(user_id);
 -- 同名のタグを消して作り直せるようにする。
 -- プリセットは user_id='' を共有するため、この索引がプリセット名の重複も一意に防ぐ。
 CREATE UNIQUE INDEX unique_tags_user_id_name ON tags (user_id, name) WHERE deleted_at IS NULL;
--- プリセットタグ一覧(GET /tags/presets)の取得用。名前順で少数を引く。
-CREATE INDEX idx_tags_preset ON tags(name) WHERE preset_flg = true AND deleted_at IS NULL;
+-- プリセットタグ一覧(GET /tags/presets)の取得用。群で絞り、id 昇順(=作成順)で少数を引く。
+CREATE INDEX idx_tags_preset ON tags(preset_category, id) WHERE preset_flg = true AND deleted_at IS NULL;
+
+-- 大会順位のプリセットタグ。記録(record)へ付けて「優勝した記録」を後から辿れるようにする。
+-- ACE SPEC と違い実データから導けない固定のマスタなので、regulations 等と同じくここで投入する。
+-- id は生成順に単調増加するULID(FindPresets が id 昇順で引くため、この並びが表示順になる)。
+--
+-- 名前の絵文字はシティリーグ入賞バッジ(webapp の utils/cityleagueRank.ts)と揃える。
+-- 上位3つだけメダルを付け、ベスト8以下は付けない。同じ「優勝」がサービス内で
+-- 別の見え方にならないようにするため、絵文字は表示側で足さず名前そのものに含める。
+-- 配色はシティリーグ入賞バッジ(webapp の utils/cityleagueRank.ts の cityleagueRankBadgeClass)と
+-- 背景・文字色とも同じ値。Tailwind v4 のパレットを sRGB に落としたもので、順に
+-- amber-400+amber-950 / zinc-300+zinc-800 / orange-400+orange-950 / blue-500+白 / emerald-500+白。
+-- ベスト32 は入賞バッジ側に対応が無いため、上の5色と混ざらない violet-500+白 を当てている。
+INSERT INTO tags (id, created_at, updated_at, user_id, name, color, preset_flg, preset_category, text_color) VALUES
+    ('01M11HEQG0XAGJ76V8SSGJ8E19', '2026-08-27 12:00:00', '2026-08-27 12:00:00', '', '🥇 優勝',   '#FFB900', true, 'placement', '#461901'),
+    ('01M11HEQG0XAGJ76V8ST8Z633W', '2026-08-27 12:00:00', '2026-08-27 12:00:00', '', '🥈 準優勝', '#D4D4D8', true, 'placement', '#27272A'),
+    ('01M11HEQG0XAGJ76V8SY7H9KWQ', '2026-08-27 12:00:00', '2026-08-27 12:00:00', '', '🥉 ベスト4', '#FF8904', true, 'placement', '#441306'),
+    ('01M11HEQG0XAGJ76V8SZQA07ZQ', '2026-08-27 12:00:00', '2026-08-27 12:00:00', '', 'ベスト8',    '#2B7FFF', true, 'placement', '#FFFFFF'),
+    ('01M11HEQG0XAGJ76V8T3CC63GA', '2026-08-27 12:00:00', '2026-08-27 12:00:00', '', 'ベスト16',   '#00BC7D', true, 'placement', '#FFFFFF'),
+    ('01M11HEQG0XAGJ76V8T3J6KC2X', '2026-08-27 12:00:00', '2026-08-27 12:00:00', '', 'ベスト32',   '#8E51FF', true, 'placement', '#FFFFFF');
 
 -- デッキ ⇔ タグ。中間テーブルはソフトデリート列を持たず、関連の解除は行の物理削除で表す
 -- (deck_pokemon_sprites と同じ規約)。
@@ -311,6 +340,21 @@ CREATE TABLE records (
 CREATE INDEX idx_records_created_at ON records(created_at);
 CREATE INDEX idx_records_deleted_at ON records(deleted_at);
 CREATE INDEX idx_records_user_id ON records(user_id);
+
+-- 記録(record) ⇔ タグ。deck_tags / match_tags と同じ規約
+-- (中間テーブルはソフトデリート列を持たず、関連の解除は行の物理削除で表す)。
+-- FK参照先の records を定義した後に作成する必要があるため、ここに置く。
+CREATE TABLE record_tags (
+    record_id VARCHAR(26) NOT NULL,
+    tag_id    VARCHAR(26) NOT NULL,
+    -- position は付与した順(1始まり)。表示は position 昇順(1が先頭)。ReplaceRecordTags が採番する。
+    position  SMALLINT NOT NULL DEFAULT 1,
+    PRIMARY KEY (record_id, tag_id),
+    FOREIGN KEY (record_id) REFERENCES records(id),
+    FOREIGN KEY (tag_id)    REFERENCES tags(id)
+);
+
+CREATE INDEX idx_record_tags_tag_id ON record_tags(tag_id);
 
 -- 称号判定(designation_stats.go)の高速化用インデックス。records には user_id 索引しか無く、
 -- official_event_id / event_date が未索引だったため、以下が records の全件走査になっていた:
@@ -1016,6 +1060,7 @@ GRANT SELECT ON tags                    TO grafana;
 GRANT SELECT ON deck_tags               TO grafana;
 GRANT SELECT ON deck_code_tags          TO grafana;
 GRANT SELECT ON match_tags              TO grafana;
+GRANT SELECT ON record_tags             TO grafana;
 
 GRANT SELECT ON championship_series     TO grafana;
 GRANT SELECT ON standard_regulations    TO grafana;

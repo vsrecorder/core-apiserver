@@ -46,7 +46,7 @@ func (stubTagRepository) FindByUserId(ctx context.Context, uid string) ([]*entit
 	return nil, nil
 }
 
-func (stubTagRepository) FindPresets(ctx context.Context) ([]*entity.Tag, error) {
+func (stubTagRepository) FindPresets(ctx context.Context, category string) ([]*entity.Tag, error) {
 	return nil, nil
 }
 
@@ -79,6 +79,14 @@ func (stubTagRepository) ReplaceDeckCodeTags(ctx context.Context, deckCodeId str
 }
 
 func (stubTagRepository) ReplaceMatchTags(ctx context.Context, matchId string, tagIds []string) error {
+	return nil
+}
+
+func (stubTagRepository) ReplaceRecordTags(ctx context.Context, recordId string, tagIds []string) error {
+	return nil
+}
+
+func (stubTagRepository) DeleteByUserId(ctx context.Context, uid string) error {
 	return nil
 }
 
@@ -1051,7 +1059,7 @@ func TestDeckUsecaseCreateAppliesTagsToDeckCode(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	deckCode := "5dbFbk-uBwjqP-VVk5Vv"
 	now := time.Now().Local()
-	tag := entity.NewTag("tag-1", now, now, uid, "アグロ", "", false)
+	tag := entity.NewTag("tag-1", now, now, uid, "アグロ", "", false, "", "")
 
 	// デッキコードのアップロードとデッキ本体の保存
 	mockDeckAsset.EXPECT().UploadDeckResultHTML(context.Background(), deckCode).Return(nil)

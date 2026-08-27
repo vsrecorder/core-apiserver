@@ -23,6 +23,14 @@ func isValidTagColor(s string) bool {
 	return tagColorPattern.MatchString(s)
 }
 
+// TagGetPresetsMiddleware は GET /tags/presets の category クエリ(プリセットの群)を
+// 解釈して context へ入れる。未定義の値は空文字(全プリセット)へ丸めるため 400 は返さない。
+func TagGetPresetsMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		helper.SetTagPresetCategory(ctx, helper.ParseQueryTagPresetCategory(ctx))
+	}
+}
+
 func TagCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		req := dto.TagCreateRequest{}
@@ -67,7 +75,8 @@ func TagUpdateMiddleware() gin.HandlerFunc {
 	}
 }
 
-// validateTagIds はデッキ/デッキコードのリクエストに埋め込まれた tag_ids を検証する。
+// validateTagIds は付与先(デッキ/デッキコード/記録/対戦結果)のリクエストに
+// 埋め込まれた tag_ids を検証する。
 // 個々のIDの実在・所有権チェックは usecase 層(所有者で絞り込み)に任せ、ここでは
 // 件数と各IDの長さ(ULID=26文字)だけを確認して極端な値を弾く。
 func validateTagIds(tagIds []string) bool {

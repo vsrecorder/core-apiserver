@@ -60,6 +60,11 @@ func GetQueryEventType(ctx *gin.Context) string {
 	return ctx.Query("event_type")
 }
 
+// GetQueryTagPresetCategory は GET /tags/presets の絞り込み(プリセットの群)。
+func GetQueryTagPresetCategory(ctx *gin.Context) string {
+	return ctx.Query("category")
+}
+
 func GetQueryArchived(ctx *gin.Context) string {
 	return ctx.Query("archived")
 }

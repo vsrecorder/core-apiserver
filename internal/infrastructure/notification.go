@@ -176,3 +176,17 @@ func (i *Notification) MarkAllAsReadByUserId(
 
 	return nil
 }
+
+// DeleteByUserId は退会時に、そのユーザの通知を行ごと削除する。
+// このテーブルは論理削除を持たないため、残すと参照先の無い行になる。
+func (i *Notification) DeleteByUserId(
+	ctx context.Context,
+	uid string,
+) error {
+	if tx := dbFromContext(ctx, i.db).Where("user_id = ?", uid).Delete(&model.Notification{}); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return tx.Error
+	}
+
+	return nil
+}

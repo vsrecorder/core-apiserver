@@ -55,6 +55,20 @@ func (mr *MockTagInterfaceMockRecorder) Delete(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockTagInterface)(nil).Delete), ctx, id)
 }
 
+// DeleteByUserId mocks base method.
+func (m *MockTagInterface) DeleteByUserId(ctx context.Context, uid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUserId", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUserId indicates an expected call of DeleteByUserId.
+func (mr *MockTagInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockTagInterface)(nil).DeleteByUserId), ctx, uid)
+}
+
 // FindAttachableByIds mocks base method.
 func (m *MockTagInterface) FindAttachableByIds(ctx context.Context, ids []string, uid string) ([]*entity.Tag, error) {
 	m.ctrl.T.Helper()
@@ -116,18 +130,18 @@ func (mr *MockTagInterfaceMockRecorder) FindByUserIdAndName(ctx, uid, name any) 
 }
 
 // FindPresets mocks base method.
-func (m *MockTagInterface) FindPresets(ctx context.Context) ([]*entity.Tag, error) {
+func (m *MockTagInterface) FindPresets(ctx context.Context, category string) ([]*entity.Tag, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindPresets", ctx)
+	ret := m.ctrl.Call(m, "FindPresets", ctx, category)
 	ret0, _ := ret[0].([]*entity.Tag)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindPresets indicates an expected call of FindPresets.
-func (mr *MockTagInterfaceMockRecorder) FindPresets(ctx any) *gomock.Call {
+func (mr *MockTagInterfaceMockRecorder) FindPresets(ctx, category any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPresets", reflect.TypeOf((*MockTagInterface)(nil).FindPresets), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPresets", reflect.TypeOf((*MockTagInterface)(nil).FindPresets), ctx, category)
 }
 
 // ReplaceDeckCodeTags mocks base method.
@@ -170,6 +184,20 @@ func (m *MockTagInterface) ReplaceMatchTags(ctx context.Context, matchId string,
 func (mr *MockTagInterfaceMockRecorder) ReplaceMatchTags(ctx, matchId, tagIds any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceMatchTags", reflect.TypeOf((*MockTagInterface)(nil).ReplaceMatchTags), ctx, matchId, tagIds)
+}
+
+// ReplaceRecordTags mocks base method.
+func (m *MockTagInterface) ReplaceRecordTags(ctx context.Context, recordId string, tagIds []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplaceRecordTags", ctx, recordId, tagIds)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplaceRecordTags indicates an expected call of ReplaceRecordTags.
+func (mr *MockTagInterfaceMockRecorder) ReplaceRecordTags(ctx, recordId, tagIds any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceRecordTags", reflect.TypeOf((*MockTagInterface)(nil).ReplaceRecordTags), ctx, recordId, tagIds)
 }
 
 // Save mocks base method.

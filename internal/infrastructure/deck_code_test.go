@@ -62,8 +62,14 @@ func test_DeckCodeInfrastructure_DeleteByUserId(t *testing.T) {
 
 	uid := "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
 
-	// GORM は単発の書き込みも既定でトランザクションに包む
 	mock.ExpectBegin()
+
+	// 付与タグは、デッキコードを論理削除する前に消す
+	mock.ExpectExec(regexp.QuoteMeta(
+		`DELETE FROM "deck_code_tags" WHERE deck_code_id IN (SELECT "id" FROM "deck_codes" WHERE user_id = $1 AND "deck_codes"."deleted_at" IS NULL)`,
+	)).WithArgs(
+		uid,
+	).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectExec(regexp.QuoteMeta(
 		`UPDATE "deck_codes" SET "deleted_at"=$1 WHERE user_id = $2 AND "deck_codes"."deleted_at" IS NULL`,

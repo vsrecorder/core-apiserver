@@ -66,3 +66,17 @@ func (i *UserPlayer) Delete(
 
 	return nil
 }
+
+// DeleteByUserId は退会時に、そのユーザのプレイヤーID紐付けをまとめて論理削除する。
+// 有効な行が2件以上あっても消し残さないよう、1件ずつではなく user_id でまとめて消す。
+func (i *UserPlayer) DeleteByUserId(
+	ctx context.Context,
+	uid string,
+) error {
+	if tx := dbFromContext(ctx, i.db).Where("user_id = ?", uid).Delete(&model.UserPlayer{}); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return tx.Error
+	}
+
+	return nil
+}

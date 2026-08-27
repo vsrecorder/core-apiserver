@@ -14,4 +14,11 @@ type UserDailyActivityInterface interface {
 		ctx context.Context,
 		entities []*entity.UserDailyActivity,
 	) error
+
+	// DeleteByUserId は退会時に、そのユーザの日別アクティビティをまとめて削除する。
+	// このテーブルは論理削除を持たないため行ごと物理削除する。
+	DeleteByUserId(
+		ctx context.Context,
+		uid string,
+	) error
 }

@@ -24,6 +24,10 @@ type RecordParam struct {
 	regulationId      uint
 	tcgMeisterURL     string
 	memo              string
+	// TagIds は付与するタグID。NewRecordParam の引数には含めず、controller が
+	// param.TagIds に直接設定する(既存の NewRecordParam 呼び出しを壊さないため。
+	// MatchParam.TagIds と同じ扱い)。
+	TagIds []string
 }
 
 func NewRecordParam(
@@ -154,6 +158,7 @@ type RecordInterface interface {
 type Record struct {
 	logger                *slog.Logger
 	repository            repository.RecordInterface
+	tag                   repository.TagInterface
 	badgeEvaluation       BadgeEvaluationInterface
 	designationEvaluation DesignationEvaluationInterface
 	// tonamelEventRepo は tonamel.com から大会情報を取得する(HTTP)。
@@ -166,6 +171,7 @@ type Record struct {
 func NewRecord(
 	logger *slog.Logger,
 	repository repository.RecordInterface,
+	tag repository.TagInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	designationEvaluation DesignationEvaluationInterface,
 	tonamelEventRepo repository.TonamelEventInterface,
@@ -174,11 +180,38 @@ func NewRecord(
 	return &Record{
 		logger:                logger,
 		repository:            repository,
+		tag:                   tag,
 		badgeEvaluation:       badgeEvaluation,
 		designationEvaluation: designationEvaluation,
 		tonamelEventRepo:      tonamelEventRepo,
 		tonamelEventStore:     tonamelEventStore,
 	}
+}
+
+// syncRecordTags は記録について、userId が付与できる有効なタグ(自分のタグ or
+// プリセット)だけを残して record_tags を更新し、付与後のタグを返す。
+// 挙動は Match.syncMatchTags と同じ。
+func (u *Record) syncRecordTags(
+	ctx context.Context,
+	recordId string,
+	userId string,
+	tagIds []string,
+) ([]*entity.Tag, error) {
+	tags, err := u.tag.FindAttachableByIds(ctx, tagIds, userId)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	// FindAttachableByIds の戻り順は不定なので、付与順(tagIds)に整列してから採番する。
+	orderedTags, attachableTagIds := orderAttachableTagsByIds(tags, tagIds)
+
+	if err := u.tag.ReplaceRecordTags(ctx, recordId, attachableTagIds); err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	return orderedTags, nil
 }
 
 func (u *Record) FindById(
@@ -416,6 +449,14 @@ func (u *Record) Create(
 		return nil, err
 	}
 
+	// タグの付与は記録本体とは別テーブルのため Save とは分けて反映する。
+	tags, err := u.syncRecordTags(ctx, record.ID, param.userId, param.TagIds)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+	record.Tags = tags
+
 	// Tonamel記録なら、大会情報をこの時点で一度だけ取得してDBへ保存しておく。
 	// カレンダー等はこれを参照するだけで済み、表示のたびに外部サイトを引かずに済む。
 	u.persistTonamelEvent(ctx, param.tonamelEventId)
@@ -544,6 +585,14 @@ func (u *Record) Update(
 		logError(ctx, err)
 		return nil, err
 	}
+
+	// タグの付与を param.TagIds の集合に合わせて更新する。
+	tags, err := u.syncRecordTags(ctx, record.ID, param.userId, param.TagIds)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+	record.Tags = tags
 
 	// 編集で Tonamel記録に変わった/別の大会に付け替えられたケースに追随する。
 	// 既に保存済みの大会なら再取得しない(persistTonamelEvent 内で判定)。

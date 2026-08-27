@@ -45,6 +45,7 @@ func (c *Tag) RegisterRoute(relativePath string) {
 	r.GET(
 		"/presets",
 		authentication.RequiredAuthenticationMiddleware(),
+		validation.TagGetPresetsMiddleware(),
 		c.GetPresets,
 	)
 	r.POST(
@@ -82,10 +83,14 @@ func (c *Tag) GetByUID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// GetPresets は全ユーザー共通のプリセットタグ(ACE SPEC など)を返す。
+// GetPresets は全ユーザー共通のプリセットタグ(ACE SPEC・大会順位)を返す。
 // 認証は必須だがユーザーに依らず同じ結果を返す。
+// category クエリ(acespec / placement)でプリセットの群を絞れる。付与先ごとに
+// 見せたい群が違う(デッキ・対戦結果はACE SPEC、記録は大会順位)ため。
 func (c *Tag) GetPresets(ctx *gin.Context) {
-	tags, err := c.usecase.FindPresets(ctx.Request.Context())
+	category := helper.GetTagPresetCategory(ctx)
+
+	tags, err := c.usecase.FindPresets(ctx.Request.Context(), category)
 	if err != nil {
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return

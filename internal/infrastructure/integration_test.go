@@ -316,7 +316,14 @@ func TestIntegrationUserDailyActivityRepository(t *testing.T) {
 // 一括削除はサブクエリで対象を絞るため、条件を1つ間違えると他人のデータまで
 // 消えうる。sqlmockではSQL文字列しか見られないので、ここで実際の結果を検証する。
 func TestIntegrationDeleteByUserId(t *testing.T) {
-	db := setupIntegrationDB(t, "games", "matches", "records", "deck_codes", "decks", "unofficial_events")
+	db := setupIntegrationDB(t,
+		"match_pokemon_sprites", "deck_pokemon_sprites",
+		"match_tags", "record_tags", "deck_code_tags", "deck_tags", "tags",
+		"user_favorite_decks", "user_streaks", "user_daily_activities",
+		"user_badges", "user_environment_badges", "notifications", "users_players",
+		"games", "matches", "records", "deck_codes", "decks", "unofficial_events",
+		"pokemon_sprites",
+	)
 
 	const (
 		withdrawUid = "zor5SLfEfwfZ90yRVXzlxBEFARy2" // 退会するユーザ
@@ -349,22 +356,81 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 	// 退会者のデッキに対して他人が作ったデッキコード(デッキが消える以上、残さない)
 	require.NoError(t, db.Create(&model.DeckCode{ID: "dc-o1", CreatedAt: now, UpdatedAt: now, UserId: otherUid, DeckId: "deck-w1", Code: "dddd"}).Error)
 
+	// どの記録からも参照されていない、作りかけの自由形式イベント(user_id からしか辿れない)
+	require.NoError(t, db.Create(&model.UnofficialEvent{ID: "ue-w2", CreatedAt: now, UpdatedAt: now, UserId: withdrawUid, Title: "使わなかった自主大会", Date: now}).Error)
+
+	// タグ(退会者・他人・全ユーザー共通のプリセット)と、その付与
+	require.NoError(t, db.Create(&model.Tag{ID: "tag-w1", CreatedAt: now, UpdatedAt: now, UserId: withdrawUid, Name: "退会者のタグ"}).Error)
+	require.NoError(t, db.Create(&model.Tag{ID: "tag-o1", CreatedAt: now, UpdatedAt: now, UserId: otherUid, Name: "他人のタグ"}).Error)
+	require.NoError(t, db.Create(&model.Tag{ID: "tag-p1", CreatedAt: now, UpdatedAt: now, UserId: "", Name: "🥇 優勝", Color: "#FFB900", PresetFlg: true, PresetCategory: entity.TagPresetCategoryPlacement, TextColor: "#461901"}).Error)
+
+	// スプライト(中間テーブルのFK先)
+	require.NoError(t, db.Exec(`INSERT INTO pokemon_sprites (id, name) VALUES ('0025', 'ピカチュウ')`).Error)
+
 	// --- 巻き込まれてはいけない他人のデータ
 	require.NoError(t, db.Create(&model.UnofficialEvent{ID: "ue-o1", CreatedAt: now, UpdatedAt: now, UserId: otherUid, Title: "他人の自主大会", Date: now}).Error)
 	require.NoError(t, db.Create(&model.Record{ID: "rec-o1", CreatedAt: now, UpdatedAt: now, UserId: otherUid, DeckId: "deck-o1", EventDate: now, UnofficialEventId: "ue-o1"}).Error)
 	require.NoError(t, db.Create(&model.Match{ID: "mat-o1", CreatedAt: now, UpdatedAt: now, RecordId: "rec-o1", UserId: otherUid}).Error)
 	require.NoError(t, db.Create(&model.Game{ID: "gam-o1", CreatedAt: now, UpdatedAt: now, MatchId: "mat-o1", UserId: otherUid}).Error)
+	require.NoError(t, db.Create(&model.DeckCode{ID: "dc-o2", CreatedAt: now, UpdatedAt: now, UserId: otherUid, DeckId: "deck-o1", Code: "eeee"}).Error)
 
+	// 中間テーブル(退会者ぶんと他人ぶんを対にして入れる)
+	require.NoError(t, db.Create(&model.DeckTag{DeckId: "deck-w1", TagId: "tag-w1"}).Error)
+	require.NoError(t, db.Create(&model.DeckTag{DeckId: "deck-o1", TagId: "tag-o1"}).Error)
+	require.NoError(t, db.Create(&model.DeckCodeTag{DeckCodeId: "dc-w1", TagId: "tag-w1"}).Error)
+	require.NoError(t, db.Create(&model.DeckCodeTag{DeckCodeId: "dc-o2", TagId: "tag-o1"}).Error)
+	require.NoError(t, db.Create(&model.RecordTag{RecordId: "rec-w1", TagId: "tag-w1"}).Error)
+	require.NoError(t, db.Create(&model.RecordTag{RecordId: "rec-o1", TagId: "tag-o1"}).Error)
+	require.NoError(t, db.Create(&model.MatchTag{MatchId: "mat-w1", TagId: "tag-w1"}).Error)
+	require.NoError(t, db.Create(&model.MatchTag{MatchId: "mat-o1", TagId: "tag-o1"}).Error)
+	require.NoError(t, db.Create(&model.DeckPokemonSprite{DeckId: "deck-w1", Position: 1, PokemonSpriteId: "0025"}).Error)
+	require.NoError(t, db.Create(&model.DeckPokemonSprite{DeckId: "deck-o1", Position: 1, PokemonSpriteId: "0025"}).Error)
+	require.NoError(t, db.Create(&model.MatchPokemonSprite{MatchId: "mat-w1", Position: 1, PokemonSpriteId: "0025"}).Error)
+	require.NoError(t, db.Create(&model.MatchPokemonSprite{MatchId: "mat-o1", Position: 1, PokemonSpriteId: "0025"}).Error)
+
+	// お気に入り: 退会者が他人のデッキに付けたもの / 他人が退会者のデッキに付けたもの /
+	// 他人が他人のデッキに付けたもの(これだけ残る)
+	require.NoError(t, db.Create(&model.UserFavoriteDeck{UserId: withdrawUid, DeckId: "deck-o1", CreatedAt: now}).Error)
+	require.NoError(t, db.Create(&model.UserFavoriteDeck{UserId: otherUid, DeckId: "deck-w1", CreatedAt: now}).Error)
+	require.NoError(t, db.Create(&model.UserFavoriteDeck{UserId: otherUid, DeckId: "deck-o1", CreatedAt: now}).Error)
+
+	// ユーザ単位の付随データ(いずれも論理削除を持たない)
+	for _, uid := range []string{withdrawUid, otherUid} {
+		require.NoError(t, db.Create(&model.UserStreak{UserId: uid, LastRecordedWeek: now, UpdatedAt: now}).Error)
+		require.NoError(t, db.Create(&model.UserDailyActivity{UserId: uid, Date: now, Category: "visit", SignalCount: 1, UpdatedAt: now}).Error)
+		require.NoError(t, db.Create(&model.UserBadge{ID: "ub-" + uid[:4], CreatedAt: now, UserId: uid, BadgeDefinitionId: "onboarding-00", AchievedAt: now}).Error)
+		require.NoError(t, db.Create(&model.UserEnvironmentBadge{UserId: uid, EnvironmentId: "m6a", AchievedAt: now, CreatedAt: now}).Error)
+		require.NoError(t, db.Create(&model.Notification{ID: "ntf-" + uid[:4], CreatedAt: now, UserId: uid, Category: "badge", Title: "t", Body: "b"}).Error)
+		require.NoError(t, db.Create(&model.UserPlayer{ID: "up-" + uid[:4], CreatedAt: now, UpdatedAt: now, UserId: uid, PlayerId: "1234567890123456"}).Error)
+	}
+
+	// 退会処理(usecase.User.Delete)が呼ぶのと同じ順序・同じリポジトリで消す。
+	// 「どのリポジトリを呼ぶか」は usecase のユニットテストが担保する。
 	ctx := context.Background()
 	require.NoError(t, NewRecord(db, slog.Default()).DeleteByUserId(ctx, withdrawUid))
 	require.NoError(t, NewDeck(db).DeleteByUserId(ctx, withdrawUid))
 	require.NoError(t, NewDeckCode(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewTag(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewUserFavoriteDeck(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewUserStreak(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewUserDailyActivity(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewUserBadge(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewUserEnvironmentBadge(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewNotification(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewUserPlayer(db).DeleteByUserId(ctx, withdrawUid))
 
 	// alive は論理削除されずに残っている行のIDを返す
 	alive := func(table string) []string {
 		var ids []string
 		require.NoError(t, db.Table(table).Where("deleted_at IS NULL").Order("id ASC").Pluck("id", &ids).Error)
 		return ids
+	}
+
+	// remaining は table に残っている行数を返す(where で対象を絞る)
+	remaining := func(table string, where string, args ...any) int64 {
+		var n int64
+		require.NoError(t, db.Table(table).Where(where, args...).Count(&n).Error)
+		return n
 	}
 
 	t.Run("正常系_退会者の記録と対戦結果と対局が削除される", func(t *testing.T) {
@@ -384,7 +450,55 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 	t.Run("正常系_退会者が作成したものと退会者のデッキに紐づくものが削除される", func(t *testing.T) {
 		// dc-w1/w2: 本人のデッキかつ本人作成、dc-w3: 他人のデッキだが本人作成、
 		// dc-o1: 他人が作成したが本人のデッキに紐づく。いずれも残らない。
-		require.Empty(t, alive("deck_codes"))
+		// dc-o2 は他人のデッキに他人が作ったものなので残る。
+		require.Equal(t, []string{"dc-o2"}, alive("deck_codes"))
+	})
+
+	t.Run("正常系_どの記録からも参照されていない自由形式イベントも削除される", func(t *testing.T) {
+		// ue-w2 は作りっぱなしで record から参照されていない。user_id からしか辿れない。
+		require.Equal(t, []string{"ue-o1"}, alive("unofficial_events"))
+	})
+
+	t.Run("正常系_退会者のタグが削除されプリセットは残る", func(t *testing.T) {
+		// プリセット(user_id='')は全ユーザー共通なので、退会で消してはいけない。
+		require.Equal(t, []string{"tag-o1", "tag-p1"}, alive("tags"))
+	})
+
+	t.Run("正常系_中間テーブルの行も残らない", func(t *testing.T) {
+		// 中間テーブルは論理削除を持たないため、消し残すと参照先の無い行になる。
+		require.Zero(t, remaining("deck_tags", "tag_id = ? OR deck_id IN ?", "tag-w1", []string{"deck-w1", "deck-w2"}))
+		require.Zero(t, remaining("deck_code_tags", "tag_id = ? OR deck_code_id IN ?", "tag-w1", []string{"dc-w1", "dc-w2", "dc-w3", "dc-o1"}))
+		require.Zero(t, remaining("record_tags", "tag_id = ? OR record_id IN ?", "tag-w1", []string{"rec-w1", "rec-w2"}))
+		require.Zero(t, remaining("match_tags", "tag_id = ? OR match_id IN ?", "tag-w1", []string{"mat-w1", "mat-w2"}))
+		require.Zero(t, remaining("deck_pokemon_sprites", "deck_id IN ?", []string{"deck-w1", "deck-w2"}))
+		require.Zero(t, remaining("match_pokemon_sprites", "match_id IN ?", []string{"mat-w1", "mat-w2"}))
+
+		// 他人のぶんは1行ずつ残っている
+		require.Equal(t, int64(1), remaining("deck_tags", "1 = 1"))
+		require.Equal(t, int64(1), remaining("deck_code_tags", "1 = 1"))
+		require.Equal(t, int64(1), remaining("record_tags", "1 = 1"))
+		require.Equal(t, int64(1), remaining("match_tags", "1 = 1"))
+		require.Equal(t, int64(1), remaining("deck_pokemon_sprites", "1 = 1"))
+		require.Equal(t, int64(1), remaining("match_pokemon_sprites", "1 = 1"))
+	})
+
+	t.Run("正常系_お気に入りは退会者が付けたものも退会者のデッキに付いたものも消える", func(t *testing.T) {
+		// 残るのは「他人が他人のデッキに付けたもの」だけ。
+		require.Zero(t, remaining("user_favorite_decks", "user_id = ?", withdrawUid))
+		require.Equal(t, int64(1), remaining("user_favorite_decks", "1 = 1"))
+	})
+
+	t.Run("正常系_ユーザ単位の付随データが残らない", func(t *testing.T) {
+		for _, table := range []string{
+			"user_streaks", "user_daily_activities", "user_badges",
+			"user_environment_badges", "notifications",
+		} {
+			require.Zero(t, remaining(table, "user_id = ?", withdrawUid), "%s に退会者の行が残っている", table)
+			require.Equal(t, int64(1), remaining(table, "user_id = ?", otherUid), "%s の他人の行が巻き込まれている", table)
+		}
+
+		require.Zero(t, remaining("users_players", "user_id = ? AND deleted_at IS NULL", withdrawUid))
+		require.Equal(t, int64(1), remaining("users_players", "user_id = ? AND deleted_at IS NULL", otherUid))
 	})
 }
 
@@ -473,10 +587,10 @@ func TestIntegrationTagRepository(t *testing.T) {
 	deckCodeRepository := NewDeckCode(db)
 
 	t.Run("正常系_タグを保存して一覧と名前引きで取得できる", func(t *testing.T) {
-		require.NoError(t, r.Save(ctx, entity.NewTag("tag-1", now, now, uid, "アグロ", "#ff0000", false)))
-		require.NoError(t, r.Save(ctx, entity.NewTag("tag-2", now.Add(time.Second), now, uid, "コントロール", "", false)))
+		require.NoError(t, r.Save(ctx, entity.NewTag("tag-1", now, now, uid, "アグロ", "#ff0000", false, "", "")))
+		require.NoError(t, r.Save(ctx, entity.NewTag("tag-2", now.Add(time.Second), now, uid, "コントロール", "", false, "", "")))
 		// 他人のタグは混ざってはいけない
-		require.NoError(t, r.Save(ctx, entity.NewTag("tag-x", now, now, otherUid, "アグロ", "", false)))
+		require.NoError(t, r.Save(ctx, entity.NewTag("tag-x", now, now, otherUid, "アグロ", "", false, "", "")))
 
 		tags, err := r.FindByUserId(ctx, uid)
 		require.NoError(t, err)
@@ -594,7 +708,7 @@ func TestIntegrationTagRepository(t *testing.T) {
 
 	t.Run("正常系_プリセットタグは一覧と別枠で扱われ誰でも付与できる", func(t *testing.T) {
 		// プリセット(全ユーザー共通): user_id='' / preset_flg=true
-		require.NoError(t, r.Save(ctx, entity.NewTag("preset-1", now, now, "", "マスターボール", "#FF007F", true)))
+		require.NoError(t, r.Save(ctx, entity.NewTag("preset-1", now, now, "", "マスターボール", "#FF007F", true, entity.TagPresetCategoryAceSpec, "")))
 
 		// ユーザーの一覧(FindByUserId)にはプリセットは出ない
 		userTags, err := r.FindByUserId(ctx, uid)
@@ -603,7 +717,7 @@ func TestIntegrationTagRepository(t *testing.T) {
 		require.Equal(t, "tag-2", userTags[0].ID)
 
 		// プリセット一覧には出る
-		presets, err := r.FindPresets(ctx)
+		presets, err := r.FindPresets(ctx, entity.TagPresetCategoryAceSpec)
 		require.NoError(t, err)
 		require.Len(t, presets, 1)
 		require.Equal(t, "preset-1", presets[0].ID)
@@ -637,15 +751,109 @@ func TestIntegrationTagPresetOrder(t *testing.T) {
 	// FindPresets が id 昇順なら [小id, 大id]、name 昇順なら [大id, 小id] になる。
 	smallID := "aaaaaaaaaaaaaaaaaaaaaaaaaa"
 	largeID := "zzzzzzzzzzzzzzzzzzzzzzzzzz"
-	require.NoError(t, r.Save(ctx, entity.NewTag(smallID, now, now, "", "ゼットプリセット", "#FF007F", true)))
-	require.NoError(t, r.Save(ctx, entity.NewTag(largeID, now, now, "", "アループリセット", "#FF007F", true)))
+	require.NoError(t, r.Save(ctx, entity.NewTag(smallID, now, now, "", "ゼットプリセット", "#FF007F", true, entity.TagPresetCategoryAceSpec, "")))
+	require.NoError(t, r.Save(ctx, entity.NewTag(largeID, now, now, "", "アループリセット", "#FF007F", true, entity.TagPresetCategoryAceSpec, "")))
 
-	presets, err := r.FindPresets(ctx)
+	presets, err := r.FindPresets(ctx, entity.TagPresetCategoryAceSpec)
 	require.NoError(t, err)
 	require.Len(t, presets, 2)
 	// id 昇順(name 昇順の逆)で返ることを確認する。
 	require.Equal(t, smallID, presets[0].ID)
 	require.Equal(t, largeID, presets[1].ID)
+}
+
+// 記録(record)へのタグ付与。record_tags の生SQL(replaceTags)・JOIN読み出し
+// (findTagsByRecordIds)・タグ削除時の連鎖を実DBで確認する。
+func TestIntegrationRecordTagRepository(t *testing.T) {
+	db := setupIntegrationDB(t, "record_tags", "records", "tags")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	// 付与先(FK制約: record_tags.record_id -> records.id)
+	require.NoError(t, db.Create(&model.Record{ID: "rec-t1", CreatedAt: now, UpdatedAt: now, UserId: uid, EventDate: now, RegulationId: entity.RegulationIdStandard}).Error)
+
+	ctx := context.Background()
+	r := NewTag(db)
+	recordRepository := NewRecord(db, slog.Default())
+
+	require.NoError(t, r.Save(ctx, entity.NewTag("rtag-1", now, now, uid, "調整中", "", false, "", "")))
+	require.NoError(t, r.Save(ctx, entity.NewTag("rtag-2", now.Add(time.Second), now, uid, "本番", "", false, "", "")))
+	// 記録向けのプリセット(大会順位)。誰でも付与できる。名前の絵文字まで含めて schema.sql と揃える。
+	require.NoError(t, r.Save(ctx, entity.NewTag("rtag-p1", now, now, "", "🥇 優勝", "#FFB900", true, entity.TagPresetCategoryPlacement, "#461901")))
+
+	t.Run("正常系_ReplaceRecordTagsで付与を差分更新し記録の読み出しに載る", func(t *testing.T) {
+		require.NoError(t, r.ReplaceRecordTags(ctx, "rec-t1", []string{"rtag-1", "rtag-2"}))
+
+		record, err := recordRepository.FindById(ctx, "rec-t1")
+		require.NoError(t, err)
+		require.Len(t, record.Tags, 2)
+		// 付与した順(rtag-1, rtag-2)で並ぶ
+		require.Equal(t, "rtag-1", record.Tags[0].ID)
+		require.Equal(t, "rtag-2", record.Tags[1].ID)
+
+		// 集合を rtag-2 だけに絞る
+		require.NoError(t, r.ReplaceRecordTags(ctx, "rec-t1", []string{"rtag-2"}))
+		record, err = recordRepository.FindById(ctx, "rec-t1")
+		require.NoError(t, err)
+		require.Len(t, record.Tags, 1)
+		require.Equal(t, "rtag-2", record.Tags[0].ID)
+	})
+
+	t.Run("正常系_一覧取得でも付与タグがまとめて載る", func(t *testing.T) {
+		require.NoError(t, r.ReplaceRecordTags(ctx, "rec-t1", []string{"rtag-p1", "rtag-2"}))
+
+		records, err := recordRepository.FindByUserId(ctx, uid, 10, 0, "")
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		require.Len(t, records[0].Tags, 2)
+		require.Equal(t, "rtag-p1", records[0].Tags[0].ID)
+		require.True(t, records[0].Tags[0].PresetFlg)
+		require.Equal(t, entity.TagPresetCategoryPlacement, records[0].Tags[0].PresetCategory)
+		// 配色(背景色+文字色)もJOINの読み出しで復元される
+		require.Equal(t, "#FFB900", records[0].Tags[0].Color)
+		require.Equal(t, "#461901", records[0].Tags[0].TextColor)
+	})
+
+	t.Run("正常系_タグ削除で記録への付与も外れる", func(t *testing.T) {
+		require.NoError(t, r.ReplaceRecordTags(ctx, "rec-t1", []string{"rtag-1", "rtag-2"}))
+
+		require.NoError(t, r.Delete(ctx, "rtag-1"))
+
+		record, err := recordRepository.FindById(ctx, "rec-t1")
+		require.NoError(t, err)
+		require.Len(t, record.Tags, 1)
+		require.Equal(t, "rtag-2", record.Tags[0].ID)
+	})
+}
+
+// プリセットは群(preset_category)で絞って取得できる。記録の付与UIに ACE SPEC を
+// 出さず、大会順位だけを出すための絞り込み。
+func TestIntegrationTagPresetCategory(t *testing.T) {
+	db := setupIntegrationDB(t, "tags")
+	ctx := context.Background()
+	r := NewTag(db)
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	require.NoError(t, r.Save(ctx, entity.NewTag("pc-ace", now, now, "", "マスターボール", "#FF007F", true, entity.TagPresetCategoryAceSpec, "")))
+	require.NoError(t, r.Save(ctx, entity.NewTag("pc-place", now, now, "", "🥇 優勝", "#FFB900", true, entity.TagPresetCategoryPlacement, "#461901")))
+
+	aceSpecs, err := r.FindPresets(ctx, entity.TagPresetCategoryAceSpec)
+	require.NoError(t, err)
+	require.Len(t, aceSpecs, 1)
+	require.Equal(t, "pc-ace", aceSpecs[0].ID)
+
+	placements, err := r.FindPresets(ctx, entity.TagPresetCategoryPlacement)
+	require.NoError(t, err)
+	require.Len(t, placements, 1)
+	require.Equal(t, "pc-place", placements[0].ID)
+
+	// 群を指定しなければ全プリセットが返る(既存クライアント互換)
+	all, err := r.FindPresets(ctx, "")
+	require.NoError(t, err)
+	require.Len(t, all, 2)
 }
 
 // 対戦結果(match)へのタグ付与。match_tags の生SQL(replaceTags)・JOIN読み出し
@@ -665,8 +873,8 @@ func TestIntegrationMatchTagRepository(t *testing.T) {
 	r := NewTag(db)
 	matchRepository := NewMatch(db)
 
-	require.NoError(t, r.Save(ctx, entity.NewTag("mtag-1", now, now, uid, "接戦", "", false)))
-	require.NoError(t, r.Save(ctx, entity.NewTag("mtag-2", now.Add(time.Second), now, uid, "反省", "", false)))
+	require.NoError(t, r.Save(ctx, entity.NewTag("mtag-1", now, now, uid, "接戦", "", false, "", "")))
+	require.NoError(t, r.Save(ctx, entity.NewTag("mtag-2", now.Add(time.Second), now, uid, "反省", "", false, "", "")))
 
 	t.Run("正常系_ReplaceMatchTagsで付与を差分更新し対戦結果の読み出しに載る", func(t *testing.T) {
 		require.NoError(t, r.ReplaceMatchTags(ctx, "mat-m1", []string{"mtag-1", "mtag-2"}))

@@ -48,9 +48,9 @@
 //	# 確認を省略して削除する(バッチから実行する場合)
 //	go run ./cmd/check-deleted-users-data -delete -yes
 //
-// -include-unhandled は、退会処理が削除対象にしていないデータ(バッジ・通知・ストリーク等)まで
-// 消すため、退会後に残す仕様だったものも消える点に注意する。まず -delete のみで実行し、
-// 意図して消したい場合だけ指定すること。
+// 退会処理(internal/usecase/user.go の User.Delete)はユーザに紐づく全テーブルを消すため、
+// 現在「未対応(WARN)」の定義は無い。検出されるものはすべて削除漏れ(NG)である。
+// -include-unhandled は、今後あえて残す仕様のテーブルを足した場合に備えて残してある。
 //
 // -exit-code が終了コード1にするのは「削除漏れ(NG)」があった場合のみで、「未対応(WARN)」は
 // 対象にしない。未対応は退会処理の仕様上つねに残るため、これを異常扱いにすると定期実行が
@@ -214,11 +214,10 @@ var specs = []tableSpec{
 		note:        "record 経由でのみ削除される。どの record からも参照されていないものは残る",
 	},
 
-	// --- 退会処理が削除対象にしていないもの(残っていても実装どおり) ---
-	// これらは論理削除を持たないため、削除する場合は行ごと物理削除するしかない。
+	// --- 退会処理が削除するもの(論理削除を持たないため行ごと物理削除される) ---
 	{
 		name:     "user_streaks",
-		category: categoryUnhandled,
+		category: categoryLeak,
 		query: `SELECT t.user_id, COUNT(*) FROM user_streaks t
 		        JOIN users u ON u.id = t.user_id
 		        WHERE u.deleted_at IS NOT NULL
@@ -226,11 +225,11 @@ var specs = []tableSpec{
 		deleteQuery: `DELETE FROM user_streaks t USING users u
 		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
 		ownerColumn: "t.user_id",
-		note:        "退会処理の対象外。論理削除を持たないため行ごと残る",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
 	},
 	{
 		name:     "user_badges",
-		category: categoryUnhandled,
+		category: categoryLeak,
 		query: `SELECT t.user_id, COUNT(*) FROM user_badges t
 		        JOIN users u ON u.id = t.user_id
 		        WHERE u.deleted_at IS NOT NULL
@@ -238,11 +237,11 @@ var specs = []tableSpec{
 		deleteQuery: `DELETE FROM user_badges t USING users u
 		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
 		ownerColumn: "t.user_id",
-		note:        "退会処理の対象外。論理削除を持たないため行ごと残る",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
 	},
 	{
 		name:     "user_environment_badges",
-		category: categoryUnhandled,
+		category: categoryLeak,
 		query: `SELECT t.user_id, COUNT(*) FROM user_environment_badges t
 		        JOIN users u ON u.id = t.user_id
 		        WHERE u.deleted_at IS NOT NULL
@@ -250,11 +249,11 @@ var specs = []tableSpec{
 		deleteQuery: `DELETE FROM user_environment_badges t USING users u
 		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
 		ownerColumn: "t.user_id",
-		note:        "退会処理の対象外。論理削除を持たないため行ごと残る",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
 	},
 	{
 		name:     "notifications",
-		category: categoryUnhandled,
+		category: categoryLeak,
 		query: `SELECT t.user_id, COUNT(*) FROM notifications t
 		        JOIN users u ON u.id = t.user_id
 		        WHERE u.deleted_at IS NOT NULL
@@ -262,11 +261,11 @@ var specs = []tableSpec{
 		deleteQuery: `DELETE FROM notifications t USING users u
 		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
 		ownerColumn: "t.user_id",
-		note:        "退会処理の対象外。論理削除を持たないため行ごと残る",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
 	},
 	{
 		name:     "match_pokemon_sprites",
-		category: categoryUnhandled,
+		category: categoryLeak,
 		// user_id を持たないため matches を経由してたどる。matches 自体が論理削除済みでも
 		// スプライトの行は残るため、matches.deleted_at では絞り込まない。
 		query: `SELECT m.user_id, COUNT(*) FROM match_pokemon_sprites t
@@ -277,11 +276,11 @@ var specs = []tableSpec{
 		deleteQuery: `DELETE FROM match_pokemon_sprites t USING matches m, users u
 		              WHERE m.id = t.match_id AND u.id = m.user_id AND u.deleted_at IS NOT NULL`,
 		ownerColumn: "m.user_id",
-		note:        "退会処理の対象外。match が論理削除されてもスプライトの行は残る",
+		note:        "退会処理が match 経由で削除する。match を経由しない孤立行があると残る",
 	},
 	{
 		name:     "deck_pokemon_sprites",
-		category: categoryUnhandled,
+		category: categoryLeak,
 		query: `SELECT d.user_id, COUNT(*) FROM deck_pokemon_sprites t
 		        JOIN decks d ON d.id = t.deck_id
 		        JOIN users u ON u.id = d.user_id
@@ -290,7 +289,102 @@ var specs = []tableSpec{
 		deleteQuery: `DELETE FROM deck_pokemon_sprites t USING decks d, users u
 		              WHERE d.id = t.deck_id AND u.id = d.user_id AND u.deleted_at IS NOT NULL`,
 		ownerColumn: "d.user_id",
-		note:        "退会処理の対象外。deck が論理削除されてもスプライトの行は残る",
+		note:        "退会処理が deck 経由で削除する。deck を経由しない孤立行があると残る",
+	},
+
+	{
+		name:     "user_daily_activities",
+		category: categoryLeak,
+		query: `SELECT t.user_id, COUNT(*) FROM user_daily_activities t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `DELETE FROM user_daily_activities t USING users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
+	},
+	{
+		name:     "user_favorite_decks",
+		category: categoryLeak,
+		// 「そのユーザが付けたお気に入り」。自分のデッキに付いたぶんは deck 経由でも消えるが、
+		// 他人のデッキに付けたぶんは user_id からしか辿れない。
+		query: `SELECT t.user_id, COUNT(*) FROM user_favorite_decks t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `DELETE FROM user_favorite_decks t USING users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
+	},
+	{
+		name:     "tags",
+		category: categoryLeak,
+		// プリセット(user_id='')は全ユーザー共通で誰のものでもないため、
+		// users との JOIN で自然に対象外になる。
+		query: `SELECT t.user_id, COUNT(*) FROM tags t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL AND t.deleted_at IS NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `UPDATE tags t SET deleted_at = now() FROM users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL AND t.deleted_at IS NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する",
+	},
+	{
+		name:     "deck_tags",
+		category: categoryLeak,
+		// user_id を持たないため decks を経由してたどる。decks 自体が論理削除済みでも
+		// 中間テーブルの行は残るため、decks.deleted_at では絞り込まない。
+		query: `SELECT d.user_id, COUNT(*) FROM deck_tags t
+		        JOIN decks d ON d.id = t.deck_id
+		        JOIN users u ON u.id = d.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY d.user_id`,
+		deleteQuery: `DELETE FROM deck_tags t USING decks d, users u
+		              WHERE d.id = t.deck_id AND u.id = d.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "d.user_id",
+		note:        "退会処理が deck 経由で削除する。deck を経由しない孤立行があると残る",
+	},
+	{
+		name:     "deck_code_tags",
+		category: categoryLeak,
+		query: `SELECT c.user_id, COUNT(*) FROM deck_code_tags t
+		        JOIN deck_codes c ON c.id = t.deck_code_id
+		        JOIN users u ON u.id = c.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY c.user_id`,
+		deleteQuery: `DELETE FROM deck_code_tags t USING deck_codes c, users u
+		              WHERE c.id = t.deck_code_id AND u.id = c.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "c.user_id",
+		note:        "退会処理が deck_code 経由で削除する。deck_code を経由しない孤立行があると残る",
+	},
+	{
+		name:     "record_tags",
+		category: categoryLeak,
+		query: `SELECT r.user_id, COUNT(*) FROM record_tags t
+		        JOIN records r ON r.id = t.record_id
+		        JOIN users u ON u.id = r.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY r.user_id`,
+		deleteQuery: `DELETE FROM record_tags t USING records r, users u
+		              WHERE r.id = t.record_id AND u.id = r.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "r.user_id",
+		note:        "退会処理が record 経由で削除する。record を経由しない孤立行があると残る",
+	},
+	{
+		name:     "match_tags",
+		category: categoryLeak,
+		query: `SELECT m.user_id, COUNT(*) FROM match_tags t
+		        JOIN matches m ON m.id = t.match_id
+		        JOIN users u ON u.id = m.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY m.user_id`,
+		deleteQuery: `DELETE FROM match_tags t USING matches m, users u
+		              WHERE m.id = t.match_id AND u.id = m.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "m.user_id",
+		note:        "退会処理が match 経由で削除する。match を経由しない孤立行があると残る",
 	},
 
 	// --- 他のユーザのデータからの参照(異常ではない) ---

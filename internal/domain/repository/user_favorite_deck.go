@@ -22,12 +22,21 @@ type UserFavoriteDeckInterface interface {
 
 	// Delete は uid が deckId のデッキにつけたお気に入りを解除する。
 	//
-	// デッキの削除・退会に伴う一括解除はここではなく DeckInterface 側
+	// 「消えるデッキに付いていたお気に入り」の一括解除はここではなく DeckInterface 側
 	// (Delete / DeleteByUserId)が担う。デッキ本体の削除と同じトランザクションで
 	// 消さないと、参照先の無いお気に入りが残り得るため。
 	Delete(
 		ctx context.Context,
 		uid string,
 		deckId string,
+	) error
+
+	// DeleteByUserId は退会時に、そのユーザが付けたお気に入りをまとめて削除する。
+	// DeckInterface 側の一括解除は「そのユーザのデッキに付いたお気に入り」が対象で、
+	// 他人のデッキに付けたお気に入りは拾えないため、user_id 側からも消す必要がある。
+	// このテーブルは論理削除を持たないため行ごと物理削除する。
+	DeleteByUserId(
+		ctx context.Context,
+		uid string,
 	) error
 }

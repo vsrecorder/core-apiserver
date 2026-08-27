@@ -17,6 +17,7 @@ type RecordRequest struct {
 	RegulationId      uint      `json:"regulation_id"`
 	TCGMeisterURL     string    `json:"tcg_meister_url"`
 	Memo              string    `json:"memo"`
+	TagIds            []string  `json:"tag_ids"`
 }
 
 type RecordCreateRequest struct {
@@ -33,21 +34,22 @@ type RecordData struct {
 }
 
 type RecordResponse struct {
-	ID                string    `json:"id"`
-	CreatedAt         time.Time `json:"created_at"`
-	OfficialEventId   uint      `json:"official_event_id"`
-	TonamelEventId    string    `json:"tonamel_event_id"`
-	FriendId          string    `json:"friend_id"`
-	UnofficialEventId string    `json:"unofficial_event_id"`
-	UserId            string    `json:"user_id"`
-	DeckId            string    `json:"deck_id"`
-	DeckCodeId        string    `json:"deck_code_id"`
-	EventDate         time.Time `json:"event_date"`
-	PrivateFlg        bool      `json:"private_flg"`
-	IgnoreStatsFlg    bool      `json:"ignore_stats_flg"`
-	RegulationId      uint      `json:"regulation_id"`
-	TCGMeisterURL     string    `json:"tcg_meister_url"`
-	Memo              string    `json:"memo"`
+	ID                string         `json:"id"`
+	CreatedAt         time.Time      `json:"created_at"`
+	OfficialEventId   uint           `json:"official_event_id"`
+	TonamelEventId    string         `json:"tonamel_event_id"`
+	FriendId          string         `json:"friend_id"`
+	UnofficialEventId string         `json:"unofficial_event_id"`
+	UserId            string         `json:"user_id"`
+	DeckId            string         `json:"deck_id"`
+	DeckCodeId        string         `json:"deck_code_id"`
+	EventDate         time.Time      `json:"event_date"`
+	PrivateFlg        bool           `json:"private_flg"`
+	IgnoreStatsFlg    bool           `json:"ignore_stats_flg"`
+	RegulationId      uint           `json:"regulation_id"`
+	TCGMeisterURL     string         `json:"tcg_meister_url"`
+	Memo              string         `json:"memo"`
+	Tags              []*TagResponse `json:"tags"`
 }
 
 type RecordGetResponse struct {

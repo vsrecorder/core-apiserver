@@ -41,6 +41,20 @@ func (m *MockUserEnvironmentBadgeInterface) EXPECT() *MockUserEnvironmentBadgeIn
 	return m.recorder
 }
 
+// DeleteByUserId mocks base method.
+func (m *MockUserEnvironmentBadgeInterface) DeleteByUserId(ctx context.Context, uid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUserId", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUserId indicates an expected call of DeleteByUserId.
+func (mr *MockUserEnvironmentBadgeInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockUserEnvironmentBadgeInterface)(nil).DeleteByUserId), ctx, uid)
+}
+
 // FindByUserId mocks base method.
 func (m *MockUserEnvironmentBadgeInterface) FindByUserId(ctx context.Context, userId string) ([]*entity.UserEnvironmentBadge, error) {
 	m.ctrl.T.Helper()

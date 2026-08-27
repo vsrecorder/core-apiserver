@@ -155,9 +155,17 @@ func TestSpecs(t *testing.T) {
 		})
 	}
 
-	// 退会処理が削除するテーブルが定義から漏れていないことを確認する
+	// 退会処理が削除するテーブルが定義から漏れていないことを確認する。
+	// 「user_id を持つテーブル」と「それらへFKで繋がる中間テーブル」の全部で、
+	// User.Delete の削除対象と1対1に対応する。
 	for _, name := range []string{
-		"records", "matches", "games", "decks", "deck_codes", "users_players", "unofficial_events",
+		// user_id を持つもの
+		"records", "matches", "games", "decks", "deck_codes", "deck_codes", "unofficial_events",
+		"tags", "user_favorite_decks", "user_streaks", "user_daily_activities",
+		"user_badges", "user_environment_badges", "notifications", "users_players",
+		// 中間テーブル(user_id を持たず、上のテーブルからFKでたどる)
+		"deck_tags", "deck_code_tags", "record_tags", "match_tags",
+		"match_pokemon_sprites", "deck_pokemon_sprites",
 	} {
 		assert.True(t, names[name], "%s の定義が無い", name)
 	}

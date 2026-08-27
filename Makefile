@@ -16,7 +16,7 @@ integration-test:
 	@until docker exec vsrecorder-test-db pg_isready -U vsrecorder >/dev/null 2>&1; do sleep 1; done
 	docker exec -i vsrecorder-test-db psql -q -U vsrecorder -d vsrecorder_test < db/schema.sql
 	VSRECORDER_TEST_DATABASE_URL="host=localhost port=15432 user=vsrecorder password=vsrecorder dbname=vsrecorder_test sslmode=disable TimeZone=Asia/Tokyo" \
-		go test -count=1 -v -run TestIntegration ./internal/infrastructure/ ./cmd/backfill-acespec-tags/ ; \
+		go test -count=1 -v -run TestIntegration ./internal/infrastructure/ ./cmd/backfill-acespec-tags/ ./cmd/check-deleted-users-data/ ; \
 		status=$$?; docker rm -f vsrecorder-test-db >/dev/null; exit $$status
 
 .PHONY: run
@@ -63,6 +63,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/championship_series.go -destination=./internal/mock/mock_repository/championship_series.go
 	mockgen -source=./internal/domain/repository/notification.go -destination=./internal/mock/mock_repository/notification.go
 	mockgen -source=./internal/domain/repository/user_environment_badge.go -destination=./internal/mock/mock_repository/user_environment_badge.go
+	mockgen -source=./internal/domain/repository/user_favorite_deck.go -destination=./internal/mock/mock_repository/user_favorite_deck.go
 	mockgen -source=./internal/domain/repository/user_player.go -destination=./internal/mock/mock_repository/user_player.go
 	mockgen -source=./internal/domain/repository/transaction.go -destination=./internal/mock/mock_repository/transaction.go
 	mockgen -source=./internal/domain/repository/calendar.go -destination=./internal/mock/mock_repository/calendar.go

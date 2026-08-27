@@ -41,6 +41,20 @@ func (m *MockUserDailyActivityInterface) EXPECT() *MockUserDailyActivityInterfac
 	return m.recorder
 }
 
+// DeleteByUserId mocks base method.
+func (m *MockUserDailyActivityInterface) DeleteByUserId(ctx context.Context, uid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUserId", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUserId indicates an expected call of DeleteByUserId.
+func (mr *MockUserDailyActivityInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockUserDailyActivityInterface)(nil).DeleteByUserId), ctx, uid)
+}
+
 // Touch mocks base method.
 func (m *MockUserDailyActivityInterface) Touch(ctx context.Context, entities []*entity.UserDailyActivity) error {
 	m.ctrl.T.Helper()

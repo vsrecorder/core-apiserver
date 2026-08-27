@@ -25,6 +25,63 @@ func NewRecord(
 	return &Record{db, logger}
 }
 
+// newRecordEntity は records の1行をエンティティへ変換する。
+// 付与タグ(Tags)は別テーブルのため、ここでは詰めない。
+func newRecordEntity(m *model.Record) *entity.Record {
+	ret := entity.NewRecord(
+		m.ID,
+		m.CreatedAt,
+		m.OfficialEventId,
+		m.TonamelEventId,
+		m.FriendId,
+		m.UnofficialEventId,
+		m.UserId,
+		m.DeckId,
+		m.DeckCodeId,
+		m.EventDate,
+		m.PrivateFlg,
+		m.IgnoreStatsFlg,
+		m.RegulationId,
+		m.TCGMeisterURL,
+		m.Memo,
+	)
+	ret.DeckRegisteredAt = m.DeckRegisteredAt
+
+	return ret
+}
+
+// newRecordEntitiesWithTags は複数行をエンティティへ変換し、付与タグを1クエリで
+// まとめて詰める。記録一覧は1ページで数十件返るため、記録ごとにタグを引くと
+// そのままN+1になる(対戦結果の findTagsByMatchIds と同じ方針)。
+func (i *Record) newRecordEntitiesWithTags(
+	ctx context.Context,
+	models []*model.Record,
+) ([]*entity.Record, error) {
+	if len(models) == 0 {
+		return nil, nil
+	}
+
+	recordIds := make([]string, 0, len(models))
+	for _, m := range models {
+		recordIds = append(recordIds, m.ID)
+	}
+
+	tagsByRecordId, err := findTagsByRecordIds(ctx, i.db, recordIds)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	entities := make([]*entity.Record, 0, len(models))
+	for _, m := range models {
+		record := newRecordEntity(m)
+		record.Tags = tagsByRecordId[m.ID]
+		entities = append(entities, record)
+	}
+
+	return entities, nil
+}
+
 func (i *Record) FindById(
 	ctx context.Context,
 	id string,
@@ -36,26 +93,16 @@ func (i *Record) FindById(
 		return nil, wrapError(tx.Error)
 	}
 
-	entity := entity.NewRecord(
-		model.ID,
-		model.CreatedAt,
-		model.OfficialEventId,
-		model.TonamelEventId,
-		model.FriendId,
-		model.UnofficialEventId,
-		model.UserId,
-		model.DeckId,
-		model.DeckCodeId,
-		model.EventDate,
-		model.PrivateFlg,
-		model.IgnoreStatsFlg,
-		model.RegulationId,
-		model.TCGMeisterURL,
-		model.Memo,
-	)
-	entity.DeckRegisteredAt = model.DeckRegisteredAt
+	ret := newRecordEntity(&model)
 
-	return entity, nil
+	tagsByRecordId, err := findTagsByRecordIds(ctx, i.db, []string{id})
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+	ret.Tags = tagsByRecordId[id]
+
+	return ret, nil
 }
 
 func (i *Record) Find(
@@ -89,30 +136,7 @@ func (i *Record) Find(
 		}
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 // buildCursorCondition は ORDER BY event_date DESC NULLS LAST, created_at DESC に対応した
@@ -159,30 +183,7 @@ func (i *Record) FindOnCursor(
 		return nil, tx.Error
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) FindByUserId(
@@ -217,30 +218,7 @@ func (i *Record) FindByUserId(
 		}
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) FindByUserIdOnCursor(
@@ -273,30 +251,7 @@ func (i *Record) FindByUserIdOnCursor(
 		return nil, tx.Error
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) FindByOfficialEventId(
@@ -312,30 +267,7 @@ func (i *Record) FindByOfficialEventId(
 		return nil, tx.Error
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) FindByTonamelEventId(
@@ -351,30 +283,7 @@ func (i *Record) FindByTonamelEventId(
 		return nil, tx.Error
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) FindByDeckId(
@@ -409,30 +318,7 @@ func (i *Record) FindByDeckId(
 		}
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) FindByDeckIdOnCursor(
@@ -465,30 +351,7 @@ func (i *Record) FindByDeckIdOnCursor(
 		return nil, tx.Error
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) FindByDeckCodeId(
@@ -504,30 +367,7 @@ func (i *Record) FindByDeckCodeId(
 		return nil, tx.Error
 	}
 
-	var entities []*entity.Record
-	for _, model := range models {
-		entity := entity.NewRecord(
-			model.ID,
-			model.CreatedAt,
-			model.OfficialEventId,
-			model.TonamelEventId,
-			model.FriendId,
-			model.UnofficialEventId,
-			model.UserId,
-			model.DeckId,
-			model.DeckCodeId,
-			model.EventDate,
-			model.PrivateFlg,
-			model.IgnoreStatsFlg,
-			model.RegulationId,
-			model.TCGMeisterURL,
-			model.Memo,
-		)
-		entity.DeckRegisteredAt = model.DeckRegisteredAt
-		entities = append(entities, entity)
-	}
-
-	return entities, nil
+	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) DeleteByUserId(
@@ -537,39 +377,59 @@ func (i *Record) DeleteByUserId(
 	db := dbFromContext(ctx, i.db)
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		// 消す順序は「参照する側が先」。records を先に消すと、以降のサブクエリが
-		// deleted_at IS NULL で0件になり、対戦結果や対局が消し残る。
+		// 消す順序は「参照する側が先」。records / matches は論理削除のため、先に消すと
+		// 以降のサブクエリが deleted_at IS NULL で0件になり、子の行が消し残る。
 		//
 		// 各サブクエリは毎回 tx.Model(...) から組み立てる。GORM の *gorm.DB は
 		// 条件を積んでいくため、同じインスタンスを使い回すと条件が混ざる。
+		recordIds := func() *gorm.DB {
+			return tx.Model(&model.Record{}).Select("id").Where("user_id = ?", uid)
+		}
+		// 対戦結果は「自分が作ったもの」と「自分の記録に紐づくもの」の両方を対象にする。
+		// 通常この2つは一致するが、片方だけの孤立行が残らないよう両側から拾う。
+		matchIds := func() *gorm.DB {
+			return tx.Model(&model.Match{}).Select("id").Where(
+				"user_id = ? OR record_id IN (?)", uid, recordIds(),
+			)
+		}
 
-		// 対局(games): このユーザの記録に紐づく対戦結果のもの
+		// 対戦結果に紐づく中間テーブル。論理削除を持たないため物理削除する。
+		if tx := tx.Where("match_id IN (?)", matchIds()).Delete(&model.MatchPokemonSprite{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
+		if tx := tx.Where("match_id IN (?)", matchIds()).Delete(&model.MatchTag{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
+		// 記録に紐づく中間テーブル。
+		if tx := tx.Where("record_id IN (?)", recordIds()).Delete(&model.RecordTag{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
+		// 対局(games)
 		if tx := tx.Where(
-			"match_id IN (?)",
-			tx.Model(&model.Match{}).Select("id").Where(
-				"record_id IN (?)",
-				tx.Model(&model.Record{}).Select("id").Where("user_id = ?", uid),
-			),
+			"user_id = ? OR match_id IN (?)", uid, matchIds(),
 		).Delete(&model.Game{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
 		// 対戦結果(matches)
 		if tx := tx.Where(
-			"record_id IN (?)",
-			tx.Model(&model.Record{}).Select("id").Where("user_id = ?", uid),
+			"user_id = ? OR record_id IN (?)", uid, recordIds(),
 		).Delete(&model.Match{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 
-		// 自由形式イベント(unofficial_events): 記録から参照されているものだけ
-		// (孤立行を残さないため。Delete 単体版と同じ方針)
-		if tx := tx.Where(
-			"id IN (?)",
-			tx.Model(&model.Record{}).Select("unofficial_event_id").Where(
-				"user_id = ? AND unofficial_event_id IS NOT NULL AND unofficial_event_id != ''", uid,
-			),
-		).Delete(&model.UnofficialEvent{}); tx.Error != nil {
+		// 自由形式イベント(unofficial_events): 記録から参照されているものだけでなく、
+		// どの記録からも参照されないまま残った作りかけのものも user_id から消す。
+		if tx := tx.Where("user_id = ?", uid).Delete(&model.UnofficialEvent{}); tx.Error != nil {
+			logError(ctx, tx.Error)
 			return tx.Error
 		}
 

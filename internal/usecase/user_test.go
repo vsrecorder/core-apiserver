@@ -14,28 +14,87 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
 
+// userUsecaseMocks は User が抱えるリポジトリのモック一式。
+// 退会で消すテーブルが増えるたびにテスト関数の引数が伸びるのを避けるため、
+// まとめて1つの構造体で持ち回る。
+type userUsecaseMocks struct {
+	user                 *mock_repository.MockUserInterface
+	record               *mock_repository.MockRecordInterface
+	deck                 *mock_repository.MockDeckInterface
+	deckCode             *mock_repository.MockDeckCodeInterface
+	tag                  *mock_repository.MockTagInterface
+	userFavoriteDeck     *mock_repository.MockUserFavoriteDeckInterface
+	userStreak           *mock_repository.MockUserStreakInterface
+	userDailyActivity    *mock_repository.MockUserDailyActivityInterface
+	userBadge            *mock_repository.MockUserBadgeInterface
+	userEnvironmentBadge *mock_repository.MockUserEnvironmentBadgeInterface
+	notification         *mock_repository.MockNotificationInterface
+	userPlayer           *mock_repository.MockUserPlayerInterface
+}
+
+func newUserUsecaseMocks(ctrl *gomock.Controller) *userUsecaseMocks {
+	return &userUsecaseMocks{
+		user:                 mock_repository.NewMockUserInterface(ctrl),
+		record:               mock_repository.NewMockRecordInterface(ctrl),
+		deck:                 mock_repository.NewMockDeckInterface(ctrl),
+		deckCode:             mock_repository.NewMockDeckCodeInterface(ctrl),
+		tag:                  mock_repository.NewMockTagInterface(ctrl),
+		userFavoriteDeck:     mock_repository.NewMockUserFavoriteDeckInterface(ctrl),
+		userStreak:           mock_repository.NewMockUserStreakInterface(ctrl),
+		userDailyActivity:    mock_repository.NewMockUserDailyActivityInterface(ctrl),
+		userBadge:            mock_repository.NewMockUserBadgeInterface(ctrl),
+		userEnvironmentBadge: mock_repository.NewMockUserEnvironmentBadgeInterface(ctrl),
+		notification:         mock_repository.NewMockNotificationInterface(ctrl),
+		userPlayer:           mock_repository.NewMockUserPlayerInterface(ctrl),
+	}
+}
+
+// expectDeleteAllUserData は「退会で消すテーブルすべてに削除が1回ずつ走る」ことを期待する。
+// 退会処理から消し漏らしたリポジトリがあると、その EXPECT が消化されず gomock が落ちる。
+// 削除対象を増やしたらここにも足すこと。
+func (m *userUsecaseMocks) expectDeleteAllUserData(ctx context.Context, id string) {
+	m.record.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.deck.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.deckCode.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.tag.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.userFavoriteDeck.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.userStreak.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.userDailyActivity.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.userBadge.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.userEnvironmentBadge.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.notification.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.userPlayer.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+}
+
 func TestUserUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
-	mockRepository := mock_repository.NewMockUserInterface(mockCtrl)
-	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	mockDeckRepository := mock_repository.NewMockDeckInterface(mockCtrl)
-	mockDeckCodeRepository := mock_repository.NewMockDeckCodeInterface(mockCtrl)
-	mockUserPlayerRepository := mock_repository.NewMockUserPlayerInterface(mockCtrl)
+	m := newUserUsecaseMocks(mockCtrl)
 	mockTransactionManager := mock_repository.NewMockTransactionManager(mockCtrl)
 	mockTransactionManager.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, fn func(context.Context) error) error {
 			return fn(ctx)
 		},
 	).AnyTimes()
-	usecase := NewUser(mockRepository, mockRecordRepository, mockDeckRepository, mockDeckCodeRepository, mockUserPlayerRepository, mockTransactionManager, stubBadgeEvaluation{})
+	usecase := NewUser(
+		m.user,
+		m.record,
+		m.deck,
+		m.deckCode,
+		m.tag,
+		m.userFavoriteDeck,
+		m.userStreak,
+		m.userDailyActivity,
+		m.userBadge,
+		m.userEnvironmentBadge,
+		m.notification,
+		m.userPlayer,
+		mockTransactionManager,
+		stubBadgeEvaluation{},
+	)
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
-		mockRepository *mock_repository.MockUserInterface,
-		mockRecordRepository *mock_repository.MockRecordInterface,
-		mockDeckRepository *mock_repository.MockDeckInterface,
-		mockDeckCodeRepository *mock_repository.MockDeckCodeInterface,
-		mockUserPlayerRepository *mock_repository.MockUserPlayerInterface,
+		m *userUsecaseMocks,
 		usecase UserInterface,
 	){
 		"FindById": test_UserUsecase_FindById,
@@ -44,12 +103,14 @@ func TestUserUsecase(t *testing.T) {
 		"Delete":   test_UserUsecase_Delete,
 	} {
 		t.Run(scenario, func(t *testing.T) {
-			fn(t, mockRepository, mockRecordRepository, mockDeckRepository, mockDeckCodeRepository, mockUserPlayerRepository, usecase)
+			fn(t, m, usecase)
 		})
 	}
 }
 
-func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
+func test_UserUsecase_FindById(t *testing.T, m *userUsecaseMocks, usecase UserInterface) {
+	mockRepository := m.user
+
 	t.Run("正常系_指定IDのユーザを返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -79,7 +140,9 @@ func test_UserUsecase_FindById(t *testing.T, mockRepository *mock_repository.Moc
 	})
 }
 
-func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
+func test_UserUsecase_Create(t *testing.T, m *userUsecaseMocks, usecase UserInterface) {
+	mockRepository := m.user
+
 	t.Run("正常系_未登録IDならユーザを作成する", func(t *testing.T) {
 		id, _ := generateId()
 		name := "test"
@@ -194,7 +257,9 @@ func test_UserUsecase_Create(t *testing.T, mockRepository *mock_repository.MockU
 	})
 }
 
-func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockUserInterface, _ *mock_repository.MockRecordInterface, _ *mock_repository.MockDeckInterface, _ *mock_repository.MockDeckCodeInterface, _ *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
+func test_UserUsecase_Update(t *testing.T, m *userUsecaseMocks, usecase UserInterface) {
+	mockRepository := m.user
+
 	t.Run("正常系_取得したユーザにパラメータを反映して保存する", func(t *testing.T) {
 		id, _ := generateId()
 		createdAt := time.Now().Local()
@@ -262,32 +327,18 @@ func test_UserUsecase_Update(t *testing.T, mockRepository *mock_repository.MockU
 	})
 }
 
-func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockUserInterface, mockRecordRepository *mock_repository.MockRecordInterface, mockDeckRepository *mock_repository.MockDeckInterface, mockDeckCodeRepository *mock_repository.MockDeckCodeInterface, mockUserPlayerRepository *mock_repository.MockUserPlayerInterface, usecase UserInterface) {
-	t.Run("正常系_プレイヤーIDの紐付けがある場合", func(t *testing.T) {
-		id, _ := generateId()
-		userPlayerId, _ := generateId()
-		userPlayer := entity.NewUserPlayer(userPlayerId, time.Now().Local(), id, "1234567890123456")
+func test_UserUsecase_Delete(t *testing.T, m *userUsecaseMocks, usecase UserInterface) {
+	mockDeckCodeRepository := m.deckCode
+	mockDeckRepository := m.deck
+	mockRecordRepository := m.record
+	mockRepository := m.user
 
-		// 記録・デッキ・デッキコードは、件数によらず種類ごとに1回ずつ呼ぶ
-		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(userPlayer, nil)
-		mockUserPlayerRepository.EXPECT().Delete(context.Background(), userPlayerId).Return(nil)
-		mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
-
-		err := usecase.Delete(context.Background(), id)
-
-		require.NoError(t, err)
-	})
-
-	t.Run("正常系_プレイヤーIDの紐付けがない場合", func(t *testing.T) {
+	t.Run("正常系_ユーザに紐づくデータをすべて削除する", func(t *testing.T) {
 		id, _ := generateId()
 
-		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		// 退会で消すテーブルは、件数によらず種類ごとに1回ずつ呼ぶ。
+		// 消し漏らしたリポジトリがあると、その EXPECT が消化されず gomock が落ちる。
+		m.expectDeleteAllUserData(context.Background(), id)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
 
 		err := usecase.Delete(context.Background(), id)
@@ -328,29 +379,52 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 		require.Error(t, err)
 	})
 
-	t.Run("異常系_プレイヤーIDのID取得に失敗", func(t *testing.T) {
+	t.Run("異常系_タグの削除に失敗", func(t *testing.T) {
 		id, _ := generateId()
 
 		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(nil, errors.New(""))
+		m.tag.EXPECT().DeleteByUserId(context.Background(), id).Return(errors.New(""))
 
 		err := usecase.Delete(context.Background(), id)
 
 		require.Error(t, err)
 	})
 
-	t.Run("異常系_プレイヤーIDの削除に失敗", func(t *testing.T) {
+	t.Run("異常系_通知の削除に失敗", func(t *testing.T) {
 		id, _ := generateId()
-		userPlayerId, _ := generateId()
-		userPlayer := entity.NewUserPlayer(userPlayerId, time.Now().Local(), id, "1234567890123456")
 
 		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(userPlayer, nil)
-		mockUserPlayerRepository.EXPECT().Delete(context.Background(), userPlayerId).Return(errors.New(""))
+		m.tag.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userFavoriteDeck.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userStreak.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userDailyActivity.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userBadge.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userEnvironmentBadge.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.notification.EXPECT().DeleteByUserId(context.Background(), id).Return(errors.New(""))
+
+		err := usecase.Delete(context.Background(), id)
+
+		require.Error(t, err)
+	})
+
+	t.Run("異常系_プレイヤーIDの紐付けの削除に失敗", func(t *testing.T) {
+		id, _ := generateId()
+
+		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.tag.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userFavoriteDeck.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userStreak.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userDailyActivity.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userBadge.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userEnvironmentBadge.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.notification.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.userPlayer.EXPECT().DeleteByUserId(context.Background(), id).Return(errors.New(""))
 
 		err := usecase.Delete(context.Background(), id)
 
@@ -360,10 +434,7 @@ func test_UserUsecase_Delete(t *testing.T, mockRepository *mock_repository.MockU
 	t.Run("異常系_ユーザ本体の削除に失敗", func(t *testing.T) {
 		id, _ := generateId()
 
-		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
-		mockUserPlayerRepository.EXPECT().FindByUserId(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+		m.expectDeleteAllUserData(context.Background(), id)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		err := usecase.Delete(context.Background(), id)

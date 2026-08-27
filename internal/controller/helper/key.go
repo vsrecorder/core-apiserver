@@ -394,6 +394,17 @@ func GetDeckCodeUpdateRequest(ctx *gin.Context) dto.DeckCodeUpdateRequest {
 	return ret
 }
 
+func SetTagPresetCategory(ctx *gin.Context, value string) {
+	ctx.Set("tag_preset_category", value)
+}
+
+func GetTagPresetCategory(ctx *gin.Context) string {
+	value, _ := ctx.Get("tag_preset_category")
+	ret, _ := value.(string)
+
+	return ret
+}
+
 func SetTagCreateRequest(ctx *gin.Context, value dto.TagCreateRequest) {
 	ctx.Set("tag_create_request", value)
 }

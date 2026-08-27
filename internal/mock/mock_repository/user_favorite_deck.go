@@ -69,6 +69,20 @@ func (mr *MockUserFavoriteDeckInterfaceMockRecorder) Delete(ctx, uid, deckId any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUserFavoriteDeckInterface)(nil).Delete), ctx, uid, deckId)
 }
 
+// DeleteByUserId mocks base method.
+func (m *MockUserFavoriteDeckInterface) DeleteByUserId(ctx context.Context, uid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUserId", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUserId indicates an expected call of DeleteByUserId.
+func (mr *MockUserFavoriteDeckInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockUserFavoriteDeckInterface)(nil).DeleteByUserId), ctx, uid)
+}
+
 // FindByUserId mocks base method.
 func (m *MockUserFavoriteDeckInterface) FindByUserId(ctx context.Context, uid string) ([]*entity.UserFavoriteDeck, error) {
 	m.ctrl.T.Helper()

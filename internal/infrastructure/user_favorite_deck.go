@@ -80,3 +80,18 @@ func (i *UserFavoriteDeck) Delete(
 		"user_id = ? AND deck_id = ?", uid, deckId,
 	).Delete(&model.UserFavoriteDeck{}).Error
 }
+
+// DeleteByUserId は退会時に、そのユーザが付けたお気に入りを行ごと削除する。
+// Deck.DeleteByUserId は「そのユーザのデッキに付いたお気に入り」しか消さないため、
+// 他人のデッキに付けたぶんはここで user_id 側から消す。
+func (i *UserFavoriteDeck) DeleteByUserId(
+	ctx context.Context,
+	uid string,
+) error {
+	if tx := dbFromContext(ctx, i.db).Where("user_id = ?", uid).Delete(&model.UserFavoriteDeck{}); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return tx.Error
+	}
+
+	return nil
+}

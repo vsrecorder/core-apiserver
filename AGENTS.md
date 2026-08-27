@@ -243,6 +243,24 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 - `USERS_PLAYERS_LINKING_ENABLED=false` はプレイヤーID連携のキルスイッチ。未設定または
   `false` 以外なら有効という判定（`!= "false"`）を変えない。
 
+### 退会したユーザのデータを残さない
+
+退会（`usecase.User.Delete`）は、そのユーザに紐づくデータを**すべて**削除する。対象は
+「`user_id` を持つテーブル」と「それらへFKで繋がる中間テーブル」の全部で、論理削除
+（`deleted_at`）を持つテーブルは論理削除、持たないテーブルは行ごと物理削除する。
+唯一の例外は `matches.opponents_user_id` で、これは他のユーザが作った対戦記録の中で
+対戦相手として参照されているもの。他人のデータなので消さない。
+
+**ユーザに紐づくテーブルを追加したら、次の3箇所を必ず揃えて更新すること。**
+
+1. そのテーブルのリポジトリに `DeleteByUserId` を足し、`usecase.User.Delete` から呼ぶ
+2. `internal/usecase/user_test.go` の `expectDeleteAllUserData` に足す
+   （呼び忘れるとgomockの未消化EXPECTで落ちる）
+3. `cmd/check-deleted-users-data` の `specs` と、`main_test.go` の `TestSpecs` の一覧に足す
+
+中間テーブルは付与先（deck/record/match など）のリポジトリ側で、親を論理削除する**前に**
+消す。GORMがサブクエリへ `deleted_at IS NULL` を付けるため、親を先に消すと子が消し残る。
+
 ## コーディングスタイル
 
 - コメント・ドキュメント・テスト名は日本語。コメントには「何をしているか」ではなく

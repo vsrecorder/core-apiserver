@@ -51,6 +51,7 @@ type TagInterface interface {
 
 	FindPresets(
 		ctx context.Context,
+		category string,
 	) ([]*entity.Tag, error)
 
 	Create(
@@ -87,10 +88,13 @@ func (u *Tag) FindByUserId(
 	return u.repository.FindByUserId(ctx, uid)
 }
 
+// FindPresets はプリセットタグを返す。category に entity.TagPresetCategoryXxx を
+// 渡すとその群だけに絞る(空文字なら全プリセット)。
 func (u *Tag) FindPresets(
 	ctx context.Context,
+	category string,
 ) ([]*entity.Tag, error) {
-	return u.repository.FindPresets(ctx)
+	return u.repository.FindPresets(ctx, category)
 }
 
 // Create はタグを作成する。同名のタグが既にある場合は作らず既存のものを返す
@@ -116,8 +120,9 @@ func (u *Tag) Create(
 	}
 
 	now := time.Now().Local()
-	// APIから作られるのは常にユーザー個別タグ(preset_flg=false)。プリセットは backfill が作る。
-	tag := entity.NewTag(id, now, now, param.UserId, param.Name, param.Color, false)
+	// APIから作られるのは常にユーザー個別タグ(preset_flg=false / 群なし / 文字色は自動)。
+	// プリセットは backfill か schema.sql が作る。
+	tag := entity.NewTag(id, now, now, param.UserId, param.Name, param.Color, false, "", "")
 
 	if err := u.repository.Save(ctx, tag); err != nil {
 		logError(ctx, err)
@@ -152,7 +157,7 @@ func (u *Tag) Update(
 		}
 	}
 
-	tag := entity.NewTag(id, ret.CreatedAt, time.Now().Local(), ret.UserId, param.Name, param.Color, ret.PresetFlg)
+	tag := entity.NewTag(id, ret.CreatedAt, time.Now().Local(), ret.UserId, param.Name, param.Color, ret.PresetFlg, ret.PresetCategory, ret.TextColor)
 
 	if err := u.repository.Save(ctx, tag); err != nil {
 		logError(ctx, err)

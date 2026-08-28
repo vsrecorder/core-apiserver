@@ -113,6 +113,20 @@ func (mr *MockBadgeEvaluationInterfaceMockRecorder) EvaluateOnRecordDeleted(ctx,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnRecordDeleted", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).EvaluateOnRecordDeleted), ctx, userId)
 }
 
+// EvaluateOnRecordUpdated mocks base method.
+func (m *MockBadgeEvaluationInterface) EvaluateOnRecordUpdated(ctx context.Context, userId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EvaluateOnRecordUpdated", ctx, userId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EvaluateOnRecordUpdated indicates an expected call of EvaluateOnRecordUpdated.
+func (mr *MockBadgeEvaluationInterfaceMockRecorder) EvaluateOnRecordUpdated(ctx, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnRecordUpdated", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).EvaluateOnRecordUpdated), ctx, userId)
+}
+
 // EvaluateOnUserCreated mocks base method.
 func (m *MockBadgeEvaluationInterface) EvaluateOnUserCreated(ctx context.Context, userId string, createdAt time.Time) ([]*entity.UserBadge, error) {
 	m.ctrl.T.Helper()
@@ -126,4 +140,19 @@ func (m *MockBadgeEvaluationInterface) EvaluateOnUserCreated(ctx context.Context
 func (mr *MockBadgeEvaluationInterfaceMockRecorder) EvaluateOnUserCreated(ctx, userId, createdAt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnUserCreated", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).EvaluateOnUserCreated), ctx, userId, createdAt)
+}
+
+// RevokeStaleStreakNotifications mocks base method.
+func (m *MockBadgeEvaluationInterface) RevokeStaleStreakNotifications(ctx context.Context, userId string, dryRun bool) ([]*entity.Notification, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevokeStaleStreakNotifications", ctx, userId, dryRun)
+	ret0, _ := ret[0].([]*entity.Notification)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RevokeStaleStreakNotifications indicates an expected call of RevokeStaleStreakNotifications.
+func (mr *MockBadgeEvaluationInterfaceMockRecorder) RevokeStaleStreakNotifications(ctx, userId, dryRun any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeStaleStreakNotifications", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).RevokeStaleStreakNotifications), ctx, userId, dryRun)
 }

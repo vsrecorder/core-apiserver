@@ -64,6 +64,14 @@ func (s orderTrackingBadgeEvaluation) EvaluateOnRecordDeleted(ctx context.Contex
 	return nil
 }
 
+func (s orderTrackingBadgeEvaluation) EvaluateOnRecordUpdated(ctx context.Context, userId string) error {
+	return nil
+}
+
+func (s orderTrackingBadgeEvaluation) RevokeStaleStreakNotifications(ctx context.Context, userId string, dryRun bool) ([]*entity.Notification, error) {
+	return nil, nil
+}
+
 type orderTrackingEnvironmentBadgeEvaluation struct {
 	calls *[]string
 }

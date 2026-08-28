@@ -57,6 +57,20 @@ func (mr *MockNotificationInterfaceMockRecorder) CountUnreadByUserId(ctx, userId
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountUnreadByUserId", reflect.TypeOf((*MockNotificationInterface)(nil).CountUnreadByUserId), ctx, userId)
 }
 
+// DeleteByIds mocks base method.
+func (m *MockNotificationInterface) DeleteByIds(ctx context.Context, ids []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByIds", ctx, ids)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByIds indicates an expected call of DeleteByIds.
+func (mr *MockNotificationInterfaceMockRecorder) DeleteByIds(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByIds", reflect.TypeOf((*MockNotificationInterface)(nil).DeleteByIds), ctx, ids)
+}
+
 // DeleteByUserId mocks base method.
 func (m *MockNotificationInterface) DeleteByUserId(ctx context.Context, uid string) error {
 	m.ctrl.T.Helper()
@@ -84,6 +98,21 @@ func (m *MockNotificationInterface) FindByUserId(ctx context.Context, userId str
 func (mr *MockNotificationInterfaceMockRecorder) FindByUserId(ctx, userId, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserId", reflect.TypeOf((*MockNotificationInterface)(nil).FindByUserId), ctx, userId, limit)
+}
+
+// FindByUserIdAndCategoryAndBodies mocks base method.
+func (m *MockNotificationInterface) FindByUserIdAndCategoryAndBodies(ctx context.Context, userId, category string, bodies []string) ([]*entity.Notification, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByUserIdAndCategoryAndBodies", ctx, userId, category, bodies)
+	ret0, _ := ret[0].([]*entity.Notification)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByUserIdAndCategoryAndBodies indicates an expected call of FindByUserIdAndCategoryAndBodies.
+func (mr *MockNotificationInterfaceMockRecorder) FindByUserIdAndCategoryAndBodies(ctx, userId, category, bodies any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserIdAndCategoryAndBodies", reflect.TypeOf((*MockNotificationInterface)(nil).FindByUserIdAndCategoryAndBodies), ctx, userId, category, bodies)
 }
 
 // MarkAllAsReadByUserId mocks base method.

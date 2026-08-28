@@ -49,6 +49,25 @@ type NotificationInterface interface {
 		userId string,
 	) error
 
+	// FindByUserIdAndCategoryAndBodies は指定ユーザの通知のうち、category が一致し
+	// body が bodies のいずれかと完全一致するものを返す。記録の削除・更新で達成条件を
+	// 満たさなくなったストリーク継続通知を特定するために使う。通知はバッジ定義への参照を
+	// 持たないため、生成時と同じ本文を組み立てて突き合わせる。
+	// bodies が空なら空スライスを返す(全件取得にはならない)。
+	FindByUserIdAndCategoryAndBodies(
+		ctx context.Context,
+		userId string,
+		category string,
+		bodies []string,
+	) ([]*entity.Notification, error)
+
+	// DeleteByIds は指定した通知を行ごと削除する。このテーブルは論理削除を持たない。
+	// ids が空なら何もしない(全件削除にはならない)。
+	DeleteByIds(
+		ctx context.Context,
+		ids []string,
+	) error
+
 	// DeleteByUserId は退会時に、そのユーザの通知をまとめて削除する。
 	// このテーブルは論理削除を持たないため行ごと物理削除する。
 	DeleteByUserId(

@@ -67,6 +67,36 @@ func (stubBadgeEvaluation) EvaluateOnRecordDeleted(
 	return nil
 }
 
+func (stubBadgeEvaluation) EvaluateOnRecordUpdated(
+	ctx context.Context,
+	userId string,
+) error {
+	return nil
+}
+
+func (stubBadgeEvaluation) RevokeStaleStreakNotifications(
+	ctx context.Context,
+	userId string,
+	dryRun bool,
+) ([]*entity.Notification, error) {
+	return nil, nil
+}
+
+// spyRecordUpdateBadgeEvaluation は Update 経由でストリークの再計算が呼ばれたかだけを
+// 記録するスタブ(stubBadgeEvaluationと同じ理由でgomockを使わない)。
+type spyRecordUpdateBadgeEvaluation struct {
+	stubBadgeEvaluation
+	updatedUserIds *[]string
+}
+
+func (s spyRecordUpdateBadgeEvaluation) EvaluateOnRecordUpdated(
+	ctx context.Context,
+	userId string,
+) error {
+	*s.updatedUserIds = append(*s.updatedUserIds, userId)
+	return nil
+}
+
 // stubDesignationEvaluation は usecase パッケージ自身のテストで使う
 // DesignationEvaluationInterface のスタブ(stubBadgeEvaluationと同じ理由でgomockを使わない)。
 type stubDesignationEvaluation struct{}
@@ -238,6 +268,66 @@ func TestRecordUsecase_Update_NotifiesDesignationChange(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, notifyIfTierChangedCalled)
 	require.True(t, notifyIfTierLostCalled)
+}
+
+// 対戦日を編集すると週次ストリークの連続週数が変わりうるため、Updateからも再計算を呼ぶ。
+// 一方、日付が動かない編集では余計な再計算を走らせない。
+func TestRecordUsecase_Update_RecomputesStreakOnlyWhenEventDateChanged(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	// updateRecord は指定した対戦日の記録を、newEventDate へ更新したときに
+	// EvaluateOnRecordUpdated が呼ばれたユーザーIDを返す。
+	updateRecord := func(t *testing.T, beforeEventDate time.Time, param *RecordParam) []string {
+		t.Helper()
+
+		mockCtrl := gomock.NewController(t)
+		mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+
+		var updated []string
+		usecase := newRecordUsecaseForTest(
+			mockRepository,
+			spyRecordUpdateBadgeEvaluation{updatedUserIds: &updated},
+			stubDesignationEvaluation{},
+		)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		before := entity.NewRecord(
+			id, time.Now().Local(), 1, "", "", "", uid, "", "", beforeEventDate, false, false, entity.RegulationIdStandard, "", "元のメモ",
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(before, nil)
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		_, err = usecase.Update(context.Background(), id, param)
+		require.NoError(t, err)
+
+		return updated
+	}
+
+	t.Run("正常系_対戦日を変更すると再計算する", func(t *testing.T) {
+		beforeEventDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
+		param := NewRecordParam(1, "", "", "", uid, "", "", time.Date(2026, 6, 22, 0, 0, 0, 0, time.Local), false, false, entity.RegulationIdStandard, "", "元のメモ")
+
+		require.Equal(t, []string{uid}, updateRecord(t, beforeEventDate, param))
+	})
+
+	t.Run("正常系_対戦日以外だけを編集した場合は再計算しない", func(t *testing.T) {
+		eventDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
+		param := NewRecordParam(1, "", "", "", uid, "", "", eventDate, false, false, entity.RegulationIdStandard, "", "編集後のメモ")
+
+		require.Empty(t, updateRecord(t, eventDate, param))
+	})
+
+	t.Run("正常系_同じ日をタイムゾーン違いで送っても再計算しない", func(t *testing.T) {
+		// DBから読んだ event_date は接続タイムゾーン(JST)の0時、webappが送るのは
+		// 同じ日のUTC 0時。瞬間は異なるが対戦日は変わっていないので再計算はしない。
+		beforeEventDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
+		param := NewRecordParam(1, "", "", "", uid, "", "", time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC), false, false, entity.RegulationIdStandard, "", "元のメモ")
+
+		require.Empty(t, updateRecord(t, beforeEventDate, param))
+	})
 }
 
 // Tonamel記録を作成すると、大会情報を1度だけ取得して tonamel_events へ保存する。

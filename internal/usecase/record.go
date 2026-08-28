@@ -531,6 +531,19 @@ func (u *Record) persistTonamelEvent(
 	}
 }
 
+// isSameEventDate は2つの対戦日が同じ暦日を指すかを返す。
+// records.event_date は DATE カラムのため、DBから読んだ値(接続のタイムゾーン基準の0時)と
+// リクエストで渡された値(webappは "YYYY-MM-DDT00:00:00Z" とUTCの0時で送る)は
+// 同じ日でも time.Time としては別の瞬間になる。ここで見たいのは「対戦日が変わったか」
+// だけなので、瞬間ではなく年月日で比較する(Equalで比べると日付を変えていない更新でも
+// 毎回ストリークの再計算が走ってしまう)。
+func isSameEventDate(a time.Time, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+
+	return ay == by && am == bm && ad == bd
+}
+
 func (u *Record) Update(
 	ctx context.Context,
 	id string,
@@ -597,6 +610,17 @@ func (u *Record) Update(
 	// 編集で Tonamel記録に変わった/別の大会に付け替えられたケースに追随する。
 	// 既に保存済みの大会なら再取得しない(persistTonamelEvent 内で判定)。
 	u.persistTonamelEvent(ctx, param.tonamelEventId)
+
+	// 対戦日を動かすと週次ストリークの連続週数が変わりうる(週が埋まって伸びることも、
+	// 空いて途切れることもある)。Createで使う updateStreak は加算のみの差分更新で
+	// 減少を追えないため、削除時と同じく現存する記録からゼロで作り直す。
+	// 対戦日が変わらない更新(メモやデッキの編集)では集計結果も変わらないため呼ばない。
+	if !isSameEventDate(ret.EventDate, record.EventDate) {
+		if err := u.badgeEvaluation.EvaluateOnRecordUpdated(ctx, param.userId); err != nil {
+			logError(ctx, err)
+			return nil, err
+		}
+	}
 
 	if tierErr == nil {
 		u.designationEvaluation.NotifyIfTierChanged(ctx, param.userId, beforeTier, time.Now().Local())

@@ -36,6 +36,13 @@ const (
 // notificationLinkUrlForBadge はバッジ獲得通知のリンク先(バッジ一覧があるプロフィールページ)。
 const notificationLinkUrlForBadge = "/users"
 
+// バッジ獲得通知の見出し。週次ストリーク系だけは「今も続いている状態」を表す文言にする。
+// 記録削除で条件を満たさなくなった通知を後から特定する必要があるため定数に切り出す。
+const (
+	badgeAchievedNotificationTitle  = "バッジを獲得しました"
+	streakAchievedNotificationTitle = "ストリークを継続中です"
+)
+
 // streakFreezeMaxGapWeeks は、記録が途切れてもフリーズ枠で連続扱いを維持できる
 // 最大の空白週数(2週間分)。旅行・繁忙期等でのストリーク断絶による離脱を防ぐ
 // (BADGE_STREAK_PLAN.md 2-4)。
@@ -101,10 +108,32 @@ type BadgeEvaluationInterface interface {
 	// EvaluateOnRecordDeleted は記録削除時、残っている記録の日付から
 	// ストリーク状態(user_streaks)を全期間分作り直す。updateStreak は加算のみの
 	// 差分更新のため、削除時にそのまま流用すると連続週数が減らずに残ってしまう。
+	// 併せて、減った連続週数では成立しなくなったストリーク継続通知を取り消す。
 	EvaluateOnRecordDeleted(
 		ctx context.Context,
 		userId string,
 	) error
+
+	// EvaluateOnRecordUpdated は記録の対戦日(event_date)が変更されたとき、
+	// EvaluateOnRecordDeleted と同じく現存する記録からストリーク状態を作り直し、
+	// 成立しなくなったストリーク継続通知を取り消す。日付の変更は連続週数を増やしも
+	// 減らしもする(週が埋まる/空く)ため、加算のみの updateStreak ではなく
+	// ゼロからの再計算を使う。
+	EvaluateOnRecordUpdated(
+		ctx context.Context,
+		userId string,
+	) error
+
+	// RevokeStaleStreakNotifications は、現在のシーズンの連続週数では達成条件を
+	// 満たさなくなった週次ストリーク系バッジの「ストリークを継続中です」通知を削除し、
+	// 削除した通知を返す。dryRun=true の場合は削除せず、対象の通知を返すだけ。
+	// 記録の削除・更新から呼ばれるほか、過去に取り消しそびれた通知を一括で掃除する
+	// バッチ(cmd/cleanup-stale-streak-notifications)からも使う。
+	RevokeStaleStreakNotifications(
+		ctx context.Context,
+		userId string,
+		dryRun bool,
+	) ([]*entity.Notification, error)
 }
 
 type BadgeEvaluation struct {
@@ -514,16 +543,13 @@ func (u *BadgeEvaluation) notifyBadgeAchieved(
 	}
 
 	category := NotificationCategoryBadge
-	title := "バッジを獲得しました"
+	title := badgeAchievedNotificationTitle
 	if def.Category == BadgeCategoryStreak {
 		category = NotificationCategoryStreak
-		title = "ストリークを継続中です"
+		title = streakAchievedNotificationTitle
 	}
 
-	body := fmt.Sprintf("「%s」バッジを獲得しました！", def.Name)
-	if seasonLabel != "" {
-		body = fmt.Sprintf("%sシーズンで「%s」バッジを獲得しました！", seasonLabel, def.Name)
-	}
+	body := badgeAchievedNotificationBody(def, seasonLabel)
 
 	notification := entity.NewNotification(
 		id,
@@ -536,6 +562,17 @@ func (u *BadgeEvaluation) notifyBadgeAchieved(
 	)
 
 	return u.notificationRepo.Save(ctx, notification)
+}
+
+// badgeAchievedNotificationBody はバッジ獲得通知の本文を組み立てる。記録削除時に
+// 「達成条件を満たさなくなった通知」を探す際も同じ関数で本文を再現して突き合わせるため
+// (通知はバッジ定義への参照カラムを持たない)、文面の組み立てはここ1箇所に集約する。
+func badgeAchievedNotificationBody(def *entity.BadgeDefinition, seasonLabel string) string {
+	if seasonLabel != "" {
+		return fmt.Sprintf("%sシーズンで「%s」バッジを獲得しました！", seasonLabel, def.Name)
+	}
+
+	return fmt.Sprintf("「%s」バッジを獲得しました！", def.Name)
 }
 
 // notifySeasonalCountMilestones は、この1件のCreateでシーズンスコープのcriteriaType別
@@ -810,6 +847,23 @@ func (u *BadgeEvaluation) EvaluateOnRecordDeleted(
 	ctx context.Context,
 	userId string,
 ) error {
+	return u.recomputeStreak(ctx, userId)
+}
+
+func (u *BadgeEvaluation) EvaluateOnRecordUpdated(
+	ctx context.Context,
+	userId string,
+) error {
+	return u.recomputeStreak(ctx, userId)
+}
+
+// recomputeStreak は現存する記録の日付からストリーク状態を作り直し、現在の連続週数では
+// 成立しなくなったストリーク継続通知を取り消す。記録の削除と、対戦日(event_date)を
+// 動かす更新は、どちらも「差分では追えない」変化なので同じ再計算を通す。
+func (u *BadgeEvaluation) recomputeStreak(
+	ctx context.Context,
+	userId string,
+) error {
 	dates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, time.Time{}, time.Time{})
 	if err != nil {
 		logError(ctx, err)
@@ -819,7 +873,104 @@ func (u *BadgeEvaluation) EvaluateOnRecordDeleted(
 	currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek := ComputeStreakState(dates)
 
 	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek, time.Now().Local())
-	return u.userStreakRepo.Save(ctx, streak)
+	if err := u.userStreakRepo.Save(ctx, streak); err != nil {
+		logError(ctx, err)
+		return err
+	}
+
+	// 通知は付随的な機能であり、これが失敗しても記録の削除・更新自体は成功させるべきなので、
+	// エラーはログに残して握りつぶす。
+	if _, err := u.RevokeStaleStreakNotifications(ctx, userId, false); err != nil {
+		logError(ctx, err)
+	}
+
+	return nil
+}
+
+// RevokeStaleStreakNotifications は、現在のシーズンの連続週数では達成条件を満たさなく
+// なった週次ストリーク系バッジの「ストリークを継続中です」通知を削除する。
+// この通知だけは「今もN週続いている」という現在進行形の状態を伝えるものであり、
+// 記録を消す/対戦日を動かしてNに届かなくなった後も残っていると事実と食い違うため取り消す。
+// マイルストーン系(記録100件など)は過去に達成した事実そのものなので対象にしない。
+//
+// 今の連続週数でもまだ満たしている閾値の通知は残す(例: 5週→2週に減ったなら3週・7週の
+// 通知だけを消し、2週までの通知はそのまま)。
+func (u *BadgeEvaluation) RevokeStaleStreakNotifications(
+	ctx context.Context,
+	userId string,
+	dryRun bool,
+) ([]*entity.Notification, error) {
+	now := time.Now().Local()
+
+	// 通知は作成時点の「現在のシーズン」の集計で作られる(notifySeasonalMilestonesOnRecordCreated)
+	// ため、取り消しも現在のシーズンで判定する。過去シーズンに作られた通知は本文に当時の
+	// シーズンラベルが入っており、下の本文一致で自然に対象から外れる。
+	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, "", now)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	seasonLabel, err := CurrentSeasonLabel(ctx, u.championshipSeriesRepo, now)
+	if err != nil {
+		logWarn(ctx, err)
+		seasonLabel = ""
+	}
+
+	seasonRecordDates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, fromDate, toDate)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	currentWeeks := seasonStreakWeeks(seasonRecordDates)
+
+	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	var staleBodies []string
+	for _, def := range streakDefinitions(definitions) {
+		if def.CriteriaType != BadgeCriteriaTypeStreakWeeks {
+			continue
+		}
+		if def.CriteriaValue <= currentWeeks {
+			continue
+		}
+
+		staleBodies = append(staleBodies, badgeAchievedNotificationBody(def, seasonLabel))
+	}
+	if len(staleBodies) == 0 {
+		return nil, nil
+	}
+
+	stale, err := u.notificationRepo.FindByUserIdAndCategoryAndBodies(
+		ctx,
+		userId,
+		NotificationCategoryStreak,
+		staleBodies,
+	)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+	if len(stale) == 0 || dryRun {
+		return stale, nil
+	}
+
+	ids := make([]string, 0, len(stale))
+	for _, n := range stale {
+		ids = append(ids, n.ID)
+	}
+
+	if err := u.notificationRepo.DeleteByIds(ctx, ids); err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	return stale, nil
 }
 
 func (u *BadgeEvaluation) EvaluateOnMatchCreated(

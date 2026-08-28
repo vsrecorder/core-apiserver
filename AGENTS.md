@@ -12,7 +12,7 @@ APIのベースパスは `/api/v1beta`、待ち受けポートは `8914`。
 ## コマンド
 
 ```sh
-make test              # go mod tidy && go test -v -cover -race ./...
+make test              # go mod tidy && UTC と Asia/Tokyo の両方で go test -v -cover -race ./...
 make run               # go run cmd/core-apiserver/main.go
 make build             # go build -o /dev/null ...（バイナリは作らないコンパイル確認）
 make mockgen           # domain/repository・usecase のインタフェースからモックを再生成
@@ -28,7 +28,8 @@ go test -run 'TestRecordController/Create' ./internal/controller/  # シナリ�
 go test -run 'TestRecordController/Create/正常系' ./internal/controller/  # サブテスト単位
 ```
 
-- CI (`.github/workflows/`) は `go test -v -cover -race ./...` のみを実行する。
+- CI (`.github/workflows/`) は `go test -v -cover -race ./...` を **UTC と Asia/Tokyo の
+  両方** で実行する（理由は「テストで時刻を作るときの Location」を参照）。
   `make integration-test` はDockerが必要なためCIでは動かない。ローカルで回すこと。
 - リポジトリ層でSQLやテーブル・カラム名を変更したときは、sqlmockのテストが通っても
   スキーマとの不整合は検出できないため `make integration-test` も実行する。
@@ -197,6 +198,23 @@ Deck・User の各usecaseへ注入され、書き込み処理の中でバッジ�
   `overrideTimeNow(t, 固定時刻)`（usecase）で差し替える。パッケージ変数を書き換えるため、
   これを使うテストは並列実行しない。
 - JWTが必要なテストは `internal/testutil` の `GenerateJWTSecret` / `GenerateJWT` を使う。
+
+### テストで時刻を作るときの Location
+
+CIのrunnerは **UTC**、開発機と本番は **JST** で動く。テストの中で `time.Local` を使うと
+同じコードが環境で別の結果になり、片方でしか落ちないテストができる。実際に、JSONを往復する
+値を `time.Local` で作ったテストが手元（JST）では通るのにCI（UTC）で落ちたことがある
+（`time.Parse` はオフセットがローカルと一致するときだけ `Local` を返すため、復元後の
+Location が環境によって変わる）。
+
+- **JSONやDBを往復する時刻は `time.UTC` で固定する。** リクエストの突き合わせや
+  `require.Equal` での構造体比較は Location まで見る。
+- **タイムゾーン差そのものを検証したいときは `time.FixedZone` で明示的に差を作る。**
+  `time.Local` を使うと、UTCのCIでは差が消えて検証にならない。
+- 日付の集合を組み立てて内部で完結する比較だけなら `time.Local` でもよい。
+
+`make test` は UTC と Asia/Tokyo の両方で回るので、手元でこの種のズレに気づける。
+CI（`.github/workflows/`）も同じく両方で実行する。
 
 ## リソースを追加・変更するときに触るファイル
 

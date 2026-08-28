@@ -17,8 +17,14 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.7"
-      - name: Run Test
-        run: go test -v -cover -race ./...
+      # CIのrunnerはUTC、開発機と本番はJSTのため両方で回す。片方だけだと、
+      # time.Local に依存したテストが一方の環境でだけ通ってすり抜ける。
+      # -count=1 はキャッシュ無効化。TZ はテストキャッシュのキーに入らないため、
+      # 付けないと2回目が素通りして片方のタイムゾーンしか検証されない。
+      - name: Run Test (UTC)
+        run: TZ=UTC go test -count=1 -v -cover -race ./...
+      - name: Run Test (Asia/Tokyo)
+        run: TZ=Asia/Tokyo go test -count=1 -v -cover -race ./...
 
   build-and-push-container-image:
     needs:

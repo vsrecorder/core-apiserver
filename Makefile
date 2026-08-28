@@ -1,9 +1,15 @@
 SHELL := /bin/bash
 
+# test は CI と同じ2つのタイムゾーンで回す。-count=1 が要るのは、TZ はテストキャッシュの
+# キーに入らず、付けないと2回目が (cached) で素通りしてしまうため。CIのrunnerはUTC、開発機と本番はJSTのため、
+# 片方でしか実行しないと「手元では通るがCIで落ちる(逆もある)」テストを見逃す。
+# 実際に time.Local で作った時刻をJSON経由で比較するテストが、JSTでだけ通る状態で
+# すり抜けたことがある(テストで時刻を作るときの決まりは AGENTS.md 参照)。
 .PHONY: test
 test:
 	go mod tidy
-	go test -v -cover -race ./...
+	TZ=UTC go test -count=1 -v -cover -race ./...
+	TZ=Asia/Tokyo go test -count=1 -v -cover -race ./...
 
 # integration-test は使い捨てのPostgresコンテナを起動し、db/schema.sql を適用した上で
 # リポジトリ層の統合テスト(TestIntegration*)を実行する。終了後にコンテナは破棄される。
@@ -15,7 +21,7 @@ integration-test:
 		-e TZ=Asia/Tokyo -p 15432:5432 postgres:16-alpine
 	@until docker exec vsrecorder-test-db pg_isready -U vsrecorder >/dev/null 2>&1; do sleep 1; done
 	docker exec -i vsrecorder-test-db psql -q -U vsrecorder -d vsrecorder_test < db/schema.sql
-	VSRECORDER_TEST_DATABASE_URL="host=localhost port=15432 user=vsrecorder password=vsrecorder dbname=vsrecorder_test sslmode=disable TimeZone=Asia/Tokyo" \
+	TZ=Asia/Tokyo VSRECORDER_TEST_DATABASE_URL="host=localhost port=15432 user=vsrecorder password=vsrecorder dbname=vsrecorder_test sslmode=disable TimeZone=Asia/Tokyo" \
 		go test -count=1 -v -run TestIntegration ./internal/infrastructure/ ./cmd/backfill-acespec-tags/ ./cmd/check-deleted-users-data/ ; \
 		status=$$?; docker rm -f vsrecorder-test-db >/dev/null; exit $$status
 

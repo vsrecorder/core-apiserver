@@ -97,6 +97,26 @@ func (s spyRecordUpdateBadgeEvaluation) EvaluateOnRecordUpdated(
 	return nil
 }
 
+// errStreakBadgeEvaluation はストリークの再計算だけが失敗するスタブ。
+// 再計算の失敗が記録の更新・削除そのものを失敗させないことを確かめるために使う。
+type errStreakBadgeEvaluation struct {
+	stubBadgeEvaluation
+}
+
+func (errStreakBadgeEvaluation) EvaluateOnRecordDeleted(
+	ctx context.Context,
+	userId string,
+) error {
+	return errors.New("streak recompute failed")
+}
+
+func (errStreakBadgeEvaluation) EvaluateOnRecordUpdated(
+	ctx context.Context,
+	userId string,
+) error {
+	return errors.New("streak recompute failed")
+}
+
 // stubDesignationEvaluation は usecase パッケージ自身のテストで使う
 // DesignationEvaluationInterface のスタブ(stubBadgeEvaluationと同じ理由でgomockを使わない)。
 type stubDesignationEvaluation struct{}
@@ -327,6 +347,52 @@ func TestRecordUsecase_Update_RecomputesStreakOnlyWhenEventDateChanged(t *testin
 		param := NewRecordParam(1, "", "", "", uid, "", "", time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC), false, false, entity.RegulationIdStandard, "", "元のメモ")
 
 		require.Empty(t, updateRecord(t, beforeEventDate, param))
+	})
+}
+
+// ストリークの再計算に失敗しても、記録の更新・削除そのものは既に完了しているため
+// 成功として返す。エラーにすると、保存済み/削除済みなのに失敗したように見えてしまう。
+func TestRecordUsecase_StreakRecomputeFailureDoesNotFailWrite(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	t.Run("正常系_削除は成功する", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+		usecase := newRecordUsecaseForTest(mockRepository, errStreakBadgeEvaluation{}, stubDesignationEvaluation{})
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		record := entity.NewRecord(
+			id, time.Now().Local(), 1, "", "", "", uid, "", "", time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local), false, false, entity.RegulationIdStandard, "", "",
+		)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(record, nil)
+		mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
+
+		require.NoError(t, usecase.Delete(context.Background(), id))
+	})
+
+	t.Run("正常系_対戦日を変更した更新も成功する", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+		usecase := newRecordUsecaseForTest(mockRepository, errStreakBadgeEvaluation{}, stubDesignationEvaluation{})
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		before := entity.NewRecord(
+			id, time.Now().Local(), 1, "", "", "", uid, "", "", time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local), false, false, entity.RegulationIdStandard, "", "",
+		)
+		param := NewRecordParam(1, "", "", "", uid, "", "", time.Date(2026, 6, 22, 0, 0, 0, 0, time.Local), false, false, entity.RegulationIdStandard, "", "")
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(before, nil)
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		ret, err := usecase.Update(context.Background(), id, param)
+
+		require.NoError(t, err)
+		require.NotNil(t, ret)
 	})
 }
 

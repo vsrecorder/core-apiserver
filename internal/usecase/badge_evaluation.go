@@ -2,12 +2,10 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
 
-	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
@@ -223,82 +221,6 @@ func RecordBasisTime(eventDate time.Time, createdAt time.Time) time.Time {
 		return createdAt
 	}
 	return eventDate
-}
-
-// updateStreak はイベント発生週を基準にストリーク状態を更新する。
-func (u *BadgeEvaluation) updateStreak(
-	ctx context.Context,
-	userId string,
-	eventDate time.Time,
-	createdAt time.Time,
-) (*entity.UserStreak, error) {
-	week := mondayOf(RecordBasisTime(eventDate, createdAt))
-
-	current, err := u.userStreakRepo.FindByUserId(ctx, userId)
-	if err != nil {
-		logError(ctx, err)
-		if !errors.Is(err, apperror.ErrRecordNotFound) {
-			return nil, err
-		}
-		current = nil
-	}
-
-	if current == nil {
-		streak := entity.NewUserStreak(userId, 1, 1, 0, 0, week, time.Now().Local())
-		if err := u.userStreakRepo.Save(ctx, streak); err != nil {
-			logError(ctx, err)
-			return nil, err
-		}
-		return streak, nil
-	}
-
-	diffDays := int(week.Sub(current.LastRecordedWeek).Hours() / 24)
-	diffWeeks := diffDays / 7
-
-	currentWeeks := current.CurrentWeeks
-	freezeUsedCount := current.FreezeUsedCount
-	freezeRegenProgress := current.FreezeRegenProgress
-	lastRecordedWeek := current.LastRecordedWeek
-
-	switch {
-	case diffWeeks == 0:
-		// 同じ週内の記録は連続数に影響しない
-		return current, nil
-	case diffDays < 0:
-		// 過去日付をまとめて後入力した場合も連続数に影響させない
-		return current, nil
-	case diffWeeks == 1:
-		// フリーズを使わず途切れずに継続した「クリーンな週」。回復進捗を1つ進め、
-		// 回復間隔に達したら使用済みフリーズ枠を1つ戻して進捗をリセットする。
-		currentWeeks++
-		freezeUsedCount, freezeRegenProgress = advanceFreezeRegen(freezeUsedCount, freezeRegenProgress)
-		lastRecordedWeek = week
-	case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
-		// 2週間分の空白まではフリーズ枠を消費して連続扱いにする。フリーズ消費で回復進捗は0に戻る。
-		currentWeeks++
-		freezeUsedCount++
-		freezeRegenProgress = 0
-		lastRecordedWeek = week
-	default:
-		// 猶予を超えて途切れた場合はストリークをリセットする
-		currentWeeks = 1
-		freezeUsedCount = 0
-		freezeRegenProgress = 0
-		lastRecordedWeek = week
-	}
-
-	longestWeeks := current.LongestWeeks
-	if currentWeeks > longestWeeks {
-		longestWeeks = currentWeeks
-	}
-
-	streak := entity.NewUserStreak(userId, currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek, time.Now().Local())
-	if err := u.userStreakRepo.Save(ctx, streak); err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	return streak, nil
 }
 
 // ComputeStreakState は記録日の集合(重複・順不同可)から、週次ストリークの状態
@@ -607,10 +529,48 @@ func (u *BadgeEvaluation) notifySeasonalCountMilestones(
 	return nil
 }
 
-// notifySeasonalStreakMilestones はシーズンスコープの記録日付一覧から現在の連続週数を求め、
-// 「今回の記録がその週で最初の記録か」(=同じ週により早い日付の記録が既に無いか)を見て、
-// 週次ストリーク系定義のcriteria_valueと一致すれば通知する。同じ週の2件目以降の記録では
-// currentWeeksが変化しないため、この判定により重複通知を避ける。
+// isSameEventDate は2つの対戦日が同じ暦日を指すかを返す。
+// records.event_date は DATE カラムのため、DBから読み直した値と、リクエストで渡された
+// 値(webappは "YYYY-MM-DDT00:00:00Z" と送る)は、同じ日でも time.Time としては別の
+// 瞬間になりうる。対戦日の同一性を見たい場面では、瞬間ではなく年月日で比較する。
+func isSameEventDate(a time.Time, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+
+	return ay == by && am == bm && ad == bd
+}
+
+// withoutOneRecord は dates から basis と同じ対戦日の記録を1件だけ取り除いたスライスを返す。
+// 「この1件を作る前の状態」を復元し、今回の記録が連続週数をどこまで進めたかを見るために使う。
+// 同じ日の記録が複数ある場合に1件だけ取り除くのは、残りは「作る前から在った記録」であり、
+// まとめて外すと直前の状態を過小に見積もってしまうため(どの1件を外しても週の集合は同じ)。
+//
+// dates はDBから読み直した基準日、basis はリクエスト由来の値なので、瞬間の一致
+// (time.Equal)ではなく暦日で突き合わせる。ここで取りこぼすと「作る前の状態」が
+// 現在と同じになり、本来出すべき通知が出なくなる。
+func withoutOneRecord(dates []time.Time, basis time.Time) []time.Time {
+	ret := make([]time.Time, 0, len(dates))
+
+	removed := false
+	for _, d := range dates {
+		if !removed && isSameEventDate(d, basis) {
+			removed = true
+			continue
+		}
+
+		ret = append(ret, d)
+	}
+
+	return ret
+}
+
+// notifySeasonalStreakMilestones はシーズンスコープの記録日付一覧から、この1件の記録で
+// 連続週数がまたいだ閾値(previousWeeks < criteria_value <= currentWeeks)の週次ストリーク
+// 系定義を通知する。マイルストーン系(notifySeasonalCountMilestones)と同じ「またいだか」
+// 判定にしているのは、閾値ちょうどの一致で判定すると、過去日付の後入力で空き週がまとまって
+// 埋まり連続週数が飛んだときに、間の閾値の通知が永久に欠落するため。
+// 同じ週の2件目以降の記録は前後で連続週数が変わらない(previousWeeks == currentWeeks)ので、
+// この範囲判定だけで重複通知も防げる。
 func (u *BadgeEvaluation) notifySeasonalStreakMilestones(
 	ctx context.Context,
 	userId string,
@@ -620,24 +580,14 @@ func (u *BadgeEvaluation) notifySeasonalStreakMilestones(
 	createdAt time.Time,
 	seasonLabel string,
 ) error {
-	currentWeeks, _, _, _, _ := ComputeStreakState(seasonRecordDates)
-
-	thisWeek := mondayOf(thisRecordBasis)
-	for _, d := range seasonRecordDates {
-		if d.Equal(thisRecordBasis) {
-			continue
-		}
-		if mondayOf(d).Equal(thisWeek) && d.Before(thisRecordBasis) {
-			// 同じ週により早い記録が既にある = 今回の記録が連続週数を進めたわけではない
-			return nil
-		}
-	}
+	currentWeeks := seasonStreakWeeks(seasonRecordDates)
+	previousWeeks := seasonStreakWeeks(withoutOneRecord(seasonRecordDates, thisRecordBasis))
 
 	for _, def := range definitions {
 		if def.CriteriaType != BadgeCriteriaTypeStreakWeeks {
 			continue
 		}
-		if def.CriteriaValue != currentWeeks {
+		if !(previousWeeks < def.CriteriaValue && def.CriteriaValue <= currentWeeks) {
 			continue
 		}
 
@@ -799,7 +749,12 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 ) ([]*entity.UserBadge, error) {
 	// user_streaks(StreakPanel用の全期間ストリーク)は引き続きここで更新する。
 	// バッジとしての週次ストリーク判定はシーズンごとにライブ集計するため、ここでは行わない。
-	if _, err := u.updateStreak(ctx, userId, record.EventDate, record.CreatedAt); err != nil {
+	//
+	// 差分更新(直前の状態に1週分を足す)ではなく、削除・更新時と同じく現存する記録から
+	// 作り直す。過去の日付をあとから入力すると、既に記録済みの週より前の空き週が埋まって
+	// 連続週数が伸びるが、これは差分では追えないため(records は Save 済みなので、この
+	// 記録自身も再計算に含まれる)。
+	if err := u.recomputeStreak(ctx, userId); err != nil {
 		logError(ctx, err)
 		return nil, err
 	}
@@ -857,9 +812,15 @@ func (u *BadgeEvaluation) EvaluateOnRecordUpdated(
 	return u.recomputeStreak(ctx, userId)
 }
 
-// recomputeStreak は現存する記録の日付からストリーク状態を作り直し、現在の連続週数では
-// 成立しなくなったストリーク継続通知を取り消す。記録の削除と、対戦日(event_date)を
-// 動かす更新は、どちらも「差分では追えない」変化なので同じ再計算を通す。
+// recomputeStreak は現存する記録の日付から user_streaks を作り直し、作り直した連続週数
+// では成立しなくなったストリーク継続通知を取り消す。記録の作成・削除・更新のいずれも
+// この1本を通し、状態の求め方をここに集約する(差分更新を併用すると、過去日付の後入力の
+// ように差分では追えない変化で食い違うため)。
+//
+// 作成でも取り消しが要るのは、間隔の空いた記録を作ると連続が途切れて連続週数が1に戻る
+// ため(例: 2週続けたあと3週空けて記録すると、2週継続中の通知はもう事実と合わない)。
+// 取り消しを先に済ませてから notifySeasonalMilestonesOnRecordCreated が新しい通知を作る
+// ので、古い通知が残ったまま新しい通知が積まれることはない。
 func (u *BadgeEvaluation) recomputeStreak(
 	ctx context.Context,
 	userId string,
@@ -878,8 +839,8 @@ func (u *BadgeEvaluation) recomputeStreak(
 		return err
 	}
 
-	// 通知は付随的な機能であり、これが失敗しても記録の削除・更新自体は成功させるべきなので、
-	// エラーはログに残して握りつぶす。
+	// 通知は付随的な機能であり、これが失敗しても記録の作成・削除・更新自体は成功させる
+	// べきなので、エラーはログに残して握りつぶす。
 	if _, err := u.RevokeStaleStreakNotifications(ctx, userId, false); err != nil {
 		logError(ctx, err)
 	}

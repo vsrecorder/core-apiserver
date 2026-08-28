@@ -531,19 +531,6 @@ func (u *Record) persistTonamelEvent(
 	}
 }
 
-// isSameEventDate は2つの対戦日が同じ暦日を指すかを返す。
-// records.event_date は DATE カラムのため、DBから読んだ値(接続のタイムゾーン基準の0時)と
-// リクエストで渡された値(webappは "YYYY-MM-DDT00:00:00Z" とUTCの0時で送る)は
-// 同じ日でも time.Time としては別の瞬間になる。ここで見たいのは「対戦日が変わったか」
-// だけなので、瞬間ではなく年月日で比較する(Equalで比べると日付を変えていない更新でも
-// 毎回ストリークの再計算が走ってしまう)。
-func isSameEventDate(a time.Time, b time.Time) bool {
-	ay, am, ad := a.Date()
-	by, bm, bd := b.Date()
-
-	return ay == by && am == bm && ad == bd
-}
-
 func (u *Record) Update(
 	ctx context.Context,
 	id string,
@@ -615,10 +602,10 @@ func (u *Record) Update(
 	// 空いて途切れることもある)。Createで使う updateStreak は加算のみの差分更新で
 	// 減少を追えないため、削除時と同じく現存する記録からゼロで作り直す。
 	// 対戦日が変わらない更新(メモやデッキの編集)では集計結果も変わらないため呼ばない。
+	// 削除時と同じ理由で、再計算の失敗は更新自体の失敗にしない(更新はもう保存済み)。
 	if !isSameEventDate(ret.EventDate, record.EventDate) {
 		if err := u.badgeEvaluation.EvaluateOnRecordUpdated(ctx, param.userId); err != nil {
 			logError(ctx, err)
-			return nil, err
 		}
 	}
 
@@ -648,9 +635,11 @@ func (u *Record) Delete(
 		return err
 	}
 
+	// ストリークの再計算に失敗しても、記録の削除自体は完了しているので成功として返す。
+	// ここでエラーにすると、消えているのに「削除に失敗」と見えてしまう。ズレは次の
+	// 記録の作成・削除・更新での再計算か、repair-streaks で解消できる。
 	if err := u.badgeEvaluation.EvaluateOnRecordDeleted(ctx, record.UserId); err != nil {
 		logError(ctx, err)
-		return err
 	}
 
 	if tierErr == nil {

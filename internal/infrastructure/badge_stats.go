@@ -17,6 +17,17 @@ import (
 // バッジ・ストリークは活動量に対する実績のため、集計対象外の記録も一律に数える。
 // 分析側(deck_usage_stat/opponent_deck_usage_stat/weekly_deck_usage_stat/user_stat*/
 // designation_stats)は従来どおり ignore_stats_flg = false で除外する。
+// recordBasisDateExpr は記録の「基準日」を表すSQL式で、usecase.RecordBasisTime
+// (event_date があればそれ、無ければ created_at)のSQL版。シーズン範囲での絞り込みは
+// 件数系・日付一覧系ともこの式で揃える。event_date だけで絞ると、対戦日が未入力の記録が
+// 件数からは落ちるのに週次ストリークには入る、という食い違いが起きるため。
+//
+// 未入力は2通りの入り方をする。カラムは NULL 許容だが、GORMモデルの EventDate が
+// 非ポインタの time.Time のため、ゼロ値(0001-01-01)として保存されることもある。
+// Go側の読み出しが IsZero() で両方を未入力扱いにしているのに合わせ、NULLIF で
+// ゼロ値も NULL に倒してから created_at へフォールバックする。
+const recordBasisDateExpr = `COALESCE(NULLIF(records.event_date, DATE '0001-01-01'), records.created_at)`
+
 type BadgeStats struct {
 	db *gorm.DB
 }
@@ -37,10 +48,10 @@ func (i *BadgeStats) CountRecordsByUserId(
 
 	query := i.db.Table("records").Where("user_id = ? AND deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
-		query = query.Where("event_date >= ?", fromDate)
+		query = query.Where(recordBasisDateExpr+" >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("event_date < ?", toDate)
+		query = query.Where(recordBasisDateExpr+" < ?", toDate)
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
@@ -63,10 +74,10 @@ func (i *BadgeStats) CountMatchesByUserId(
 		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
-		query = query.Where("records.event_date >= ?", fromDate)
+		query = query.Where(recordBasisDateExpr+" >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("records.event_date < ?", toDate)
+		query = query.Where(recordBasisDateExpr+" < ?", toDate)
 	}
 
 	if tx := query.Count(&count); tx.Error != nil {
@@ -143,10 +154,10 @@ func (i *BadgeStats) FindRecordDatesByUserId(
 		Select("event_date, created_at").
 		Where("user_id = ? AND deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
-		query = query.Where("COALESCE(event_date, created_at) >= ?", fromDate)
+		query = query.Where(recordBasisDateExpr+" >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("COALESCE(event_date, created_at) < ?", toDate)
+		query = query.Where(recordBasisDateExpr+" < ?", toDate)
 	}
 
 	if tx := query.Scan(&rows); tx.Error != nil {
@@ -228,10 +239,10 @@ func (i *BadgeStats) FindMatchDatesByUserId(
 		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL").
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 	if !fromDate.IsZero() {
-		query = query.Where("records.event_date >= ?", fromDate)
+		query = query.Where(recordBasisDateExpr+" >= ?", fromDate)
 	}
 	if !toDate.IsZero() {
-		query = query.Where("records.event_date < ?", toDate)
+		query = query.Where(recordBasisDateExpr+" < ?", toDate)
 	}
 
 	if tx := query.Order("matches.created_at ASC").Pluck("matches.created_at", &dates); tx.Error != nil {

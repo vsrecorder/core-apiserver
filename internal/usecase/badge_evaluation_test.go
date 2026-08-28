@@ -55,198 +55,137 @@ func newBadgeEvaluationTestUsecase(mockCtrl *gomock.Controller) (
 	return u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo
 }
 
-func TestBadgeEvaluation_UpdateStreak(t *testing.T) {
+func TestBadgeEvaluation_RecomputeStreak(t *testing.T) {
+	// runRecompute は指定した記録日付から user_streaks を作り直し、保存された状態を返す。
+	// ストリーク継続通知の取り消しはシーズンが取れないケースとしてスキップさせ、ここでは
+	// 状態の計算だけを見る(取り消し自体は TestBadgeEvaluation_RevokeStaleStreakNotifications)。
+	runRecompute := func(t *testing.T, dates []time.Time) *entity.UserStreak {
+		t.Helper()
+
+		mockCtrl := gomock.NewController(t)
+		u, _, _, userStreakRepo, badgeStatsRepo, _, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+
+		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", time.Time{}, time.Time{}).Return(dates, nil)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
+
+		var saved *entity.UserStreak
+		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, streak *entity.UserStreak) error {
+				saved = streak
+				return nil
+			},
+		)
+
+		require.NoError(t, u.recomputeStreak(context.Background(), "user-1"))
+		require.NotNil(t, saved)
+
+		return saved
+	}
+
+	monday := func(offsetWeeks int) time.Time {
+		return time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local).AddDate(0, 0, 7*offsetWeeks)
+	}
+
 	t.Run("正常系_初回記録は1週目として作成される", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
+		streak := runRecompute(t, []time.Time{monday(0)})
 
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, streak *entity.UserStreak) error {
-				require.Equal(t, 1, streak.CurrentWeeks)
-				require.Equal(t, 1, streak.LongestWeeks)
-				require.Equal(t, 0, streak.FreezeUsedCount)
-				return nil
-			},
-		)
-
-		eventDate := time.Date(2026, 7, 3, 0, 0, 0, 0, time.Local)
-		streak, err := u.updateStreak(context.Background(), "user-1", eventDate, eventDate)
-
-		require.NoError(t, err)
 		require.Equal(t, 1, streak.CurrentWeeks)
+		require.Equal(t, 1, streak.LongestWeeks)
+		require.Equal(t, 0, streak.FreezeUsedCount)
+		require.Equal(t, mondayOf(monday(0)), streak.LastRecordedWeek)
 	})
 
-	t.Run("正常系_翌週の記録は連続数が1増える", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
+	t.Run("正常系_連続した週の分だけ連続数が増える", func(t *testing.T) {
+		streak := runRecompute(t, []time.Time{monday(0), monday(1), monday(2)})
 
-		lastWeek := mondayOf(time.Date(2026, 6, 22, 0, 0, 0, 0, time.Local))
-		current := entity.NewUserStreak("user-1", 2, 2, 0, 0, lastWeek, time.Now())
-
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, streak *entity.UserStreak) error {
-				require.Equal(t, 3, streak.CurrentWeeks)
-				require.Equal(t, 3, streak.LongestWeeks)
-				require.Equal(t, 0, streak.FreezeUsedCount)
-				return nil
-			},
-		)
-
-		nextWeekDate := time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local)
-		streak, err := u.updateStreak(context.Background(), "user-1", nextWeekDate, nextWeekDate)
-
-		require.NoError(t, err)
 		require.Equal(t, 3, streak.CurrentWeeks)
+		require.Equal(t, 3, streak.LongestWeeks)
+		require.Equal(t, 0, streak.FreezeUsedCount)
 	})
 
-	t.Run("正常系_同じ週内の記録は連続数に影響しない", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
+	t.Run("正常系_同じ週内の2件目は連続数に影響しない", func(t *testing.T) {
+		sameWeekLater := monday(1).AddDate(0, 0, 2)
+		streak := runRecompute(t, []time.Time{monday(0), monday(1), sameWeekLater})
 
-		week := mondayOf(time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local))
-		current := entity.NewUserStreak("user-1", 2, 2, 0, 0, week, time.Now())
-
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
-		// 同一週内なので Save は呼ばれない
-
-		sameWeekDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local)
-		streak, err := u.updateStreak(context.Background(), "user-1", sameWeekDate, sameWeekDate)
-
-		require.NoError(t, err)
 		require.Equal(t, 2, streak.CurrentWeeks)
+		require.Equal(t, mondayOf(monday(1)), streak.LastRecordedWeek)
 	})
 
 	t.Run("正常系_1週分の空白はフリーズ枠を消費して連続扱いになる", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
+		// monday(1) を飛ばして monday(0) → monday(2)
+		streak := runRecompute(t, []time.Time{monday(0), monday(2)})
 
-		lastWeek := mondayOf(time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local))
-		current := entity.NewUserStreak("user-1", 4, 4, 0, 0, lastWeek, time.Now())
-
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, streak *entity.UserStreak) error {
-				require.Equal(t, 5, streak.CurrentWeeks)
-				require.Equal(t, 1, streak.FreezeUsedCount)
-				return nil
-			},
-		)
-
-		// 2週間後(1週間の空白)
-		twoWeeksLater := time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local)
-		streak, err := u.updateStreak(context.Background(), "user-1", twoWeeksLater, twoWeeksLater)
-
-		require.NoError(t, err)
-		require.Equal(t, 5, streak.CurrentWeeks)
+		require.Equal(t, 2, streak.CurrentWeeks)
+		require.Equal(t, 1, streak.FreezeUsedCount)
 	})
 
-	t.Run("正常系_フリーズ枠を使い切った状態で2週空くとリセットされる", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
+	t.Run("正常系_過去の空き週を後から埋めると連続週数が伸びフリーズ消費も戻る", func(t *testing.T) {
+		// monday(0)・monday(2) だけの状態(フリーズ1枠消費で2週連続)に、後から
+		// monday(1) を入力したケース。差分更新では追えないので再計算が要る。
+		streak := runRecompute(t, []time.Time{monday(0), monday(1), monday(2)})
 
-		lastWeek := mondayOf(time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local))
-		// 上限まで使い切った(FreezeUsedCount=StreakMaxFreezeCount)状態を再現する。
-		current := entity.NewUserStreak("user-1", 4, 4, StreakMaxFreezeCount, 0, lastWeek, time.Now())
-
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, streak *entity.UserStreak) error {
-				require.Equal(t, 1, streak.CurrentWeeks)
-				require.Equal(t, 0, streak.FreezeUsedCount)
-				require.Equal(t, 4, streak.LongestWeeks)
-				return nil
-			},
-		)
-
-		twoWeeksLater := time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local)
-		streak, err := u.updateStreak(context.Background(), "user-1", twoWeeksLater, twoWeeksLater)
-
-		require.NoError(t, err)
-		require.Equal(t, 1, streak.CurrentWeeks)
-	})
-
-	t.Run("正常系_3週間以上空くとリセットされる", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
-
-		lastWeek := mondayOf(time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local))
-		current := entity.NewUserStreak("user-1", 10, 10, 0, 0, lastWeek, time.Now())
-
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, streak *entity.UserStreak) error {
-				require.Equal(t, 1, streak.CurrentWeeks)
-				require.Equal(t, 0, streak.FreezeUsedCount)
-				return nil
-			},
-		)
-
-		// フリーズ許容範囲(2週間)を超える4週間後
-		muchLater := time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local)
-		streak, err := u.updateStreak(context.Background(), "user-1", muchLater, muchLater)
-
-		require.NoError(t, err)
-		require.Equal(t, 1, streak.CurrentWeeks)
-	})
-
-	t.Run("正常系_フリーズ枠は上限まで消費できる", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
-
-		// 残り1枠まで消費済み。まだ枠が残っているので1週の空白でも継続扱いになる。
-		lastWeek := mondayOf(time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local))
-		current := entity.NewUserStreak("user-1", 5, 5, StreakMaxFreezeCount-1, 0, lastWeek, time.Now())
-
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, streak *entity.UserStreak) error {
-				require.Equal(t, 6, streak.CurrentWeeks)
-				require.Equal(t, StreakMaxFreezeCount, streak.FreezeUsedCount)
-				return nil
-			},
-		)
-
-		// 2週間後(1週間の空白) → 最後の1枠を消費
-		twoWeeksLater := time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local)
-		streak, err := u.updateStreak(context.Background(), "user-1", twoWeeksLater, twoWeeksLater)
-
-		require.NoError(t, err)
-		require.Equal(t, 6, streak.CurrentWeeks)
-	})
-
-	t.Run("正常系_フリーズを使わずstreakFreezeRegenWeeks週継続すると枠が1つ回復する", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, _, _, userStreakRepo, _, _, _ := newBadgeEvaluationTestUsecase(mockCtrl)
-
-		// 1枠消費済み、回復まであと1週(進捗 = 回復間隔-1)。次のクリーンな週で1枠戻る。
-		lastWeek := mondayOf(time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local))
-		current := entity.NewUserStreak("user-1", 8, 8, 1, streakFreezeRegenWeeks-1, lastWeek, time.Now())
-
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(current, nil)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, streak *entity.UserStreak) error {
-				require.Equal(t, 9, streak.CurrentWeeks)
-				require.Equal(t, 0, streak.FreezeUsedCount)     // 枠が回復
-				require.Equal(t, 0, streak.FreezeRegenProgress) // 回復後は進捗リセット
-				return nil
-			},
-		)
-
-		// 翌週のクリーンな記録
-		nextWeek := time.Date(2026, 6, 22, 0, 0, 0, 0, time.Local)
-		streak, err := u.updateStreak(context.Background(), "user-1", nextWeek, nextWeek)
-
-		require.NoError(t, err)
+		require.Equal(t, 3, streak.CurrentWeeks)
 		require.Equal(t, 0, streak.FreezeUsedCount)
 	})
+
+	t.Run("正常系_フリーズ枠を使い切ったあとの空白でリセットされる", func(t *testing.T) {
+		// 1週おきに記録し、空白のたびにフリーズを消費する。上限を超えた空白でリセット。
+		dates := []time.Time{monday(0)}
+		for i := 1; i <= StreakMaxFreezeCount+1; i++ {
+			dates = append(dates, monday(2*i))
+		}
+
+		streak := runRecompute(t, dates)
+
+		require.Equal(t, 1, streak.CurrentWeeks)
+		require.Equal(t, 0, streak.FreezeUsedCount)
+		require.Equal(t, StreakMaxFreezeCount+1, streak.LongestWeeks)
+	})
+
+	t.Run("正常系_フリーズ猶予を超えて空くとリセットされ最長記録は残る", func(t *testing.T) {
+		streak := runRecompute(t, []time.Time{monday(0), monday(1), monday(2), monday(6)})
+
+		require.Equal(t, 1, streak.CurrentWeeks)
+		require.Equal(t, 3, streak.LongestWeeks)
+		require.Equal(t, 0, streak.FreezeUsedCount)
+	})
+
+	t.Run("正常系_記録が1件も無くなれば全てゼロになる", func(t *testing.T) {
+		streak := runRecompute(t, nil)
+
+		require.Equal(t, 0, streak.CurrentWeeks)
+		require.Equal(t, 0, streak.LongestWeeks)
+		require.Equal(t, 0, streak.FreezeUsedCount)
+		require.True(t, streak.LastRecordedWeek.IsZero())
+	})
+}
+
+// expectStreakRecompute は、記録の作成時に走る「現存する記録からのストリーク作り直し」と
+// 「成立しなくなったストリーク継続通知の取り消し」の書き込み・問い合わせを受け流す。
+// この2つは TestBadgeEvaluation_RecomputeStreak と
+// TestBadgeEvaluation_RevokeStaleStreakNotifications が確かめるので、ここでは
+// バッジ付与と通知作成の検証の邪魔にならないよう素通りさせる。
+func expectStreakRecompute(
+	userStreakRepo *mock_repository.MockUserStreakInterface,
+	badgeStatsRepo *mock_repository.MockBadgeStatsInterface,
+	notificationRepo *mock_repository.MockNotificationInterface,
+) {
+	// 全期間(fromDate/toDateがゼロ値)の取得は作り直し用。シーズン範囲の取得は
+	// バッジ判定用で各テストが自前の期待を持つため、ここでは引数で棲み分ける。
+	badgeStatsRepo.EXPECT().FindRecordDatesByUserId(
+		gomock.Any(), gomock.Any(), time.Time{}, time.Time{},
+	).Return(nil, nil).AnyTimes()
+	userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	notificationRepo.EXPECT().FindByUserIdAndCategoryAndBodies(
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+	).Return(nil, nil).AnyTimes()
 }
 
 func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 	t.Run("正常系_閾値に到達したバッジのみ新規付与する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
@@ -255,17 +194,14 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			entity.NewBadgeDefinition("def-streak-3", "streak_week_3", "streak", "3週連続", "", "", BadgeCriteriaTypeStreakWeeks, 3, time.Time{}, time.Time{}, now, now),
 		}
 
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil).AnyTimes()
 
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
-
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).AnyTimes()
 
 		// シーズンが見つからない場合はマイルストーン/週次ストリークの判定を黙ってスキップする
 		// (record作成自体は失敗させない)ことをここで併せて確認する。
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound).AnyTimes()
 
 		// record_count=1 なので "初記録" のみ付与され、"10戦"・"3週連続" は付与されない
 		userBadgeRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -293,28 +229,24 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 
 	t.Run("正常系_既に獲得済みのバッジは再付与しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, _, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
 			entity.NewBadgeDefinition("def-first-record", "first_record", "onboarding", "初記録", "", "", BadgeCriteriaTypeRecordCount, 1, time.Time{}, time.Time{}, now, now),
 		}
 
-		lastWeek := mondayOf(time.Now())
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(
-			entity.NewUserStreak("user-1", 1, 1, 0, 0, lastWeek, now), nil,
-		)
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
 		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(
 			[]*entity.UserBadge{
 				entity.NewUserBadge("ub-1", now, "user-1", "def-first-record", "record-0", now),
 			}, nil,
-		)
+		).AnyTimes()
 
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(2, nil)
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(2, nil).AnyTimes()
 		// 既に獲得済みなので userBadgeRepo.Save は呼ばれない(=notificationRepo.Saveも呼ばれない)
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound).AnyTimes()
 
 		record := entity.NewRecord("record-2", now, 0, "", "", "", "user-1", "", "", now, false, false, entity.RegulationIdStandard, "", "")
 
@@ -327,6 +259,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 	t.Run("正常系_backfill等で過去日のrecordを再生した場合でも、achieved_atはcreated_at(記録した日時)になりevent_dateにならない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
 
 		now := time.Now()
 		pastEventDate := time.Date(2020, 1, 15, 0, 0, 0, 0, time.Local)
@@ -334,13 +267,10 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			entity.NewBadgeDefinition("def-first-record", "first_record", "onboarding", "初記録", "", "", BadgeCriteriaTypeRecordCount, 1, time.Time{}, time.Time{}, now, now),
 		}
 
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil)
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound)
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil).AnyTimes()
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).AnyTimes()
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrRecordNotFound).AnyTimes()
 
 		userBadgeRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(ctx context.Context, ub *entity.UserBadge) error {
@@ -361,25 +291,23 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 	t.Run("正常系_マイルストーン系(record_count)は今回の記録でシーズン内の閾値をまたいだ場合のみ通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
 			entity.NewBadgeDefinition("def-record-10", "record_count_10", "milestone", "10戦達成", "", "", BadgeCriteriaTypeRecordCount, 10, time.Time{}, time.Time{}, now, now),
 		}
 
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil).AnyTimes()
 
 		season := entity.NewChampionshipSeries("series_2026", "2026", time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 8, 31, 0, 0, 0, 0, time.Local))
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).Times(2)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).AnyTimes()
 
 		// 1回目=オンボーディング判定用(全期間)、2回目=マイルストーン判定用(シーズンスコープ)。
 		// milestone定義は無いためonboardingDefinitionsは空になり、award()の戻り値には影響しない。
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(10, nil).Times(2)
-		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return([]time.Time{now}, nil)
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(10, nil).AnyTimes()
+		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return([]time.Time{now}, nil).AnyTimes()
 
 		eventDate := now.AddDate(0, 0, -3) // 実際に対戦した(=達成した)日。記録の登録日時(now)とは別
 
@@ -406,25 +334,23 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 
 	t.Run("正常系_マイルストーン系(record_count)は閾値をまたいでいなければ通知しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, _, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
 
 		now := time.Now()
 		definitions := []*entity.BadgeDefinition{
 			entity.NewBadgeDefinition("def-record-10", "record_count_10", "milestone", "10戦達成", "", "", BadgeCriteriaTypeRecordCount, 10, time.Time{}, time.Time{}, now, now),
 		}
 
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil).AnyTimes()
 
 		season := entity.NewChampionshipSeries("series_2026", "2026", time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 8, 31, 0, 0, 0, 0, time.Local))
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).Times(2)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).AnyTimes()
 
 		// まだ6件目(閾値10に届いていない) → notificationRepo.Saveは呼ばれない(EXPECT未設定=呼ばれたら失敗)
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(6, nil).Times(2)
-		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return([]time.Time{now}, nil)
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(6, nil).AnyTimes()
+		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return([]time.Time{now}, nil).AnyTimes()
 
 		record := entity.NewRecord("record-6", now, 0, "", "", "", "user-1", "", "", now, false, false, entity.RegulationIdStandard, "", "")
 
@@ -434,9 +360,10 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.Empty(t, awarded)
 	})
 
-	t.Run("正常系_週次ストリーク系はその週で最初の記録が閾値週数と一致する場合のみ通知する", func(t *testing.T) {
+	t.Run("正常系_週次ストリーク系はこの記録で到達した週数の閾値を通知する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
 
 		// 2026-06-15は月曜日(TestMondayOfで確認済みの2026-06-29から7日単位で遡って算出)
 		thisWeekRecord := time.Date(2026, 6, 15, 10, 0, 0, 0, time.Local)
@@ -444,16 +371,13 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			entity.NewBadgeDefinition("def-streak-3", "streak_week_3", "streak", "3週連続達成", "", "", BadgeCriteriaTypeStreakWeeks, 3, time.Time{}, time.Time{}, thisWeekRecord, thisWeekRecord),
 		}
 
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil).AnyTimes()
 
 		season := entity.NewChampionshipSeries("series_2026", "2026", time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 8, 31, 0, 0, 0, 0, time.Local))
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).Times(2)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).AnyTimes()
 
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(3, nil).Times(2)
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(3, nil).AnyTimes()
 
 		// 過去2週+今回の記録(その週で最初)で3週連続
 		seasonRecordDates := []time.Time{
@@ -461,7 +385,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local),
 			thisWeekRecord,
 		}
-		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(seasonRecordDates, nil)
+		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(seasonRecordDates, nil).AnyTimes()
 
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(ctx context.Context, n *entity.Notification) error {
@@ -480,6 +404,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 	t.Run("正常系_onboarding系とマイルストーン系が同時に達成した場合、onboarding系の通知が先(=通知一覧では下)になる", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
 
 		// 2026-06-15は月曜日(TestMondayOfで確認済みの2026-06-29から7日単位で遡って算出)
 		thisWeekRecord := time.Date(2026, 6, 15, 10, 0, 0, 0, time.Local)
@@ -488,19 +413,16 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			entity.NewBadgeDefinition("def-streak-1", "streak_week_1", "streak", "初週達成", "", "", BadgeCriteriaTypeStreakWeeks, 1, time.Time{}, time.Time{}, thisWeekRecord, thisWeekRecord),
 		}
 
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
-		userStreakRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil).AnyTimes()
 		userBadgeRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 		season := entity.NewChampionshipSeries("series_2026", "2026", time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 8, 31, 0, 0, 0, 0, time.Local))
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).Times(2)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).AnyTimes()
 
 		// 初めての記録: onboarding判定用(全期間)・マイルストーン判定用(シーズンスコープ)とも1件
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).Times(2)
-		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return([]time.Time{thisWeekRecord}, nil)
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(1, nil).AnyTimes()
+		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return([]time.Time{thisWeekRecord}, nil).AnyTimes()
 
 		var savedCategories []string
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -525,9 +447,58 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 		require.Equal(t, []string{NotificationCategoryBadge, NotificationCategoryStreak}, savedCategories)
 	})
 
+	t.Run("正常系_連続週数が一度に複数進んでも間の閾値の通知が欠落しない", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
+
+		// 6/1 と 6/22 だけがあった状態(3週空いて連続はリセット済み=1週)に、間の 6/15 を
+		// 後から入力したケース。6/1→6/15 はフリーズ1枠で繋がり、6/15→6/22 は連続するので
+		// 連続週数が 1 から 3 へ一度に進む。閾値ちょうどの一致で判定すると、飛び越えた
+		// 2週バッジの通知が永久に欠落してしまう。
+		pastRecord := time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local)
+		thisRecord := time.Date(2026, 6, 15, 10, 0, 0, 0, time.Local)
+		laterRecord := time.Date(2026, 6, 22, 0, 0, 0, 0, time.Local)
+
+		definitions := []*entity.BadgeDefinition{
+			entity.NewBadgeDefinition("def-streak-2", "streak_week_2", "streak", "2週連続達成", "", "", BadgeCriteriaTypeStreakWeeks, 2, time.Time{}, time.Time{}, thisRecord, thisRecord),
+			entity.NewBadgeDefinition("def-streak-3", "streak_week_3", "streak", "3週連続達成", "", "", BadgeCriteriaTypeStreakWeeks, 3, time.Time{}, time.Time{}, thisRecord, thisRecord),
+			entity.NewBadgeDefinition("def-streak-7", "streak_week_7", "streak", "7週連続達成", "", "", BadgeCriteriaTypeStreakWeeks, 7, time.Time{}, time.Time{}, thisRecord, thisRecord),
+		}
+
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil).AnyTimes()
+
+		season := entity.NewChampionshipSeries("series_2026", "2026", time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 8, 31, 0, 0, 0, 0, time.Local))
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).AnyTimes()
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(3, nil).AnyTimes()
+		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Not(time.Time{}), gomock.Any()).Return(
+			[]time.Time{pastRecord, thisRecord, laterRecord}, nil,
+		).AnyTimes()
+
+		var notifiedBodies []string
+		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, n *entity.Notification) error {
+				notifiedBodies = append(notifiedBodies, n.Body)
+				return nil
+			},
+		).Times(2)
+
+		record := entity.NewRecord("record-x", thisRecord, 0, "", "", "", "user-1", "", "", thisRecord, false, false, entity.RegulationIdStandard, "", "")
+
+		_, err := u.EvaluateOnRecordCreated(context.Background(), "user-1", record)
+		require.NoError(t, err)
+
+		// またいだ2週・3週の両方が通知され、届いていない7週は通知されない
+		require.Len(t, notifiedBodies, 2)
+		require.Contains(t, notifiedBodies[0], "2週連続達成")
+		require.Contains(t, notifiedBodies[1], "3週連続達成")
+	})
+
 	t.Run("正常系_同じ週の2件目の記録では週次ストリーク通知が重複しない", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, _, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo := newBadgeEvaluationTestUsecase(mockCtrl)
+		expectStreakRecompute(userStreakRepo, badgeStatsRepo, notificationRepo)
 
 		earlierThisWeek := time.Date(2026, 6, 15, 9, 0, 0, 0, time.Local)
 		secondRecordThisWeek := time.Date(2026, 6, 15, 18, 0, 0, 0, time.Local)
@@ -535,17 +506,13 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			entity.NewBadgeDefinition("def-streak-3", "streak_week_3", "streak", "3週連続達成", "", "", BadgeCriteriaTypeStreakWeeks, 3, time.Time{}, time.Time{}, secondRecordThisWeek, secondRecordThisWeek),
 		}
 
-		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(
-			entity.NewUserStreak("user-1", 3, 3, 0, 0, mondayOf(earlierThisWeek), earlierThisWeek), nil,
-		)
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil).AnyTimes()
+		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil).AnyTimes()
 
 		season := entity.NewChampionshipSeries("series_2026", "2026", time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 8, 31, 0, 0, 0, 0, time.Local))
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).Times(2)
+		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(season, nil).AnyTimes()
 
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil).Times(2)
+		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(4, nil).AnyTimes()
 
 		// 同じ週に既に1件記録があるため、今回(2件目)は連続週数を進めていない
 		seasonRecordDates := []time.Time{
@@ -554,7 +521,7 @@ func TestBadgeEvaluation_EvaluateOnRecordCreated(t *testing.T) {
 			earlierThisWeek,
 			secondRecordThisWeek,
 		}
-		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(seasonRecordDates, nil)
+		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(seasonRecordDates, nil).AnyTimes()
 
 		// notificationRepo.Saveは呼ばれない(EXPECT未設定=呼ばれたら失敗)
 
@@ -982,6 +949,37 @@ func streakTestBadgeDefinitions() []*entity.BadgeDefinition {
 		entity.NewBadgeDefinition("def-streak-7", "streak_week_7", "streak", "週次記録7週連続", "", "", BadgeCriteriaTypeStreakWeeks, 7, time.Time{}, time.Time{}, now, now),
 		entity.NewBadgeDefinition("def-record-10", "record_count_10", "milestone", "10戦達成", "", "", BadgeCriteriaTypeRecordCount, 10, time.Time{}, time.Time{}, now, now),
 	}
+}
+
+func TestWithoutOneRecord(t *testing.T) {
+	jun1 := time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local)
+	jun8 := time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local)
+
+	t.Run("正常系_同じ日時が複数あっても1件だけ取り除く", func(t *testing.T) {
+		// 同じ日時の記録が2件ある週で1件を作ったケース。まとめて外すと「作る前の状態」を
+		// 過小に見積もり、既に通知済みの週数をもう一度通知してしまう。
+		ret := withoutOneRecord([]time.Time{jun1, jun8, jun8}, jun8)
+
+		require.Equal(t, []time.Time{jun1, jun8}, ret)
+	})
+
+	t.Run("正常系_タイムゾーンが違っても同じ対戦日なら取り除く", func(t *testing.T) {
+		// DBから読み直した基準日と、リクエストで渡された値は同じ日でも別の瞬間になりうる。
+		// ここで取りこぼすと「作る前の状態」が現在と同じになり、通知が出なくなる。
+		ret := withoutOneRecord([]time.Time{jun1, jun8}, time.Date(2026, 6, 8, 0, 0, 0, 0, time.UTC))
+
+		require.Equal(t, []time.Time{jun1}, ret)
+	})
+
+	t.Run("正常系_該当する日時が無ければそのまま返す", func(t *testing.T) {
+		ret := withoutOneRecord([]time.Time{jun1}, jun8)
+
+		require.Equal(t, []time.Time{jun1}, ret)
+	})
+
+	t.Run("正常系_空なら空を返す", func(t *testing.T) {
+		require.Empty(t, withoutOneRecord(nil, jun8))
+	})
 }
 
 func TestComputeStreakState(t *testing.T) {

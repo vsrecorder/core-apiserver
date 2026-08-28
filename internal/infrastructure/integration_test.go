@@ -171,6 +171,75 @@ func TestIntegrationNotificationRepository(t *testing.T) {
 	})
 }
 
+func TestIntegrationBadgeStatsRepository(t *testing.T) {
+	db := setupIntegrationDB(t, "matches", "records")
+	r := NewBadgeStats(db)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	// 2026シーズン(9月始まり)の範囲と、その中に入る日時
+	fromDate := time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local)
+	toDate := time.Date(2026, 9, 1, 0, 0, 0, 0, time.Local)
+	inSeason := time.Date(2026, 6, 15, 12, 0, 0, 0, time.Local).Truncate(time.Microsecond)
+
+	// 対戦日を入力した記録
+	require.NoError(t, db.Create(&model.Record{
+		ID: "rec-bs1", CreatedAt: inSeason, UpdatedAt: inSeason, UserId: uid, EventDate: inSeason,
+	}).Error)
+	// 対戦日がNULLの記録(GORMモデルが非ポインタのtime.Timeなので生SQLで入れる)
+	require.NoError(t, db.Exec(
+		`INSERT INTO records (id, created_at, updated_at, user_id, event_date) VALUES (?, ?, ?, ?, NULL)`,
+		"rec-bs2", inSeason, inSeason, uid,
+	).Error)
+	// 対戦日がゼロ値(0001-01-01)で保存された記録。GORM経由でEventDateを省略するとこうなる
+	require.NoError(t, db.Create(&model.Record{
+		ID: "rec-bs3", CreatedAt: inSeason, UpdatedAt: inSeason, UserId: uid,
+	}).Error)
+
+	for _, recordId := range []string{"rec-bs1", "rec-bs2", "rec-bs3"} {
+		require.NoError(t, db.Create(&model.Match{
+			ID: "mat-" + recordId, CreatedAt: inSeason, UpdatedAt: inSeason, RecordId: recordId, UserId: uid,
+		}).Error)
+	}
+
+	// 対戦日が未入力(NULL・ゼロ値)の記録も created_at を基準日としてシーズンに含める。
+	// event_date だけで絞ると、週次ストリーク(日付一覧)には入るのに件数からは落ちてしまう。
+	t.Run("正常系_対戦日が未入力の記録もcreated_at基準でシーズンに含まれる", func(t *testing.T) {
+		count, err := r.CountRecordsByUserId(context.Background(), uid, fromDate, toDate)
+		require.NoError(t, err)
+		require.Equal(t, 3, count)
+
+		dates, err := r.FindRecordDatesByUserId(context.Background(), uid, fromDate, toDate)
+		require.NoError(t, err)
+		require.Len(t, dates, 3)
+
+		matchCount, err := r.CountMatchesByUserId(context.Background(), uid, fromDate, toDate)
+		require.NoError(t, err)
+		require.Equal(t, 3, matchCount)
+
+		matchDates, err := r.FindMatchDatesByUserId(context.Background(), uid, fromDate, toDate)
+		require.NoError(t, err)
+		require.Len(t, matchDates, 3)
+	})
+
+	t.Run("正常系_シーズン範囲外の記録は含めない", func(t *testing.T) {
+		outOfSeason := time.Date(2025, 6, 15, 12, 0, 0, 0, time.Local)
+		require.NoError(t, db.Exec(
+			`INSERT INTO records (id, created_at, updated_at, user_id, event_date) VALUES (?, ?, ?, ?, NULL)`,
+			"rec-bs4", outOfSeason, outOfSeason, uid,
+		).Error)
+
+		count, err := r.CountRecordsByUserId(context.Background(), uid, fromDate, toDate)
+		require.NoError(t, err)
+		require.Equal(t, 3, count)
+
+		// 期間を指定しなければ全期間が対象になる
+		allCount, err := r.CountRecordsByUserId(context.Background(), uid, time.Time{}, time.Time{})
+		require.NoError(t, err)
+		require.Equal(t, 4, allCount)
+	})
+}
+
 func TestIntegrationUnofficialEventRepository(t *testing.T) {
 	db := setupIntegrationDB(t, "unofficial_events")
 	r := NewUnofficialEvent(db)

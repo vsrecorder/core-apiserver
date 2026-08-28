@@ -1,11 +1,14 @@
 // cleanup-stale-streak-notifications は、連続記録が途切れているのに取り消されず残って
 // しまった「ストリークを継続中です」通知を一括で掃除する復旧バッチ。
 //
-// この通知は「今もN週続いている」という現在進行形の状態を伝えるものだが、記録の削除・
-// 更新で取り消す仕組み(usecase.BadgeEvaluation.RevokeStaleStreakNotifications)を
+// この通知は「今もN週続いている」という現在進行形の状態を伝えるものだが、記録の作成・
+// 削除・更新で取り消す仕組み(usecase.BadgeEvaluation.RevokeStaleStreakNotifications)を
 // 入れる前に作られた通知は残ったままになる。本ツールはその取り消しロジックをそのまま
 // 呼ぶので、実行時点の連続週数では成立しない通知だけが消える(今も成立している週数の
 // 通知は残る)。
+//
+// なお、この仕組みが入った後も、記録を一切さわらないまま時間が経って途切れた分は
+// 次の書き込みまで取り消されない。そのぶんを定期的に掃除したい場合も本ツールを使う。
 //
 // 使い方:
 //
@@ -28,6 +31,8 @@ import (
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
@@ -60,7 +65,7 @@ func main() {
 	}
 
 	badgeEvaluation := usecase.NewBadgeEvaluation(
-		infrastructure.NewBadgeDefinition(db),
+		&cachedBadgeDefinition{inner: infrastructure.NewBadgeDefinition(db)},
 		infrastructure.NewUserBadge(db),
 		infrastructure.NewUserStreak(db),
 		infrastructure.NewBadgeStats(db),
@@ -119,6 +124,29 @@ func main() {
 	}
 
 	os.Exit(ExitCodeOK)
+}
+
+// cachedBadgeDefinition はバッジ定義の取得を1回だけに抑えるラッパー。
+// 取り消し判定はユーザーごとに定義一覧を引くため、素通しだと対象ユーザー数だけ
+// 同じクエリを繰り返してしまう。定義はマスタデータで、バッチ実行中に変わらない前提。
+type cachedBadgeDefinition struct {
+	inner repository.BadgeDefinitionInterface
+	cache []*entity.BadgeDefinition
+}
+
+func (c *cachedBadgeDefinition) FindAll(ctx context.Context) ([]*entity.BadgeDefinition, error) {
+	if c.cache != nil {
+		return c.cache, nil
+	}
+
+	definitions, err := c.inner.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c.cache = definitions
+
+	return definitions, nil
 }
 
 // findTargetUserIds はストリークカテゴリの通知を1件でも持つユーザーを返す。

@@ -17,6 +17,10 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
+// testValidationEventDate は記録リクエストに必ず入れる対戦日。
+// 対戦日は必須入力(entity.IsValidRecordEventDate)のため、正常系のリクエストでは省略できない。
+var testValidationEventDate = time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
+
 func TestRecordValidation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -120,6 +124,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		expected := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  "",
 				FriendId:        "",
@@ -156,6 +161,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		expected := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: 0,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        "",
@@ -192,6 +198,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		expected := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: 0,
 				TonamelEventId:  "",
 				FriendId:        friendId,
@@ -273,6 +280,33 @@ func test_RecordCreateMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
+	// 対戦日が未入力だと、週次ストリークやシーズン集計の基準日が created_at へ
+	// フォールバックし、ユーザーが指定していない日付で集計されてしまう。
+	t.Run("異常系_対戦日が未入力なら400を返す", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		data := dto.RecordCreateRequest{
+			RecordRequest: dto.RecordRequest{
+				OfficialEventId: uint(10000),
+				PrivateFlg:      false,
+			},
+		}
+
+		dataBytes, err := json.Marshal(data)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := RecordCreateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
 	t.Run("異常系_公式イベントとTonamelイベントの併用は400を返す", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		ginContext, _ := gin.CreateTestContext(w)
@@ -284,6 +318,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -320,6 +355,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -356,6 +392,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -392,6 +429,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -428,6 +466,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -459,6 +498,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		expected := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: uint(10000),
 				RegulationId:    entity.RegulationIdExtra,
 			},
@@ -488,6 +528,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		expected := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: uint(10000),
 			},
 		}
@@ -514,6 +555,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: uint(10000),
 				RegulationId:    999,
 			},
@@ -584,6 +626,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 			data := dto.RecordCreateRequest{
 				RecordRequest: dto.RecordRequest{
+					EventDate:       testValidationEventDate,
 					OfficialEventId: uint(10000),
 					TonamelEventId:  "",
 					FriendId:        "",
@@ -622,6 +665,7 @@ func test_RecordCreateMiddleware(t *testing.T) {
 
 			expected := dto.RecordCreateRequest{
 				RecordRequest: dto.RecordRequest{
+					EventDate:       testValidationEventDate,
 					OfficialEventId: uint(10000),
 					TonamelEventId:  "",
 					FriendId:        "",
@@ -660,6 +704,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 
 		expected := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  "",
 				FriendId:        "",
@@ -696,6 +741,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 
 		expected := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: 0,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        "",
@@ -732,6 +778,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 
 		expected := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: 0,
 				TonamelEventId:  "",
 				FriendId:        friendId,
@@ -786,6 +833,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 
 		data := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -822,6 +870,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 
 		data := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -858,6 +907,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 
 		data := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -894,6 +944,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 
 		data := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -930,6 +981,7 @@ func test_RecordUpdateMiddleware(t *testing.T) {
 
 		data := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  tonamelEventId,
 				FriendId:        friendId,
@@ -965,6 +1017,7 @@ func test_RecordUpdateMiddlewareTCGMeisterURL(t *testing.T) {
 
 		data := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: uint(10000),
 				TonamelEventId:  "",
 				FriendId:        "",
@@ -996,6 +1049,7 @@ func test_RecordUpdateMiddlewareTCGMeisterURL(t *testing.T) {
 
 		expected := dto.RecordUpdateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testValidationEventDate,
 				OfficialEventId: uint(10000),
 				TonamelEventId:  "",
 				FriendId:        "",

@@ -24,6 +24,10 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
+// testControllerEventDate は記録リクエストに必ず入れる対戦日。
+// 対戦日は必須入力(entity.IsValidRecordEventDate)のため、正常系のリクエストでは省略できない。
+var testControllerEventDate = time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
+
 func encodeTestCursor(eventDate, createdAt time.Time) string {
 	b, _ := json.Marshal(struct {
 		EventDate string `json:"event_date"`
@@ -519,7 +523,7 @@ func test_RecordController_Create(t *testing.T) {
 			uid,
 			"",
 			"",
-			time.Time{},
+			testControllerEventDate,
 			privateFlg,
 			false,
 			uint(0),
@@ -537,7 +541,7 @@ func test_RecordController_Create(t *testing.T) {
 				UnofficialEventId: "",
 				DeckId:            "",
 				DeckCodeId:        "",
-				EventDate:         time.Time{},
+				EventDate:         testControllerEventDate,
 				PrivateFlg:        privateFlg,
 				TCGMeisterURL:     "",
 				Memo:              "",
@@ -583,6 +587,7 @@ func test_RecordController_Create(t *testing.T) {
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testControllerEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  "",
 				FriendId:        "",
@@ -648,7 +653,7 @@ func test_RecordController_Update(t *testing.T) {
 			uid,
 			"",
 			"",
-			time.Time{},
+			testControllerEventDate,
 			privateFlg,
 			false,
 			uint(0),
@@ -666,7 +671,7 @@ func test_RecordController_Update(t *testing.T) {
 				UnofficialEventId: "",
 				DeckId:            "",
 				DeckCodeId:        "",
-				EventDate:         time.Time{},
+				EventDate:         testControllerEventDate,
 				PrivateFlg:        privateFlg,
 				TCGMeisterURL:     "",
 				Memo:              "",
@@ -722,7 +727,7 @@ func test_RecordController_Update(t *testing.T) {
 			uid,
 			"",
 			"",
-			time.Time{},
+			testControllerEventDate,
 			privateFlg,
 			false,
 			uint(0),
@@ -734,6 +739,7 @@ func test_RecordController_Update(t *testing.T) {
 
 		data := dto.RecordCreateRequest{
 			RecordRequest: dto.RecordRequest{
+				EventDate:       testControllerEventDate,
 				OfficialEventId: officialEventId,
 				TonamelEventId:  "",
 				FriendId:        "",

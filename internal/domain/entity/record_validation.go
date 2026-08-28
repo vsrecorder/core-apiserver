@@ -1,5 +1,7 @@
 package entity
 
+import "time"
+
 // RecordEventSource は記録が紐づくイベント種別の指定状況。
 // 4種のうちちょうど1つだけ指定されている必要がある。
 type RecordEventSource struct {
@@ -32,4 +34,12 @@ func IsValidRecordEventSource(src RecordEventSource) bool {
 	}
 
 	return count == 1
+}
+
+// IsValidRecordEventDate は記録の対戦日が入力されているかを検証する。
+// 未入力(ゼロ値)を許すと、週次ストリークやシーズン集計の基準日が created_at へ
+// フォールバックし(usecase.RecordBasisTime)、ユーザーが指定していない日付で
+// 集計されてしまうため必須にする。
+func IsValidRecordEventDate(eventDate time.Time) bool {
+	return !eventDate.IsZero()
 }

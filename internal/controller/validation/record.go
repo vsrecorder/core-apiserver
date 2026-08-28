@@ -54,6 +54,11 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if !entity.IsValidRecordEventDate(req.RecordRequest.EventDate) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		if !isValidRecordLength(req.RecordRequest) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
@@ -87,6 +92,11 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 		}
 
 		if !isValidRecordEventSource(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if !entity.IsValidRecordEventDate(req.RecordRequest.EventDate) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

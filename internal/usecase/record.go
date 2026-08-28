@@ -398,6 +398,10 @@ func normalizeAndValidateRecordParam(param *RecordParam) error {
 		return apperror.ErrInvalidRecord
 	}
 
+	if !entity.IsValidRecordEventDate(param.eventDate) {
+		return apperror.ErrInvalidRecord
+	}
+
 	return nil
 }
 

@@ -14,7 +14,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
 
-// errBadgeEvaluation はデッキ作成時の称号評価が失敗するケースを再現するスタブ。
+// errBadgeEvaluation はデッキ作成時のバッジ評価が失敗するケースを再現するスタブ。
 // stubBadgeEvaluation(record_test.go)を埋め込み、EvaluateOnDeckCreatedだけを差し替える。
 type errBadgeEvaluation struct {
 	stubBadgeEvaluation
@@ -611,8 +611,10 @@ func test_DeckUsecase_Create(
 		require.Empty(t, ret)
 	})
 
-	// 称号評価に失敗した場合はエラーを返す
-	t.Run("異常系_称号評価失敗時はエラーを返す", func(t *testing.T) {
+	// バッジ評価に失敗しても、デッキは既に保存されているので作成は成功させる。
+	// エラーを返すと、保存できているのに「作成に失敗」と見えてユーザーが作り直し、
+	// 同じデッキが二重に登録されてしまう(記録・対戦結果の作成と同じ方針)。
+	t.Run("正常系_バッジ評価に失敗してもデッキ作成は成功する", func(t *testing.T) {
 		usecase := NewDeck(
 			mockRepository,
 			mockDeckAsset,
@@ -627,8 +629,8 @@ func test_DeckUsecase_Create(
 
 		ret, err := usecase.Create(context.Background(), param)
 
-		require.Error(t, err)
-		require.Empty(t, ret)
+		require.NoError(t, err)
+		require.NotNil(t, ret)
 	})
 }
 

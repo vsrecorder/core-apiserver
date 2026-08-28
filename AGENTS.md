@@ -12,7 +12,8 @@ APIのベースパスは `/api/v1beta`、待ち受けポートは `8914`。
 ## コマンド
 
 ```sh
-make test              # go mod tidy && UTC と Asia/Tokyo の両方で go test -v -cover -race ./...
+make test              # go mod tidy && make lint-tx && UTC と Asia/Tokyo の両方で go test -v -cover -race ./...
+make lint-tx           # infrastructure の書き込みが dbFromContext を経由しているかの検査
 make run               # go run cmd/core-apiserver/main.go
 make build             # go build -o /dev/null ...（バイナリは作らないコンパイル確認）
 make mockgen           # domain/repository・usecase のインタフェースからモックを再生成
@@ -167,6 +168,23 @@ Deck・User の各usecaseへ注入され、書き込み処理の中でバッジ�
   期間とは直交する絞り込み。統計APIでは未指定＝全レギュレーション、`records.regulation_id`
   と突き合わせる。webapp は既定でスタンダード（`regulation_id=1`）を送る。
 - 週は月曜始まり（`usecase/week.go`）。週次デッキ使用率の `week` クエリは月曜日の `YYYY-MM-DD`。
+
+### 書き込みの整合性
+
+1つの操作で複数テーブルに書くときは、**`repository.TransactionManager` で囲む**。囲まないと
+片方だけコミットされ、「記録は保存されたのにタグが無い」「バッジは付与されたのに通知が無い」
+といった食い違いが残る。バッジの付与と獲得通知のように、片方が欠けると**次回以降その処理を
+スキップしてしまう**組み合わせは特に注意する（付与済みと判定され、通知が二度と作られない）。
+
+**infrastructure の書き込みは必ず `dbFromContext(ctx, i.db)` を経由する。** `i.db` を直接
+使うと、usecase 側でトランザクションに包んでも参加せず、上記の食い違いが起きる。読み取りは
+対象外。`make lint-tx`（`make test` から呼ばれる）が機械的に検査する。
+
+**本体を保存したあとの付随処理（バッジ評価・ストリーク再計算・通知・外部通信）の失敗で、
+作成・更新そのものを失敗させない。** ここでエラーを返すと、保存できているのにクライアントには
+「失敗」と見えるため、ユーザーが作り直して同じデータが二重に登録される（IDはサーバ採番なので
+重複を防げない）。失敗はログに残し、回復は `cmd/repair-streaks` と `cmd/backfill-notifications`
+に委ねる。records / matches / decks / deck_codes の作成・更新はこの方針で揃えてある。
 
 ### トランザクション
 

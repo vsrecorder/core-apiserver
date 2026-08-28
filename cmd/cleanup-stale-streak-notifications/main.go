@@ -71,6 +71,7 @@ func main() {
 		infrastructure.NewBadgeStats(db),
 		infrastructure.NewNotification(db),
 		infrastructure.NewChampionshipSeries(db),
+		infrastructure.NewTransactionManager(db),
 	)
 
 	ctx := context.Background()

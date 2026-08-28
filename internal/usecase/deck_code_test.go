@@ -50,7 +50,7 @@ func setup4DeckCodeUsecase(t *testing.T) (
 		Return(nil).AnyTimes()
 
 	badgeEvaluationCalled := false
-	usecase := NewDeckCode(mockRepository, mockDeckAsset, mockTagRepository, spyDeckCodeBadgeEvaluation{called: &badgeEvaluationCalled})
+	usecase := NewDeckCode(mockRepository, mockDeckAsset, mockTagRepository, spyDeckCodeBadgeEvaluation{called: &badgeEvaluationCalled}, stubTransactionManager{})
 
 	return mockRepository, mockDeckAsset, &badgeEvaluationCalled, usecase
 }

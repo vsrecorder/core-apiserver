@@ -56,7 +56,7 @@ func (i *UnofficialEvent) Save(
 	// 新規作成時はゼロ値のままGORMのautoCreateTimeに任せる。
 	model.CreatedAt = entity.CreatedAt
 
-	if tx := i.db.Save(model); tx.Error != nil {
+	if tx := dbFromContext(ctx, i.db).Save(model); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return tx.Error
 	}

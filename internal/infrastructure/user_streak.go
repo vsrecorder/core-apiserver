@@ -56,7 +56,7 @@ func (i *UserStreak) Save(
 		UpdatedAt:           entity.UpdatedAt,
 	}
 
-	if tx := i.db.Save(model); tx.Error != nil {
+	if tx := dbFromContext(ctx, i.db).Save(model); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return tx.Error
 	}

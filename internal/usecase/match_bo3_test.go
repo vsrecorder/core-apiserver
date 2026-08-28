@@ -19,7 +19,7 @@ func TestMatchUsecaseBO3(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
 	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewMatch(mockRepository, mockRecordRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{})
+	usecase := NewMatch(mockRepository, mockRecordRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{}, stubTransactionManager{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,

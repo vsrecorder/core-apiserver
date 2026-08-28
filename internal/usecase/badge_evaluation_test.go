@@ -50,6 +50,7 @@ func newBadgeEvaluationTestUsecase(mockCtrl *gomock.Controller) (
 		badgeStatsRepo:         badgeStatsRepo,
 		notificationRepo:       notificationRepo,
 		championshipSeriesRepo: championshipSeriesRepo,
+		transactionManager:     stubTransactionManager{},
 	}
 
 	return u, badgeDefinitionRepo, userBadgeRepo, userStreakRepo, badgeStatsRepo, notificationRepo, championshipSeriesRepo

@@ -130,7 +130,7 @@ func (i *DeckCode) Save(
 		entity.Memo,
 	)
 
-	return i.db.Transaction(func(tx *gorm.DB) error {
+	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(deckcode).Error; err != nil {
 			logError(ctx, err)
 			return err

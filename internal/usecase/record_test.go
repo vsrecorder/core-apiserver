@@ -121,6 +121,19 @@ func (errStreakBadgeEvaluation) EvaluateOnRecordUpdated(
 	return errors.New("streak recompute failed")
 }
 
+// errRecordBadgeEvaluation は記録作成時のバッジ評価が失敗するスタブ。
+type errRecordBadgeEvaluation struct {
+	stubBadgeEvaluation
+}
+
+func (errRecordBadgeEvaluation) EvaluateOnRecordCreated(
+	ctx context.Context,
+	userId string,
+	record *entity.Record,
+) ([]*entity.UserBadge, error) {
+	return nil, errors.New("badge evaluation failed")
+}
+
 // stubDesignationEvaluation は usecase パッケージ自身のテストで使う
 // DesignationEvaluationInterface のスタブ(stubBadgeEvaluationと同じ理由でgomockを使わない)。
 type stubDesignationEvaluation struct{}
@@ -251,6 +264,7 @@ func newRecordUsecaseForTest(
 		designationEval,
 		&stubTonamelEventFetcher{},
 		&stubTonamelEventStore{},
+		stubTransactionManager{},
 	)
 }
 
@@ -356,6 +370,24 @@ func TestRecordUsecase_Update_RecomputesStreakOnlyWhenEventDateChanged(t *testin
 	})
 }
 
+// バッジ評価(ストリークの再計算・バッジ付与・通知)に失敗しても、記録は既に保存されて
+// いるため作成は成功させる。ここでエラーを返すと、保存できているのに「作成に失敗」と
+// 見えてユーザーが作り直し、同じ記録が二重に登録されてしまう。
+func TestRecordUsecase_Create_SucceedsEvenIfBadgeEvaluationFails(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+	usecase := newRecordUsecaseForTest(mockRepository, errRecordBadgeEvaluation{}, stubDesignationEvaluation{})
+
+	param := NewRecordParam(1, "", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
+
+	mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+	ret, err := usecase.Create(context.Background(), param)
+
+	require.NoError(t, err)
+	require.NotNil(t, ret)
+}
+
 // ストリークの再計算に失敗しても、記録の更新・削除そのものは既に完了しているため
 // 成功として返す。エラーにすると、保存済み/削除済みなのに失敗したように見えてしまう。
 func TestRecordUsecase_StreakRecomputeFailureDoesNotFailWrite(t *testing.T) {
@@ -413,7 +445,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		}}
 		store := &stubTonamelEventStore{} // 事前に保存済みのものは無い
 
-		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -433,7 +465,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 			"61ozP": {ID: "61ozP"}, // 既に保存済み
 		}}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -449,7 +481,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		fetcher := &stubTonamelEventFetcher{}
 		store := &stubTonamelEventStore{}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(1, "", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -466,7 +498,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		fetcher := &stubTonamelEventFetcher{err: errors.New("")} // tonamel.com取得に失敗
 		store := &stubTonamelEventStore{}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store)
+		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)

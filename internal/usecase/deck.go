@@ -360,37 +360,48 @@ func (u *Deck) Create(
 		pokemonSprites,
 	)
 
-	if err := u.repository.Save(ctx, deck); err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	// タグの付与はデッキ本体とは別テーブルのため Save とは分けて反映する。
-	tags, err := u.syncDeckTags(ctx, deck.ID, param.UserId, param.TagIds)
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-	deck.Tags = tags
-
-	// デッキ登録と同時にデッキコード(バージョン)も作られ、かつタグが付与された場合は、
-	// 同じタグをそのデッキコードにも付ける。tags は所有権チェック済みのものを流用する。
-	if LatestDeckCode.ID != "" && len(tags) > 0 {
-		tagIds := make([]string, 0, len(tags))
-		for _, tag := range tags {
-			tagIds = append(tagIds, tag.ID)
-		}
-		if err := u.tag.ReplaceDeckCodeTags(ctx, LatestDeckCode.ID, tagIds); err != nil {
+	// デッキ本体とタグの付与は別テーブルだが、片方だけ成功して食い違わないよう
+	// 1つのトランザクションにまとめる。ここが失敗したときだけ decks に行が残らず、
+	// 呼び出し側はそのまま再試行できる。
+	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.repository.Save(ctx, deck); err != nil {
 			logError(ctx, err)
-			return nil, err
+			return err
 		}
-		// deck.LatestDeckCode は LatestDeckCode と同じ実体を指すため、レスポンスにも反映される。
-		LatestDeckCode.Tags = tags
+
+		// タグの付与はデッキ本体とは別テーブルのため Save とは分けて反映する。
+		tags, err := u.syncDeckTags(ctx, deck.ID, param.UserId, param.TagIds)
+		if err != nil {
+			logError(ctx, err)
+			return err
+		}
+		deck.Tags = tags
+
+		// デッキ登録と同時にデッキコード(バージョン)も作られ、かつタグが付与された場合は、
+		// 同じタグをそのデッキコードにも付ける。tags は所有権チェック済みのものを流用する。
+		if LatestDeckCode.ID != "" && len(tags) > 0 {
+			tagIds := make([]string, 0, len(tags))
+			for _, tag := range tags {
+				tagIds = append(tagIds, tag.ID)
+			}
+			if err := u.tag.ReplaceDeckCodeTags(ctx, LatestDeckCode.ID, tagIds); err != nil {
+				logError(ctx, err)
+				return err
+			}
+			// deck.LatestDeckCode は LatestDeckCode と同じ実体を指すため、レスポンスにも反映される。
+			LatestDeckCode.Tags = tags
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
+	// ここから先はデッキが既に保存されているため、失敗しても作成そのものは成功で返す。
+	// エラーにすると、保存できているのに「作成に失敗」と見えてユーザーが作り直し、
+	// 同じデッキが二重に登録されてしまう(記録・対戦結果の作成と同じ方針)。
 	if _, err := u.badgeEvaluation.EvaluateOnDeckCreated(ctx, param.UserId, deck); err != nil {
 		logError(ctx, err)
-		return nil, err
 	}
 
 	return deck, nil
@@ -430,18 +441,26 @@ func (u *Deck) Update(
 		pokemonSprites,
 	)
 
-	if err := u.repository.Save(ctx, deck); err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
+	// 本体とタグの付与は別テーブルだが、片方だけ成功して食い違わないよう
+	// 1つのトランザクションにまとめる(作成時と同じ方針)。
+	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.repository.Save(ctx, deck); err != nil {
+			logError(ctx, err)
+			return err
+		}
 
-	// タグの付与を param.TagIds の集合に合わせて更新する。
-	tags, err := u.syncDeckTags(ctx, deck.ID, ret.UserId, param.TagIds)
-	if err != nil {
-		logError(ctx, err)
+		// タグの付与を param.TagIds の集合に合わせて更新する。
+		tags, err := u.syncDeckTags(ctx, deck.ID, ret.UserId, param.TagIds)
+		if err != nil {
+			logError(ctx, err)
+			return err
+		}
+		deck.Tags = tags
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	deck.Tags = tags
 
 	return deck, nil
 }

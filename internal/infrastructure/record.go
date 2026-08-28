@@ -474,7 +474,9 @@ func (i *Record) Save(
 	)
 	model.DeckRegisteredAt = entity.DeckRegisteredAt
 
-	if tx := i.db.Save(model); tx.Error != nil {
+	// 記録本体とタグの付与を1つのトランザクションにまとめられるよう、
+	// ctx にトランザクションがあればそれを使う(usecase.Record.Create/Update)。
+	if tx := dbFromContext(ctx, i.db).Save(model); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return tx.Error
 	}

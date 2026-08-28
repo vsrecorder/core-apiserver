@@ -924,6 +924,8 @@ func (i *Deck) DeleteByUserId(
 	}, &sql.TxOptions{Isolation: sql.LevelDefault})
 }
 
+// Save はデッキ本体とタグの付与を1つのトランザクションにまとめられるよう、
+// ctx にトランザクションがあればそれを使う(usecase.Deck.Create)。
 func (i *Deck) Save(
 	ctx context.Context,
 	entity *entity.Deck,
@@ -969,7 +971,7 @@ func (i *Deck) Save(
 			entity.LatestDeckCode.Memo,
 		)
 
-		return i.db.Transaction(func(tx *gorm.DB) error {
+		return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 			// Deck を先に保存して FK 制約を満たす
 			if err := tx.Save(deck).Error; err != nil {
 				logError(ctx, err)
@@ -999,7 +1001,7 @@ func (i *Deck) Save(
 			return nil
 		}, &sql.TxOptions{Isolation: sql.LevelDefault})
 	} else {
-		return i.db.Transaction(func(tx *gorm.DB) error {
+		return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 			// Deck を先に保存して FK 制約を満たす
 			if err := tx.Save(deck).Error; err != nil {
 				logError(ctx, err)

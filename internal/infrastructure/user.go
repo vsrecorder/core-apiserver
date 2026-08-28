@@ -76,7 +76,7 @@ func (i *User) Save(
 		user.ImageURL,
 	)
 
-	if tx := i.db.Save(model); tx.Error != nil {
+	if tx := dbFromContext(ctx, i.db).Save(model); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return tx.Error
 	}

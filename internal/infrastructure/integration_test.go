@@ -12,6 +12,8 @@ package infrastructure
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"testing"
@@ -168,6 +170,131 @@ func TestIntegrationNotificationRepository(t *testing.T) {
 		after, err := r.FindByUserId(context.Background(), uid, 10)
 		require.NoError(t, err)
 		require.Len(t, after, len(before))
+	})
+}
+
+// 記録本体・タグ・バッジ・通知の書き込みが、ctx のトランザクションに実際に参加して
+// いることを実DBで確かめる。参加していないと、usecase 側でトランザクションに包んでも
+// 片方だけコミットされ、「記録は保存されたのにエラーが返る(=作り直しで二重登録)」や
+// 「バッジは付与されたのに通知が無い(=通知が二度と作られない)」が起きる。
+func TestIntegrationWriteJoinsTransaction(t *testing.T) {
+	db := setupIntegrationDB(t, "user_badges", "notifications", "match_tags", "matches", "record_tags", "records", "deck_code_tags", "deck_codes", "decks")
+	tm := NewTransactionManager(db)
+	records := NewRecord(db, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	userBadges := NewUserBadge(db)
+	notifications := NewNotification(db)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	now := time.Now().Local().Truncate(time.Microsecond)
+	errIntentional := errors.New("intentional")
+
+	t.Run("正常系_記録の保存はロールバックの対象になる", func(t *testing.T) {
+		record := entity.NewRecord("rec-tx-1", now, 1, "", "", "", uid, "", "", now, false, false, entity.RegulationIdStandard, "", "")
+
+		err := tm.Do(context.Background(), func(ctx context.Context) error {
+			if err := records.Save(ctx, record); err != nil {
+				return err
+			}
+			// 後続(タグの付与など)が失敗した状況を作る
+			return errIntentional
+		})
+		require.ErrorIs(t, err, errIntentional)
+
+		_, err = records.FindById(context.Background(), "rec-tx-1")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+
+	t.Run("正常系_バッジ付与と獲得通知はまとめてロールバックされる", func(t *testing.T) {
+		// badge_definitions は schema.sql の初期データを使う
+		var definitionId string
+		require.NoError(t, db.Table("badge_definitions").Limit(1).Pluck("id", &definitionId).Error)
+		require.NotEmpty(t, definitionId)
+
+		err := tm.Do(context.Background(), func(ctx context.Context) error {
+			if err := userBadges.Save(ctx, entity.NewUserBadge("ub-tx-1", now, uid, definitionId, "", now)); err != nil {
+				return err
+			}
+			// 通知の保存が失敗した状況を作る
+			return errIntentional
+		})
+		require.ErrorIs(t, err, errIntentional)
+
+		badges, err := userBadges.FindByUserId(context.Background(), uid)
+		require.NoError(t, err)
+		require.Empty(t, badges)
+	})
+
+	t.Run("正常系_対戦結果の保存はロールバックの対象になる", func(t *testing.T) {
+		matches := NewMatch(db)
+
+		record := entity.NewRecord("rec-tx-2", now, 1, "", "", "", uid, "", "", now, false, false, entity.RegulationIdStandard, "", "")
+		require.NoError(t, records.Save(context.Background(), record))
+
+		match := entity.NewMatch("mat-tx-1", now, "rec-tx-2", "", "", uid, "", false, false, false, false, false, false, true, false, false, "", "", nil, nil)
+
+		err := tm.Do(context.Background(), func(ctx context.Context) error {
+			if err := matches.Create(ctx, match); err != nil {
+				return err
+			}
+			return errIntentional
+		})
+		require.ErrorIs(t, err, errIntentional)
+
+		_, err = matches.FindById(context.Background(), "mat-tx-1")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+
+	t.Run("正常系_デッキの保存はロールバックの対象になる", func(t *testing.T) {
+		decks := NewDeck(db)
+
+		deck := entity.NewDeck("deck-tx-1", now, time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
+
+		err := tm.Do(context.Background(), func(ctx context.Context) error {
+			if err := decks.Save(ctx, deck); err != nil {
+				return err
+			}
+			return errIntentional
+		})
+		require.ErrorIs(t, err, errIntentional)
+
+		_, err = decks.FindById(context.Background(), "deck-tx-1")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+
+	t.Run("正常系_デッキコードの保存はロールバックの対象になる", func(t *testing.T) {
+		decks := NewDeck(db)
+		deckCodes := NewDeckCode(db)
+
+		deck := entity.NewDeck("deck-tx-2", now, time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
+		require.NoError(t, decks.Save(context.Background(), deck))
+
+		deckCode := entity.NewDeckCode("dc-tx-1", now, uid, "deck-tx-2", "abcd", false, "")
+
+		err := tm.Do(context.Background(), func(ctx context.Context) error {
+			if err := deckCodes.Save(ctx, deckCode); err != nil {
+				return err
+			}
+			return errIntentional
+		})
+		require.ErrorIs(t, err, errIntentional)
+
+		_, err = deckCodes.FindById(context.Background(), "dc-tx-1")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+
+	t.Run("正常系_通知の保存もロールバックの対象になる", func(t *testing.T) {
+		err := tm.Do(context.Background(), func(ctx context.Context) error {
+			n := entity.NewNotification("ntf-tx-1", now, uid, "badge", "タイトル", "本文", "/users")
+			if err := notifications.Save(ctx, n); err != nil {
+				return err
+			}
+			return errIntentional
+		})
+		require.ErrorIs(t, err, errIntentional)
+
+		ret, err := notifications.FindByUserId(context.Background(), uid, 10)
+		require.NoError(t, err)
+		require.Empty(t, ret)
 	})
 }
 

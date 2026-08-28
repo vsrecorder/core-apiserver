@@ -166,6 +166,9 @@ type Record struct {
 	// 記録作成時に一度だけ取得して保存し、カレンダー等の参照を外部通信なしにする。
 	tonamelEventRepo  repository.TonamelEventInterface
 	tonamelEventStore repository.TonamelEventStoreInterface
+	// transactionManager は記録本体(records)とタグの付与(record_tags)を
+	// 1つのトランザクションにまとめるために使う。
+	transactionManager repository.TransactionManager
 }
 
 func NewRecord(
@@ -176,6 +179,7 @@ func NewRecord(
 	designationEvaluation DesignationEvaluationInterface,
 	tonamelEventRepo repository.TonamelEventInterface,
 	tonamelEventStore repository.TonamelEventStoreInterface,
+	transactionManager repository.TransactionManager,
 ) RecordInterface {
 	return &Record{
 		logger:                logger,
@@ -185,6 +189,7 @@ func NewRecord(
 		designationEvaluation: designationEvaluation,
 		tonamelEventRepo:      tonamelEventRepo,
 		tonamelEventStore:     tonamelEventStore,
+		transactionManager:    transactionManager,
 	}
 }
 
@@ -448,21 +453,36 @@ func (u *Record) Create(
 		record.DeckRegisteredAt = &createdAt
 	}
 
-	if err := u.repository.Save(ctx, record); err != nil {
-		logError(ctx, err)
+	// 記録本体とタグの付与は別テーブルだが、片方だけ成功して食い違わないよう
+	// 1つのトランザクションにまとめる。ここが失敗したときだけ records に行が残らず、
+	// 呼び出し側はそのまま再試行できる。
+	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.repository.Save(ctx, record); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		// タグの付与は記録本体とは別テーブルのため Save とは分けて反映する。
+		tags, err := u.syncRecordTags(ctx, record.ID, param.userId, param.TagIds)
+		if err != nil {
+			logError(ctx, err)
+			return err
+		}
+		record.Tags = tags
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
-	// タグの付与は記録本体とは別テーブルのため Save とは分けて反映する。
-	tags, err := u.syncRecordTags(ctx, record.ID, param.userId, param.TagIds)
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-	record.Tags = tags
+	// ここから先は記録が既に保存されているため、失敗しても記録作成そのものは成功で返す。
+	// エラーにすると、保存できているのに「作成に失敗」と見えてユーザーが作り直し、
+	// 同じ記録が二重に登録されてしまう(IDはサーバ採番なので重複を防げない)。
+	// 取りこぼした集計・通知は cmd/repair-streaks と cmd/backfill-notifications で回復できる。
 
 	// Tonamel記録なら、大会情報をこの時点で一度だけ取得してDBへ保存しておく。
 	// カレンダー等はこれを参照するだけで済み、表示のたびに外部サイトを引かずに済む。
+	// 外部通信を含むため、上のトランザクションの外で行う。
 	u.persistTonamelEvent(ctx, param.tonamelEventId)
 
 	// 通知一覧はcreated_at DESC(新しい順、同値時はid DESC)で表示されるため、後から
@@ -471,7 +491,6 @@ func (u *Record) Create(
 	// ランクアップ→ユーザバッジ)になる。
 	if _, err := u.badgeEvaluation.EvaluateOnRecordCreated(ctx, param.userId, record); err != nil {
 		logError(ctx, err)
-		return nil, err
 	}
 
 	if tierErr == nil {
@@ -585,18 +604,25 @@ func (u *Record) Update(
 		record.DeckRegisteredAt = &now
 	}
 
-	if err := u.repository.Save(ctx, record); err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
+	// 作成時と同じく、記録本体とタグの付与は1つのトランザクションにまとめる。
+	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.repository.Save(ctx, record); err != nil {
+			logError(ctx, err)
+			return err
+		}
 
-	// タグの付与を param.TagIds の集合に合わせて更新する。
-	tags, err := u.syncRecordTags(ctx, record.ID, param.userId, param.TagIds)
-	if err != nil {
-		logError(ctx, err)
+		// タグの付与を param.TagIds の集合に合わせて更新する。
+		tags, err := u.syncRecordTags(ctx, record.ID, param.userId, param.TagIds)
+		if err != nil {
+			logError(ctx, err)
+			return err
+		}
+		record.Tags = tags
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	record.Tags = tags
 
 	// 編集で Tonamel記録に変わった/別の大会に付け替えられたケースに追随する。
 	// 既に保存済みの大会なら再取得しない(persistTonamelEvent 内で判定)。

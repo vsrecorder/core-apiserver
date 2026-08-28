@@ -64,7 +64,10 @@ func (i *UserBadge) Save(
 		AchievedAt:        entity.AchievedAt,
 	}
 
-	tx := i.db.Clauses(clause.OnConflict{
+	// バッジの付与と、その獲得通知を1つのトランザクションにまとめられるようにする
+	// (usecase.BadgeEvaluation.award)。付与だけ残って通知が消えると、次回は
+	// 「獲得済み」と判定されて通知が二度と作られない。
+	tx := dbFromContext(ctx, i.db).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}, {Name: "badge_definition_id"}},
 		DoNothing: true,
 	}).Create(model)

@@ -72,6 +72,19 @@ func (s orderTrackingBadgeEvaluation) RevokeStaleStreakNotifications(ctx context
 	return nil, nil
 }
 
+// errMatchBadgeEvaluation は対戦結果作成時のバッジ評価が失敗するスタブ。
+type errMatchBadgeEvaluation struct {
+	stubBadgeEvaluation
+}
+
+func (errMatchBadgeEvaluation) EvaluateOnMatchCreated(
+	ctx context.Context,
+	userId string,
+	match *entity.Match,
+) ([]*entity.UserBadge, error) {
+	return nil, errors.New("badge evaluation failed")
+}
+
 type orderTrackingEnvironmentBadgeEvaluation struct {
 	calls *[]string
 }
@@ -107,6 +120,7 @@ func TestMatchUsecase_Create_NotificationCreationOrder(t *testing.T) {
 		orderTrackingBadgeEvaluation{calls: &calls},
 		orderTrackingDesignationEvaluation{calls: &calls},
 		orderTrackingEnvironmentBadgeEvaluation{calls: &calls},
+		stubTransactionManager{},
 	)
 
 	recordId := "01JMPK4VF04QX714CG4PHYJ88K"
@@ -136,7 +150,7 @@ func TestMatchUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
 	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewMatch(mockRepository, mockRecordRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{})
+	usecase := NewMatch(mockRepository, mockRecordRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{}, stubTransactionManager{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -238,6 +252,61 @@ func test_MatchUsecase_FindByRecordId(t *testing.T, mockRepository *mock_reposit
 		require.Error(t, err)
 		require.Empty(t, ret)
 	})
+}
+
+// バッジ評価に失敗しても、対戦結果は既に保存されているので作成は成功させる。
+// エラーを返すと、保存できているのに「作成に失敗」と見えてユーザーが作り直し、
+// 同じ対戦結果が二重に登録されてしまう(記録・デッキの作成と同じ方針)。
+func TestMatchUsecase_Create_SucceedsEvenIfBadgeEvaluationFails(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
+	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+
+	usecase := NewMatch(
+		mockRepository,
+		mockRecordRepository,
+		stubTagRepository{},
+		errMatchBadgeEvaluation{},
+		stubDesignationEvaluation{},
+		stubEnvironmentBadgeEvaluation{},
+		stubTransactionManager{},
+	)
+
+	recordId := "01JMPK4VF04QX714CG4PHYJ88K"
+	deckId := "01JMKRNBW5TVN902YAE8GYZ367"
+	userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	// 検証を通す最小構成は既存の「正常系_BO1のマッチをゲーム込みで作成する」と同じ
+	gameParams := []*GameParam{NewGameParam(true, false, 0, 0, "")}
+
+	param := NewMatchParam(
+		recordId,
+		deckId,
+		"",
+		userId,
+		"",
+		false,
+		false,
+		false,
+		false,
+		false,
+		false,
+		false,
+		false,
+		false,
+		"",
+		"",
+		gameParams,
+		nil,
+	)
+
+	mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+	mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId}, nil).AnyTimes()
+
+	ret, err := usecase.Create(context.Background(), param)
+
+	require.NoError(t, err)
+	require.NotNil(t, ret)
 }
 
 func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {

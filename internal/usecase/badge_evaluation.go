@@ -141,6 +141,9 @@ type BadgeEvaluation struct {
 	badgeStatsRepo         repository.BadgeStatsInterface
 	notificationRepo       repository.NotificationInterface
 	championshipSeriesRepo repository.ChampionshipSeriesInterface
+	// transactionManager はバッジの付与(user_badges)とその獲得通知(notifications)を
+	// 1つのトランザクションにまとめるために使う。
+	transactionManager repository.TransactionManager
 }
 
 func NewBadgeEvaluation(
@@ -150,6 +153,7 @@ func NewBadgeEvaluation(
 	badgeStatsRepo repository.BadgeStatsInterface,
 	notificationRepo repository.NotificationInterface,
 	championshipSeriesRepo repository.ChampionshipSeriesInterface,
+	transactionManager repository.TransactionManager,
 ) BadgeEvaluationInterface {
 	return &BadgeEvaluation{
 		badgeDefinitionRepo:    badgeDefinitionRepo,
@@ -158,6 +162,7 @@ func NewBadgeEvaluation(
 		badgeStatsRepo:         badgeStatsRepo,
 		notificationRepo:       notificationRepo,
 		championshipSeriesRepo: championshipSeriesRepo,
+		transactionManager:     transactionManager,
 	}
 }
 
@@ -721,16 +726,22 @@ func (u *BadgeEvaluation) award(
 
 		userBadge := entity.NewUserBadge(id, time.Now().Local(), userId, def.ID, recordId, achievedAt)
 
-		if err := u.userBadgeRepo.Save(ctx, userBadge); err != nil {
-			logError(ctx, err)
-			return nil, err
-		}
-
+		// 付与と獲得通知は1つのトランザクションにまとめる。付与だけ残って通知が
+		// 落ちると、次回以降は「獲得済み」と判定されてここを通らないため、その
+		// バッジの通知は二度と作られない。
+		//
 		// 通知のcreated_atにもachievedAtを使う(time.Now()を使わない)。他の通知
 		// (マイルストーン系・環境バッジ・称号/ランクアップ)と同じ基準の時刻に揃えることで、
 		// created_at同値時のid DESCタイブレークが機能し、通知一覧の並び順を呼び出し順で
 		// 制御できるようにするため。
-		if err := u.notifyBadgeAchieved(ctx, userId, def, "", achievedAt); err != nil {
+		if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
+			if err := u.userBadgeRepo.Save(ctx, userBadge); err != nil {
+				logError(ctx, err)
+				return err
+			}
+
+			return u.notifyBadgeAchieved(ctx, userId, def, "", achievedAt)
+		}); err != nil {
 			logError(ctx, err)
 			return nil, err
 		}

@@ -151,6 +151,9 @@ type Match struct {
 	badgeEvaluation       BadgeEvaluationInterface
 	designationEvaluation DesignationEvaluationInterface
 	environmentBadgeEval  EnvironmentBadgeEvaluationInterface
+	// transactionManager は対戦結果本体(matches/games)とタグの付与(match_tags)を
+	// 1つのトランザクションにまとめるために使う。
+	transactionManager repository.TransactionManager
 }
 
 func NewMatch(
@@ -160,8 +163,9 @@ func NewMatch(
 	badgeEvaluation BadgeEvaluationInterface,
 	designationEvaluation DesignationEvaluationInterface,
 	environmentBadgeEval EnvironmentBadgeEvaluationInterface,
+	transactionManager repository.TransactionManager,
 ) MatchInterface {
-	return &Match{repository, recordRepository, tag, badgeEvaluation, designationEvaluation, environmentBadgeEval}
+	return &Match{repository, recordRepository, tag, badgeEvaluation, designationEvaluation, environmentBadgeEval, transactionManager}
 }
 
 // syncMatchTags は対戦結果について、userId が付与できる有効なタグ(自分のタグ or
@@ -351,18 +355,31 @@ func (u *Match) Create(
 		pokemonSprites,
 	)
 
-	if err := u.repository.Create(ctx, match); err != nil {
-		logError(ctx, err)
+	// 対戦結果本体とタグの付与は別テーブルだが、片方だけ成功して食い違わないよう
+	// 1つのトランザクションにまとめる。ここが失敗したときだけ matches に行が残らず、
+	// 呼び出し側はそのまま再試行できる。
+	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.repository.Create(ctx, match); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		// タグの付与は対戦結果本体とは別テーブルのため Create とは分けて反映する。
+		tags, err := u.syncMatchTags(ctx, match.ID, param.UserId, param.TagIds)
+		if err != nil {
+			logError(ctx, err)
+			return err
+		}
+		match.Tags = tags
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
-	// タグの付与は対戦結果本体とは別テーブルのため Create とは分けて反映する。
-	tags, err := u.syncMatchTags(ctx, match.ID, param.UserId, param.TagIds)
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-	match.Tags = tags
+	// ここから先は対戦結果が既に保存されているため、失敗しても作成そのものは成功で返す。
+	// エラーにすると、保存できているのに「作成に失敗」と見えてユーザーが作り直し、
+	// 同じ対戦結果が二重に登録されてしまう(記録の作成と同じ方針)。
 
 	// 通知一覧はcreated_at DESC(新しい順、同値時はid DESC)で表示されるため、後から
 	// 生成した通知ほど上に表示される。作成順序を「ユーザバッジ→環境バッジ→称号/
@@ -370,7 +387,6 @@ func (u *Match) Create(
 	// ランクアップ」(=上から称号/ランクアップ→環境バッジ→ユーザバッジ)になる。
 	if _, err := u.badgeEvaluation.EvaluateOnMatchCreated(ctx, param.UserId, match); err != nil {
 		logError(ctx, err)
-		return nil, err
 	}
 
 	// 環境バッジは公式イベント(OfficialEventId != 0)に紐づく記録のみを対象とする。
@@ -382,7 +398,6 @@ func (u *Match) Create(
 
 		if _, err := u.environmentBadgeEval.EvaluateOnMatchCreated(ctx, param.UserId, match, basisTime); err != nil {
 			logError(ctx, err)
-			return nil, err
 		}
 	}
 
@@ -513,18 +528,26 @@ func (u *Match) Update(
 	// position は通常の更新では変更しないため、既存値を引き継ぐ
 	match.Position = ret.Position
 
-	if err := u.repository.Update(ctx, match); err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
+	// 本体とタグの付与は別テーブルだが、片方だけ成功して食い違わないよう
+	// 1つのトランザクションにまとめる(作成時と同じ方針)。
+	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.repository.Update(ctx, match); err != nil {
+			logError(ctx, err)
+			return err
+		}
 
-	// タグの付与を param.TagIds の集合に合わせて更新する。
-	tags, err := u.syncMatchTags(ctx, match.ID, param.UserId, param.TagIds)
-	if err != nil {
-		logError(ctx, err)
+		// タグの付与を param.TagIds の集合に合わせて更新する。
+		tags, err := u.syncMatchTags(ctx, match.ID, param.UserId, param.TagIds)
+		if err != nil {
+			logError(ctx, err)
+			return err
+		}
+		match.Tags = tags
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	match.Tags = tags
 
 	return match, nil
 }

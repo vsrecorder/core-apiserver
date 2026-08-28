@@ -218,6 +218,7 @@ func main() {
 		infrastructure.NewBadgeStats(db),
 		infrastructure.NewNotification(db),
 		infrastructure.NewChampionshipSeries(db),
+		infrastructure.NewTransactionManager(db),
 	)
 
 	designationEvaluation := usecase.NewDesignationEvaluation(
@@ -304,6 +305,7 @@ func main() {
 			infrastructure.NewDeckAsset(logger),
 			infrastructure.NewTag(db),
 			badgeEvaluation,
+			infrastructure.NewTransactionManager(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -339,6 +341,7 @@ func main() {
 			designationEvaluation,
 			infrastructure.NewTonamelEvent(logger),
 			infrastructure.NewTonamelEventStore(db),
+			infrastructure.NewTransactionManager(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -353,6 +356,7 @@ func main() {
 			badgeEvaluation,
 			designationEvaluation,
 			environmentBadgeEvaluation,
+			infrastructure.NewTransactionManager(db),
 		),
 	).RegisterRoute(relativePath)
 

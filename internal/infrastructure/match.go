@@ -686,7 +686,9 @@ func (i *Match) Create(
 		matchPokemonSpriteModals = append(matchPokemonSpriteModals, model.NewMatchPokemonSprite(entity.ID, position, pokemonSprite.ID))
 	}
 
-	return i.db.Transaction(func(tx *gorm.DB) error {
+	// 対戦結果本体とタグの付与を1つのトランザクションにまとめられるよう、
+	// ctx にトランザクションがあればそれを使う(usecase.Match.Create/Update)。
+	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(matchModel).Error; err != nil {
 			logError(ctx, err)
 			return err
@@ -755,7 +757,9 @@ func (i *Match) Update(
 		matchPokemonSpriteModals = append(matchPokemonSpriteModals, model.NewMatchPokemonSprite(entity.ID, position, pokemonSprite.ID))
 	}
 
-	return i.db.Transaction(func(tx *gorm.DB) error {
+	// 対戦結果本体とタグの付与を1つのトランザクションにまとめられるよう、
+	// ctx にトランザクションがあればそれを使う(usecase.Match.Create/Update)。
+	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(matchModel).Error; err != nil {
 			logError(ctx, err)
 			return err
@@ -848,7 +852,7 @@ func (i *Match) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	return i.db.Transaction(func(tx *gorm.DB) error {
+	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 		if tx := tx.Where("match_id = ?", id).Delete(&model.Game{}); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return tx.Error
@@ -868,7 +872,7 @@ func (i *Match) Reorder(
 	recordId string,
 	orders []*entity.MatchOrder,
 ) error {
-	return i.db.Transaction(func(tx *gorm.DB) error {
+	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 		var count int64
 		if tx := tx.Model(&model.Match{}).
 			Where("record_id = ? AND deleted_at IS NULL", recordId).

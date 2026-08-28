@@ -19,7 +19,10 @@ import (
 
 // testValidationEventDate は記録リクエストに必ず入れる対戦日。
 // 対戦日は必須入力(entity.IsValidRecordEventDate)のため、正常系のリクエストでは省略できない。
-var testValidationEventDate = time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
+// Location は UTC で固定する。time.Local にすると JSON へ実行環境のオフセットで出力され、
+// パースし直した Location が環境ごとに変わって、リクエストの突き合わせが落ちる
+// (CIはUTC、開発機はJSTで結果が変わる)。
+var testValidationEventDate = time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
 
 func TestRecordValidation(t *testing.T) {
 	gin.SetMode(gin.TestMode)

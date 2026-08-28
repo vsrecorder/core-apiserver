@@ -966,7 +966,9 @@ func TestWithoutOneRecord(t *testing.T) {
 	t.Run("正常系_タイムゾーンが違っても同じ対戦日なら取り除く", func(t *testing.T) {
 		// DBから読み直した基準日と、リクエストで渡された値は同じ日でも別の瞬間になりうる。
 		// ここで取りこぼすと「作る前の状態」が現在と同じになり、通知が出なくなる。
-		ret := withoutOneRecord([]time.Time{jun1, jun8}, time.Date(2026, 6, 8, 0, 0, 0, 0, time.UTC))
+		// 実行環境のタイムゾーンに依存しないよう、固定オフセットで差を作る。
+		basis := time.Date(2026, 6, 8, 0, 0, 0, 0, time.FixedZone("JST", 9*60*60))
+		ret := withoutOneRecord([]time.Time{jun1, jun8}, basis)
 
 		require.Equal(t, []time.Time{jun1}, ret)
 	})

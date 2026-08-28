@@ -345,10 +345,12 @@ func TestRecordUsecase_Update_RecomputesStreakOnlyWhenEventDateChanged(t *testin
 	})
 
 	t.Run("正常系_同じ日をタイムゾーン違いで送っても再計算しない", func(t *testing.T) {
-		// DBから読んだ event_date は接続タイムゾーン(JST)の0時、webappが送るのは
-		// 同じ日のUTC 0時。瞬間は異なるが対戦日は変わっていないので再計算はしない。
-		beforeEventDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
-		param := NewRecordParam(1, "", "", "", uid, "", "", time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC), false, false, entity.RegulationIdStandard, "", "元のメモ")
+		// DBから読んだ event_date と、リクエストで渡される値はタイムゾーンが揃わない
+		// ことがある。瞬間としては別でも対戦日は変わっていないので再計算はしない。
+		// 実行環境のタイムゾーンに依存しないよう、両者を固定オフセットで作り分ける
+		// (time.Local を使うと、UTCで動くCIでは差が無くなって検証にならない)。
+		beforeEventDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+		param := NewRecordParam(1, "", "", "", uid, "", "", time.Date(2026, 6, 15, 0, 0, 0, 0, time.FixedZone("JST", 9*60*60)), false, false, entity.RegulationIdStandard, "", "元のメモ")
 
 		require.Empty(t, updateRecord(t, beforeEventDate, param))
 	})

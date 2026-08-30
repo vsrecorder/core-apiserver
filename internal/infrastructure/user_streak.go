@@ -37,7 +37,9 @@ func (i *UserStreak) FindByUserId(
 		model.LongestWeeks,
 		model.FreezeUsedCount,
 		model.FreezeRegenProgress,
-		model.LastRecordedWeek,
+		// last_recorded_week は DATE カラム。UTC の 0時 のまま返すと、usecase 側で
+		// 今週の月曜(ローカル時刻)との週差が1週少なく数えられる(localDate 参照)。
+		localDate(model.LastRecordedWeek),
 		model.UpdatedAt,
 	), nil
 }

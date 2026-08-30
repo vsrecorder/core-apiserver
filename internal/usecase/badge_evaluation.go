@@ -166,14 +166,38 @@ func NewBadgeEvaluation(
 	}
 }
 
-// mondayOf は t が属する週(月曜始まり)の月曜日 00:00 を返す。
+// mondayOf は t が属する週(月曜始まり)の月曜日 00:00 をローカル時刻で返す。
+//
+// 週の同一視は「値が持つ暦日」で行い、t の Location は見ない。DBの DATE カラム
+// (records.event_date / user_streaks.last_recorded_week)は UTC の 0時 として、
+// TIMESTAMP カラム(created_at 等)や time.Now() はローカル時刻として読み出されるため、
+// 同じ暦日でも time.Time としては別の瞬間になる。t.Location() のまま月曜を作ると
+// 同じ週が map 上で別のキーになり(ComputeStreakState で「同じ週の2件目」が
+// 「週の差0=途切れ」と数えられ連続週数とフリーズがリセットされる)、Sub での週差も
+// 9時間分ずれて1週少なく数えてしまう(isStreakExpired / isLastChanceThisWeek)。
+// 返り値を常にローカル時刻に揃えることで、由来の異なる日付同士を map のキーや
+// Sub/Before で安全に突き合わせられる。
 func mondayOf(t time.Time) time.Time {
-	t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
-	weekday := int(t.Weekday())
+	day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
+	weekday := int(day.Weekday())
 	if weekday == 0 {
 		weekday = 7
 	}
-	return t.AddDate(0, 0, -(weekday - 1))
+	return day.AddDate(0, 0, -(weekday - 1))
+}
+
+// weeksBetween は from が属する週から to が属する週までの週差を返す(to が後の週なら正、
+// 同じ週なら0、過去なら負)。瞬間の差(Sub)ではなく暦日の差から求めるため、from と to の
+// Location が違っても(DATE 由来の UTC 0時 とローカル時刻の混在)、夏時間があっても
+// 週数がずれない。週次ストリークの「何週あいたか」はすべてこれで数える。
+func weeksBetween(from time.Time, to time.Time) int {
+	return (calendarDays(mondayOf(to)) - calendarDays(mondayOf(from))) / 7
+}
+
+// calendarDays は t の暦日を Unix epoch からの経過日数に読み替える。
+// t の Location によらず「年月日」だけを見る(isEvenWeek と同じ考え方)。
+func calendarDays(t time.Time) int {
+	return int(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix() / (24 * 60 * 60))
 }
 
 // advanceFreezeRegen はクリーンな週(フリーズ未使用で前週から途切れず継続した週)を
@@ -254,7 +278,7 @@ func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, 
 	longestWeeks = 1
 
 	for i := 1; i < len(weeks); i++ {
-		diffWeeks := int(weeks[i].Sub(weeks[i-1]).Hours()/24) / 7
+		diffWeeks := weeksBetween(weeks[i-1], weeks[i])
 
 		switch {
 		case diffWeeks == 1:
@@ -310,7 +334,7 @@ func StreakWeeksAchievedAt(dates []time.Time) map[int]time.Time {
 	achievedAt := map[int]time.Time{currentWeeks: firstDateOfWeek[mondays[0]]}
 
 	for i := 1; i < len(mondays); i++ {
-		diffWeeks := int(mondays[i].Sub(mondays[i-1]).Hours()/24) / 7
+		diffWeeks := weeksBetween(mondays[i-1], mondays[i])
 
 		switch {
 		case diffWeeks == 1:
@@ -371,7 +395,7 @@ func ComputeStreakMilestoneDates(dates []time.Time) map[int]time.Time {
 	recordIfNew(currentWeeks, earliestDateInWeek[weeks[0]])
 
 	for i := 1; i < len(weeks); i++ {
-		diffWeeks := int(weeks[i].Sub(weeks[i-1]).Hours()/24) / 7
+		diffWeeks := weeksBetween(weeks[i-1], weeks[i])
 
 		switch {
 		case diffWeeks == 1:

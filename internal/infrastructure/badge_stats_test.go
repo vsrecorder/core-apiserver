@@ -56,6 +56,7 @@ func TestBadgeStatsInfrastructure(t *testing.T) {
 		"CountRecordsIncludesIgnoredRecords":    test_BadgeStatsInfrastructure_CountRecordsIncludesIgnoredRecords,
 		"CountMatchesIncludesIgnoredRecords":    test_BadgeStatsInfrastructure_CountMatchesIncludesIgnoredRecords,
 		"FindRecordDatesIncludesIgnoredRecords": test_BadgeStatsInfrastructure_FindRecordDatesIncludesIgnoredRecords,
+		"FindRecordDatesNormalizesEventDate":    test_BadgeStatsInfrastructure_FindRecordDatesNormalizesEventDate,
 		"FindMatchDatesIncludesIgnoredRecords":  test_BadgeStatsInfrastructure_FindMatchDatesIncludesIgnoredRecords,
 	} {
 		t.Run(scenario, func(t *testing.T) {
@@ -121,6 +122,29 @@ func test_BadgeStatsInfrastructure_FindRecordDatesIncludesIgnoredRecords(t *test
 	require.Len(t, dates, 2)
 	require.Equal(t, eventDate, dates[0])
 	require.Equal(t, createdAt, dates[1])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func test_BadgeStatsInfrastructure_FindRecordDatesNormalizesEventDate(t *testing.T) {
+	i, mock, err := setup4BadgeStatsInfrastructure()
+	require.NoError(t, err)
+
+	userId := "user-01"
+	// event_date は DATE カラムのため UTC の 0時 として読み出される一方、created_at は
+	// ローカル時刻で読み出される。混在したまま返すと同じ週が別の瞬間になり、週次ストリークの
+	// 再計算で同じ週を「途切れ」と数えてしまうため、event_date はローカルの同じ暦日 0時 に揃える。
+	eventDate := time.Date(2026, 7, 4, 0, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2026, 7, 5, 12, 0, 0, 0, time.Local)
+
+	mock.ExpectQuery(exactQuery(badgeStatsFindRecordDatesQuery)).
+		WithArgs(userId).
+		WillReturnRows(sqlmock.NewRows([]string{"event_date", "created_at"}).AddRow(eventDate, createdAt))
+
+	dates, err := i.FindRecordDatesByUserId(context.Background(), userId, time.Time{}, time.Time{})
+
+	require.NoError(t, err)
+	require.Len(t, dates, 1)
+	require.Equal(t, time.Date(2026, 7, 4, 0, 0, 0, 0, time.Local), dates[0])
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

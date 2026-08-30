@@ -134,8 +134,9 @@ func isLastChanceThisWeek(lastRecordedWeek time.Time, freezeUsedCount int, now t
 		return false
 	}
 
-	thisMonday := mondayOf(now)
-	gapWeeks := int(thisMonday.Sub(lastRecordedWeek).Hours()/24) / 7
+	// lastRecordedWeek は DATE カラム由来(UTC の 0時)、now はローカル時刻なので、
+	// 瞬間の差ではなく暦日ベースで週差を取る(weeksBetween 参照)。
+	gapWeeks := weeksBetween(lastRecordedWeek, now)
 
 	// 今週(またはそれ以降の未来週)に既に記録済み → 対象外
 	if gapWeeks <= 0 {

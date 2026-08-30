@@ -78,6 +78,27 @@ func TestStreak_GetByUserId(t *testing.T) {
 		require.Equal(t, 8, streak.LongestWeeks)
 	})
 
+	t.Run("正常系_記録削除で最終記録週が3週前まで戻った場合はDB由来のUTC日付でも終了扱いにする", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
+		u := NewStreak(userStreakRepo)
+
+		// 8/3 週まで5週連続していた人が 8/24 週に記録すると猶予超えで1週目にリセットされるが、
+		// その 8/24 の記録を削除すると再計算で「8/3 週を最終週とする5週連続」に戻る。
+		// 今日(8/30)から見ればとうに途切れているので、表示上は0週・フリーズ未使用で返す。
+		// last_recorded_week は DATE カラムのため UTC の 0時 として読み出される点を再現する。
+		overrideTimeNow(t, time.Date(2026, 8, 30, 23, 0, 0, 0, time.Local))
+		stored := entity.NewUserStreak("user-1", 5, 5, 0, 0, time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC), time.Now())
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
+
+		streak, err := u.GetByUserId(context.Background(), "user-1")
+
+		require.NoError(t, err)
+		require.Equal(t, 0, streak.CurrentWeeks)
+		require.Equal(t, 0, streak.FreezeUsedCount)
+		require.Equal(t, 5, streak.LongestWeeks)
+	})
+
 	t.Run("正常系_フリーズ猶予(2週間)を超え、かつフリーズ使用済みなら1週間経過時点でも終了扱い", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
@@ -107,5 +128,24 @@ func TestIsStreakExpired(t *testing.T) {
 	t.Run("正常系_3週間以上前で猶予を超えると期限切れ", func(t *testing.T) {
 		lastWeek := mondayOf(time.Now()).AddDate(0, 0, -21)
 		require.True(t, isStreakExpired(lastWeek, 0))
+	})
+
+	// user_streaks.last_recorded_week は DATE カラムのため、DBからは UTC の 0時 として
+	// 読み出される。現在時刻(ローカル)の月曜 0時 との差を瞬間で取ると 9時間分だけ短くなり、
+	// 3週前が「2週前」に見えて猶予内と誤判定していた(記録削除で最終記録週が過去へ戻った
+	// 直後に、既に途切れているはずのストリークがフリーズ付きで復活して見える)。
+	t.Run("正常系_DB由来のUTC日付でも3週前なら期限切れ", func(t *testing.T) {
+		overrideTimeNow(t, time.Date(2026, 8, 30, 23, 0, 0, 0, time.Local)) // 日曜(今週の月曜は 8/24)
+		require.True(t, isStreakExpired(time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC), 0))
+	})
+
+	t.Run("正常系_DB由来のUTC日付でも2週前かつフリーズ満杯なら期限切れ", func(t *testing.T) {
+		overrideTimeNow(t, time.Date(2026, 8, 30, 23, 0, 0, 0, time.Local))
+		require.True(t, isStreakExpired(time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC), StreakMaxFreezeCount))
+	})
+
+	t.Run("正常系_DB由来のUTC日付で2週前かつフリーズ空きありなら継続扱い", func(t *testing.T) {
+		overrideTimeNow(t, time.Date(2026, 8, 30, 23, 0, 0, 0, time.Local))
+		require.False(t, isStreakExpired(time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC), 0))
 	})
 }

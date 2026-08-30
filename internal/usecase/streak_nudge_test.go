@@ -61,6 +61,29 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		require.Contains(t, saved.Body, "3週連続") // current_weeks=3 が本文に反映される
 	})
 
+	t.Run("正常系_最終記録週がDB由来のUTC日付でも2週あきを正しく数えて通知する", func(t *testing.T) {
+		withFixedNow(t)
+		mockCtrl := gomock.NewController(t)
+		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
+		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
+		u := NewStreakNudge(userStreakRepo, notificationRepo)
+
+		// last_recorded_week は DATE カラムのため UTC の 0時 として読み出される。
+		// ローカルの月曜 0時 との瞬間差で週数を取ると 9時間分短くなって1週少なく見え、
+		// 「2週あき・フリーズ空きあり」の瀬戸際の週を取りこぼしていた。
+		m := weeksAgoMonday(2)
+		utcMonday := time.Date(m.Year(), m.Month(), m.Day(), 0, 0, 0, 0, time.UTC)
+		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, utcMonday, time.Now())
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
+		notificationRepo.EXPECT().FindByUserId(gomock.Any(), "user-1", streakNudgeDedupScanLimit).Return(nil, nil)
+		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+		sent, err := u.NudgeUser(context.Background(), "user-1", false)
+
+		require.NoError(t, err)
+		require.True(t, sent)
+	})
+
 	t.Run("正常系_1週あいてフリーズ満杯(今週が瀬戸際)なら通知を作成する", func(t *testing.T) {
 		withFixedNow(t)
 		mockCtrl := gomock.NewController(t)

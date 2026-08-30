@@ -51,25 +51,21 @@ CRON_TZ=Asia/Tokyo
 # (/users/report/weeks/{先週の月曜}) へ誘導するアプリ内通知(+push)を作成する。
 # 先週0戦の push 購読者には代わりに環境ニュース(/deck_meta)を push で届ける。
 # 同じ週の通知は二重に作らないため、多重起動しても安全。
-# 導入時はまず -dry-run=true で対象者数と本文を確認し、問題なければ本番行へ切り替える。
 
-# 毎週月曜 08:00 JST — 週次バトルレポート通知（検証: 対象者をログに出すだけ）
-0 8 * * 1 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekly-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekly-report -dry-run=true >> /var/log/vsrecorder/weekly-report.log 2>&1
-
-# ── 本番切替時: 上をコメントアウトし、こちらを有効にする ──
-# 0 8 * * 1 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekly-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekly-report -dry-run=false >> /var/log/vsrecorder/weekly-report.log 2>&1
+# 2026-08-31 に本番切替済み（-dry-run=false）。検証時は -dry-run=true にすると
+# 対象者をログ出力するだけで通知は作られない。
+# 毎週月曜 08:00 JST — 週次バトルレポート通知
+0 8 * * 1 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekly-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekly-report -dry-run=false >> /var/log/vsrecorder/weekly-report.log 2>&1
 
 # ── B-2 週末リマインド（B1_B2_PUSH_NOTIFICATION_PLAN.md §5.5）──
 # 毎週金曜 20:00 JST。Web Push を購読していて今週まだ記録が無い記録経験者へ、
 # 週末の記録を想起させる通知(アプリ内通知 + push)を作成する。
 # push には .env の VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT が必要。
-# 導入時はまず -dry-run=true で対象者数を確認し、-user-id で自分宛てに1通試してから本番行へ切り替える。
 
-# 毎週金曜 20:00 JST — 週末リマインド（検証: 対象者をログに出すだけ）
-0 20 * * 5 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekend-reminder.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekend-reminder -dry-run=true >> /var/log/vsrecorder/weekend-reminder.log 2>&1
-
-# ── 本番切替時: 上をコメントアウトし、こちらを有効にする ──
-# 0 20 * * 5 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekend-reminder.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekend-reminder -dry-run=false >> /var/log/vsrecorder/weekend-reminder.log 2>&1
+# 2026-08-31 に本番切替済み（-dry-run=false）。検証時は -dry-run=true にすると
+# 対象者をログ出力するだけで通知は作られない。
+# 毎週金曜 20:00 JST — 週末リマインド
+0 20 * * 5 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekend-reminder.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekend-reminder -dry-run=false >> /var/log/vsrecorder/weekend-reminder.log 2>&1
 
 # ※ B-5 (notify-streak-nudge) と P-2 (notify-weekly-report) も同じ .env の VAPID_* を読み、
 #   購読者にはアプリ内通知に加えて push を送る(B1_EXECUTION_STEPS.md Step 2-2)。

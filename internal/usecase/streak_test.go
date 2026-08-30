@@ -56,6 +56,66 @@ func TestStreak_GetByUserId(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, 4, streak.CurrentWeeks)
+		// 先週の空き週ぶんのフリーズは消費済みとして返す
+		require.Equal(t, 1, streak.FreezeUsedCount)
+	})
+
+	t.Run("正常系_先週が未記録でフリーズに空きがあれば空き週ぶんのフリーズを消費済みとして返す", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
+		u := NewStreak(userStreakRepo)
+
+		// 8/17 週まで6週連続、8/24 週は未記録、今日は 8/31(月)。保存値はまだ 8/17 時点のままだが、
+		// 8/24 週の空きは次に記録した時点で必ずフリーズ1つを消費するので、表示では先に減らす。
+		// フリーズ消費で回復進捗も 0 に戻る(ComputeStreakState と同じ)。
+		overrideTimeNow(t, time.Date(2026, 8, 31, 10, 0, 0, 0, time.Local))
+		stored := entity.NewUserStreak("user-1", 6, 6, 0, 1, time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local), time.Now())
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
+
+		streak, err := u.GetByUserId(context.Background(), "user-1")
+
+		require.NoError(t, err)
+		require.Equal(t, 6, streak.CurrentWeeks)
+		require.Equal(t, 6, streak.LongestWeeks)
+		require.Equal(t, 1, streak.FreezeUsedCount)
+		require.Equal(t, 0, streak.FreezeRegenProgress)
+		require.Equal(t, stored.LastRecordedWeek, streak.LastRecordedWeek)
+	})
+
+	t.Run("正常系_先週記録していれば今週未記録でもフリーズは消費しない", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
+		u := NewStreak(userStreakRepo)
+
+		// 8/24 週に記録済み、今日は 8/31(月)。今週はまだこれから記録できるので空き週ではない。
+		overrideTimeNow(t, time.Date(2026, 8, 31, 10, 0, 0, 0, time.Local))
+		stored := entity.NewUserStreak("user-1", 6, 6, 1, 1, time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local), time.Now())
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
+
+		streak, err := u.GetByUserId(context.Background(), "user-1")
+
+		require.NoError(t, err)
+		require.Equal(t, 6, streak.CurrentWeeks)
+		require.Equal(t, 1, streak.FreezeUsedCount)
+		require.Equal(t, 1, streak.FreezeRegenProgress)
+	})
+
+	t.Run("正常系_先週が未記録でフリーズ満杯なら消費できず終了扱いにする", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
+		u := NewStreak(userStreakRepo)
+
+		// 先読みの消費で上限を超えることはなく、空きが無ければ途切れ扱い(0週・フリーズ未使用)。
+		overrideTimeNow(t, time.Date(2026, 8, 31, 10, 0, 0, 0, time.Local))
+		stored := entity.NewUserStreak("user-1", 6, 8, StreakMaxFreezeCount, 0, time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local), time.Now())
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
+
+		streak, err := u.GetByUserId(context.Background(), "user-1")
+
+		require.NoError(t, err)
+		require.Equal(t, 0, streak.CurrentWeeks)
+		require.Equal(t, 0, streak.FreezeUsedCount)
+		require.Equal(t, 8, streak.LongestWeeks)
 	})
 
 	t.Run("正常系_記録の作成・削除以来、時間経過だけでフリーズ猶予を超えた場合は表示上0に戻す", func(t *testing.T) {

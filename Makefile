@@ -92,6 +92,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/push_subscription.go -destination=./internal/mock/mock_repository/push_subscription.go
 	mockgen -source=./internal/domain/repository/push_delivery.go -destination=./internal/mock/mock_repository/push_delivery.go
 	mockgen -source=./internal/domain/repository/push_sender.go -destination=./internal/mock/mock_repository/push_sender.go
+	mockgen -source=./internal/domain/repository/pokemon_sprite.go -destination=./internal/mock/mock_repository/pokemon_sprite.go
 
 	mockgen -source=./internal/usecase/record.go -destination=./internal/mock/mock_usecase/record.go
 	mockgen -source=./internal/usecase/user.go -destination=./internal/mock/mock_usecase/user.go

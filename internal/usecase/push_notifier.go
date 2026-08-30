@@ -18,6 +18,8 @@ const (
 	PushCampaignWeeklyReport = "weekly_report"
 	// PushCampaignWeekendReminder は B-2 週末リマインド(金曜 20:00)。
 	PushCampaignWeekendReminder = "weekend_reminder"
+	// PushCampaignEnvNews は P-2 の代替、記録ゼロの週の環境ニュース(月曜 08:00・購読者のみ)。
+	PushCampaignEnvNews = "env_news"
 )
 
 const (
@@ -31,8 +33,9 @@ const (
 )
 
 // pushCampaignsCountedForCap は週あたり上限に数えるキャンペーン。
-// 週次レポート(weekly_report)は「先週記録した人への配当」であって想起ではないため数えない。
-// これにより1人あたり最大でも 月(レポート)・金(週末)・日(nudge) の3通に収まる。
+// 月曜の weekly_report(先週記録した人への配当)と env_news(記録ゼロの週の代替)は数えない。
+// これにより1人あたり最大でも 月(レポート or 環境ニュース)・金(週末)・日(nudge) の3通に収まる。
+// 反応の無い人への間引き(isPushUnresponsive)は env_news と weekend_reminder が各自で行う。
 var pushCampaignsCountedForCap = []string{PushCampaignWeekendReminder, PushCampaignStreakNudge}
 
 type PushNotifierInterface interface {

@@ -23,14 +23,6 @@ const (
 
 	// weekendReminderDedupScanLimit は二重送信判定で遡って確認する直近通知の件数(B-5 と同じ考え方)。
 	weekendReminderDedupScanLimit = 30
-
-	// weekendReminderQuietAfter は「反応が無い」とみなす直近の配信回数。
-	// この回数連続で未クリック、かつその間に記録も無ければ隔週配信に落とす。
-	weekendReminderQuietAfter = 4
-
-	// weekendReminderRecentScanLimit は隔週判定で遡る配達ログの件数。
-	// 1回の配信で端末数ぶんの行ができるため、回数より多めに読む。
-	weekendReminderRecentScanLimit = 20
 )
 
 type WeekendReminderInterface interface {
@@ -104,7 +96,7 @@ func (u *WeekendReminder) RemindUser(ctx context.Context, userId string, dryRun 
 		return false, nil
 	}
 
-	quiet, err := u.isUnresponsive(ctx, userId, streak, thisMonday)
+	quiet, err := isPushUnresponsive(ctx, u.pushDeliveryRepo, userId, PushCampaignWeekendReminder, streak.LastRecordedWeek, thisMonday)
 	if err != nil {
 		logError(ctx, err)
 		return false, err
@@ -163,54 +155,4 @@ func (u *WeekendReminder) alreadyRemindedThisWeek(ctx context.Context, userId st
 	}
 
 	return false, nil
-}
-
-// isUnresponsive は「直近 weekendReminderQuietAfter 回の週末リマインドをすべてタップしておらず、
-// その間に記録もしていない」かを返す。配達ログは端末ごとに行ができるため、週(月曜)単位に畳んでから数える。
-func (u *WeekendReminder) isUnresponsive(ctx context.Context, userId string, streak *entity.UserStreak, thisMonday time.Time) (bool, error) {
-	deliveries, err := u.pushDeliveryRepo.FindRecentByUserIdAndCampaign(
-		ctx, userId, PushCampaignWeekendReminder, weekendReminderRecentScanLimit,
-	)
-	if err != nil {
-		return false, err
-	}
-
-	weeks := map[time.Time]bool{}
-	var order []time.Time
-	for _, d := range deliveries {
-		week := mondayOf(d.CreatedAt)
-		if _, ok := weeks[week]; !ok {
-			weeks[week] = false
-			order = append(order, week)
-		}
-		if d.IsClicked() {
-			weeks[week] = true
-		}
-	}
-
-	if len(order) < weekendReminderQuietAfter {
-		return false, nil
-	}
-	for _, week := range order[:weekendReminderQuietAfter] {
-		if weeks[week] {
-			return false, nil
-		}
-	}
-
-	// 直近の配信期間中に記録があれば「反応が無い」とはみなさない(タップせずに直接開いた可能性)
-	quietSince := thisMonday.AddDate(0, 0, -7*weekendReminderQuietAfter)
-	return streak.LastRecordedWeek.Before(quietSince), nil
-}
-
-// weekParityEpoch は週の偶奇を数える起点(1970-01-05 は月曜)。
-// ISO 週番号だと年またぎで 53→1 と奇数が続き、隔週対象者が2週連続で飛ぶことがあるため、
-// 起点からの経過週数で数える。
-var weekParityEpoch = time.Date(1970, 1, 5, 0, 0, 0, 0, time.UTC)
-
-// isEvenWeek は monday(週の月曜0時)が起点から偶数週目かを返す。隔週配信の週を決めるのに使う。
-// ローカル時刻の月曜0時を UTC の暦日に読み替えて日数を数えるため、タイムゾーンに依存しない。
-func isEvenWeek(monday time.Time) bool {
-	day := time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, time.UTC)
-	weeks := int(day.Sub(weekParityEpoch).Hours()/24) / 7
-	return weeks%2 == 0
 }

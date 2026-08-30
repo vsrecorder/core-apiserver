@@ -1,13 +1,19 @@
-// notify-weekly-report は、先週(月〜日)に1戦以上記録したユーザーへ、先週のバトルレポート
-// (/users/report/weeks/{先週の月曜}) へ誘導するアプリ内通知を作成する定期バッチ。
+// notify-weekly-report は、毎週月曜にユーザーへ「先週」の通知を作成する定期バッチ(施策P-2)。
+//
+//   - 先週(月〜日)に1戦以上記録した人: 先週のバトルレポート(/users/report/weeks/{先週の月曜})への
+//     誘導。購読の有無によらずアプリ内通知を作り、push 購読者には push も送る(記録の配当)
+//   - 先週0戦の push 購読者: 先週の環境ニュース(使用率1位・いちばん伸びたデッキ。/deck_meta へ)。
+//     配当が無い週でも毎週何かが届く状態を作る。購読していない人には作らない
+//     (見られないアプリ内通知でベルに未読が溜まるだけになるため)
 //
 // 「記録すると資産が貯まり、貯まると見返したくなる」ループの後半を、ユーザー任せにせず
 // プロダクト側から毎週起動することを狙う(pmf-plan-2026-08-27.md 施策P-2 /
-// P2_WEEKLY_REPORT_PLAN.md)。記録の無い週は配当が無いので送らない(想起は B-5 / B-2 の領域)。
+// P2_WEEKLY_REPORT_PLAN.md)。
 //
-// 判定は usecase.NotifyUser が行う: 対象週の戦績を集計して 1戦以上あれば作成、
-// 同じ週の通知が既にあれば作らない。週をキーにしているため cron の多重起動でも、
-// 同じ -week を指定して再実行しても二重には作らない。
+// 判定は usecase.NotifyUser が行う: 対象週の戦績を集計して 1戦以上ならレポート、0戦なら
+// 環境ニュース。同じ週の通知が既にあれば作らない。週をキーにしているため cron の多重起動でも、
+// 同じ -week を指定して再実行しても二重には作らない。環境ニュースは反応の無い人(直近4回
+// 未タップかつ4週以上記録なし)には隔週だけ送り、環境データが無い週は送らない。
 //
 // 想定運用: OSのcronから毎週月曜朝に起動する(crontab例は config/crontab 参照)。
 // B-1(Web Push)導入後は、アプリ内通知を作った上で購読端末へ push も送る。
@@ -99,6 +105,11 @@ func main() {
 		infrastructure.NewDeckUsageStat(db),
 		infrastructure.NewNotification(db),
 		pushNotifier,
+		infrastructure.NewPushSubscription(db),
+		infrastructure.NewPushDelivery(db),
+		infrastructure.NewUserStreak(db),
+		infrastructure.NewWeeklyDeckUsageStat(db),
+		infrastructure.NewPokemonSpriteName(db),
 	)
 
 	ctx := context.Background()
@@ -115,7 +126,7 @@ func main() {
 	}
 
 	if *dryRun {
-		log.Printf("[dry-run] checking weekly-report targets among %d users for week=%s (通知は作成しません)\n", len(userIds), week)
+		log.Printf("[dry-run] checking weekly-report/env-news targets among %d users for week=%s (通知は作成しません)\n", len(userIds), week)
 	} else {
 		log.Printf("sending weekly-report among %d users for week=%s\n", len(userIds), week)
 	}
@@ -169,18 +180,36 @@ func mondayOf(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location()).AddDate(0, 0, -offset)
 }
 
-// findCandidateUserIds は対象週に開催日(event_date)を持つ記録があるユーザーを候補として返す。
-// 「1戦以上あるか」「集計対象外(ignore_stats_flg)を除いて残るか」の最終判定は
-// usecase.NotifyUser が戦績集計で行うため、ここでは記録の有無だけで広めに拾う。
+// findCandidateUserIds は「対象週に開催日(event_date)を持つ記録があるユーザー」と
+// 「生きている push 購読を持つユーザー」の和集合を候補として返す。
+// 前者はレポート、後者は(0戦なら)環境ニュースの対象。「1戦以上あるか」「集計対象外
+// (ignore_stats_flg)を除いて残るか」の最終判定は usecase.NotifyUser が戦績集計で行う。
 func findCandidateUserIds(db *gorm.DB, fromDate, toDate time.Time) ([]string, error) {
-	var userIds []string
-	tx := db.Table("records").
+	var recorded []string
+	if tx := db.Table("records").
 		Where("deleted_at IS NULL").
 		Where("event_date >= ? AND event_date < ?", fromDate, toDate).
 		Distinct("user_id").
-		Pluck("user_id", &userIds)
-	if tx.Error != nil {
+		Pluck("user_id", &recorded); tx.Error != nil {
 		return nil, tx.Error
+	}
+
+	var subscribed []string
+	if tx := db.Table("push_subscriptions").
+		Where("revoked_at IS NULL").
+		Distinct("user_id").
+		Pluck("user_id", &subscribed); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	seen := make(map[string]struct{}, len(recorded)+len(subscribed))
+	userIds := make([]string, 0, len(recorded)+len(subscribed))
+	for _, id := range append(recorded, subscribed...) {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		userIds = append(userIds, id)
 	}
 	return userIds, nil
 }

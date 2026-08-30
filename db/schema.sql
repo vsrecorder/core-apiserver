@@ -1003,7 +1003,7 @@ CREATE TABLE notifications (
     id          VARCHAR(26) PRIMARY KEY,
     created_at  TIMESTAMP NOT NULL,
     user_id     VARCHAR(32) NOT NULL,
-    category    VARCHAR(32) NOT NULL, -- 'badge'/'designation'/'rank'/'streak'/'weekly_report'
+    category    VARCHAR(32) NOT NULL, -- 'badge'/'designation'/'rank'/'streak'/'weekly_report'/'env_news'/'reminder'
     title       VARCHAR(128) NOT NULL,
     body        VARCHAR(256) NOT NULL,
     link_url    VARCHAR(256) NOT NULL DEFAULT '',
@@ -1042,7 +1042,7 @@ CREATE TABLE push_deliveries (
     user_id         VARCHAR(32) NOT NULL,
     subscription_id VARCHAR(26) NOT NULL,
     notification_id VARCHAR(26) NOT NULL DEFAULT '',
-    campaign        VARCHAR(32) NOT NULL,    -- 'streak_nudge' / 'weekly_report' / 'weekend_reminder'
+    campaign        VARCHAR(32) NOT NULL,    -- 'streak_nudge' / 'weekly_report' / 'env_news' / 'weekend_reminder'
     status          VARCHAR(16) NOT NULL,    -- 'pending'(送出前) / 'sent' / 'failed' / 'expired'
     status_code     INT NOT NULL DEFAULT 0,  -- プッシュサービスのHTTPステータス
     delivered_at    TIMESTAMP DEFAULT NULL,  -- 端末のSWがpushを受け取った時刻

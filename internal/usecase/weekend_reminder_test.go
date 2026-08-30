@@ -71,7 +71,7 @@ func TestWeekendReminder_RemindUser(t *testing.T) {
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(entity.NewUserStreak("user-1", 3, 3, 0, 0, lastWeekMonday, time.Now()), nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(liveSubscriptions(), nil)
 		m.notification.EXPECT().FindByUserId(gomock.Any(), "user-1", weekendReminderDedupScanLimit).Return(nil, nil)
-		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, weekendReminderRecentScanLimit).Return(nil, nil)
+		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, pushQuietRecentScanLimit).Return(nil, nil)
 
 		var saved *entity.Notification
 		m.notification.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -144,7 +144,7 @@ func TestWeekendReminder_RemindUser(t *testing.T) {
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(entity.NewUserStreak("user-1", 3, 3, 0, 0, time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local), time.Now()), nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(liveSubscriptions(), nil)
 		m.notification.EXPECT().FindByUserId(gomock.Any(), "user-1", weekendReminderDedupScanLimit).Return(nil, nil)
-		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, weekendReminderRecentScanLimit).Return(nil, nil)
+		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, pushQuietRecentScanLimit).Return(nil, nil)
 		// Save も Deliver も呼ばれない
 
 		sent, err := u.RemindUser(context.Background(), "user-1", true)
@@ -162,7 +162,7 @@ func TestWeekendReminder_RemindUser(t *testing.T) {
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(entity.NewUserStreak("user-1", 0, 3, 0, 0, longAgo, time.Now()), nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(liveSubscriptions(), nil)
 		m.notification.EXPECT().FindByUserId(gomock.Any(), "user-1", weekendReminderDedupScanLimit).Return(nil, nil)
-		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, weekendReminderRecentScanLimit).
+		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, pushQuietRecentScanLimit).
 			Return(unclickedDeliveries(weekendReminderOddWeekNow.AddDate(0, 0, -7), 4), nil)
 
 		sent, err := u.RemindUser(context.Background(), "user-1", false)
@@ -178,7 +178,7 @@ func TestWeekendReminder_RemindUser(t *testing.T) {
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(entity.NewUserStreak("user-1", 0, 3, 0, 0, longAgo, time.Now()), nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(liveSubscriptions(), nil)
 		m.notification.EXPECT().FindByUserId(gomock.Any(), "user-1", weekendReminderDedupScanLimit).Return(nil, nil)
-		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, weekendReminderRecentScanLimit).
+		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, pushQuietRecentScanLimit).
 			Return(unclickedDeliveries(weekendReminderEvenWeekNow.AddDate(0, 0, -7), 4), nil)
 		m.notification.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 
@@ -199,7 +199,7 @@ func TestWeekendReminder_RemindUser(t *testing.T) {
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(entity.NewUserStreak("user-1", 0, 3, 0, 0, longAgo, time.Now()), nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(liveSubscriptions(), nil)
 		m.notification.EXPECT().FindByUserId(gomock.Any(), "user-1", weekendReminderDedupScanLimit).Return(nil, nil)
-		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, weekendReminderRecentScanLimit).Return(deliveries, nil)
+		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, pushQuietRecentScanLimit).Return(deliveries, nil)
 		m.notification.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 
 		sent, err := u.RemindUser(context.Background(), "user-1", false)
@@ -217,7 +217,7 @@ func TestWeekendReminder_RemindUser(t *testing.T) {
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(entity.NewUserStreak("user-1", 0, 3, 0, 0, recent, time.Now()), nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(liveSubscriptions(), nil)
 		m.notification.EXPECT().FindByUserId(gomock.Any(), "user-1", weekendReminderDedupScanLimit).Return(nil, nil)
-		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, weekendReminderRecentScanLimit).
+		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, pushQuietRecentScanLimit).
 			Return(unclickedDeliveries(weekendReminderOddWeekNow.AddDate(0, 0, -7), 4), nil)
 		m.notification.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 

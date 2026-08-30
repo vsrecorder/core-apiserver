@@ -20,6 +20,20 @@ var (
 	DateLayout = time.DateOnly
 )
 
+// localDate は DATE カラムから読み出した値を、ローカル時刻の同じ暦日 0時 に揃えて返す。
+//
+// GORM(pgx)は DATE を UTC の 0時 として返す一方、TIMESTAMP はローカル時刻で返し、
+// time.Now() もローカル時刻のため、同じ暦日でも time.Time としては別の瞬間になる。
+// usecase 側で「同じ週か」「何週あいたか」を突き合わせる日付(週次ストリーク関連)は、
+// 由来によらずここでローカルの暦日に揃えてから返す。ゼロ値(未入力)はそのまま返す。
+func localDate(t time.Time) time.Time {
+	if t.IsZero() {
+		return t
+	}
+
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
+}
+
 // GORM側で更新される カラム updated_at, deleted_at の値をテストでPASSするための構造体
 type AnyTime struct{}
 

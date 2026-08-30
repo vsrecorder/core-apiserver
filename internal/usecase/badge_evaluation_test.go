@@ -25,6 +25,42 @@ func TestMondayOf(t *testing.T) {
 	// 日曜日は前週の月曜日
 	sun := time.Date(2026, 7, 5, 9, 0, 0, 0, time.Local)
 	require.Equal(t, time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local), mondayOf(sun))
+
+	// DBの DATE カラム(event_date / last_recorded_week)は UTC の 0時 として読み出されるが、
+	// 暦日は同じ。ローカル時刻の TIMESTAMP(created_at)や time.Now() と同じ週に畳めるよう、
+	// 値の Location ではなく値が持つ暦日を基準に、ローカルの月曜 0時 へ揃える。
+	utcDate := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
+	require.Equal(t, time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local), mondayOf(utcDate))
+
+	jstStamp := time.Date(2026, 7, 3, 23, 30, 0, 0, time.FixedZone("JST", 9*60*60))
+	require.Equal(t, time.Date(2026, 6, 29, 0, 0, 0, 0, time.Local), mondayOf(jstStamp))
+}
+
+func TestWeeksBetween(t *testing.T) {
+	jst := time.FixedZone("JST", 9*60*60)
+
+	t.Run("正常系_同じ週なら0", func(t *testing.T) {
+		require.Equal(t, 0, weeksBetween(time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local), time.Date(2026, 6, 7, 23, 0, 0, 0, time.Local)))
+	})
+
+	t.Run("正常系_翌週なら1で以降は週数どおり", func(t *testing.T) {
+		from := time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local)
+		require.Equal(t, 1, weeksBetween(from, from.AddDate(0, 0, 7)))
+		require.Equal(t, 3, weeksBetween(from, from.AddDate(0, 0, 21)))
+	})
+
+	t.Run("正常系_過去方向なら負になる", func(t *testing.T) {
+		from := time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local)
+		require.Equal(t, -1, weeksBetween(from, from.AddDate(0, 0, -7)))
+	})
+
+	t.Run("正常系_UTCの暦日とローカル時刻を混ぜても暦日の差で数える", func(t *testing.T) {
+		// DATE 由来(UTC 0時)の3週前の月曜と、ローカル時刻の今週。瞬間の差で数えると
+		// 9時間分だけ短くなって2週に見えるが、暦日で数えれば3週。
+		from := time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC)
+		to := time.Date(2026, 8, 30, 23, 0, 0, 0, jst)
+		require.Equal(t, 3, weeksBetween(from, to))
+	})
 }
 
 func newBadgeEvaluationTestUsecase(mockCtrl *gomock.Controller) (
@@ -1018,6 +1054,25 @@ func TestComputeStreakState(t *testing.T) {
 		currentWeeks, longestWeeks, _, _, _ := ComputeStreakState(dates)
 		require.Equal(t, 1, currentWeeks)
 		require.Equal(t, 3, longestWeeks)
+	})
+
+	t.Run("正常系_DATE由来のUTC日付とTIMESTAMP由来のローカル日時が混在しても同じ週として数える", func(t *testing.T) {
+		// event_date(DATE)は UTC の 0時、created_at(TIMESTAMP)はローカル時刻で読み出される。
+		// 同じ週でも瞬間としては別の値になるため、週の同一視を瞬間で行うと 9時間差が
+		// 「週の差0」→途切れ扱いになり、連続週数もフリーズも1週目にリセットされてしまう。
+		jst := time.FixedZone("JST", 9*60*60)
+		dates := []time.Time{
+			time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2026, 6, 8, 0, 0, 0, 0, time.UTC),
+			time.Date(2026, 6, 10, 23, 30, 0, 0, jst), // 6/8 週の created_at
+		}
+
+		currentWeeks, longestWeeks, freezeUsedCount, _, lastRecordedWeek := ComputeStreakState(dates)
+
+		require.Equal(t, 2, currentWeeks)
+		require.Equal(t, 2, longestWeeks)
+		require.Equal(t, 0, freezeUsedCount)
+		require.Equal(t, mondayOf(dates[1]), lastRecordedWeek)
 	})
 
 	t.Run("正常系_フリーズ消費後にstreakFreezeRegenWeeks週クリーン継続すると枠が回復する", func(t *testing.T) {

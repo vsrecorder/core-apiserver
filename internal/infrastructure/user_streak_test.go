@@ -45,6 +45,26 @@ func TestUserStreakInfrastructure(t *testing.T) {
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 
+		t.Run("正常系_DATEカラム由来のUTC日付はローカルの同じ暦日0時に揃えて返す", func(t *testing.T) {
+			// GORM(pgx)は DATE を UTC の 0時 として返す。usecase 側は time.Now() や
+			// TIMESTAMP 由来のローカル時刻と週単位で突き合わせるため、暦日を保ったまま
+			// ローカル時刻に揃えて返す。
+			db, mock := setupSqlmockDB(t)
+			r := NewUserStreak(db)
+
+			mock.ExpectQuery(regexp.QuoteMeta(
+				`SELECT * FROM "user_streaks" WHERE user_id = $1 ORDER BY "user_streaks"."user_id" LIMIT $2`,
+			)).WithArgs(uid, 1).WillReturnRows(
+				sqlmock.NewRows(userStreakColumns).AddRow(uid, 3, 5, 1, 2, time.Date(2026, 7, 13, 0, 0, 0, 0, time.UTC), updatedAt),
+			)
+
+			ret, err := r.FindByUserId(context.Background(), uid)
+
+			require.NoError(t, err)
+			require.Equal(t, time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local), ret.LastRecordedWeek)
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+
 		t.Run("異常系_該当なしはErrRecordNotFoundへ変換する", func(t *testing.T) {
 			db, mock := setupSqlmockDB(t)
 			r := NewUserStreak(db)

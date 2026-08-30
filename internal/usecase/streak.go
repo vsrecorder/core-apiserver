@@ -64,8 +64,9 @@ func isStreakExpired(lastRecordedWeek time.Time, freezeUsedCount int) bool {
 		return false
 	}
 
-	diffDays := int(mondayOf(timeNow()).Sub(lastRecordedWeek).Hours() / 24)
-	diffWeeks := diffDays / 7
+	// lastRecordedWeek は DATE カラム由来(UTC の 0時)、timeNow() はローカル時刻なので、
+	// 瞬間の差ではなく暦日ベースで週差を取る(weeksBetween 参照)。
+	diffWeeks := weeksBetween(lastRecordedWeek, timeNow())
 
 	if diffWeeks <= 1 {
 		return false

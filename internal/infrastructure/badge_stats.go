@@ -167,7 +167,10 @@ func (i *BadgeStats) FindRecordDatesByUserId(
 
 	dates := make([]time.Time, 0, len(rows))
 	for _, r := range rows {
-		basis := r.EventDate
+		// event_date は DATE カラムのため UTC の 0時、created_at は TIMESTAMP のため
+		// ローカル時刻で読み出される。混在したまま返すと同じ週が別の瞬間になるので、
+		// event_date はローカルの同じ暦日 0時 に揃える(localDate 参照)。
+		basis := localDate(r.EventDate)
 		if basis.IsZero() {
 			basis = r.CreatedAt
 		}

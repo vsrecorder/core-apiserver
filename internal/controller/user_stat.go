@@ -55,13 +55,14 @@ func (c *UserStat) RegisterRoute(relativePath string) {
 
 func (c *UserStat) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetId(ctx)
+	week := helper.GetWeek(ctx)
 	yearMonth := helper.GetYearMonth(ctx)
 	environmentId := helper.GetEnvironmentId(ctx)
 	season := helper.GetSeason(ctx)
 	standardRegulationId := helper.GetStandardRegulationId(ctx)
 	regulationId := helper.GetRegulationId(ctx)
 
-	stats, err := c.usecase.GetUserStat(ctx.Request.Context(), uid, yearMonth, environmentId, season, standardRegulationId, regulationId)
+	stats, err := c.usecase.GetUserStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)
@@ -72,7 +73,7 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewUserStatResponse(stats, yearMonth, environmentId, season, standardRegulationId, regulationId)
+	res := presenter.NewUserStatResponse(stats, week, yearMonth, environmentId, season, standardRegulationId, regulationId)
 
 	ctx.JSON(http.StatusOK, res)
 }

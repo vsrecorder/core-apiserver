@@ -264,6 +264,30 @@ var specs = []tableSpec{
 		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
 	},
 	{
+		name:     "push_subscriptions",
+		category: categoryLeak,
+		query: `SELECT t.user_id, COUNT(*) FROM push_subscriptions t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `DELETE FROM push_subscriptions t USING users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する。残すと退会後も push が届き続ける",
+	},
+	{
+		name:     "push_deliveries",
+		category: categoryLeak,
+		query: `SELECT t.user_id, COUNT(*) FROM push_deliveries t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `DELETE FROM push_deliveries t USING users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
+	},
+	{
 		name:     "match_pokemon_sprites",
 		category: categoryLeak,
 		// user_id を持たないため matches を経由してたどる。matches 自体が論理削除済みでも

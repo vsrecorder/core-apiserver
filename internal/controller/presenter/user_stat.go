@@ -7,6 +7,7 @@ import (
 
 func NewUserStatResponse(
 	stats *entity.UserStat,
+	week string,
 	yearMonth string,
 	environmentId string,
 	season string,
@@ -15,6 +16,7 @@ func NewUserStatResponse(
 ) *dto.UserStatResponse {
 	return &dto.UserStatResponse{
 		UserId:               stats.UserId,
+		Week:                 week,
 		YearMonth:            yearMonth,
 		EnvironmentId:        environmentId,
 		Season:               season,

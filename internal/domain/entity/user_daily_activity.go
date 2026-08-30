@@ -30,6 +30,11 @@ const (
 	// iOS はホーム画面追加したPWAでしか PushManager が生えないため、
 	// standalone との差がそのまま「iOSでインストールされていない層」の規模を表す。
 	UserDailyActivityCategoryPushCapable = "push_capable"
+
+	// UserDailyActivityCategoryReport はその日バトルレポート(/users/report 配下)を開いた
+	// シグナル。review の部分集合。週次レポート通知(P-2)の閲覧率を、通知した人のうち
+	// 何人がレポートまで辿り着いたかで測るために分けて持つ(P2_WEEKLY_REPORT_PLAN.md)。
+	UserDailyActivityCategoryReport = "report"
 )
 
 // UserDailyActivityCategories は既知の計測カテゴリの集合。
@@ -40,6 +45,7 @@ var UserDailyActivityCategories = map[string]struct{}{
 	UserDailyActivityCategoryReview:      {},
 	UserDailyActivityCategoryStandalone:  {},
 	UserDailyActivityCategoryPushCapable: {},
+	UserDailyActivityCategoryReport:      {},
 }
 
 // IsKnownUserDailyActivityCategory は既知のカテゴリかどうかを返す。

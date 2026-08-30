@@ -23,6 +23,14 @@ func DeckUsageStatGetMiddleware() gin.HandlerFunc {
 		}
 		helper.SetYearMonth(ctx, yearMonth)
 
+		// 週(月曜始まり)での絞り込み。週内の任意日 YYYY-MM-DD を受け、月曜への正規化は usecase 側が行う
+		week, err := helper.ParseQueryWeek(ctx)
+		if err != nil {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+		helper.SetWeek(ctx, week)
+
 		environmentId := helper.GetQueryEnvironmentId(ctx)
 		helper.SetEnvironmentId(ctx, environmentId)
 

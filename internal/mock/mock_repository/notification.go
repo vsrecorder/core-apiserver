@@ -85,6 +85,21 @@ func (mr *MockNotificationInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockNotificationInterface)(nil).DeleteByUserId), ctx, uid)
 }
 
+// ExistsByUserIdAndCategoryAndLinkUrl mocks base method.
+func (m *MockNotificationInterface) ExistsByUserIdAndCategoryAndLinkUrl(ctx context.Context, userId, category, linkUrl string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsByUserIdAndCategoryAndLinkUrl", ctx, userId, category, linkUrl)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsByUserIdAndCategoryAndLinkUrl indicates an expected call of ExistsByUserIdAndCategoryAndLinkUrl.
+func (mr *MockNotificationInterfaceMockRecorder) ExistsByUserIdAndCategoryAndLinkUrl(ctx, userId, category, linkUrl any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsByUserIdAndCategoryAndLinkUrl", reflect.TypeOf((*MockNotificationInterface)(nil).ExistsByUserIdAndCategoryAndLinkUrl), ctx, userId, category, linkUrl)
+}
+
 // FindByUserId mocks base method.
 func (m *MockNotificationInterface) FindByUserId(ctx context.Context, userId string, limit int) ([]*entity.Notification, error) {
 	m.ctrl.T.Helper()

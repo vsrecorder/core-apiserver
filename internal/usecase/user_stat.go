@@ -12,6 +12,8 @@ type UserStatInterface interface {
 	GetUserStat(
 		ctx context.Context,
 		userId string,
+		// week は週(月曜始まり)内の任意日 YYYY-MM-DD。指定時は year_month / season より優先する
+		week string,
 		yearMonth string,
 		environmentId string,
 		season string,
@@ -44,6 +46,7 @@ func NewUserStat(
 func (u *UserStat) GetUserStat(
 	ctx context.Context,
 	userId string,
+	week string,
 	yearMonth string,
 	environmentId string,
 	season string,
@@ -52,7 +55,14 @@ func (u *UserStat) GetUserStat(
 ) (*entity.UserStat, error) {
 	var fromDate, toDate time.Time
 
-	if yearMonth != "" {
+	if week != "" {
+		var err error
+		fromDate, toDate, err = weekRange(week, timeNow().Local())
+		if err != nil {
+			logError(ctx, err)
+			return nil, err
+		}
+	} else if yearMonth != "" {
 		t, err := time.Parse("2006-01", yearMonth)
 		if err != nil {
 			logError(ctx, err)

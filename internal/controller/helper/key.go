@@ -492,3 +492,25 @@ func GetUserPlayerCreateRequest(ctx *gin.Context) dto.UserPlayerCreateRequest {
 
 	return ret
 }
+
+func SetPushSubscriptionCreateRequest(ctx *gin.Context, value dto.PushSubscriptionCreateRequest) {
+	ctx.Set("push_subscription_create_request", value)
+}
+
+func GetPushSubscriptionCreateRequest(ctx *gin.Context) dto.PushSubscriptionCreateRequest {
+	value, _ := ctx.Get("push_subscription_create_request")
+	ret, _ := value.(dto.PushSubscriptionCreateRequest)
+
+	return ret
+}
+
+func SetPushSubscriptionDeleteRequest(ctx *gin.Context, value dto.PushSubscriptionDeleteRequest) {
+	ctx.Set("push_subscription_delete_request", value)
+}
+
+func GetPushSubscriptionDeleteRequest(ctx *gin.Context) dto.PushSubscriptionDeleteRequest {
+	value, _ := ctx.Get("push_subscription_delete_request")
+	ret, _ := value.(dto.PushSubscriptionDeleteRequest)
+
+	return ret
+}

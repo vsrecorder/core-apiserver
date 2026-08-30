@@ -55,4 +55,9 @@ var (
 	// 1つも含まれていない場合に返す。未知のカテゴリが混ざっているだけでは返さない
 	// (既知のぶんだけ記録する)。HTTP では 400 Bad Request に対応する。
 	ErrNoKnownActivityCategory = errors.New("no known activity category")
+
+	// ErrTooManyPushSubscriptions は1ユーザーの生きている push 購読が上限に達している場合に返す。
+	// endpoint を変えて無制限に登録されると、配信バッチが外部へ POST を繰り返す増幅器になるため。
+	// HTTP では 409 Conflict に対応する。
+	ErrTooManyPushSubscriptions = errors.New("too many push subscriptions")
 )

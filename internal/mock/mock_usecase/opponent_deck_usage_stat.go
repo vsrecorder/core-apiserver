@@ -42,16 +42,16 @@ func (m *MockOpponentDeckUsageStatInterface) EXPECT() *MockOpponentDeckUsageStat
 }
 
 // GetOpponentDeckUsageStat mocks base method.
-func (m *MockOpponentDeckUsageStatInterface) GetOpponentDeckUsageStat(ctx context.Context, userId, yearMonth, environmentId, season, standardRegulationId string, regulationId uint, deckId string) (*entity.OpponentDeckUsageStat, error) {
+func (m *MockOpponentDeckUsageStatInterface) GetOpponentDeckUsageStat(ctx context.Context, userId, week, yearMonth, environmentId, season, standardRegulationId string, regulationId uint, deckId string) (*entity.OpponentDeckUsageStat, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOpponentDeckUsageStat", ctx, userId, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
+	ret := m.ctrl.Call(m, "GetOpponentDeckUsageStat", ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
 	ret0, _ := ret[0].(*entity.OpponentDeckUsageStat)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetOpponentDeckUsageStat indicates an expected call of GetOpponentDeckUsageStat.
-func (mr *MockOpponentDeckUsageStatInterfaceMockRecorder) GetOpponentDeckUsageStat(ctx, userId, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId any) *gomock.Call {
+func (mr *MockOpponentDeckUsageStatInterfaceMockRecorder) GetOpponentDeckUsageStat(ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOpponentDeckUsageStat", reflect.TypeOf((*MockOpponentDeckUsageStatInterface)(nil).GetOpponentDeckUsageStat), ctx, userId, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOpponentDeckUsageStat", reflect.TypeOf((*MockOpponentDeckUsageStatInterface)(nil).GetOpponentDeckUsageStat), ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
 }

@@ -168,6 +168,9 @@ Deck・User の各usecaseへ注入され、書き込み処理の中でバッジ�
   期間とは直交する絞り込み。統計APIでは未指定＝全レギュレーション、`records.regulation_id`
   と突き合わせる。webapp は既定でスタンダード（`regulation_id=1`）を送る。
 - 週は月曜始まり（`usecase/week.go`）。週次デッキ使用率の `week` クエリは月曜日の `YYYY-MM-DD`。
+- ユーザー統計API（`/users/:id/stats` / `deck_usage` / `opponent_deck_usage`）の `week` は
+  週内の任意日 `YYYY-MM-DD`（`weekRange` が月曜へ正規化する）。期間指定の優先順は
+  **week > year_month > season**。environment / standard_regulation との交差は他と同じ。
 
 ### 書き込みの整合性
 
@@ -212,6 +215,9 @@ Deck・User の各usecaseへ注入され、書き込み処理の中でバッジ�
   GORMが更新する `updated_at` / `deleted_at` は `AnyTime{}` マッチャで受ける。
 - 実DBに対するスモークテストは `internal/infrastructure/integration_test.go` に `TestIntegration*`
   として書く。`VSRECORDER_TEST_DATABASE_URL` 未設定時は自動でスキップされる。
+- usecase 層のテストから**別の usecase を差し替えるときは `mock_usecase` を import できない**
+  （`mock_usecase` が `usecase` を import しているため import cycle になる）。`stubBadgeEvaluation` /
+  `stubPushNotifier`（`push_notifier_stub_test.go`）のように同パッケージ内の手書きスタブを使う。
 - 現在時刻に依存するロジックは `timeNow` パッケージ変数を経由する。テストからは
   `overrideTimeNow(t, 固定時刻)`（usecase）で差し替える。パッケージ変数を書き換えるため、
   これを使うテストは並列実行しない。

@@ -22,6 +22,7 @@ type DeckUsageItemResponse struct {
 
 type DeckUsageStatResponse struct {
 	UserId               string                   `json:"user_id"`
+	Week                 string                   `json:"week,omitempty"`
 	YearMonth            string                   `json:"year_month,omitempty"`
 	EnvironmentId        string                   `json:"environment_id,omitempty"`
 	Season               string                   `json:"season,omitempty"`

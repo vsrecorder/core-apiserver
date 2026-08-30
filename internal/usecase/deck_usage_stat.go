@@ -12,6 +12,8 @@ type DeckUsageStatInterface interface {
 	GetDeckUsageStat(
 		ctx context.Context,
 		userId string,
+		// week は週(月曜始まり)内の任意日 YYYY-MM-DD。指定時は year_month / season より優先する
+		week string,
 		yearMonth string,
 		environmentId string,
 		season string,
@@ -45,6 +47,7 @@ func NewDeckUsageStat(
 func (u *DeckUsageStat) GetDeckUsageStat(
 	ctx context.Context,
 	userId string,
+	week string,
 	yearMonth string,
 	environmentId string,
 	season string,
@@ -60,7 +63,14 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 		return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, fromDate, toDate, regulationId)
 	}
 
-	if yearMonth != "" {
+	if week != "" {
+		var err error
+		fromDate, toDate, err = weekRange(week, timeNow().Local())
+		if err != nil {
+			logError(ctx, err)
+			return nil, err
+		}
+	} else if yearMonth != "" {
 		t, err := time.Parse("2006-01", yearMonth)
 		if err != nil {
 			logError(ctx, err)

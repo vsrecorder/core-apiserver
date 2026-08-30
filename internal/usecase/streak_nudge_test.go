@@ -35,7 +35,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		// 最後の記録が2週前・フリーズ未使用 → 今週書けばフリーズ1枠で継続、書かなければ来週リセット
 		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
@@ -59,6 +60,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		require.Equal(t, streakNudgeTitle, saved.Title)
 		require.Equal(t, streakNudgeLinkUrl, saved.LinkUrl)
 		require.Contains(t, saved.Body, "3週連続") // current_weeks=3 が本文に反映される
+		// 通知を作った上で push を撃つ(D2)。配達手段の追加であり判定は変わらない
+		require.Equal(t, []string{PushCampaignStreakNudge}, pushNotifier.campaigns())
 	})
 
 	t.Run("正常系_最終記録週がDB由来のUTC日付でも2週あきを正しく数えて通知する", func(t *testing.T) {
@@ -66,7 +69,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		// last_recorded_week は DATE カラムのため UTC の 0時 として読み出される。
 		// ローカルの月曜 0時 との瞬間差で週数を取ると 9時間分短くなって1週少なく見え、
@@ -89,7 +93,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		// 先週記録・フリーズ満杯 → 今週書けば継続、書かなければ来週はフリーズが無く途切れる
 		stored := entity.NewUserStreak("user-1", 6, 6, StreakMaxFreezeCount, 0, weeksAgoMonday(1), time.Now())
@@ -108,7 +113,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		// 先週記録・フリーズ未使用 → 今週サボっても来週フリーズで救えるので瀬戸際ではない
 		stored := entity.NewUserStreak("user-1", 2, 2, 0, 0, weeksAgoMonday(1), time.Now())
@@ -126,7 +132,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		stored := entity.NewUserStreak("user-1", 4, 4, 0, 0, weeksAgoMonday(0), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
@@ -142,7 +149,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		// 3週前が最後・フリーズ未使用 → フリーズ猶予(2週)を超えて既に途切れている
 		stored := entity.NewUserStreak("user-1", 5, 5, 0, 0, weeksAgoMonday(3), time.Now())
@@ -159,7 +167,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
@@ -184,7 +193,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
@@ -213,7 +223,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
@@ -224,6 +235,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 
 		require.NoError(t, err)
 		require.True(t, sent)
+		// dry-run では push も撃たない
+		require.Empty(t, pushNotifier.campaigns())
 	})
 
 	t.Run("対象外_ストリーク行が無いユーザーは送らない", func(t *testing.T) {
@@ -231,7 +244,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
-		u := NewStreakNudge(userStreakRepo, notificationRepo)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
 

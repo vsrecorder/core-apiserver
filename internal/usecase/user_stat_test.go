@@ -43,10 +43,48 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "2026-06", "", "", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "2026-06", "", "", "", 0)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
+	})
+
+	t.Run("正常系_week指定時はその週(月曜0時〜翌月曜0時)の期間で集計する", func(t *testing.T) {
+		mockUserStatRepo, _, _, _, usecase := setup4UserStatUsecase(t)
+
+		// 週内の任意日(水曜)を渡しても、その週の月曜始まりに正規化される
+		fromDate := time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local)
+		toDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
+
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+
+		ret, err := usecase.GetUserStat(context.Background(), userId, "2026-08-19", "", "", "", "", 0)
+
+		require.NoError(t, err)
+		require.Equal(t, stat, ret)
+	})
+
+	t.Run("正常系_weekとyear_monthの両方が指定されたらweekを優先する", func(t *testing.T) {
+		mockUserStatRepo, _, _, _, usecase := setup4UserStatUsecase(t)
+
+		fromDate := time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local)
+		toDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
+
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+
+		ret, err := usecase.GetUserStat(context.Background(), userId, "2026-08-17", "2026-06", "", "", "", 0)
+
+		require.NoError(t, err)
+		require.Equal(t, stat, ret)
+	})
+
+	t.Run("異常系_weekの形式が不正ならエラーを返す", func(t *testing.T) {
+		_, _, _, _, usecase := setup4UserStatUsecase(t)
+
+		ret, err := usecase.GetUserStat(context.Background(), userId, "2026/08/17", "", "", "", "", 0)
+
+		require.Error(t, err)
+		require.Nil(t, ret)
 	})
 
 	t.Run("正常系_すべて未指定なら当月の期間で集計する", func(t *testing.T) {
@@ -60,7 +98,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "", "", 0)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -83,7 +121,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "2026", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "2026", "", 0)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -106,7 +144,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "", "sv11", "", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "sv11", "", "", 0)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -131,7 +169,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "2026-06", "sv11", "", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "2026-06", "sv11", "", "", 0)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -153,7 +191,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "regulation-g", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "", "regulation-g", 0)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -162,7 +200,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 	t.Run("異常系_year_monthの形式が不正ならエラーを返す", func(t *testing.T) {
 		_, _, _, _, usecase := setup4UserStatUsecase(t)
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "202606", "", "", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "202606", "", "", "", 0)
 
 		require.Error(t, err)
 		require.Nil(t, ret)
@@ -173,7 +211,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockEnvironmentRepo.EXPECT().FindById(context.Background(), "sv11").Return(nil, errors.New(""))
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "", "sv11", "", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "sv11", "", "", 0)
 
 		require.Error(t, err)
 		require.Nil(t, ret)
@@ -184,7 +222,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockRegulationRepo.EXPECT().FindById(context.Background(), "regulation-g").Return(nil, errors.New(""))
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "regulation-g", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "", "regulation-g", 0)
 
 		require.Error(t, err)
 		require.Nil(t, ret)
@@ -195,7 +233,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockSeriesRepo.EXPECT().FindById(context.Background(), "series_2026").Return(nil, errors.New(""))
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "2026", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "2026", "", 0)
 
 		require.Error(t, err)
 		require.Nil(t, ret)
@@ -206,7 +244,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 
 		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, gomock.Any(), gomock.Any(), uint(0)).Return(nil, errors.New(""))
 
-		ret, err := usecase.GetUserStat(context.Background(), userId, "2026-06", "", "", "", 0)
+		ret, err := usecase.GetUserStat(context.Background(), userId, "", "2026-06", "", "", "", 0)
 
 		require.Error(t, err)
 		require.Nil(t, ret)

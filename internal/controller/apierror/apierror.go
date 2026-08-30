@@ -138,6 +138,9 @@ var (
 	// ErrUserPlayerLocked は紐付けから1ヶ月経過しておらず変更できない場合(409)。
 	ErrUserPlayerLocked = New(http.StatusConflict, errors.New("cannot change player_id within 1 month of linking"))
 
+	// ErrTooManyPushSubscriptions は1ユーザーの push 購読(端末)数が上限に達している場合(409)。
+	ErrTooManyPushSubscriptions = New(http.StatusConflict, errors.New("too many push subscriptions"))
+
 	// ErrTooManyRequests は短時間に試行が集中し、レート制限に達した場合(429)。
 	ErrTooManyRequests = New(http.StatusTooManyRequests, errors.New("too many requests"))
 

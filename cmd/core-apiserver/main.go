@@ -253,6 +253,8 @@ func main() {
 			infrastructure.NewUserEnvironmentBadge(db),
 			infrastructure.NewNotification(db),
 			infrastructure.NewUserPlayer(db),
+			infrastructure.NewPushSubscription(db),
+			infrastructure.NewPushDelivery(db),
 			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
 		),
@@ -397,6 +399,21 @@ func main() {
 		r,
 		usecase.NewUserDailyActivity(
 			infrastructure.NewUserDailyActivity(db),
+		),
+	).RegisterRoute(relativePath)
+
+	// Web Push(B-1)。購読の登録・解除と、端末からの到達・タップ計測。送出そのものは cmd 配下のバッチが行う
+	controller.NewPushSubscription(
+		r,
+		usecase.NewPushSubscription(
+			infrastructure.NewPushSubscription(db),
+		),
+	).RegisterRoute(relativePath)
+
+	controller.NewPushDelivery(
+		r,
+		usecase.NewPushDelivery(
+			infrastructure.NewPushDelivery(db),
 		),
 	).RegisterRoute(relativePath)
 

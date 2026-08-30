@@ -36,13 +36,15 @@ type StreakNudgeInterface interface {
 type StreakNudge struct {
 	userStreakRepo   repository.UserStreakInterface
 	notificationRepo repository.NotificationInterface
+	pushNotifier     PushNotifierInterface
 }
 
 func NewStreakNudge(
 	userStreakRepo repository.UserStreakInterface,
 	notificationRepo repository.NotificationInterface,
+	pushNotifier PushNotifierInterface,
 ) StreakNudgeInterface {
-	return &StreakNudge{userStreakRepo, notificationRepo}
+	return &StreakNudge{userStreakRepo, notificationRepo, pushNotifier}
 }
 
 func (u *StreakNudge) NudgeUser(ctx context.Context, userId string, dryRun bool) (bool, error) {
@@ -96,6 +98,12 @@ func (u *StreakNudge) NudgeUser(ctx context.Context, userId string, dryRun bool)
 	if err := u.notificationRepo.Save(ctx, notification); err != nil {
 		logError(ctx, err)
 		return false, err
+	}
+
+	// B-1: アプリ内通知を作った上で push を撃つ(D2)。宛先は定義上「今週サイトに来ていない人」なので、
+	// サイト外へ押し出せる push が無いとこの通知は見られない。push の失敗で通知作成は巻き戻さない
+	if _, err := u.pushNotifier.Deliver(ctx, notification, PushCampaignStreakNudge); err != nil {
+		logWarn(ctx, err)
 	}
 
 	return true, nil

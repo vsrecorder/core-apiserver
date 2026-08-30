@@ -81,6 +81,8 @@ type User struct {
 	userEnvironmentBadgeRepository repository.UserEnvironmentBadgeInterface
 	notificationRepository         repository.NotificationInterface
 	userPlayerRepository           repository.UserPlayerInterface
+	pushSubscriptionRepository     repository.PushSubscriptionInterface
+	pushDeliveryRepository         repository.PushDeliveryInterface
 	transactionManager             repository.TransactionManager
 	badgeEvaluation                BadgeEvaluationInterface
 }
@@ -98,6 +100,8 @@ func NewUser(
 	userEnvironmentBadgeRepository repository.UserEnvironmentBadgeInterface,
 	notificationRepository repository.NotificationInterface,
 	userPlayerRepository repository.UserPlayerInterface,
+	pushSubscriptionRepository repository.PushSubscriptionInterface,
+	pushDeliveryRepository repository.PushDeliveryInterface,
 	transactionManager repository.TransactionManager,
 	badgeEvaluation BadgeEvaluationInterface,
 ) UserInterface {
@@ -115,6 +119,8 @@ func NewUser(
 		userEnvironmentBadgeRepository: userEnvironmentBadgeRepository,
 		notificationRepository:         notificationRepository,
 		userPlayerRepository:           userPlayerRepository,
+		pushSubscriptionRepository:     pushSubscriptionRepository,
+		pushDeliveryRepository:         pushDeliveryRepository,
 		transactionManager:             transactionManager,
 		badgeEvaluation:                badgeEvaluation,
 	}
@@ -225,7 +231,8 @@ func (u *User) Delete(
 	//   Tag.DeleteByUserId       tags と、そのタグの中間テーブルの行
 	//   以下は1テーブルずつ       user_favorite_decks(他人のデッキに付けたもの) /
 	//                            user_streaks / user_daily_activities / user_badges /
-	//                            user_environment_badges / notifications / users_players
+	//                            user_environment_badges / notifications / users_players /
+	//                            push_subscriptions / push_deliveries
 	//
 	// 論理削除(deleted_at)を持つテーブルは論理削除、持たないテーブルは行ごと物理削除する
 	// (ユーザ本体 users も論理削除のため、それに揃えている)。
@@ -296,6 +303,17 @@ func (u *User) Delete(
 		// プレイヤーIDの紐付けは1ユーザーにつき有効な行が最大1件の想定だが、
 		// 万一2件以上あっても消し残さないよう user_id でまとめて消す。
 		if err := u.userPlayerRepository.DeleteByUserId(ctx, id); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		// Web Push の購読と配達ログ。購読を残すと退会後も push が届き続ける。
+		if err := u.pushSubscriptionRepository.DeleteByUserId(ctx, id); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		if err := u.pushDeliveryRepository.DeleteByUserId(ctx, id); err != nil {
 			logError(ctx, err)
 			return err
 		}

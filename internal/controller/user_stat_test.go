@@ -44,7 +44,7 @@ func TestUserStatController(t *testing.T) {
 
 			stat := entity.NewUserStat(uid, 5, 2, 1, 1, 10, 6, 4, 0.6)
 
-			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "2026-07", "sv11", "", "", uint(0)).Return(stat, nil)
+			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "", "2026-07", "sv11", "", "", uint(0)).Return(stat, nil)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath+"?year_month=2026-07&environment_id=sv11", nil)
@@ -66,7 +66,7 @@ func TestUserStatController(t *testing.T) {
 		t.Run("異常系_該当なしはErrRecordNotFoundから404を返す", func(t *testing.T) {
 			c, mockUsecase, _, _ := setup4TestUserStatController(t)
 
-			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "", "", "", "", uint(0)).Return(nil, apperror.ErrRecordNotFound)
+			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "", "", "", "", "", uint(0)).Return(nil, apperror.ErrRecordNotFound)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath, nil)
@@ -78,7 +78,7 @@ func TestUserStatController(t *testing.T) {
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 			c, mockUsecase, _, _ := setup4TestUserStatController(t)
 
-			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "", "", "", "", uint(0)).Return(nil, errors.New(""))
+			mockUsecase.EXPECT().GetUserStat(gomock.Any(), uid, "", "", "", "", "", uint(0)).Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+UserStatsPath, nil)

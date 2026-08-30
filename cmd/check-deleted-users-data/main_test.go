@@ -163,6 +163,7 @@ func TestSpecs(t *testing.T) {
 		"records", "matches", "games", "decks", "deck_codes", "deck_codes", "unofficial_events",
 		"tags", "user_favorite_decks", "user_streaks", "user_daily_activities",
 		"user_badges", "user_environment_badges", "notifications", "users_players",
+		"push_subscriptions", "push_deliveries",
 		// 中間テーブル(user_id を持たず、上のテーブルからFKでたどる)
 		"deck_tags", "deck_code_tags", "record_tags", "match_tags",
 		"match_pokemon_sprites", "deck_pokemon_sprites",

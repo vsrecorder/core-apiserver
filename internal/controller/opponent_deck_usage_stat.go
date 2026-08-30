@@ -45,6 +45,7 @@ func (c *OpponentDeckUsageStat) RegisterRoute(relativePath string) {
 
 func (c *OpponentDeckUsageStat) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetId(ctx)
+	week := helper.GetWeek(ctx)
 	yearMonth := helper.GetYearMonth(ctx)
 	environmentId := helper.GetEnvironmentId(ctx)
 	season := helper.GetSeason(ctx)
@@ -52,7 +53,7 @@ func (c *OpponentDeckUsageStat) GetByUserId(ctx *gin.Context) {
 	regulationId := helper.GetRegulationId(ctx)
 	deckId := helper.GetDeckId(ctx)
 
-	stat, err := c.usecase.GetOpponentDeckUsageStat(ctx.Request.Context(), uid, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
+	stat, err := c.usecase.GetOpponentDeckUsageStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)
@@ -63,7 +64,7 @@ func (c *OpponentDeckUsageStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewOpponentDeckUsageStatResponse(stat, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
+	res := presenter.NewOpponentDeckUsageStatResponse(stat, week, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
 
 	ctx.JSON(http.StatusOK, res)
 }

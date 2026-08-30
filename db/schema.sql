@@ -1020,7 +1020,7 @@ CREATE TABLE notifications (
     id          VARCHAR(26) PRIMARY KEY,
     created_at  TIMESTAMP NOT NULL,
     user_id     VARCHAR(32) NOT NULL,
-    category    VARCHAR(32) NOT NULL, -- 'badge'/'designation'/'rank'/'streak'
+    category    VARCHAR(32) NOT NULL, -- 'badge'/'designation'/'rank'/'streak'/'weekly_report'
     title       VARCHAR(128) NOT NULL,
     body        VARCHAR(256) NOT NULL,
     link_url    VARCHAR(256) NOT NULL DEFAULT '',
@@ -1029,6 +1029,45 @@ CREATE TABLE notifications (
 );
 
 CREATE INDEX idx_notifications_user_id_created_at ON notifications (user_id, created_at DESC);
+
+-- 施策B-1: Web Push 購読(B1_B2_PUSH_NOTIFICATION_PLAN.md §5.2)。端末ごとに1行。1ユーザーが複数端末を持ちうる。
+CREATE TABLE push_subscriptions (
+    id              VARCHAR(26) PRIMARY KEY,
+    created_at      TIMESTAMP NOT NULL,
+    updated_at      TIMESTAMP NOT NULL,
+    revoked_at      TIMESTAMP DEFAULT NULL,  -- 解除・失効(404/410・連続失敗)した時刻
+    user_id         VARCHAR(32) NOT NULL,
+    endpoint        TEXT NOT NULL,           -- プッシュサービスのURL。実質のデバイス識別子
+    p256dh          VARCHAR(255) NOT NULL,   -- payload暗号化の公開鍵
+    auth            VARCHAR(255) NOT NULL,   -- payload暗号化の認証シークレット
+    platform        VARCHAR(32) NOT NULL DEFAULT '', -- 'ios-pwa'/'android'/'desktop'
+    failure_count   INT NOT NULL DEFAULT 0,  -- 連続失敗回数。成功で0に戻る
+    last_success_at TIMESTAMP DEFAULT NULL
+);
+
+-- 同一端末が再購読したときに行を増やさない(endpointが実質のデバイス識別子)
+CREATE UNIQUE INDEX idx_push_subscriptions_endpoint ON push_subscriptions (endpoint);
+-- 配信対象の抽出は「生きている購読」だけを見るため部分インデックスにする
+CREATE INDEX idx_push_subscriptions_user_id ON push_subscriptions (user_id) WHERE revoked_at IS NULL;
+
+-- 施策B-1: 配信ログ。「許諾率 × 到達率 × 反応率」の分解を測るために持つ。
+-- notifications とは別テーブルにする。notifications は「通知の実体」、こちらは
+-- 「配達というチャネル固有の事象」で、1通知が複数端末へ配達されうるため 1:N になる。
+CREATE TABLE push_deliveries (
+    id              VARCHAR(26) PRIMARY KEY,
+    created_at      TIMESTAMP NOT NULL,
+    user_id         VARCHAR(32) NOT NULL,
+    subscription_id VARCHAR(26) NOT NULL,
+    notification_id VARCHAR(26) NOT NULL DEFAULT '',
+    campaign        VARCHAR(32) NOT NULL,    -- 'streak_nudge' / 'weekly_report' / 'weekend_reminder'
+    status          VARCHAR(16) NOT NULL,    -- 'pending'(送出前) / 'sent' / 'failed' / 'expired'
+    status_code     INT NOT NULL DEFAULT 0,  -- プッシュサービスのHTTPステータス
+    delivered_at    TIMESTAMP DEFAULT NULL,  -- 端末のSWがpushを受け取った時刻
+    clicked_at      TIMESTAMP DEFAULT NULL   -- 通知がタップされた時刻
+);
+
+CREATE INDEX idx_push_deliveries_created_at_campaign ON push_deliveries (created_at, campaign);
+CREATE INDEX idx_push_deliveries_user_id_created_at ON push_deliveries (user_id, created_at DESC);
 
 
 
@@ -1083,3 +1122,5 @@ GRANT SELECT ON user_environment_badges TO grafana;
 GRANT SELECT ON designations            TO grafana;
 
 GRANT SELECT ON notifications           TO grafana;
+GRANT SELECT ON push_subscriptions      TO grafana;
+GRANT SELECT ON push_deliveries         TO grafana;

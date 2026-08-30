@@ -61,6 +61,16 @@ type NotificationInterface interface {
 		bodies []string,
 	) ([]*entity.Notification, error)
 
+	// ExistsByUserIdAndCategoryAndLinkUrl は指定ユーザに category と link_url が一致する通知が
+	// 1件でもあるかを返す。週次レポートのように「同じリンク先の通知は1回だけ」という
+	// 冪等性を、直近N件に頼らず全期間で判定するために使う。
+	ExistsByUserIdAndCategoryAndLinkUrl(
+		ctx context.Context,
+		userId string,
+		category string,
+		linkUrl string,
+	) (bool, error)
+
 	// DeleteByIds は指定した通知を行ごと削除する。このテーブルは論理削除を持たない。
 	// ids が空なら何もしない(全件削除にはならない)。
 	DeleteByIds(

@@ -8,6 +8,9 @@
 // 週・フリーズ猶予の基準で行うため、フリーズでまだ救える余裕のある人は対象にしない。
 // 同一週の二重送信はガードされるため、cronの多重起動でも安全。
 //
+// B-1(Web Push)導入後は、アプリ内通知を作った上で購読端末へ push も送る(配達手段の追加であり
+// 判定は変えない)。.env の VAPID_* が未設定なら push は送らずアプリ内通知だけになる。
+//
 // 想定運用: OSのcronから毎週日曜夜に起動する(crontab例は B5_STREAK_NUDGE_PLAN.md 参照)。
 //
 // 使い方:
@@ -62,9 +65,24 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
+	pushSender := infrastructure.NewWebPushSender(
+		os.Getenv("VAPID_PUBLIC_KEY"),
+		os.Getenv("VAPID_PRIVATE_KEY"),
+		os.Getenv("VAPID_SUBJECT"),
+	)
+	if !pushSender.Enabled() {
+		log.Printf("WARN: web push is disabled (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not set). in-app notifications only\n")
+	}
+	pushNotifier := usecase.NewPushNotifier(
+		infrastructure.NewPushSubscription(db),
+		infrastructure.NewPushDelivery(db),
+		pushSender,
+	)
+
 	streakNudge := usecase.NewStreakNudge(
 		infrastructure.NewUserStreak(db),
 		infrastructure.NewNotification(db),
+		pushNotifier,
 	)
 
 	ctx := context.Background()

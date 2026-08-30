@@ -254,3 +254,21 @@ func (i *Notification) DeleteByUserId(
 
 	return nil
 }
+
+func (i *Notification) ExistsByUserIdAndCategoryAndLinkUrl(
+	ctx context.Context,
+	userId string,
+	category string,
+	linkUrl string,
+) (bool, error) {
+	var count int64
+	tx := dbFromContext(ctx, i.db).Model(&model.Notification{}).
+		Where("user_id = ? AND category = ? AND link_url = ?", userId, category, linkUrl).
+		Count(&count)
+	if tx.Error != nil {
+		logError(ctx, tx.Error)
+		return false, tx.Error
+	}
+
+	return count > 0, nil
+}

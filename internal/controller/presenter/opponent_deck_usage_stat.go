@@ -7,6 +7,7 @@ import (
 
 func NewOpponentDeckUsageStatResponse(
 	stat *entity.OpponentDeckUsageStat,
+	week string,
 	yearMonth string,
 	environmentId string,
 	season string,
@@ -37,6 +38,7 @@ func NewOpponentDeckUsageStatResponse(
 
 	return &dto.OpponentDeckUsageStatResponse{
 		UserId:               stat.UserId,
+		Week:                 week,
 		YearMonth:            yearMonth,
 		EnvironmentId:        environmentId,
 		Season:               season,

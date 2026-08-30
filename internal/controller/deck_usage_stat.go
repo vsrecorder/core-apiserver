@@ -45,6 +45,7 @@ func (c *DeckUsageStat) RegisterRoute(relativePath string) {
 
 func (c *DeckUsageStat) GetByUserId(ctx *gin.Context) {
 	uid := helper.GetId(ctx)
+	week := helper.GetWeek(ctx)
 	yearMonth := helper.GetYearMonth(ctx)
 	environmentId := helper.GetEnvironmentId(ctx)
 	season := helper.GetSeason(ctx)
@@ -52,7 +53,7 @@ func (c *DeckUsageStat) GetByUserId(ctx *gin.Context) {
 	regulationId := helper.GetRegulationId(ctx)
 	allTime := helper.GetAllTime(ctx)
 
-	stat, err := c.usecase.GetDeckUsageStat(ctx.Request.Context(), uid, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime)
+	stat, err := c.usecase.GetDeckUsageStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)
@@ -63,7 +64,7 @@ func (c *DeckUsageStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewDeckUsageStatResponse(stat, yearMonth, environmentId, season, standardRegulationId, regulationId)
+	res := presenter.NewDeckUsageStatResponse(stat, week, yearMonth, environmentId, season, standardRegulationId, regulationId)
 
 	ctx.JSON(http.StatusOK, res)
 }

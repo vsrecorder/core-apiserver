@@ -42,17 +42,48 @@ func (u *Streak) GetByUserId(
 		return nil, err
 	}
 
-	// user_streaks は記録の作成・削除時にしか更新されないため、直近の記録から
-	// フリーズ猶予を超えて時間が経過している場合、DB上の値は「最後に書き込まれた時点では
-	// 正しかったが、今日から見るとすでに途切れているはずの」古い値のままになっている。
-	// 新規記録を作らない限り誰も再計算しないため、参照のたびにここで今週との差分を見て
-	// 表示上のストリークを終了扱いにする。DB上の値自体は書き換えない(新規記録作成時は
-	// updateStreak が本来のLastRecordedWeekを基準に正しく判定するため)。
+	return projectStreakToNow(streak), nil
+}
+
+// projectStreakToNow は user_streaks の保存値を「今日から見た状態」に読み替えて返す。
+//
+// 保存値は records から作り直した「最後に記録した時点」の状態で、その後は記録の
+// 作成・削除・更新まで誰も更新しない。時間が経つだけで変わるべきものは、参照のたびに
+// ここで今週との差分を見て反映する。DB上の値自体は書き換えない(次の記録作成・削除・
+// 更新時の再計算が records から同じ結論を出すため、書き換える必要がない)。
+//
+//   - 猶予を超えて途切れている → 連続0週・フリーズ未使用(最長記録は残す)
+//   - 先週が未記録(最終記録週から2週あき)でフリーズに空きがある → その空き週で使う
+//     フリーズを消費済みとして返す。ComputeStreakState は記録と記録の「間」の空き週しか
+//     数えないため、次の記録が来るまで保存値には現れないが、次に記録した時点で必ず
+//     消費される(ComputeStreakState が freezeUsedCount++、回復進捗0 にする)。表示だけ
+//     「まだ残っている」と見せると、サボった直後は減らず記録した瞬間に減るという
+//     分かりにくい動きになり、nudge(canKeepStreak)が「フリーズを使う前提」で数えている
+//     見立てとも食い違うため、ここで先に消費済みとして扱う。
+//     空き週に後から対戦日を遡って記録した場合は再計算で消費が戻るが、それは保存値の
+//     再計算と同じ挙動なので矛盾しない。
+func projectStreakToNow(streak *entity.UserStreak) *entity.UserStreak {
 	if isStreakExpired(streak.LastRecordedWeek, streak.FreezeUsedCount) {
-		return entity.NewUserStreak(userId, 0, streak.LongestWeeks, 0, 0, streak.LastRecordedWeek, streak.UpdatedAt), nil
+		return entity.NewUserStreak(streak.UserId, 0, streak.LongestWeeks, 0, 0, streak.LastRecordedWeek, streak.UpdatedAt)
 	}
 
-	return streak, nil
+	// 途切れていない かつ 2週以上あいている = 猶予内でフリーズに空きがある状態。
+	// 1回の空きで消費するフリーズは ComputeStreakState と同じく1つ(空き週数ぶんではない)。
+	if hasPendingFreeze(streak.LastRecordedWeek) {
+		return entity.NewUserStreak(streak.UserId, streak.CurrentWeeks, streak.LongestWeeks, streak.FreezeUsedCount+1, 0, streak.LastRecordedWeek, streak.UpdatedAt)
+	}
+
+	return streak
+}
+
+// hasPendingFreeze は、最終記録週から今週までに未記録の週(先週)があるかを返す。
+// 途切れているかどうかは見ないため、isStreakExpired が false のときにだけ使うこと。
+func hasPendingFreeze(lastRecordedWeek time.Time) bool {
+	if lastRecordedWeek.IsZero() {
+		return false
+	}
+
+	return weeksBetween(lastRecordedWeek, timeNow()) > 1
 }
 
 // isStreakExpired は、今週の時点で lastRecordedWeek からの記録が既に途切れているかを判定する。

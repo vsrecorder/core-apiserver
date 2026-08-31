@@ -19,3 +19,9 @@ type UserAcquisitionCreateRequest struct {
 	LandingPath string `json:"landing_path"`
 	LandingAt   string `json:"landing_at"`
 }
+
+// UserAcquisitionSurveyRequest は登録時アンケート「どこでバトレコを知りましたか？」の回答。
+// 値は entity.AcquisitionSurveyAnswer* の4択(allowlist 外は validation が 400 で弾く)。
+type UserAcquisitionSurveyRequest struct {
+	Answer string `json:"answer"`
+}

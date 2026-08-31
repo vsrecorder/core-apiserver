@@ -12,6 +12,7 @@ package mock_repository
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	gomock "go.uber.org/mock/gomock"
@@ -67,4 +68,18 @@ func (m *MockUserAcquisitionInterface) DeleteByUserId(ctx context.Context, uid s
 func (mr *MockUserAcquisitionInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockUserAcquisitionInterface)(nil).DeleteByUserId), ctx, uid)
+}
+
+// SaveSurveyAnswer mocks base method.
+func (m *MockUserAcquisitionInterface) SaveSurveyAnswer(ctx context.Context, uid, answer string, now time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveSurveyAnswer", ctx, uid, answer, now)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveSurveyAnswer indicates an expected call of SaveSurveyAnswer.
+func (mr *MockUserAcquisitionInterfaceMockRecorder) SaveSurveyAnswer(ctx, uid, answer, now any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveSurveyAnswer", reflect.TypeOf((*MockUserAcquisitionInterface)(nil).SaveSurveyAnswer), ctx, uid, answer, now)
 }

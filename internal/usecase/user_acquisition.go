@@ -38,6 +38,14 @@ type UserAcquisitionInterface interface {
 		userId string,
 		param *UserAcquisitionRecordParam,
 	) error
+
+	// AnswerSurvey は登録時アンケート「どこでバトレコを知りましたか？」の回答を保存する。
+	// 既に回答済みの場合は保存側が初回の回答を優先する(上書きしない)。
+	AnswerSurvey(
+		ctx context.Context,
+		userId string,
+		answer string,
+	) error
 }
 
 type UserAcquisition struct {
@@ -118,4 +126,25 @@ func parseLandingAt(value string, now time.Time) time.Time {
 	}
 
 	return t.Local()
+}
+
+func (u *UserAcquisition) AnswerSurvey(
+	ctx context.Context,
+	userId string,
+	answer string,
+) error {
+	normalized := entity.NormalizeAcquisitionSurveyAnswer(answer)
+
+	// allowlist 外は validation が 400 で弾いている。ここまで来て空になるのは
+	// 呼び出し経路の不備なので、Record の IsEmpty と同じく「書かない」に倒す。
+	if normalized == "" {
+		return nil
+	}
+
+	if err := u.repository.SaveSurveyAnswer(ctx, userId, normalized, timeNow()); err != nil {
+		logError(ctx, err)
+		return err
+	}
+
+	return nil
 }

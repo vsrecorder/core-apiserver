@@ -41,6 +41,20 @@ func (m *MockUserAcquisitionInterface) EXPECT() *MockUserAcquisitionInterfaceMoc
 	return m.recorder
 }
 
+// AnswerSurvey mocks base method.
+func (m *MockUserAcquisitionInterface) AnswerSurvey(ctx context.Context, userId, answer string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AnswerSurvey", ctx, userId, answer)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AnswerSurvey indicates an expected call of AnswerSurvey.
+func (mr *MockUserAcquisitionInterfaceMockRecorder) AnswerSurvey(ctx, userId, answer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AnswerSurvey", reflect.TypeOf((*MockUserAcquisitionInterface)(nil).AnswerSurvey), ctx, userId, answer)
+}
+
 // Record mocks base method.
 func (m *MockUserAcquisitionInterface) Record(ctx context.Context, userId string, param *usecase.UserAcquisitionRecordParam) error {
 	m.ctrl.T.Helper()

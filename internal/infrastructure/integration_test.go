@@ -1439,7 +1439,7 @@ func TestIntegrationUserAcquisitionRepository(t *testing.T) {
 		require.Equal(t, "t.co", *m.Referrer)
 		require.Equal(t, "/records/quick", *m.LandingPath)
 		require.False(t, m.SourceInferredFlg)
-		// アンケート(S4)は未実装のため常にNULL
+		// アンケートの回答が届く前は NULL(流入元の保存では触らない)
 		require.Nil(t, m.SurveyAnswer)
 	})
 
@@ -1472,6 +1472,54 @@ func TestIntegrationUserAcquisitionRepository(t *testing.T) {
 		require.Nil(t, m.Source)
 		require.Nil(t, m.Campaign)
 		require.Nil(t, m.LandingAt)
+	})
+
+	t.Run("正常系_流入元のある行へアンケート回答を追記する", func(t *testing.T) {
+		answeredAt := now.Add(time.Hour)
+
+		require.NoError(t, r.SaveSurveyAnswer(ctx, uid, entity.AcquisitionSurveyAnswerFriend, answeredAt))
+
+		var m model.UserAcquisition
+		require.NoError(t, db.First(&m, "user_id = ?", uid).Error)
+		// 流入元は消えず、回答だけが埋まる
+		require.Equal(t, "x", *m.Source)
+		require.Equal(t, entity.AcquisitionSurveyAnswerFriend, *m.SurveyAnswer)
+		// 回答が入ったので updated_at は回答時刻へ進む
+		require.True(t, m.UpdatedAt.Equal(answeredAt))
+	})
+
+	t.Run("正常系_二重に回答が届いても初回の回答が残る", func(t *testing.T) {
+		firstAnsweredAt := now.Add(time.Hour)
+
+		require.NoError(t, r.SaveSurveyAnswer(ctx, uid, entity.AcquisitionSurveyAnswerSearch, now.Add(2*time.Hour)))
+
+		var m model.UserAcquisition
+		require.NoError(t, db.First(&m, "user_id = ?", uid).Error)
+		require.Equal(t, entity.AcquisitionSurveyAnswerFriend, *m.SurveyAnswer)
+		// 値が変わっていないのに更新時刻だけ動くと「いつ回答されたか」が消える
+		require.True(t, m.UpdatedAt.Equal(firstAnsweredAt))
+	})
+
+	t.Run("正常系_行が無ければ回答だけの行を作る", func(t *testing.T) {
+		surveyOnly := "8OKlXBZv3ycLQdBmuTf1e9elXHy2"
+
+		require.NoError(t, r.SaveSurveyAnswer(ctx, surveyOnly, entity.AcquisitionSurveyAnswerOther, now))
+
+		var m model.UserAcquisition
+		require.NoError(t, db.First(&m, "user_id = ?", surveyOnly).Error)
+		require.Nil(t, m.Source)
+		require.Equal(t, entity.AcquisitionSurveyAnswerOther, *m.SurveyAnswer)
+
+		// 回答だけの行が先にあると、後から届いた流入元は DO NOTHING で捨てられる。
+		// これは許容している挙動: 流入元は登録の瞬間に1回だけ送られるので、
+		// この順序になるのは流入元の送信自体が失敗した場合に限られ、そのとき流入元は
+		// もともと失われている(repository.SaveSurveyAnswer のコメント参照)。
+		// この前提を変える(Create をマージにする)ときは意識的に判断すること。
+		late := entity.NewUserAcquisition(surveyOnly, now)
+		late.Source = "x"
+		require.NoError(t, r.Create(ctx, late))
+		require.NoError(t, db.First(&m, "user_id = ?", surveyOnly).Error)
+		require.Nil(t, m.Source)
 	})
 }
 

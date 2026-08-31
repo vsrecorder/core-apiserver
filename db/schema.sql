@@ -1081,7 +1081,7 @@ CREATE TABLE user_acquisitions (
     landing_path       VARCHAR(255) DEFAULT NULL,  -- 着地ページ('/' / '/decks' / '/records/quick')
     landing_at         TIMESTAMP    DEFAULT NULL,  -- 着地時刻。登録との差が「遅延コンバージョン」
     source_inferred_flg BOOLEAN NOT NULL DEFAULT FALSE, -- source が utm_source ではなくリファラからの推定
-    survey_answer      VARCHAR(32)  DEFAULT NULL,  -- 登録時アンケート「どこで知ったか」(S4で使う。現在は常にNULL)
+    survey_answer      VARCHAR(32)  DEFAULT NULL,  -- 登録時アンケート「どこで知ったか」。'x' / 'friend' / 'search' / 'other'(S4)
     created_at         TIMESTAMP    NOT NULL,
     updated_at         TIMESTAMP    NOT NULL
 );

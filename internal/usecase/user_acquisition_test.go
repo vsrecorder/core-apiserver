@@ -240,3 +240,40 @@ func TestUserAcquisitionUsecase(t *testing.T) {
 		})
 	})
 }
+
+func TestUserAcquisitionSurveyUsecase(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.Local)
+
+	t.Run("AnswerSurvey", func(t *testing.T) {
+		t.Run("正常系_回答を正規化して保存する", func(t *testing.T) {
+			overrideTimeNow(t, now)
+			usecase, mockRepository := setup4TestUserAcquisitionUsecase(t)
+
+			mockRepository.EXPECT().
+				SaveSurveyAnswer(gomock.Any(), uid, entity.AcquisitionSurveyAnswerFriend, now).
+				Return(nil)
+
+			require.NoError(t, usecase.AnswerSurvey(context.Background(), uid, "Friend"))
+		})
+
+		t.Run("正常系_allowlist外の回答は保存しない", func(t *testing.T) {
+			// validation が 400 で弾くため通常は到達しない。到達した場合も
+			// ゴミ値を書かずに済ませる(EXPECT を張らないことで保存されないことを検証)
+			usecase, _ := setup4TestUserAcquisitionUsecase(t)
+
+			require.NoError(t, usecase.AnswerSurvey(context.Background(), uid, "instagram"))
+		})
+
+		t.Run("異常系_リポジトリのエラーを返す", func(t *testing.T) {
+			overrideTimeNow(t, now)
+			usecase, mockRepository := setup4TestUserAcquisitionUsecase(t)
+
+			mockRepository.EXPECT().
+				SaveSurveyAnswer(gomock.Any(), uid, entity.AcquisitionSurveyAnswerX, now).
+				Return(errors.New("failed to save"))
+
+			require.Error(t, usecase.AnswerSurvey(context.Background(), uid, "x"))
+		})
+	})
+}

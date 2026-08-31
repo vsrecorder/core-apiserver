@@ -187,3 +187,29 @@ func TestUserAcquisitionIsEmpty(t *testing.T) {
 func acquisitionTestTime() time.Time {
 	return time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
 }
+
+func TestNormalizeAcquisitionSurveyAnswer(t *testing.T) {
+	t.Run("正常系_allowlistの回答はそのまま採用する", func(t *testing.T) {
+		for _, answer := range []string{
+			AcquisitionSurveyAnswerX,
+			AcquisitionSurveyAnswerFriend,
+			AcquisitionSurveyAnswerSearch,
+			AcquisitionSurveyAnswerOther,
+		} {
+			require.Equal(t, answer, NormalizeAcquisitionSurveyAnswer(answer))
+		}
+	})
+
+	t.Run("正常系_大文字や前後の空白は許容する", func(t *testing.T) {
+		require.Equal(t, AcquisitionSurveyAnswerX, NormalizeAcquisitionSurveyAnswer(" X "))
+		require.Equal(t, AcquisitionSurveyAnswerFriend, NormalizeAcquisitionSurveyAnswer("Friend"))
+	})
+
+	t.Run("正常系_allowlist外は空文字にする", func(t *testing.T) {
+		// 回答はUIの4択からしか来ない。campaign と違い (other) に丸めず捨てる
+		require.Equal(t, "", NormalizeAcquisitionSurveyAnswer(""))
+		require.Equal(t, "", NormalizeAcquisitionSurveyAnswer("instagram"))
+		require.Equal(t, "", NormalizeAcquisitionSurveyAnswer("日本語"))
+		require.Equal(t, "", NormalizeAcquisitionSurveyAnswer("x; DROP TABLE"))
+	})
+}

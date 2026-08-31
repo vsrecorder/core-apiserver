@@ -85,3 +85,37 @@ func (i *UserAcquisition) DeleteByUserId(
 
 	return nil
 }
+
+// SaveSurveyAnswer は登録時アンケートの回答を保存する。行が無ければ回答だけの行を作る。
+// 既に回答が入っている場合は上書きしない(Create の初回タッチ優先と同じ考え方。
+// UIは一度しか訊かないので、2回目以降が届くのはリトライか作られたリクエスト)。
+//
+// updated_at は回答が実際に入ったときだけ進める。無条件に進めると、値が変わらない
+// 二重送信でも更新時刻だけが動き、「いつ回答されたか」が分からなくなる。
+func (i *UserAcquisition) SaveSurveyAnswer(
+	ctx context.Context,
+	uid string,
+	answer string,
+	now time.Time,
+) error {
+	m := &model.UserAcquisition{
+		UserId:       uid,
+		SurveyAnswer: &answer,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+
+	tx := dbFromContext(ctx, i.db).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "user_id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"survey_answer": gorm.Expr(`COALESCE("user_acquisitions"."survey_answer", "excluded"."survey_answer")`),
+			"updated_at":    gorm.Expr(`CASE WHEN "user_acquisitions"."survey_answer" IS NULL THEN "excluded"."updated_at" ELSE "user_acquisitions"."updated_at" END`),
+		}),
+	}).Create(m)
+	if tx.Error != nil {
+		logError(ctx, tx.Error)
+		return wrapError(tx.Error)
+	}
+
+	return nil
+}

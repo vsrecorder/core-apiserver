@@ -526,6 +526,17 @@ func GetUserAcquisitionCreateRequest(ctx *gin.Context) dto.UserAcquisitionCreate
 	return ret
 }
 
+func SetUserAcquisitionSurveyRequest(ctx *gin.Context, value dto.UserAcquisitionSurveyRequest) {
+	ctx.Set("user_acquisition_survey_request", value)
+}
+
+func GetUserAcquisitionSurveyRequest(ctx *gin.Context) dto.UserAcquisitionSurveyRequest {
+	value, _ := ctx.Get("user_acquisition_survey_request")
+	ret, _ := value.(dto.UserAcquisitionSurveyRequest)
+
+	return ret
+}
+
 func SetKeyword(ctx *gin.Context, value string) {
 	ctx.Set("keyword", value)
 }

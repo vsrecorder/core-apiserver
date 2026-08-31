@@ -114,3 +114,41 @@ func TestUserAcquisitionInfrastructure(t *testing.T) {
 		})
 	})
 }
+
+func TestUserAcquisitionSurveyInfrastructure(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.Local)
+
+	t.Run("SaveSurveyAnswer", func(t *testing.T) {
+		t.Run("正常系_回答だけの行をupsertする", func(t *testing.T) {
+			db, mock := setupSqlmockDB(t)
+			r := NewUserAcquisition(db)
+
+			// 既に回答がある行は COALESCE で初回の値を残す(sqlmock ではSQLの形しか
+			// 検証できないため、実際の分岐は integration_test 側で確認する)
+			mock.ExpectBegin()
+			mock.ExpectExec(`INSERT INTO "user_acquisitions" .* ON CONFLICT \("user_id"\) DO UPDATE SET "survey_answer"=COALESCE\("user_acquisitions"\."survey_answer", "excluded"\."survey_answer"\)`).
+				WithArgs(
+					uid, nil, nil, nil, nil, nil, nil, nil, false,
+					entity.AcquisitionSurveyAnswerSearch, now, now,
+				).
+				WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectCommit()
+
+			require.NoError(t, r.SaveSurveyAnswer(context.Background(), uid, entity.AcquisitionSurveyAnswerSearch, now))
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+
+		t.Run("異常系_DBエラーを返す", func(t *testing.T) {
+			db, mock := setupSqlmockDB(t)
+			r := NewUserAcquisition(db)
+
+			mock.ExpectBegin()
+			mock.ExpectExec(`INSERT INTO "user_acquisitions"`).
+				WillReturnError(sql.ErrConnDone)
+			mock.ExpectRollback()
+
+			require.Error(t, r.SaveSurveyAnswer(context.Background(), uid, entity.AcquisitionSurveyAnswerX, now))
+		})
+	})
+}

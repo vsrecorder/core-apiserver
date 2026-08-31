@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	UserAcquisitionPath = "/acquisition"
+	UserAcquisitionPath       = "/acquisition"
+	UserAcquisitionSurveyPath = "/acquisition/survey"
 )
 
 type UserAcquisition struct {
@@ -38,6 +39,13 @@ func (c *UserAcquisition) RegisterRoute(relativePath string) {
 		validation.UserAcquisitionCreateMiddleware(),
 		c.Record,
 	)
+	// 登録時アンケート(S4)。回答も本人のトークンでしか書けない。
+	r.POST(
+		UserAcquisitionSurveyPath,
+		authentication.RequiredAuthenticationMiddleware(),
+		validation.UserAcquisitionSurveyMiddleware(),
+		c.AnswerSurvey,
+	)
 }
 
 func (c *UserAcquisition) Record(ctx *gin.Context) {
@@ -55,6 +63,19 @@ func (c *UserAcquisition) Record(ctx *gin.Context) {
 	}
 
 	if err := c.usecase.Record(ctx.Request.Context(), uid, param); err != nil {
+		apierror.ErrInternalServerError.JSON(ctx, err)
+		return
+	}
+
+	// 返す情報はない
+	ctx.Status(http.StatusNoContent)
+}
+
+func (c *UserAcquisition) AnswerSurvey(ctx *gin.Context) {
+	uid := helper.GetUID(ctx)
+	req := helper.GetUserAcquisitionSurveyRequest(ctx)
+
+	if err := c.usecase.AnswerSurvey(ctx.Request.Context(), uid, req.Answer); err != nil {
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}

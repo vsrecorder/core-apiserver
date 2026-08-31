@@ -283,3 +283,40 @@ func InferAcquisitionSource(referrerHost string) (source string, medium string) 
 
 	return "", ""
 }
+
+// 登録時アンケート「どこでバトレコを知りましたか？」(S4)の回答値。
+// UTM(行動ベース。正確だが、タグ付きリンクを踏んだ人しか捕捉できない)を補完する
+// 自己申告の層で、判明率70%の主な達成手段(utm-attribution-plan.md §3.6)。
+// 選択肢を増やすほど1択あたりの n が減って判断に使えなくなるのは campaign と同じなので、
+// この4つに固定する。
+const (
+	AcquisitionSurveyAnswerX      = "x"      // X(旧Twitter)で見た
+	AcquisitionSurveyAnswerFriend = "friend" // 友人・知人に聞いた
+	AcquisitionSurveyAnswerSearch = "search" // 検索で見つけた
+	AcquisitionSurveyAnswerOther  = "other"  // その他
+)
+
+var acquisitionSurveyAnswers = map[string]struct{}{
+	AcquisitionSurveyAnswerX:      {},
+	AcquisitionSurveyAnswerFriend: {},
+	AcquisitionSurveyAnswerSearch: {},
+	AcquisitionSurveyAnswerOther:  {},
+}
+
+// 列長。schema.sql の survey_answer に合わせる。
+const acquisitionSurveyAnswerMaxLength = 32
+
+// NormalizeAcquisitionSurveyAnswer はアンケート回答を allowlist で検証する。
+// allowlist 外は空文字(=保存しない)を返す。
+//
+// campaign と違って (other) には丸めない。campaign の未知値には「タグは付いていたが
+// 未知の分類だった」という情報が残るが、回答はUIの4択からしか来ないため、
+// それ以外の値はUI外から作られたリクエストであり、残す価値のある情報ではない。
+func NormalizeAcquisitionSurveyAnswer(answer string) string {
+	v := NormalizeAcquisitionValue(answer, acquisitionSurveyAnswerMaxLength)
+	if _, ok := acquisitionSurveyAnswers[v]; !ok {
+		return ""
+	}
+
+	return v
+}

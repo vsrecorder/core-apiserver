@@ -139,3 +139,82 @@ func TestUserAcquisitionController(t *testing.T) {
 		})
 	})
 }
+
+func newUserAcquisitionSurveyRequest(t *testing.T, body string, uid string, secretKey string) *http.Request {
+	t.Helper()
+
+	req, err := http.NewRequest("POST", UsersPath+UserAcquisitionSurveyPath, strings.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	if uid != "" {
+		setJWTAuthHeader(t, req, uid, secretKey)
+	}
+
+	return req
+}
+
+func TestUserAcquisitionSurveyController(t *testing.T) {
+	// レート制限はパッケージ変数として共有されるため、テストごとに異なるuidを使う
+	t.Run("AnswerSurvey", func(t *testing.T) {
+		t.Run("正常系_回答をユースケースへ渡して204を返す", func(t *testing.T) {
+			uid := "survey-ok-user"
+			c, mockUsecase, secretKey := setup4TestUserAcquisitionController(t)
+
+			mockUsecase.EXPECT().AnswerSurvey(gomock.Any(), uid, "friend").Return(nil)
+
+			w := httptest.NewRecorder()
+			c.router.ServeHTTP(w, newUserAcquisitionSurveyRequest(t, `{"answer":"friend"}`, uid, secretKey))
+
+			require.Equal(t, http.StatusNoContent, w.Code)
+		})
+
+		t.Run("異常系_allowlist外の回答は400を返す", func(t *testing.T) {
+			// UIの4択以外が届くのはUI外からのリクエスト。黙って捨てると
+			// UI側の実装ミスにも気づけないため 400 で返す
+			uid := "survey-badanswer-user"
+			c, _, secretKey := setup4TestUserAcquisitionController(t)
+
+			w := httptest.NewRecorder()
+			c.router.ServeHTTP(w, newUserAcquisitionSurveyRequest(t, `{"answer":"instagram"}`, uid, secretKey))
+
+			require.Equal(t, http.StatusBadRequest, w.Code)
+		})
+
+		t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
+			c, _, _ := setup4TestUserAcquisitionController(t)
+
+			w := httptest.NewRecorder()
+			c.router.ServeHTTP(w, newUserAcquisitionSurveyRequest(t, `{"answer":"x"}`, "", ""))
+
+			require.Equal(t, http.StatusUnauthorized, w.Code)
+		})
+
+		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
+			uid := "survey-error-user"
+			c, mockUsecase, secretKey := setup4TestUserAcquisitionController(t)
+
+			mockUsecase.EXPECT().AnswerSurvey(gomock.Any(), uid, "x").Return(errors.New("failed to save"))
+
+			w := httptest.NewRecorder()
+			c.router.ServeHTTP(w, newUserAcquisitionSurveyRequest(t, `{"answer":"x"}`, uid, secretKey))
+
+			require.Equal(t, http.StatusInternalServerError, w.Code)
+		})
+
+		t.Run("異常系_同じユーザーの連投は429で止める", func(t *testing.T) {
+			uid := "survey-ratelimit-user"
+			c, mockUsecase, secretKey := setup4TestUserAcquisitionController(t)
+
+			mockUsecase.EXPECT().AnswerSurvey(gomock.Any(), uid, "x").Return(nil).AnyTimes()
+
+			var lastCode int
+			for i := 0; i < 20; i++ {
+				w := httptest.NewRecorder()
+				c.router.ServeHTTP(w, newUserAcquisitionSurveyRequest(t, `{"answer":"x"}`, uid, secretKey))
+				lastCode = w.Code
+			}
+
+			require.Equal(t, http.StatusTooManyRequests, lastCode)
+		})
+	})
+}

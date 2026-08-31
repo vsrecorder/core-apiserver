@@ -117,11 +117,12 @@ func NormalizeAcquisitionCampaign(campaign string) string {
 		return v
 	}
 
-	prefix, _, found := strings.Cut(v, "_")
-	if found {
-		if canonical, ok := acquisitionCampaignByPrefix[prefix]; ok {
-			return canonical
-		}
+	// 区切りが無い場合(型だけを書いた `howto` など)は値そのものを型として見る。
+	// `feature` は allowlist に完全一致して通るのに `howto` だけ (other) に落ちる、
+	// という運用者から見て理由の分からない差をなくすため。
+	prefix, _, _ := strings.Cut(v, "_")
+	if canonical, ok := acquisitionCampaignByPrefix[prefix]; ok {
+		return canonical
 	}
 
 	return AcquisitionCampaignOther

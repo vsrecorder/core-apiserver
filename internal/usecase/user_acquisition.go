@@ -9,9 +9,6 @@ import (
 )
 
 const (
-	// acquisitionContentMaxLength は content 列の長さ。schema.sql に合わせる。
-	acquisitionContentMaxLength = 64
-
 	// landingAtMaxFuture は着地時刻として受け付ける未来方向のずれ。
 	// 値は端末のローカル時計で作られるため、多少ずれていても捨てずに残す。
 	landingAtMaxFuture = 24 * time.Hour
@@ -73,7 +70,7 @@ func (u *UserAcquisition) Record(
 	// 残らないため、丸める前の値を Content に移して個別投稿を追えるようにする。
 	// 企画書 §3.2 は utm_content に `YYYYMMDDa` を入れる前提だったが、
 	// 実際の運用がこの形に育っていたので、運用を変えずにサーバ側で受ける。
-	if rawCampaign := entity.NormalizeAcquisitionValue(param.Campaign, acquisitionContentMaxLength); acquisition.Content == "" && rawCampaign != acquisition.Campaign {
+	if rawCampaign := entity.NormalizeAcquisitionContent(param.Campaign); acquisition.Content == "" && rawCampaign != acquisition.Campaign {
 		acquisition.Content = rawCampaign
 	}
 
@@ -102,8 +99,8 @@ func (u *UserAcquisition) Record(
 }
 
 // parseLandingAt は着地時刻の文字列を時刻に変換する。
-// 読めない値・現実的でない値はゼロ値(=保存しない)にする。値は端末のローカル時計で
-// 作られるうえ Cookie を書き換えれば任意の値を送れるため、鵜呑みにしない。
+// 読めない値・現実的でない値はゼロ値(=保存しない)にする。値は proxy がサーバ側で
+// 発行するので通常はサーバ時刻だが、Cookie を書き換えれば任意の値を送れるため鵜呑みにしない。
 //
 // 保存先は timestamp without time zone(JST の壁時計)なので、Local へ寄せてから返す。
 func parseLandingAt(value string, now time.Time) time.Time {

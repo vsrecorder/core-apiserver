@@ -188,7 +188,7 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		require.False(t, sent)
 	})
 
-	t.Run("正常系_先週の達成通知は同一週の判定に含めない(2通目を抑止しない)", func(t *testing.T) {
+	t.Run("正常系_先週のnudgeと今週の別見出しの通知は同一週の判定に含めない(2通目を抑止しない)", func(t *testing.T) {
 		withFixedNow(t)
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
@@ -199,17 +199,18 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 
-		// 先週作られた nudge と、達成通知(別見出し) → どちらも今週のnudge抑止には効かない
+		// 先週作られた nudge と、今週の別見出しの通知 → どちらも今週のnudge抑止には効かない
+		// (dedupは見出しの一致だけで判定するため、他の通知が混ざっても取りこぼさない)。
 		lastWeekNudge := entity.NewNotification(
 			"n-old", weeksAgoMonday(1), "user-1",
 			NotificationCategoryStreak, streakNudgeTitle, "先週の通知", streakNudgeLinkUrl,
 		)
-		achievement := entity.NewNotification(
-			"n-ach", mondayOf(fixedNow).AddDate(0, 0, 1), "user-1",
-			NotificationCategoryStreak, "ストリークを継続中です", "達成", "/users",
+		otherTitle := entity.NewNotification(
+			"n-other", mondayOf(fixedNow).AddDate(0, 0, 1), "user-1",
+			NotificationCategoryWeeklyReport, weeklyReportTitle, "本文", "/users",
 		)
 		notificationRepo.EXPECT().FindByUserId(gomock.Any(), "user-1", streakNudgeDedupScanLimit).
-			Return([]*entity.Notification{achievement, lastWeekNudge}, nil)
+			Return([]*entity.Notification{otherTitle, lastWeekNudge}, nil)
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 
 		sent, err := u.NudgeUser(context.Background(), "user-1", false)

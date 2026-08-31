@@ -73,11 +73,21 @@ func TestNormalizeAcquisitionCampaign(t *testing.T) {
 		}
 	})
 
+	t.Run("正常系_型トークンだけでも投稿タイプへ寄せる", func(t *testing.T) {
+		// `feature` は allowlist に完全一致して通るのに `howto` だけ (other) に落ちる、
+		// という運用者から見て理由の分からない差を作らない
+		require.Equal(t, AcquisitionCampaignHowtoCta, NormalizeAcquisitionCampaign("howto"))
+		require.Equal(t, AcquisitionCampaignPainpoint, NormalizeAcquisitionCampaign("pain"))
+		require.Equal(t, AcquisitionCampaignStats, NormalizeAcquisitionCampaign("share"))
+		require.Equal(t, AcquisitionCampaignMeta, NormalizeAcquisitionCampaign("env"))
+	})
+
 	t.Run("正常系_未知の投稿タイプはotherに丸める", func(t *testing.T) {
 		// 表記ゆれで GROUP BY が割れるのを防ぐ。捨てずに残すのは
 		// 「タグ無しの直接流入」と区別を付けるため
-		require.Equal(t, AcquisitionCampaignOther, NormalizeAcquisitionCampaign("howto"))
 		require.Equal(t, AcquisitionCampaignOther, NormalizeAcquisitionCampaign("spam_wed_0812"))
+		require.Equal(t, AcquisitionCampaignOther, NormalizeAcquisitionCampaign("_pain_wed"))
+		require.Equal(t, AcquisitionCampaignOther, NormalizeAcquisitionCampaign("howtoo_fri_0828"))
 	})
 
 	t.Run("正常系_タグが無ければ空文字のままにする", func(t *testing.T) {

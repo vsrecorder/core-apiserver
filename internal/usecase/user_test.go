@@ -32,6 +32,7 @@ type userUsecaseMocks struct {
 	userPlayer           *mock_repository.MockUserPlayerInterface
 	pushSubscription     *mock_repository.MockPushSubscriptionInterface
 	pushDelivery         *mock_repository.MockPushDeliveryInterface
+	userAcquisition      *mock_repository.MockUserAcquisitionInterface
 }
 
 func newUserUsecaseMocks(ctrl *gomock.Controller) *userUsecaseMocks {
@@ -50,6 +51,7 @@ func newUserUsecaseMocks(ctrl *gomock.Controller) *userUsecaseMocks {
 		userPlayer:           mock_repository.NewMockUserPlayerInterface(ctrl),
 		pushSubscription:     mock_repository.NewMockPushSubscriptionInterface(ctrl),
 		pushDelivery:         mock_repository.NewMockPushDeliveryInterface(ctrl),
+		userAcquisition:      mock_repository.NewMockUserAcquisitionInterface(ctrl),
 	}
 }
 
@@ -70,6 +72,7 @@ func (m *userUsecaseMocks) expectDeleteAllUserData(ctx context.Context, id strin
 	m.userPlayer.EXPECT().DeleteByUserId(ctx, id).Return(nil)
 	m.pushSubscription.EXPECT().DeleteByUserId(ctx, id).Return(nil)
 	m.pushDelivery.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.userAcquisition.EXPECT().DeleteByUserId(ctx, id).Return(nil)
 }
 
 func TestUserUsecase(t *testing.T) {
@@ -96,6 +99,7 @@ func TestUserUsecase(t *testing.T) {
 		m.userPlayer,
 		m.pushSubscription,
 		m.pushDelivery,
+		m.userAcquisition,
 		mockTransactionManager,
 		stubBadgeEvaluation{},
 	)

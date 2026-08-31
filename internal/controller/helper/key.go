@@ -514,3 +514,14 @@ func GetPushSubscriptionDeleteRequest(ctx *gin.Context) dto.PushSubscriptionDele
 
 	return ret
 }
+
+func SetUserAcquisitionCreateRequest(ctx *gin.Context, value dto.UserAcquisitionCreateRequest) {
+	ctx.Set("user_acquisition_create_request", value)
+}
+
+func GetUserAcquisitionCreateRequest(ctx *gin.Context) dto.UserAcquisitionCreateRequest {
+	value, _ := ctx.Get("user_acquisition_create_request")
+	ret, _ := value.(dto.UserAcquisitionCreateRequest)
+
+	return ret
+}

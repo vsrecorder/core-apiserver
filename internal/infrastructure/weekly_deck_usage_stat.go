@@ -105,6 +105,10 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	// - 論理削除は deleted_at IS NULL で除外。
 	// - private_flg は現状すべて true の予約フラグのため、フィルタ条件には入れない。
 	// - ignore_stats_flg が立っている記録は、個人の戦績だけでなくこの公開レポートからも除外する。
+	// - 不戦勝/不戦敗（default_victory_flg / default_defeat_flg）は対戦そのものが行われて
+	//   いないため除外する。相手側の票は相手デッキ情報もスプライトも空で指紋を作れず元から
+	//   落ちていたが、自分側の票（records.deck_id の指紋）は使用数と勝敗に混入していた
+	//   （不戦勝=勝ち1票、不戦敗=負け1票）。
 	// - レギュレーションはスタンダードの記録だけを集計する。エクストラ・殿堂は使える
 	//   カードプールがそもそも違い、同じ「対戦環境」のメタとして混ぜると分布が歪むため。
 	// - 退会済みユーザー（users.deleted_at IS NOT NULL）の記録は【意図的に除外しない】。
@@ -129,7 +133,8 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		Joins("JOIN records ON matches.record_id = records.id").
 		Where(
 			"records.deleted_at IS NULL AND records.ignore_stats_flg = false"+
-				" AND records.regulation_id = ? AND matches.deleted_at IS NULL",
+				" AND records.regulation_id = ? AND matches.deleted_at IS NULL"+
+				" AND matches.default_victory_flg = false AND matches.default_defeat_flg = false",
 			entity.RegulationIdStandard,
 		)
 

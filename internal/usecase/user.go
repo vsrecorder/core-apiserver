@@ -83,6 +83,7 @@ type User struct {
 	userPlayerRepository           repository.UserPlayerInterface
 	pushSubscriptionRepository     repository.PushSubscriptionInterface
 	pushDeliveryRepository         repository.PushDeliveryInterface
+	userAcquisitionRepository      repository.UserAcquisitionInterface
 	transactionManager             repository.TransactionManager
 	badgeEvaluation                BadgeEvaluationInterface
 }
@@ -102,6 +103,7 @@ func NewUser(
 	userPlayerRepository repository.UserPlayerInterface,
 	pushSubscriptionRepository repository.PushSubscriptionInterface,
 	pushDeliveryRepository repository.PushDeliveryInterface,
+	userAcquisitionRepository repository.UserAcquisitionInterface,
 	transactionManager repository.TransactionManager,
 	badgeEvaluation BadgeEvaluationInterface,
 ) UserInterface {
@@ -121,6 +123,7 @@ func NewUser(
 		userPlayerRepository:           userPlayerRepository,
 		pushSubscriptionRepository:     pushSubscriptionRepository,
 		pushDeliveryRepository:         pushDeliveryRepository,
+		userAcquisitionRepository:      userAcquisitionRepository,
 		transactionManager:             transactionManager,
 		badgeEvaluation:                badgeEvaluation,
 	}
@@ -232,7 +235,7 @@ func (u *User) Delete(
 	//   以下は1テーブルずつ       user_favorite_decks(他人のデッキに付けたもの) /
 	//                            user_streaks / user_daily_activities / user_badges /
 	//                            user_environment_badges / notifications / users_players /
-	//                            push_subscriptions / push_deliveries
+	//                            push_subscriptions / push_deliveries / user_acquisitions
 	//
 	// 論理削除(deleted_at)を持つテーブルは論理削除、持たないテーブルは行ごと物理削除する
 	// (ユーザ本体 users も論理削除のため、それに揃えている)。
@@ -314,6 +317,14 @@ func (u *User) Delete(
 		}
 
 		if err := u.pushDeliveryRepository.DeleteByUserId(ctx, id); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		// 流入元(施策0-4)。退会後も残すと、退会者に紐づく行だけが取り残される。
+		// 集計は生存ユーザー(deleted_at IS NULL)を分母にしているため、消しても
+		// 流入元別の登録数・定着率の読みは変わらない。
+		if err := u.userAcquisitionRepository.DeleteByUserId(ctx, id); err != nil {
 			logError(ctx, err)
 			return err
 		}

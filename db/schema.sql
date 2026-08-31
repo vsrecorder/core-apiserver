@@ -1056,6 +1056,36 @@ CREATE INDEX idx_push_deliveries_user_id_created_at ON push_deliveries (user_id,
 
 
 
+-- 施策0-4: 流入元(アトリビューション)。登録の瞬間に1行だけ作られ、以後は増えない
+-- (utm-attribution-plan.md §3.4)。「どのX投稿が、W0を通過して定着する登録を連れてきたか」を
+-- 継続的に見るために持つ。
+--
+-- 値の出どころは webapp の proxy.ts が着地時に発行する first-party Cookie(vsr_attr)で、
+-- クライアント由来のため改ざんできる。厳密な監査には使えない計測用の値である。
+-- utm_* は誰でも任意の値を付けられるので、正規化・allowlist・長さ切り詰めを
+-- proxy とサーバ(entity.NormalizeAcquisition*)の双方で通してから保存する。
+--
+-- users への FK は張らない。users を参照する子テーブル(users_players / user_streaks)に
+-- FK を張らないのが本リポジトリの作法。
+CREATE TABLE user_acquisitions (
+    user_id            VARCHAR(32) PRIMARY KEY,
+    source             VARCHAR(32)  DEFAULT NULL,  -- 'x' 等のチャネル
+    medium             VARCHAR(32)  DEFAULT NULL,  -- 'social' / 'referral'(リファラ推定)
+    campaign           VARCHAR(64)  DEFAULT NULL,  -- 投稿タイプ。未知の値は '(other)' に丸まる
+    content            VARCHAR(64)  DEFAULT NULL,  -- 投稿日+連番(例 '20260831a')
+    referrer           VARCHAR(255) DEFAULT NULL,  -- ホスト名のみ(パスには検索語が含まれうる)
+    landing_path       VARCHAR(255) DEFAULT NULL,  -- 着地ページ('/' / '/decks' / '/records/quick')
+    landing_at         TIMESTAMP    DEFAULT NULL,  -- 着地時刻。登録との差が「遅延コンバージョン」
+    source_inferred_flg BOOLEAN NOT NULL DEFAULT FALSE, -- source が utm_source ではなくリファラからの推定
+    survey_answer      VARCHAR(32)  DEFAULT NULL,  -- 登録時アンケート「どこで知ったか」(S4で使う。現在は常にNULL)
+    created_at         TIMESTAMP    NOT NULL,
+    updated_at         TIMESTAMP    NOT NULL
+);
+
+-- 流入元別の集計は campaign 単位の GROUP BY が主。登録数が増えても数百行規模なので
+-- インデックスは持たせない(user_id の主キーのみ)。
+
+
 GRANT SELECT ON shops                   TO grafana;
 GRANT SELECT ON official_events         TO grafana;
 GRANT SELECT ON unofficial_events       TO grafana;
@@ -1107,3 +1137,5 @@ GRANT SELECT ON designations            TO grafana;
 GRANT SELECT ON notifications           TO grafana;
 GRANT SELECT ON push_subscriptions      TO grafana;
 GRANT SELECT ON push_deliveries         TO grafana;
+
+GRANT SELECT ON user_acquisitions       TO grafana;

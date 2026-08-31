@@ -288,6 +288,18 @@ var specs = []tableSpec{
 		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
 	},
 	{
+		name:     "user_acquisitions",
+		category: categoryLeak,
+		query: `SELECT t.user_id, COUNT(*) FROM user_acquisitions t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `DELETE FROM user_acquisitions t USING users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
+	},
+	{
 		name:     "match_pokemon_sprites",
 		category: categoryLeak,
 		// user_id を持たないため matches を経由してたどる。matches 自体が論理削除済みでも

@@ -255,6 +255,7 @@ func main() {
 			infrastructure.NewUserPlayer(db),
 			infrastructure.NewPushSubscription(db),
 			infrastructure.NewPushDelivery(db),
+			infrastructure.NewUserAcquisition(db),
 			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
 		),
@@ -414,6 +415,14 @@ func main() {
 		r,
 		usecase.NewPushDelivery(
 			infrastructure.NewPushDelivery(db),
+		),
+	).RegisterRoute(relativePath)
+
+	// 流入元の記録(施策0-4)。webapp の authorize() が新規登録の直後に1回だけ叩く
+	controller.NewUserAcquisition(
+		r,
+		usecase.NewUserAcquisition(
+			infrastructure.NewUserAcquisition(db),
 		),
 	).RegisterRoute(relativePath)
 

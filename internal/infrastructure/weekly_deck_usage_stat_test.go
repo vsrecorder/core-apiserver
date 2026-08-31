@@ -472,6 +472,25 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
+	// 不戦勝/不戦敗（default_victory_flg / default_defeat_flg）は対戦が行われていないため
+	// SQL の時点で除外する。相手側の票は指紋が空で元から落ちるが、自分側の票
+	// （records.deck_id の指紋）はこの条件が無いと使用数・勝敗へ混入する。
+	t.Run("正常系_不戦勝と不戦敗はクエリの時点で除外する", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		mock.ExpectQuery(`matches\.default_victory_flg = false AND matches\.default_defeat_flg = false`).
+			WithArgs(int(entity.RegulationIdStandard), fromDate, toDate).
+			WillReturnRows(sqlmock.NewRows(weeklyMatchRowColumns))
+
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+
+		require.NoError(t, err)
+		require.Zero(t, ret.TotalVotes)
+		require.Empty(t, ret.Decks)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
 	t.Run("異常系_マッチ取得のエラーをそのまま返す", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 		r := NewWeeklyDeckUsageStat(db)

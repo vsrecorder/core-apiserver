@@ -564,6 +564,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 		"match_tags", "record_tags", "deck_code_tags", "deck_tags", "tags",
 		"user_favorite_decks", "user_streaks", "user_daily_activities",
 		"user_badges", "user_environment_badges", "notifications", "users_players",
+		"user_acquisitions",
 		"games", "matches", "records", "deck_codes", "decks", "unofficial_events",
 		"pokemon_sprites",
 	)
@@ -638,6 +639,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 	require.NoError(t, db.Create(&model.UserFavoriteDeck{UserId: otherUid, DeckId: "deck-o1", CreatedAt: now}).Error)
 
 	// ユーザ単位の付随データ(いずれも論理削除を持たない)
+	source := "x"
 	for _, uid := range []string{withdrawUid, otherUid} {
 		require.NoError(t, db.Create(&model.UserStreak{UserId: uid, LastRecordedWeek: now, UpdatedAt: now}).Error)
 		require.NoError(t, db.Create(&model.UserDailyActivity{UserId: uid, Date: now, Category: "visit", SignalCount: 1, UpdatedAt: now}).Error)
@@ -645,6 +647,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 		require.NoError(t, db.Create(&model.UserEnvironmentBadge{UserId: uid, EnvironmentId: "m6a", AchievedAt: now, CreatedAt: now}).Error)
 		require.NoError(t, db.Create(&model.Notification{ID: "ntf-" + uid[:4], CreatedAt: now, UserId: uid, Category: "badge", Title: "t", Body: "b"}).Error)
 		require.NoError(t, db.Create(&model.UserPlayer{ID: "up-" + uid[:4], CreatedAt: now, UpdatedAt: now, UserId: uid, PlayerId: "1234567890123456"}).Error)
+		require.NoError(t, db.Create(&model.UserAcquisition{UserId: uid, Source: &source, CreatedAt: now, UpdatedAt: now}).Error)
 	}
 
 	// 退会処理(usecase.User.Delete)が呼ぶのと同じ順序・同じリポジトリで消す。
@@ -661,6 +664,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 	require.NoError(t, NewUserEnvironmentBadge(db).DeleteByUserId(ctx, withdrawUid))
 	require.NoError(t, NewNotification(db).DeleteByUserId(ctx, withdrawUid))
 	require.NoError(t, NewUserPlayer(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewUserAcquisition(db).DeleteByUserId(ctx, withdrawUid))
 
 	// alive は論理削除されずに残っている行のIDを返す
 	alive := func(table string) []string {
@@ -734,7 +738,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 	t.Run("正常系_ユーザ単位の付随データが残らない", func(t *testing.T) {
 		for _, table := range []string{
 			"user_streaks", "user_daily_activities", "user_badges",
-			"user_environment_badges", "notifications",
+			"user_environment_badges", "notifications", "user_acquisitions",
 		} {
 			require.Zero(t, remaining(table, "user_id = ?", withdrawUid), "%s に退会者の行が残っている", table)
 			require.Equal(t, int64(1), remaining(table, "user_id = ?", otherUid), "%s の他人の行が巻き込まれている", table)
@@ -1438,5 +1442,73 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, stat.TotalRecords)
 		require.Equal(t, 3, stat.TotalMatches)
+	})
+}
+
+// 流入元は登録の瞬間に1度だけ書かれ、以後は上書きされない(初回タッチ)。
+// ON CONFLICT DO NOTHING が実スキーマの主キーに対して意図どおり効くかは
+// sqlmock では確かめられないため、実DBで見る。
+func TestIntegrationUserAcquisitionRepository(t *testing.T) {
+	db := setupIntegrationDB(t, "user_acquisitions")
+	r := NewUserAcquisition(db)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	now := time.Now().Local().Truncate(time.Microsecond)
+	ctx := context.Background()
+
+	t.Run("正常系_保存した流入元を読み戻せる", func(t *testing.T) {
+		a := entity.NewUserAcquisition(uid, now)
+		a.Source = "x"
+		a.Medium = "social"
+		a.Campaign = entity.AcquisitionCampaignHowtoCta
+		a.Content = "20260831a"
+		a.Referrer = "t.co"
+		a.LandingPath = "/records/quick"
+		a.LandingAt = now.Add(-24 * time.Hour)
+
+		require.NoError(t, r.Create(ctx, a))
+
+		var m model.UserAcquisition
+		require.NoError(t, db.First(&m, "user_id = ?", uid).Error)
+		require.Equal(t, "x", *m.Source)
+		require.Equal(t, "social", *m.Medium)
+		require.Equal(t, entity.AcquisitionCampaignHowtoCta, *m.Campaign)
+		require.Equal(t, "20260831a", *m.Content)
+		require.Equal(t, "t.co", *m.Referrer)
+		require.Equal(t, "/records/quick", *m.LandingPath)
+		require.False(t, m.SourceInferredFlg)
+		// アンケート(S4)は未実装のため常にNULL
+		require.Nil(t, m.SurveyAnswer)
+	})
+
+	t.Run("正常系_二重に届いても初回の値が残る", func(t *testing.T) {
+		second := entity.NewUserAcquisition(uid, now)
+		second.Source = "note"
+		second.Campaign = entity.AcquisitionCampaignMeta
+
+		require.NoError(t, r.Create(ctx, second))
+
+		var m model.UserAcquisition
+		require.NoError(t, db.First(&m, "user_id = ?", uid).Error)
+		require.Equal(t, "x", *m.Source)
+		require.Equal(t, entity.AcquisitionCampaignHowtoCta, *m.Campaign)
+
+		var n int64
+		require.NoError(t, db.Model(&model.UserAcquisition{}).Where("user_id = ?", uid).Count(&n).Error)
+		require.Equal(t, int64(1), n)
+	})
+
+	t.Run("正常系_判明しなかった項目はNULLで保存される", func(t *testing.T) {
+		other := "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
+		a := entity.NewUserAcquisition(other, now)
+		a.Referrer = "t.co"
+
+		require.NoError(t, r.Create(ctx, a))
+
+		var m model.UserAcquisition
+		require.NoError(t, db.First(&m, "user_id = ?", other).Error)
+		require.Nil(t, m.Source)
+		require.Nil(t, m.Campaign)
+		require.Nil(t, m.LandingAt)
 	})
 }

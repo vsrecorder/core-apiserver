@@ -9,7 +9,8 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
-// BadgeStats はバッジ(はじめの一歩・マイルストーン)と週次ストリークの判定に使う集計値を返す。
+// BadgeStats はバッジ(はじめの一歩・マイルストーン)と週次ストリーク(user_streaks)の
+// 判定に使う集計値を返す。
 //
 // このリポジトリのクエリは、記録の集計対象外フラグ(ignore_stats_flg)を意図的に見ない。
 // 集計対象外は「対戦データの分析(デッキ使用率・対戦相手のデッキ分布・週次メタ・戦績)から

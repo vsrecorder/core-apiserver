@@ -45,9 +45,31 @@ func TestNormalizeAcquisitionCampaign(t *testing.T) {
 			AcquisitionCampaignFeature,
 			AcquisitionCampaignStats,
 			AcquisitionCampaignMeta,
+			AcquisitionCampaignTalk,
 			AcquisitionCampaignProfile,
+			AcquisitionCampaignRecap,
+			AcquisitionCampaignRecord,
+			AcquisitionCampaignKizuna,
 		} {
 			require.Equal(t, campaign, NormalizeAcquisitionCampaign(campaign))
+		}
+	})
+
+	t.Run("正常系_運用の値を先頭トークンで投稿タイプへ寄せる", func(t *testing.T) {
+		// 運用は `<型>_<曜>_MMDD_<ネタ>` を utm_campaign に入れており、
+		// 既に X へ投稿したリンクは書き換えられない。これを (other) に落とすと
+		// 過去投稿からの流入がすべて比較不能になる
+		for value, expected := range map[string]string{
+			"pain_wed_0812_janken":          AcquisitionCampaignPainpoint,
+			"howto_fri_0828_prep":           AcquisitionCampaignHowtoCta,
+			"howto_sat_tonight":             AcquisitionCampaignHowtoCta,
+			"feature_tue_kizuna_0804_short": AcquisitionCampaignFeature,
+			"share_sun_0830_report":         AcquisitionCampaignStats,
+			"env_mon_0831_charizard":        AcquisitionCampaignMeta,
+			"talk_sun_0830_howmany":         AcquisitionCampaignTalk,
+			"HOWTO_FRI_0807_PREP":           AcquisitionCampaignHowtoCta,
+		} {
+			require.Equal(t, expected, NormalizeAcquisitionCampaign(value), value)
 		}
 	})
 
@@ -55,7 +77,7 @@ func TestNormalizeAcquisitionCampaign(t *testing.T) {
 		// 表記ゆれで GROUP BY が割れるのを防ぐ。捨てずに残すのは
 		// 「タグ無しの直接流入」と区別を付けるため
 		require.Equal(t, AcquisitionCampaignOther, NormalizeAcquisitionCampaign("howto"))
-		require.Equal(t, AcquisitionCampaignOther, NormalizeAcquisitionCampaign("HOWTO_CTA2"))
+		require.Equal(t, AcquisitionCampaignOther, NormalizeAcquisitionCampaign("spam_wed_0812"))
 	})
 
 	t.Run("正常系_タグが無ければ空文字のままにする", func(t *testing.T) {

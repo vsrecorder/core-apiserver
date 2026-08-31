@@ -28,8 +28,8 @@ type BadgeInterface interface {
 	//
 	// オンボーディング系(category="onboarding")は一度達成したら永久に保持される実績のため、
 	// season の指定に関わらず user_badges に永続化された獲得記録をそのまま参照する。
-	// マイルストーン系・週次ストリーク系はシーズンごとに再獲得可能な仕様のため、
-	// 永続化された記録は参照せず、指定されたシーズン(9月始まり)の集計値から都度ライブ判定する。
+	// マイルストーン系はシーズンごとに再獲得可能な仕様のため、永続化された記録は参照せず、
+	// 指定されたシーズン(9月始まり)の集計値から都度ライブ判定する。
 	GetByUserId(
 		ctx context.Context,
 		userId string,
@@ -119,7 +119,7 @@ func (u *Badge) GetByUserId(
 			continue
 		}
 
-		// マイルストーン系・週次ストリーク系: 現在のシーズンの集計値だけで判定する
+		// マイルストーン系: 現在のシーズンの集計値だけで判定する
 		// (永続化された過去の獲得記録は参照しない=シーズンが変わればライブに未達成へ戻る)。
 		currentValue := seasonAggregate.values[def.CriteriaType]
 		view := &UserBadgeView{
@@ -166,16 +166,14 @@ func (u *Badge) allTimeValuesByCriteriaType(
 	}, nil
 }
 
-// seasonAggregate はマイルストーン系・週次ストリーク系バッジの判定に使う、指定シーズン
-// 内の集計値と、criteria_value 番目の条件を満たした実際の日時(初回到達日)を求めるための
-// 生データを保持する。
+// seasonAggregate はマイルストーン系バッジの判定に使う、指定シーズン内の集計値と、
+// criteria_value 番目の条件を満たした実際の日時(初回到達日)を求めるための生データを保持する。
 type seasonAggregate struct {
 	values        map[string]int
 	recordDates   []time.Time
 	deckDates     []time.Time
 	deckCodeDates []time.Time
 	matchDates    []time.Time
-	streakDates   map[int]time.Time
 }
 
 // achievedAt は criteriaType の criteriaValue 番目の条件を、シーズン内で最初に満たした
@@ -198,9 +196,6 @@ func (a *seasonAggregate) achievedAt(criteriaType string, criteriaValue int) (ti
 		return nthDate(a.deckCodeDates, criteriaValue)
 	case BadgeCriteriaTypeMatchCount:
 		return nthDate(a.matchDates, criteriaValue)
-	case BadgeCriteriaTypeStreakWeeks:
-		at, ok := a.streakDates[criteriaValue]
-		return at, ok
 	default:
 		return time.Time{}, false
 	}
@@ -273,20 +268,10 @@ func (u *Badge) seasonAggregateByCriteriaType(
 			BadgeCriteriaTypeMatchCount:    matchCount,
 			BadgeCriteriaTypeDeckCount:     deckCount,
 			BadgeCriteriaTypeDeckCodeCount: deckCodeCount,
-			BadgeCriteriaTypeStreakWeeks:   seasonStreakWeeks(recordDates),
 		},
 		recordDates:   recordDates,
 		deckDates:     deckDates,
 		deckCodeDates: deckCodeDates,
 		matchDates:    matchDates,
-		streakDates:   ComputeStreakMilestoneDates(recordDates),
 	}, nil
-}
-
-// seasonStreakWeeks は日付の集合(重複・順不同可)から、シーズン内で直近まで継続している
-// 週次記録の連続週数を求める。ComputeStreakState(badge_evaluation.go)と同じロジックを
-// 共有し、シーズン内の期間に絞った dates を渡して連続週数だけを取り出す。
-func seasonStreakWeeks(dates []time.Time) int {
-	currentWeeks, _, _, _, _ := ComputeStreakState(dates)
-	return currentWeeks
 }

@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// acquisitionContentMaxLength は content 列の長さ。schema.sql に合わせる。
+	acquisitionContentMaxLength = 64
+
 	// landingAtMaxFuture は着地時刻として受け付ける未来方向のずれ。
 	// 値は端末のローカル時計で作られるため、多少ずれていても捨てずに残す。
 	landingAtMaxFuture = 24 * time.Hour
@@ -64,6 +67,15 @@ func (u *UserAcquisition) Record(
 	acquisition.Referrer = entity.NormalizeAcquisitionReferrer(param.Referrer)
 	acquisition.LandingPath = entity.NormalizeAcquisitionLandingPath(param.LandingPath)
 	acquisition.LandingAt = parseLandingAt(param.LandingAt, timeNow())
+
+	// 運用の utm_campaign は `pain_wed_0812_janken` のように**個別の投稿まで識別できる**値で、
+	// utm_content は付いていない(x-post スキル §0)。Campaign には正規の投稿タイプしか
+	// 残らないため、丸める前の値を Content に移して個別投稿を追えるようにする。
+	// 企画書 §3.2 は utm_content に `YYYYMMDDa` を入れる前提だったが、
+	// 実際の運用がこの形に育っていたので、運用を変えずにサーバ側で受ける。
+	if rawCampaign := entity.NormalizeAcquisitionValue(param.Campaign, acquisitionContentMaxLength); acquisition.Content == "" && rawCampaign != acquisition.Campaign {
+		acquisition.Content = rawCampaign
+	}
 
 	// UTM が無くてもリファラからチャネルを推定する(判明率の底上げ・§3.6)。
 	// utm_source が付いている場合は確定値を優先し、推定で上書きしない。

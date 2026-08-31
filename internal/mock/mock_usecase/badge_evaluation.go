@@ -141,18 +141,3 @@ func (mr *MockBadgeEvaluationInterfaceMockRecorder) EvaluateOnUserCreated(ctx, u
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnUserCreated", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).EvaluateOnUserCreated), ctx, userId, createdAt)
 }
-
-// RevokeStaleStreakNotifications mocks base method.
-func (m *MockBadgeEvaluationInterface) RevokeStaleStreakNotifications(ctx context.Context, userId string, dryRun bool) ([]*entity.Notification, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RevokeStaleStreakNotifications", ctx, userId, dryRun)
-	ret0, _ := ret[0].([]*entity.Notification)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// RevokeStaleStreakNotifications indicates an expected call of RevokeStaleStreakNotifications.
-func (mr *MockBadgeEvaluationInterfaceMockRecorder) RevokeStaleStreakNotifications(ctx, userId, dryRun any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeStaleStreakNotifications", reflect.TypeOf((*MockBadgeEvaluationInterface)(nil).RevokeStaleStreakNotifications), ctx, userId, dryRun)
-}

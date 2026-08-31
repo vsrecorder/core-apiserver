@@ -11,12 +11,16 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
+// NotificationCategoryStreak は連続記録に関する通知(entity.Notification)のカテゴリ。
+// webappのNotificationCategoryと一致させる。
+const NotificationCategoryStreak = "streak"
+
 const (
 	// streakNudgeLinkUrl は途切れ防止nudgeのリンク先。タップしたらそのまま記録作成へ入れる。
 	streakNudgeLinkUrl = "/records/create"
 
-	// streakNudgeTitle は途切れ防止nudgeの見出し。達成通知("ストリークを継続中です")と
-	// 区別でき、同一週内の二重送信判定(dedup)のキーにもなるため固定文言にする。
+	// streakNudgeTitle は途切れ防止nudgeの見出し。同一週内の二重送信判定(dedup)の
+	// キーにもなるため固定文言にする。
 	streakNudgeTitle = "連続記録がとぎれそうです"
 
 	// streakNudgeDedupScanLimit は二重送信判定で遡って確認する直近通知の件数。

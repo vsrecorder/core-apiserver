@@ -10,12 +10,19 @@ import (
 // 分類を増やすほど1タイプあたりの n が減り、判断に使えるようになる時期が遠のくため、
 // 足すときは「その軸で発信配分を変える気があるか」を確認してから足す(同 §5.3)。
 const (
-	AcquisitionCampaignPainpoint = "painpoint" // 課題提起・共感型
-	AcquisitionCampaignHowtoCta  = "howto_cta" // ハウツー+CTA型(主力・週末に投下)
-	AcquisitionCampaignFeature   = "feature"   // 機能紹介型
+	AcquisitionCampaignPainpoint = "painpoint" // 課題提起・共感型(水曜の痛み枠)
+	AcquisitionCampaignHowtoCta  = "howto_cta" // ハウツー+CTA型(主力・金土日に投下)
+	AcquisitionCampaignFeature   = "feature"   // 機能紹介型(火曜)
 	AcquisitionCampaignStats     = "stats"     // 戦績シェア型
-	AcquisitionCampaignMeta      = "meta"      // 環境・メタ分析型
+	AcquisitionCampaignMeta      = "meta"      // 環境・メタ分析型(月曜)
+	AcquisitionCampaignTalk      = "talk"      // 雑談・問いかけ型(アンケート等)
 	AcquisitionCampaignProfile   = "profile"   // プロフィールの固定リンク
+
+	// 以下はユーザー自身の共有から来る流入(P5_ACQUISITION_PLAN.md)。
+	// 運営者の発信(utm_source=x)とは source が分かれるため、同じ campaign 空間に同居できる。
+	AcquisitionCampaignRecap  = "recap"  // 週次レポート等のシェアカード
+	AcquisitionCampaignRecord = "record" // 戦績シェア
+	AcquisitionCampaignKizuna = "kizuna" // キズナ
 
 	// AcquisitionCampaignOther は allowlist に無い campaign の丸め先。
 	// 弾いて NULL にすると「UTM無しの直接流入」と区別が付かなくなるため、
@@ -29,7 +36,27 @@ var acquisitionCampaigns = map[string]struct{}{
 	AcquisitionCampaignFeature:   {},
 	AcquisitionCampaignStats:     {},
 	AcquisitionCampaignMeta:      {},
+	AcquisitionCampaignTalk:      {},
 	AcquisitionCampaignProfile:   {},
+	AcquisitionCampaignRecap:     {},
+	AcquisitionCampaignRecord:    {},
+	AcquisitionCampaignKizuna:    {},
+}
+
+// X 投稿の運用は `<型>_<曜>_MMDD_<ネタ>` という値を utm_campaign に入れている
+// (例 `pain_wed_0812_janken` / `howto_fri_0828_prep`。x-post スキル §0)。
+// この対応表は先頭トークン(型)を上の正規の投稿タイプへ寄せるためのもの。
+//
+// **既に X へ投稿したリンクは書き換えられない**(投稿は数ヶ月にわたってクリックされ続ける)。
+// 運用側の規則を変えるのではなく、サーバがこの形式を解釈する。そうしないと過去投稿からの
+// 流入がすべて (other) に落ち、投稿タイプ別の比較そのものが成立しない。
+var acquisitionCampaignByPrefix = map[string]string{
+	"pain":    AcquisitionCampaignPainpoint,
+	"howto":   AcquisitionCampaignHowtoCta,
+	"feature": AcquisitionCampaignFeature,
+	"share":   AcquisitionCampaignStats,
+	"env":     AcquisitionCampaignMeta,
+	"talk":    AcquisitionCampaignTalk,
 }
 
 const (
@@ -77,17 +104,27 @@ func NormalizeAcquisitionMedium(medium string) string {
 
 // NormalizeAcquisitionCampaign は投稿タイプを allowlist に丸める。
 // 空文字(タグ無し)はそのまま空文字を返し、未知の値だけを (other) にする。
+//
+// 判定は「完全一致 → 先頭トークンの対応表」の順。運用が使う
+// `<型>_<曜>_MMDD_<ネタ>` 形式は後者で拾う(acquisitionCampaignByPrefix のコメント参照)。
 func NormalizeAcquisitionCampaign(campaign string) string {
 	v := NormalizeAcquisitionValue(campaign, acquisitionCampaignMaxLength)
 	if v == "" {
 		return ""
 	}
 
-	if _, ok := acquisitionCampaigns[v]; !ok {
-		return AcquisitionCampaignOther
+	if _, ok := acquisitionCampaigns[v]; ok {
+		return v
 	}
 
-	return v
+	prefix, _, found := strings.Cut(v, "_")
+	if found {
+		if canonical, ok := acquisitionCampaignByPrefix[prefix]; ok {
+			return canonical
+		}
+	}
+
+	return AcquisitionCampaignOther
 }
 
 // NormalizeAcquisitionContent は投稿の識別子(YYYYMMDD+連番)を正規化する。

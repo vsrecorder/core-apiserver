@@ -45,7 +45,7 @@ type BadgeStatsInterface interface {
 	) (int, error)
 
 	// FindRecordDatesByUserId は指定期間内の記録の日付(event_dateが無ければcreated_at)を
-	// 重複を許して返す。週次ストリークバッジの期間内集計のため、週への丸め込みや連続数の
+	// 重複を許して返す。週次ストリーク(user_streaks)の期間内集計のため、週への丸め込みや連続数の
 	// 計算は呼び出し側(usecase層)で行う。
 	FindRecordDatesByUserId(
 		ctx context.Context,

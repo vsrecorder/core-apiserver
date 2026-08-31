@@ -78,14 +78,6 @@ func (stubBadgeEvaluation) EvaluateOnRecordUpdated(
 	return nil
 }
 
-func (stubBadgeEvaluation) RevokeStaleStreakNotifications(
-	ctx context.Context,
-	userId string,
-	dryRun bool,
-) ([]*entity.Notification, error) {
-	return nil, nil
-}
-
 // spyRecordUpdateBadgeEvaluation は Update 経由でストリークの再計算が呼ばれたかだけを
 // 記録するスタブ(stubBadgeEvaluationと同じ理由でgomockを使わない)。
 type spyRecordUpdateBadgeEvaluation struct {

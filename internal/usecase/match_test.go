@@ -68,10 +68,6 @@ func (s orderTrackingBadgeEvaluation) EvaluateOnRecordUpdated(ctx context.Contex
 	return nil
 }
 
-func (s orderTrackingBadgeEvaluation) RevokeStaleStreakNotifications(ctx context.Context, userId string, dryRun bool) ([]*entity.Notification, error) {
-	return nil, nil
-}
-
 // errMatchBadgeEvaluation は対戦結果作成時のバッジ評価が失敗するスタブ。
 type errMatchBadgeEvaluation struct {
 	stubBadgeEvaluation

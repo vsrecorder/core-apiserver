@@ -36,7 +36,7 @@
 cmd/
   core-apiserver/      # APIサーバのエントリポイント (main.go)
   backfill-*/          # データバックフィル用のバッチ
-  sync-pokemon-avatars/, repair-streaks/, cleanup-stale-streak-notifications/  # 運用バッチ
+  sync-pokemon-avatars/, repair-streaks/  # 運用バッチ
 
 internal/
   controller/          # HTTPハンドラ、ルーティング、認証/認可、DTO、バリデーション
@@ -105,7 +105,6 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 | -------- | ---- |
 | [`sync-pokemon-avatars`](cmd/sync-pokemon-avatars/) | 公式サイト（プレイヤーズクラブ）のアバター一覧API から `avatarList` を取得し、`pokemon_avatars` テーブルへ upsert します。新規アバターの追加やタイトル・画像URLの変更に追随するため、定期実行を想定しています。 |
 | [`repair-streaks`](cmd/repair-streaks/) | 何らかの理由で `user_streaks` が現存の `records` と食い違った場合に、`records` の日付からゼロから週次ストリーク状態を再計算し、行ごと上書きして復旧します。`-dry-run` / `-user-id` フラグを持ちます。 |
-| [`cleanup-stale-streak-notifications`](cmd/cleanup-stale-streak-notifications/) | 連続記録が途切れているのに残ってしまった「ストリークを継続中です」通知を削除します。記録の作成・削除・更新時に取り消す仕組みを入れる前に作られた通知の掃除用（一度きりの復旧を想定し、定期実行はしません）で、判定は同じロジック（`RevokeStaleStreakNotifications`）を呼ぶため、実行時点で成立している週数の通知は残ります。`-dry-run` / `-user-id` フラグを持ちます。 |
 
 ### 調査・確認ツール
 

@@ -3,7 +3,7 @@
 // 一回限りの初期投入バッチ。
 //
 // オンボーディング系バッジ(user_badgesに永続化済み)は実際の achieved_at をそのまま
-// created_at/read_at に使う。マイルストーン系・週次ストリーク系バッジ、称号・ランクは
+// created_at/read_at に使う。マイルストーン系バッジ、称号・ランクは
 // シーズンごとにライブ集計する仕様(過去の達成日時を保持しない)ため、シーズン内の
 // records/matches/decksの日付を遡って走査し、閾値・tierへ実際に到達した日を
 // created_at/read_at として1件だけ作成する(見つからない場合のみ本バッチ実行時刻を使う)。
@@ -21,7 +21,7 @@
 // 実行時、オンボーディングが揃った時点でまとめて補完される。
 //
 // 冪等性: 対象ユーザーが既に1件でも notifications 行を持つ場合、1(オンボーディング系
-// バッジ)・2(マイルストーン・ストリーク系バッジ)はスキップする。これにより誤って複数回
+// バッジ)・2(マイルストーン系バッジ)はスキップする。これにより誤って複数回
 // 実行しても通知が重複しない(backfill-badges が再実行で通知を重複生成しうる問題を踏まえた
 // 設計)。ただし裏を返すと、対象ユーザーが導入後に何らかの通知を既に受け取っている場合は
 // 1・2のバックフィル対象外になる(導入前に一度だけ実行する運用を想定)。3(称号・ランク)・
@@ -147,7 +147,7 @@ func main() {
 
 	now := time.Now().Local()
 
-	// マイルストーン系・週次ストリーク系バッジ、称号・ランクの通知本文に
+	// マイルストーン系バッジ、称号・ランクの通知本文に
 	// どのシーズンの実績かを明記するためのラベル(例:"2026")。
 	seasonLabel, err := usecase.CurrentSeasonLabel(ctx, championshipSeriesRepo, now)
 	if err != nil {
@@ -387,20 +387,19 @@ func backfillUser(
 			}
 		}
 
-		// 2. マイルストーン系・週次ストリーク系バッジ(現在のシーズンで達成済みのもののみ)。
+		// 2. マイルストーン系バッジ(現在のシーズンで達成済みのもののみ)。
 		// 「実際に達成した日」を遡って求めるため、シーズン内のrecord/match/deck_codeの日付を
-		// 昇順に並べ、閾値に到達した時点の日付を使う(週次ストリークはStreakWeeksAchievedAtで求める)。
-		hasMilestoneOrStreak := false
+		// 昇順に並べ、閾値に到達した時点の日付を使う。
+		hasMilestone := false
 		for _, view := range badgeViews {
 			if view.Definition.Category != usecase.BadgeCategoryOnboarding && view.Achieved {
-				hasMilestoneOrStreak = true
+				hasMilestone = true
 				break
 			}
 		}
 
 		var recordDates, matchDates, deckCodeDates []time.Time
-		var streakAchievedAt map[int]time.Time
-		if hasMilestoneOrStreak {
+		if hasMilestone {
 			recordDates, err = badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, seasonFromDate, seasonToDate)
 			if err != nil {
 				return created, err
@@ -416,8 +415,6 @@ func backfillUser(
 			if err != nil {
 				return created, err
 			}
-
-			streakAchievedAt = usecase.StreakWeeksAchievedAt(recordDates)
 		}
 
 		for _, view := range badgeViews {
@@ -425,18 +422,11 @@ func backfillUser(
 				continue
 			}
 
-			title := "バッジを獲得しました"
-			category := usecase.NotificationCategoryBadge
-			if view.Definition.Category == usecase.BadgeCategoryStreak {
-				category = usecase.NotificationCategoryStreak
-				title = "ストリークを継続中です"
-			}
-
-			achievedAt := milestoneAchievedAt(view.Definition, recordDates, matchDates, deckCodeDates, streakAchievedAt, now)
+			achievedAt := milestoneAchievedAt(view.Definition, recordDates, matchDates, deckCodeDates, now)
 
 			if err := saveNotification(
 				ctx, notificationRepo, dryRun,
-				userId, category, title,
+				userId, usecase.NotificationCategoryBadge, "バッジを獲得しました",
 				fmt.Sprintf("%sシーズンで「%s」バッジを獲得しました！", seasonLabel, view.Definition.Name),
 				achievedAt,
 			); err != nil {
@@ -735,14 +725,13 @@ func findNotificationByBodyContains(db *gorm.DB, userId string, category string,
 	return notifications[0], nil
 }
 
-// milestoneAchievedAt はマイルストーン系・週次ストリーク系バッジ定義について、
-// シーズン内で実際に閾値へ到達した日付を返す(求められない場合はfallbackを返す)。
+// milestoneAchievedAt はマイルストーン系バッジ定義について、シーズン内で実際に閾値へ
+// 到達した日付を返す(求められない場合はfallbackを返す)。
 func milestoneAchievedAt(
 	def *entity.BadgeDefinition,
 	recordDates []time.Time,
 	matchDates []time.Time,
 	deckCodeDates []time.Time,
-	streakAchievedAt map[int]time.Time,
 	fallback time.Time,
 ) time.Time {
 	switch def.CriteriaType {
@@ -752,11 +741,6 @@ func milestoneAchievedAt(
 		return nthDate(matchDates, def.CriteriaValue, fallback)
 	case usecase.BadgeCriteriaTypeDeckCodeCount:
 		return nthDate(deckCodeDates, def.CriteriaValue, fallback)
-	case usecase.BadgeCriteriaTypeStreakWeeks:
-		if at, ok := streakAchievedAt[def.CriteriaValue]; ok {
-			return at
-		}
-		return fallback
 	default:
 		return fallback
 	}

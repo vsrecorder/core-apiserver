@@ -186,83 +186,6 @@ func TestBadge_GetByUserId(t *testing.T) {
 		require.True(t, matchView.AchievedAt.Equal(matchDate2), "2番目に古い対戦日がachieved_atになる")
 	})
 
-	t.Run("正常系_週次ストリーク系は今シーズンの記録日から連続週数を計算して判定する", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
-
-		now := time.Now()
-		definitions := []*entity.BadgeDefinition{
-			entity.NewBadgeDefinition("def-streak-3", "streak_week_3", BadgeCategoryStreak, "週次記録3週連続", "", "", BadgeCriteriaTypeStreakWeeks, 3, time.Time{}, time.Time{}, now, now),
-		}
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
-
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
-		badgeStatsRepo.EXPECT().CountMatchesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
-		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
-		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
-		badgeStatsRepo.EXPECT().FindDeckCodeDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
-
-		// 3週連続分の記録日(月曜始まり基準で3週分)
-		week1 := time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local)
-		week2 := time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local)
-		week3 := time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local)
-		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).
-			Return([]time.Time{week1, week2, week3}, nil)
-		badgeStatsRepo.EXPECT().FindDeckDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
-		badgeStatsRepo.EXPECT().FindMatchDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
-
-		views, err := u.GetByUserId(t.Context(), "user-1", "")
-
-		require.NoError(t, err)
-		view := findView(views, "def-streak-3")
-		require.NotNil(t, view)
-		require.True(t, view.Achieved)
-		require.Equal(t, 3, view.CurrentValue)
-		require.True(t, view.AchievedAt.Equal(week3), "3週連続に初めて到達した週の記録日がachieved_atになる")
-	})
-
-	t.Run("正常系_週次ストリーク系はストリークが途切れても、シーズン内で最初に到達した日付を保持する", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
-
-		now := time.Now()
-		definitions := []*entity.BadgeDefinition{
-			entity.NewBadgeDefinition("def-streak-2", "streak_week_2", BadgeCategoryStreak, "週次記録2週連続", "", "", BadgeCriteriaTypeStreakWeeks, 2, time.Time{}, time.Time{}, now, now),
-		}
-
-		badgeDefinitionRepo.EXPECT().FindAll(gomock.Any()).Return(definitions, nil)
-		championshipSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(currentChampionshipSeries(), nil)
-		userBadgeRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, nil)
-
-		badgeStatsRepo.EXPECT().CountRecordsByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
-		badgeStatsRepo.EXPECT().CountMatchesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
-		badgeStatsRepo.EXPECT().CountDecksByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil).Times(2)
-		badgeStatsRepo.EXPECT().CountDeckCodesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(0, nil)
-		badgeStatsRepo.EXPECT().FindDeckCodeDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
-
-		// 1,2週目で2週連続を達成した後、大きく空いて途切れ、直近は単発(1週)のみの状態。
-		// 「現在」は2週連続ではない(Achieved=false)が、シーズン内で最初に2週連続に到達した
-		// 日付(week2)は保持され続ける。
-		week1 := time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local)
-		week2 := time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local)
-		recentWeek := time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local)
-		badgeStatsRepo.EXPECT().FindRecordDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).
-			Return([]time.Time{week1, week2, recentWeek}, nil)
-		badgeStatsRepo.EXPECT().FindDeckDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
-		badgeStatsRepo.EXPECT().FindMatchDatesByUserId(gomock.Any(), "user-1", gomock.Any(), gomock.Any()).Return(nil, nil)
-
-		views, err := u.GetByUserId(t.Context(), "user-1", "")
-
-		require.NoError(t, err)
-		view := findView(views, "def-streak-2")
-		require.NotNil(t, view)
-		require.False(t, view.Achieved, "直近は単発記録のみで現在は2週連続ではない")
-		require.True(t, view.AchievedAt.Equal(week2), "途切れていても、シーズン内で最初に2週連続に到達した日付は残る")
-	})
-
 	t.Run("正常系_season指定時はそのシーズンの期間で集計する", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		u, badgeDefinitionRepo, userBadgeRepo, badgeStatsRepo, championshipSeriesRepo := newBadgeTestUsecase(mockCtrl)
@@ -301,37 +224,5 @@ func TestBadge_GetByUserId(t *testing.T) {
 		view := findView(views, "def-record-10")
 		require.NotNil(t, view)
 		require.Equal(t, 3, view.CurrentValue)
-	})
-}
-
-func TestSeasonStreakWeeks(t *testing.T) {
-	t.Run("正常系_記録が無ければ0", func(t *testing.T) {
-		require.Equal(t, 0, seasonStreakWeeks(nil))
-	})
-
-	t.Run("正常系_連続した週なら連続数がそのまま返る", func(t *testing.T) {
-		dates := []time.Time{
-			time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
-			time.Date(2026, 6, 8, 0, 0, 0, 0, time.Local),
-			time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local),
-		}
-		require.Equal(t, 3, seasonStreakWeeks(dates))
-	})
-
-	t.Run("正常系_1週空いてもフリーズ枠で連続扱いになる", func(t *testing.T) {
-		dates := []time.Time{
-			time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
-			time.Date(2026, 6, 15, 0, 0, 0, 0, time.Local), // 2週間後(1週間の空白)
-		}
-		require.Equal(t, 2, seasonStreakWeeks(dates))
-	})
-
-	t.Run("正常系_フリーズ枠を超えて空くと直近の連続数だけが残る", func(t *testing.T) {
-		dates := []time.Time{
-			time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
-			time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local), // 大きく空白
-			time.Date(2026, 7, 27, 0, 0, 0, 0, time.Local),
-		}
-		require.Equal(t, 2, seasonStreakWeeks(dates))
 	})
 }

@@ -16,30 +16,22 @@ const (
 	BadgeCriteriaTypeMatchCount    = "match_count"
 	BadgeCriteriaTypeDeckCount     = "deck_count"
 	BadgeCriteriaTypeDeckCodeCount = "deck_code_count"
-	BadgeCriteriaTypeStreakWeeks   = "streak_weeks"
 )
 
 const (
 	BadgeCategoryOnboarding = "onboarding"
 	BadgeCategoryMilestone  = "milestone"
-	BadgeCategoryStreak     = "streak"
 )
 
-// 通知(entity.Notification)のカテゴリ。webappのNotificationCategoryと一致させる。
-const (
-	NotificationCategoryBadge  = "badge"
-	NotificationCategoryStreak = "streak"
-)
+// NotificationCategoryBadge は通知(entity.Notification)のカテゴリ。
+// webappのNotificationCategoryと一致させる。
+const NotificationCategoryBadge = "badge"
 
 // notificationLinkUrlForBadge はバッジ獲得通知のリンク先(バッジ一覧があるプロフィールページ)。
 const notificationLinkUrlForBadge = "/users"
 
-// バッジ獲得通知の見出し。週次ストリーク系だけは「今も続いている状態」を表す文言にする。
-// 記録削除で条件を満たさなくなった通知を後から特定する必要があるため定数に切り出す。
-const (
-	badgeAchievedNotificationTitle  = "バッジを獲得しました"
-	streakAchievedNotificationTitle = "ストリークを継続中です"
-)
+// badgeAchievedNotificationTitle はバッジ獲得通知の見出し。
+const badgeAchievedNotificationTitle = "バッジを獲得しました"
 
 // streakFreezeMaxGapWeeks は、記録が途切れてもフリーズ枠で連続扱いを維持できる
 // 最大の空白週数(2週間分)。旅行・繁忙期等でのストリーク断絶による離脱を防ぐ
@@ -63,8 +55,8 @@ const streakFreezeRegenWeeks = 2
 
 type BadgeEvaluationInterface interface {
 	// EvaluateOnRecordCreated は記録作成時にストリーク状態(user_streaks、StreakPanel用)を
-	// 更新し、オンボーディング系バッジを判定する。マイルストーン系・週次ストリーク系バッジは
-	// シーズンごとに再獲得可能なため、書き込み時ではなく一覧取得時(usecase/badge.go)に
+	// 更新し、オンボーディング系バッジを判定する。マイルストーン系バッジはシーズンごとに
+	// 再獲得可能なため、書き込み時ではなく一覧取得時(usecase/badge.go)に
 	// 都度ライブ集計で判定する。
 	EvaluateOnRecordCreated(
 		ctx context.Context,
@@ -106,32 +98,19 @@ type BadgeEvaluationInterface interface {
 	// EvaluateOnRecordDeleted は記録削除時、残っている記録の日付から
 	// ストリーク状態(user_streaks)を全期間分作り直す。updateStreak は加算のみの
 	// 差分更新のため、削除時にそのまま流用すると連続週数が減らずに残ってしまう。
-	// 併せて、減った連続週数では成立しなくなったストリーク継続通知を取り消す。
 	EvaluateOnRecordDeleted(
 		ctx context.Context,
 		userId string,
 	) error
 
 	// EvaluateOnRecordUpdated は記録の対戦日(event_date)が変更されたとき、
-	// EvaluateOnRecordDeleted と同じく現存する記録からストリーク状態を作り直し、
-	// 成立しなくなったストリーク継続通知を取り消す。日付の変更は連続週数を増やしも
-	// 減らしもする(週が埋まる/空く)ため、加算のみの updateStreak ではなく
-	// ゼロからの再計算を使う。
+	// EvaluateOnRecordDeleted と同じく現存する記録からストリーク状態を作り直す。
+	// 日付の変更は連続週数を増やしも減らしもする(週が埋まる/空く)ため、加算のみの
+	// updateStreak ではなくゼロからの再計算を使う。
 	EvaluateOnRecordUpdated(
 		ctx context.Context,
 		userId string,
 	) error
-
-	// RevokeStaleStreakNotifications は、現在のシーズンの連続週数では達成条件を
-	// 満たさなくなった週次ストリーク系バッジの「ストリークを継続中です」通知を削除し、
-	// 削除した通知を返す。dryRun=true の場合は削除せず、対象の通知を返すだけ。
-	// 記録の削除・更新から呼ばれるほか、過去に取り消しそびれた通知を一括で掃除する
-	// バッチ(cmd/cleanup-stale-streak-notifications)からも使う。
-	RevokeStaleStreakNotifications(
-		ctx context.Context,
-		userId string,
-		dryRun bool,
-	) ([]*entity.Notification, error)
 }
 
 type BadgeEvaluation struct {
@@ -303,120 +282,6 @@ func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, 
 	return
 }
 
-// StreakWeeksAchievedAt は dates(記録の基準日時、順不同・重複可)を走査し、週次ストリークの
-// 連続週数ごとに「その週数へ初めて到達した実際の記録日」を 連続週数 -> achievedAt のマップで
-// 返す。ComputeStreakStateと同じ連続判定ロジック(フリーズ枠含む)を週の推移ごとに適用する。
-// backfill-notifications が、シーズンごとにライブ集計する週次ストリーク系バッジの
-// 「実際の達成日」を過去の記録から遡って求めるために使う(通常のリアルタイム評価では
-// notifySeasonalStreakMilestonesの判定で十分なため使わない)。
-func StreakWeeksAchievedAt(dates []time.Time) map[int]time.Time {
-	if len(dates) == 0 {
-		return nil
-	}
-
-	firstDateOfWeek := make(map[time.Time]time.Time)
-	for _, d := range dates {
-		mon := mondayOf(d)
-		if existing, ok := firstDateOfWeek[mon]; !ok || d.Before(existing) {
-			firstDateOfWeek[mon] = d
-		}
-	}
-
-	mondays := make([]time.Time, 0, len(firstDateOfWeek))
-	for mon := range firstDateOfWeek {
-		mondays = append(mondays, mon)
-	}
-	sort.Slice(mondays, func(i, j int) bool { return mondays[i].Before(mondays[j]) })
-
-	currentWeeks := 1
-	freezeUsedCount := 0
-	freezeRegenProgress := 0
-	achievedAt := map[int]time.Time{currentWeeks: firstDateOfWeek[mondays[0]]}
-
-	for i := 1; i < len(mondays); i++ {
-		diffWeeks := weeksBetween(mondays[i-1], mondays[i])
-
-		switch {
-		case diffWeeks == 1:
-			currentWeeks++
-			freezeUsedCount, freezeRegenProgress = advanceFreezeRegen(freezeUsedCount, freezeRegenProgress)
-		case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
-			currentWeeks++
-			freezeUsedCount++
-			freezeRegenProgress = 0
-		default:
-			currentWeeks = 1
-			freezeUsedCount = 0
-			freezeRegenProgress = 0
-		}
-
-		if _, exists := achievedAt[currentWeeks]; !exists {
-			achievedAt[currentWeeks] = firstDateOfWeek[mondays[i]]
-		}
-	}
-
-	return achievedAt
-}
-
-// ComputeStreakMilestoneDates は記録日の集合(重複・順不同可)から、連続週数が
-// 1,2,3...と各段階に初めて到達した実際の日付(その週内で最も早い記録日)を求める。
-// ComputeStreakState と異なりストリークの最終状態ではなく到達履歴を追うため、
-// 一度ストリークが途切れて同じ週数に再到達しても、シーズン内で最初に到達した
-// 日付を保持する(週次ストリーク系バッジの「初回到達日」表示用)。
-func ComputeStreakMilestoneDates(dates []time.Time) map[int]time.Time {
-	if len(dates) == 0 {
-		return nil
-	}
-
-	earliestDateInWeek := make(map[time.Time]time.Time, len(dates))
-	for _, d := range dates {
-		week := mondayOf(d)
-		if existing, ok := earliestDateInWeek[week]; !ok || d.Before(existing) {
-			earliestDateInWeek[week] = d
-		}
-	}
-
-	weeks := make([]time.Time, 0, len(earliestDateInWeek))
-	for w := range earliestDateInWeek {
-		weeks = append(weeks, w)
-	}
-	sort.Slice(weeks, func(i, j int) bool { return weeks[i].Before(weeks[j]) })
-
-	milestoneDates := make(map[int]time.Time)
-	recordIfNew := func(n int, date time.Time) {
-		if _, ok := milestoneDates[n]; !ok {
-			milestoneDates[n] = date
-		}
-	}
-
-	currentWeeks := 1
-	freezeUsedCount := 0
-	freezeRegenProgress := 0
-	recordIfNew(currentWeeks, earliestDateInWeek[weeks[0]])
-
-	for i := 1; i < len(weeks); i++ {
-		diffWeeks := weeksBetween(weeks[i-1], weeks[i])
-
-		switch {
-		case diffWeeks == 1:
-			currentWeeks++
-			freezeUsedCount, freezeRegenProgress = advanceFreezeRegen(freezeUsedCount, freezeRegenProgress)
-		case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
-			currentWeeks++
-			freezeUsedCount++
-			freezeRegenProgress = 0
-		default:
-			currentWeeks = 1
-			freezeUsedCount = 0
-			freezeRegenProgress = 0
-		}
-
-		recordIfNew(currentWeeks, earliestDateInWeek[weeks[i]])
-	}
-
-	return milestoneDates
-}
-
 func (u *BadgeEvaluation) achievedBadgeDefinitionIds(
 	ctx context.Context,
 	userId string,
@@ -436,8 +301,8 @@ func (u *BadgeEvaluation) achievedBadgeDefinitionIds(
 }
 
 // onboardingDefinitions は定義一覧からオンボーディング系(category="onboarding")のみを返す。
-// マイルストーン系・週次ストリーク系は書き込み時に評価・永続化しないため、書き込み時の
-// award() には常にこの絞り込み済みの一覧を渡す。
+// マイルストーン系は書き込み時に評価・永続化しないため、書き込み時の award() には
+// 常にこの絞り込み済みの一覧を渡す。
 func onboardingDefinitions(definitions []*entity.BadgeDefinition) []*entity.BadgeDefinition {
 	filtered := make([]*entity.BadgeDefinition, 0, len(definitions))
 	for _, def := range definitions {
@@ -461,23 +326,11 @@ func milestoneDefinitions(definitions []*entity.BadgeDefinition) []*entity.Badge
 	return filtered
 }
 
-// streakDefinitions は定義一覧から週次ストリーク系(category="streak")のみを返す。
-func streakDefinitions(definitions []*entity.BadgeDefinition) []*entity.BadgeDefinition {
-	filtered := make([]*entity.BadgeDefinition, 0, len(definitions))
-	for _, def := range definitions {
-		if def.Category == BadgeCategoryStreak {
-			filtered = append(filtered, def)
-		}
-	}
-
-	return filtered
-}
-
 // notifyBadgeAchieved はバッジ獲得を知らせる通知を1件作成する。オンボーディング系
-// (user_badgesに永続化される)・マイルストーン系/週次ストリーク系(都度ライブ判定、
-// user_badgesには永続化されない)のどちらからも呼ばれる共通の通知生成ロジック。
-// seasonLabel はシーズンごとにライブ集計する実績(マイルストーン系・週次ストリーク系)の
-// 場合のみ空文字以外を渡し、本文にどのシーズンの実績かを明記する。オンボーディング系は
+// (user_badgesに永続化される)・マイルストーン系(都度ライブ判定、user_badgesには
+// 永続化されない)のどちらからも呼ばれる共通の通知生成ロジック。
+// seasonLabel はシーズンごとにライブ集計する実績(マイルストーン系)の場合のみ空文字以外を
+// 渡し、本文にどのシーズンの実績かを明記する。オンボーディング系は
 // シーズンの概念が無いため常に空文字を渡す。achievedAt は通知のcreated_atに使う
 // 「実際に達成した日時」(記録のevent_date等)。オンボーディング系は現在時刻を渡す。
 func (u *BadgeEvaluation) notifyBadgeAchieved(
@@ -493,21 +346,14 @@ func (u *BadgeEvaluation) notifyBadgeAchieved(
 		return err
 	}
 
-	category := NotificationCategoryBadge
-	title := badgeAchievedNotificationTitle
-	if def.Category == BadgeCategoryStreak {
-		category = NotificationCategoryStreak
-		title = streakAchievedNotificationTitle
-	}
-
 	body := badgeAchievedNotificationBody(def, seasonLabel)
 
 	notification := entity.NewNotification(
 		id,
 		achievedAt,
 		userId,
-		category,
-		title,
+		NotificationCategoryBadge,
+		badgeAchievedNotificationTitle,
 		body,
 		notificationLinkUrlForBadge,
 	)
@@ -515,9 +361,7 @@ func (u *BadgeEvaluation) notifyBadgeAchieved(
 	return u.notificationRepo.Save(ctx, notification)
 }
 
-// badgeAchievedNotificationBody はバッジ獲得通知の本文を組み立てる。記録削除時に
-// 「達成条件を満たさなくなった通知」を探す際も同じ関数で本文を再現して突き合わせるため
-// (通知はバッジ定義への参照カラムを持たない)、文面の組み立てはここ1箇所に集約する。
+// badgeAchievedNotificationBody はバッジ獲得通知の本文を組み立てる。
 func badgeAchievedNotificationBody(def *entity.BadgeDefinition, seasonLabel string) string {
 	if seasonLabel != "" {
 		return fmt.Sprintf("%sシーズンで「%s」バッジを獲得しました！", seasonLabel, def.Name)
@@ -569,82 +413,18 @@ func isSameEventDate(a time.Time, b time.Time) bool {
 	return ay == by && am == bm && ad == bd
 }
 
-// withoutOneRecord は dates から basis と同じ対戦日の記録を1件だけ取り除いたスライスを返す。
-// 「この1件を作る前の状態」を復元し、今回の記録が連続週数をどこまで進めたかを見るために使う。
-// 同じ日の記録が複数ある場合に1件だけ取り除くのは、残りは「作る前から在った記録」であり、
-// まとめて外すと直前の状態を過小に見積もってしまうため(どの1件を外しても週の集合は同じ)。
-//
-// dates はDBから読み直した基準日、basis はリクエスト由来の値なので、瞬間の一致
-// (time.Equal)ではなく暦日で突き合わせる。ここで取りこぼすと「作る前の状態」が
-// 現在と同じになり、本来出すべき通知が出なくなる。
-func withoutOneRecord(dates []time.Time, basis time.Time) []time.Time {
-	ret := make([]time.Time, 0, len(dates))
-
-	removed := false
-	for _, d := range dates {
-		if !removed && isSameEventDate(d, basis) {
-			removed = true
-			continue
-		}
-
-		ret = append(ret, d)
-	}
-
-	return ret
-}
-
-// notifySeasonalStreakMilestones はシーズンスコープの記録日付一覧から、この1件の記録で
-// 連続週数がまたいだ閾値(previousWeeks < criteria_value <= currentWeeks)の週次ストリーク
-// 系定義を通知する。マイルストーン系(notifySeasonalCountMilestones)と同じ「またいだか」
-// 判定にしているのは、閾値ちょうどの一致で判定すると、過去日付の後入力で空き週がまとまって
-// 埋まり連続週数が飛んだときに、間の閾値の通知が永久に欠落するため。
-// 同じ週の2件目以降の記録は前後で連続週数が変わらない(previousWeeks == currentWeeks)ので、
-// この範囲判定だけで重複通知も防げる。
-func (u *BadgeEvaluation) notifySeasonalStreakMilestones(
-	ctx context.Context,
-	userId string,
-	definitions []*entity.BadgeDefinition,
-	seasonRecordDates []time.Time,
-	thisRecordBasis time.Time,
-	createdAt time.Time,
-	seasonLabel string,
-) error {
-	currentWeeks := seasonStreakWeeks(seasonRecordDates)
-	previousWeeks := seasonStreakWeeks(withoutOneRecord(seasonRecordDates, thisRecordBasis))
-
-	for _, def := range definitions {
-		if def.CriteriaType != BadgeCriteriaTypeStreakWeeks {
-			continue
-		}
-		if !(previousWeeks < def.CriteriaValue && def.CriteriaValue <= currentWeeks) {
-			continue
-		}
-
-		// 週の判定自体はthisRecordBasis(対戦日基準)で行うが、通知のcreated_atは
-		// 実際の処理時刻(createdAt)を使う。対戦日を使うと他の通知とのcreated_at
-		// 基準がずれて並び順が崩れるため。
-		if err := u.notifyBadgeAchieved(ctx, userId, def, seasonLabel, createdAt); err != nil {
-			logError(ctx, err)
-			return err
-		}
-	}
-
-	return nil
-}
-
 // notifySeasonalMilestonesOnRecordCreated は記録作成時、シーズンスコープのマイルストーン系
-// (record_count)・週次ストリーク系(streak_weeks)バッジについて新規達成があれば通知する。
+// (record_count)バッジについて新規達成があれば通知する。
 // championship_seriesが見つからない等でシーズン範囲が定まらない場合は、記録作成自体を
 // 失敗させないため何もせず処理を終える(通知は付随的な機能であり、本体の書き込みを
 // 阻害してはならない)。
-// thisRecordBasis は週次ストリーク等の判定基準(対戦日優先)、createdAt は通知の
-// created_atに使う実際の処理時刻。両者を分けているのは、対戦日を通知のcreated_atに
-// 使うと他の通知(バッジ獲得等)とのcreated_at基準がずれ、通知一覧の並び順が崩れるため。
+// createdAt は通知のcreated_atに使う実際の処理時刻。対戦日(event_date)ではなくこちらを
+// 使うのは、対戦日だと他の通知(バッジ獲得等)とのcreated_at基準がずれ、通知一覧の
+// 並び順が崩れるため。
 func (u *BadgeEvaluation) notifySeasonalMilestonesOnRecordCreated(
 	ctx context.Context,
 	userId string,
 	definitions []*entity.BadgeDefinition,
-	thisRecordBasis time.Time,
 	createdAt time.Time,
 ) {
 	now := time.Now().Local()
@@ -665,10 +445,6 @@ func (u *BadgeEvaluation) notifySeasonalMilestonesOnRecordCreated(
 
 	if seasonRecordCount, err := u.badgeStatsRepo.CountRecordsByUserId(ctx, userId, fromDate, toDate); err == nil {
 		_ = u.notifySeasonalCountMilestones(ctx, userId, milestoneDefinitions(definitions), BadgeCriteriaTypeRecordCount, seasonRecordCount, seasonLabel, createdAt)
-	}
-
-	if seasonRecordDates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, fromDate, toDate); err == nil {
-		_ = u.notifySeasonalStreakMilestones(ctx, userId, streakDefinitions(definitions), seasonRecordDates, thisRecordBasis, createdAt, seasonLabel)
 	}
 }
 
@@ -782,8 +558,7 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 	userId string,
 	record *entity.Record,
 ) ([]*entity.UserBadge, error) {
-	// user_streaks(StreakPanel用の全期間ストリーク)は引き続きここで更新する。
-	// バッジとしての週次ストリーク判定はシーズンごとにライブ集計するため、ここでは行わない。
+	// user_streaks(StreakPanel用の全期間ストリーク)はここで更新する。
 	//
 	// 差分更新(直前の状態に1週分を足す)ではなく、削除・更新時と同じく現存する記録から
 	// 作り直す。過去の日付をあとから入力すると、既に記録済みの週より前の空き週が埋まって
@@ -826,9 +601,8 @@ func (u *BadgeEvaluation) EvaluateOnRecordCreated(
 		return nil, err
 	}
 
-	// シーズン系マイルストーン・週次ストリークの達成判定は実際に対戦した日(event_date)
-	// 基準のまま。ただし通知のcreated_atはrecord.CreatedAt(実際の処理時刻)を使う。
-	u.notifySeasonalMilestonesOnRecordCreated(ctx, userId, definitions, RecordBasisTime(record.EventDate, record.CreatedAt), record.CreatedAt)
+	// シーズン系マイルストーンの達成通知。created_atはrecord.CreatedAt(実際の処理時刻)を使う。
+	u.notifySeasonalMilestonesOnRecordCreated(ctx, userId, definitions, record.CreatedAt)
 
 	return awarded, nil
 }
@@ -847,15 +621,9 @@ func (u *BadgeEvaluation) EvaluateOnRecordUpdated(
 	return u.recomputeStreak(ctx, userId)
 }
 
-// recomputeStreak は現存する記録の日付から user_streaks を作り直し、作り直した連続週数
-// では成立しなくなったストリーク継続通知を取り消す。記録の作成・削除・更新のいずれも
-// この1本を通し、状態の求め方をここに集約する(差分更新を併用すると、過去日付の後入力の
-// ように差分では追えない変化で食い違うため)。
-//
-// 作成でも取り消しが要るのは、間隔の空いた記録を作ると連続が途切れて連続週数が1に戻る
-// ため(例: 2週続けたあと3週空けて記録すると、2週継続中の通知はもう事実と合わない)。
-// 取り消しを先に済ませてから notifySeasonalMilestonesOnRecordCreated が新しい通知を作る
-// ので、古い通知が残ったまま新しい通知が積まれることはない。
+// recomputeStreak は現存する記録の日付から user_streaks を作り直す。記録の作成・削除・
+// 更新のいずれもこの1本を通し、状態の求め方をここに集約する(差分更新を併用すると、
+// 過去日付の後入力のように差分では追えない変化で食い違うため)。
 func (u *BadgeEvaluation) recomputeStreak(
 	ctx context.Context,
 	userId string,
@@ -874,99 +642,7 @@ func (u *BadgeEvaluation) recomputeStreak(
 		return err
 	}
 
-	// 通知は付随的な機能であり、これが失敗しても記録の作成・削除・更新自体は成功させる
-	// べきなので、エラーはログに残して握りつぶす。
-	if _, err := u.RevokeStaleStreakNotifications(ctx, userId, false); err != nil {
-		logError(ctx, err)
-	}
-
 	return nil
-}
-
-// RevokeStaleStreakNotifications は、現在のシーズンの連続週数では達成条件を満たさなく
-// なった週次ストリーク系バッジの「ストリークを継続中です」通知を削除する。
-// この通知だけは「今もN週続いている」という現在進行形の状態を伝えるものであり、
-// 記録を消す/対戦日を動かしてNに届かなくなった後も残っていると事実と食い違うため取り消す。
-// マイルストーン系(記録100件など)は過去に達成した事実そのものなので対象にしない。
-//
-// 今の連続週数でもまだ満たしている閾値の通知は残す(例: 5週→2週に減ったなら3週・7週の
-// 通知だけを消し、2週までの通知はそのまま)。
-func (u *BadgeEvaluation) RevokeStaleStreakNotifications(
-	ctx context.Context,
-	userId string,
-	dryRun bool,
-) ([]*entity.Notification, error) {
-	now := time.Now().Local()
-
-	// 通知は作成時点の「現在のシーズン」の集計で作られる(notifySeasonalMilestonesOnRecordCreated)
-	// ため、取り消しも現在のシーズンで判定する。過去シーズンに作られた通知は本文に当時の
-	// シーズンラベルが入っており、下の本文一致で自然に対象から外れる。
-	fromDate, toDate, err := seasonRange(ctx, u.championshipSeriesRepo, "", now)
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	seasonLabel, err := CurrentSeasonLabel(ctx, u.championshipSeriesRepo, now)
-	if err != nil {
-		logWarn(ctx, err)
-		seasonLabel = ""
-	}
-
-	seasonRecordDates, err := u.badgeStatsRepo.FindRecordDatesByUserId(ctx, userId, fromDate, toDate)
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	currentWeeks := seasonStreakWeeks(seasonRecordDates)
-
-	definitions, err := u.badgeDefinitionRepo.FindAll(ctx)
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	var staleBodies []string
-	for _, def := range streakDefinitions(definitions) {
-		if def.CriteriaType != BadgeCriteriaTypeStreakWeeks {
-			continue
-		}
-		if def.CriteriaValue <= currentWeeks {
-			continue
-		}
-
-		staleBodies = append(staleBodies, badgeAchievedNotificationBody(def, seasonLabel))
-	}
-	if len(staleBodies) == 0 {
-		return nil, nil
-	}
-
-	stale, err := u.notificationRepo.FindByUserIdAndCategoryAndBodies(
-		ctx,
-		userId,
-		NotificationCategoryStreak,
-		staleBodies,
-	)
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-	if len(stale) == 0 || dryRun {
-		return stale, nil
-	}
-
-	ids := make([]string, 0, len(stale))
-	for _, n := range stale {
-		ids = append(ids, n.ID)
-	}
-
-	if err := u.notificationRepo.DeleteByIds(ctx, ids); err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	return stale, nil
 }
 
 func (u *BadgeEvaluation) EvaluateOnMatchCreated(

@@ -832,10 +832,13 @@ CREATE INDEX idx_user_daily_activities_date_category ON user_daily_activities (d
 -- 施策D: 記録ストリーク・実績バッジ (MOTIVATION.md 施策D / BADGE_STREAK_PLAN.md)
 --
 -- badge_definitions.id の採番ルール:
---   フォーマットは "{category}-{カテゴリ内2桁連番}" (例: onboarding-01, milestone-01, streak-01)。
+--   フォーマットは "{category}-{カテゴリ内2桁連番}" (例: onboarding-01, milestone-01)。
 --   連番は「カテゴリ内で採番した順」であり表示順ではない。表示順は created_at で決める。
---   一度発番したidは変更・使い回ししない。バッジを廃止する場合も削除せず available_to に
---   終了日を設定して無効化する(user_badges.badge_definition_id のFK切れを防ぐため)。
+--   一度発番したidは変更・使い回ししない(廃止したバッジのidも欠番のまま残す。週次ストリーク
+--   系の streak-01〜04 は廃止済み)。廃止のしかたはカテゴリで異なる。user_badges へ永続化
+--   される系(オンボーディング系)は行を消すと badge_definition_id のFKが切れるため、削除せず
+--   available_to に終了日を設定する。一覧取得時にライブ集計する系(マイルストーン系)は
+--   user_badges に行を持たないため、定義行ごと削除してよい。
 --   新しいカテゴリを追加する際は、そのカテゴリ用のプレフィックスを新設して 01 から採番する。
 CREATE TABLE badge_definitions (
     id             VARCHAR(26) PRIMARY KEY,
@@ -880,14 +883,6 @@ INSERT INTO badge_definitions (id, code, category, name, description, icon_key, 
 ('milestone-match-02', 'match_count_50',  'milestone', '常連バトラー',      '対戦数が50に到達した', 'medal', 'match_count', 50, now(), now()),
 ('milestone-match-03', 'match_count_100', 'milestone', 'ベテランバトラー',  '対戦数が100に到達した', 'medal', 'match_count', 100, now(), now()),
 ('milestone-match-04', 'match_count_150', 'milestone', 'マスターバトラー',  '対戦数が150に到達した', 'medal', 'match_count', 150, now(), now());
-
-
--- badge_definitions フェーズ1シード: 週次ストリーク系(streak-xx)
-INSERT INTO badge_definitions (id, code, category, name, description, icon_key, criteria_type, criteria_value, created_at, updated_at) VALUES
-('streak-01', 'streak_week_3',  'streak', '週次記録3週連続',  '3週連続で対戦を記録した',  'flame', 'streak_weeks', 3,  now(), now()),
-('streak-02', 'streak_week_7',  'streak', '週次記録7週連続',  '7週連続で対戦を記録した',  'flame', 'streak_weeks', 7,  now(), now()),
-('streak-03', 'streak_week_15', 'streak', '週次記録15週連続', '15週連続で対戦を記録した', 'flame', 'streak_weeks', 15, now(), now()),
-('streak-04', 'streak_week_30', 'streak', '週次記録30週連続', '30週連続で対戦を記録した', 'flame', 'streak_weeks', 30, now(), now());
 
 
 

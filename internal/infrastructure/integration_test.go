@@ -125,52 +125,6 @@ func TestIntegrationNotificationRepository(t *testing.T) {
 		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 	})
 
-	t.Run("正常系_categoryとbodyが一致する通知だけを特定して削除できる", func(t *testing.T) {
-		staleId := "01HD7Y3K8D6FDHMHTZ2GT41TN3"
-		keepId := "01HD7Y3K8D6FDHMHTZ2GT41TN4"
-		staleBody := "2026シーズンで「週次記録7週連続」バッジを獲得しました！"
-		keepBody := "2026シーズンで「週次記録3週連続」バッジを獲得しました！"
-
-		require.NoError(t, r.Save(context.Background(), entity.NewNotification(staleId, createdAt, uid, "streak", "ストリークを継続中です", staleBody, "/users")))
-		require.NoError(t, r.Save(context.Background(), entity.NewNotification(keepId, createdAt, uid, "streak", "ストリークを継続中です", keepBody, "/users")))
-
-		stale, err := r.FindByUserIdAndCategoryAndBodies(context.Background(), uid, "streak", []string{staleBody})
-		require.NoError(t, err)
-		require.Len(t, stale, 1)
-		require.Equal(t, staleId, stale[0].ID)
-
-		// カテゴリ違い(同じ本文でも別カテゴリ)は拾わない
-		none, err := r.FindByUserIdAndCategoryAndBodies(context.Background(), uid, "badge", []string{staleBody})
-		require.NoError(t, err)
-		require.Empty(t, none)
-
-		require.NoError(t, r.DeleteByIds(context.Background(), []string{stale[0].ID}))
-
-		ret, err := r.FindByUserId(context.Background(), uid, 10)
-		require.NoError(t, err)
-
-		ids := make([]string, 0, len(ret))
-		for _, n := range ret {
-			ids = append(ids, n.ID)
-		}
-		require.NotContains(t, ids, staleId)
-		require.Contains(t, ids, keepId)
-	})
-
-	t.Run("正常系_bodiesやidsが空なら1件も取らず1件も消さない", func(t *testing.T) {
-		before, err := r.FindByUserId(context.Background(), uid, 10)
-		require.NoError(t, err)
-
-		none, err := r.FindByUserIdAndCategoryAndBodies(context.Background(), uid, "streak", nil)
-		require.NoError(t, err)
-		require.Empty(t, none)
-
-		require.NoError(t, r.DeleteByIds(context.Background(), nil))
-
-		after, err := r.FindByUserId(context.Background(), uid, 10)
-		require.NoError(t, err)
-		require.Len(t, after, len(before))
-	})
 }
 
 // 記録本体・タグ・バッジ・通知の書き込みが、ctx のトランザクションに実際に参加して

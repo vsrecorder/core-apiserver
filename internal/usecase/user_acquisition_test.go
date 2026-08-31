@@ -66,6 +66,76 @@ func TestUserAcquisitionUsecase(t *testing.T) {
 			require.Equal(t, time.Local, saved.LandingAt.Location())
 		})
 
+		t.Run("正常系_運用の値は投稿タイプへ寄せ、元の値をcontentに残す", func(t *testing.T) {
+			// utm_content が無い代わりに utm_campaign が個別投稿まで識別している運用に合わせる。
+			// campaign だけ残すと「どの投稿か」が消え、㊱で個別投稿を追えなくなる
+			overrideTimeNow(t, now)
+			usecase, mockRepository := setup4TestUserAcquisitionUsecase(t)
+
+			var saved *entity.UserAcquisition
+			mockRepository.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, e *entity.UserAcquisition) error {
+					saved = e
+					return nil
+				},
+			)
+
+			err := usecase.Record(context.Background(), uid, &UserAcquisitionRecordParam{
+				Source:   "x",
+				Medium:   "post",
+				Campaign: "pain_wed_0812_janken",
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, entity.AcquisitionCampaignPainpoint, saved.Campaign)
+			require.Equal(t, "pain_wed_0812_janken", saved.Content)
+		})
+
+		t.Run("正常系_utm_contentがあれば元のcampaignで上書きしない", func(t *testing.T) {
+			overrideTimeNow(t, now)
+			usecase, mockRepository := setup4TestUserAcquisitionUsecase(t)
+
+			var saved *entity.UserAcquisition
+			mockRepository.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, e *entity.UserAcquisition) error {
+					saved = e
+					return nil
+				},
+			)
+
+			err := usecase.Record(context.Background(), uid, &UserAcquisitionRecordParam{
+				Source:   "x",
+				Campaign: "howto_fri_0828_prep",
+				Content:  "20260828a",
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, entity.AcquisitionCampaignHowtoCta, saved.Campaign)
+			require.Equal(t, "20260828a", saved.Content)
+		})
+
+		t.Run("正常系_丸めが起きていなければcontentは空のまま", func(t *testing.T) {
+			overrideTimeNow(t, now)
+			usecase, mockRepository := setup4TestUserAcquisitionUsecase(t)
+
+			var saved *entity.UserAcquisition
+			mockRepository.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, e *entity.UserAcquisition) error {
+					saved = e
+					return nil
+				},
+			)
+
+			err := usecase.Record(context.Background(), uid, &UserAcquisitionRecordParam{
+				Source:   "x",
+				Campaign: "howto_cta",
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, entity.AcquisitionCampaignHowtoCta, saved.Campaign)
+			require.Equal(t, "", saved.Content)
+		})
+
 		t.Run("正常系_UTMが無ければリファラからチャネルを推定する", func(t *testing.T) {
 			overrideTimeNow(t, now)
 			usecase, mockRepository := setup4TestUserAcquisitionUsecase(t)

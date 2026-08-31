@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	ulid "github.com/oklog/ulid/v2"
 	"gorm.io/gorm"
 
@@ -56,6 +57,21 @@ func generateId() (string, error) {
 func wrapError(err error) error {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return apperror.ErrRecordNotFound
+	}
+
+	return err
+}
+
+// wrapUniqueViolation は一意制約違反(主キー重複)を apperror.ErrAlreadyExists へ変換する。
+//
+// wrapError と分けてあるのは、これを全リポジトリへ一律に適用すると、これまで500だった
+// 制約違反が上位で「既に存在する」(409)として扱われ、意図しない応答に変わりうるため。
+// 重複が正常な入力として起こりうる箇所(同じ対象への同時登録など)でだけ使う。
+func wrapUniqueViolation(err error) error {
+	var pgErr *pgconn.PgError
+	// 23505 = unique_violation
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return apperror.ErrAlreadyExists
 	}
 
 	return err

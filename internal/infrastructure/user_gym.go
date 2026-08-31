@@ -86,6 +86,24 @@ func (i *UserGym) FindByUserId(
 	return ret, nil
 }
 
+// LockByUserId はユーザ単位のアドバイザリロックを取る。
+//
+// pg_advisory_xact_lock はトランザクションの終了で自動解放されるため、
+// 明示的な解放は要らない(途中でエラーになってもロックが残らない)。
+func (i *UserGym) LockByUserId(
+	ctx context.Context,
+	uid string,
+) error {
+	if tx := dbFromContext(ctx, i.db).Exec(
+		"SELECT pg_advisory_xact_lock(hashtext(?))", uid,
+	); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return tx.Error
+	}
+
+	return nil
+}
+
 func (i *UserGym) Create(
 	ctx context.Context,
 	entity *entity.UserGym,
@@ -98,9 +116,11 @@ func (i *UserGym) Create(
 		entity.CreatedAt,
 	)
 
+	// 同じ店舗への同時登録は主キー違反になる。そのまま返すと500になってしまうため、
+	// 「既に登録済み」として扱えるよう変換する(呼び出し側が409を返せる)。
 	if tx := db.Create(userGym); tx.Error != nil {
 		logError(ctx, tx.Error)
-		return tx.Error
+		return wrapUniqueViolation(tx.Error)
 	}
 
 	return nil

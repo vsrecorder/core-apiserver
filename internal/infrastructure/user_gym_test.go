@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
@@ -67,6 +69,21 @@ func TestUserGymInfrastructure(t *testing.T) {
 		})
 	})
 
+	t.Run("LockByUserId", func(t *testing.T) {
+		// 上限チェックを直列化するためのユーザ単位ロック。行が無くても取れる必要がある。
+		t.Run("正常系_ユーザ単位のアドバイザリロックを取る", func(t *testing.T) {
+			db, mock := setupSqlmockDB(t)
+			r := NewUserGym(db)
+
+			mock.ExpectExec(regexp.QuoteMeta(`SELECT pg_advisory_xact_lock(hashtext($1))`)).
+				WithArgs(uid).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+
+			require.NoError(t, r.LockByUserId(context.Background(), uid))
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	})
+
 	t.Run("Create", func(t *testing.T) {
 		t.Run("正常系_user_idとshop_idと登録日時を保存する", func(t *testing.T) {
 			db, mock := setupSqlmockDB(t)
@@ -81,6 +98,22 @@ func TestUserGymInfrastructure(t *testing.T) {
 			err := r.Create(context.Background(), entity.NewUserGym(uid, 10317, createdAt))
 
 			require.NoError(t, err)
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+
+		// 同じ店舗への同時登録は主キー違反になる。500ではなく「登録済み」として扱う。
+		t.Run("異常系_主キー違反はErrAlreadyExistsへ変換して返す", func(t *testing.T) {
+			db, mock := setupSqlmockDB(t)
+			r := NewUserGym(db)
+
+			mock.ExpectBegin()
+			mock.ExpectExec(`INSERT INTO "user_gyms"`).
+				WillReturnError(&pgconn.PgError{Code: "23505", Message: "duplicate key value violates unique constraint"})
+			mock.ExpectRollback()
+
+			err := r.Create(context.Background(), entity.NewUserGym(uid, 10317, createdAt))
+
+			require.ErrorIs(t, err, apperror.ErrAlreadyExists)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 

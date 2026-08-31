@@ -57,17 +57,20 @@ type UserGym struct {
 	userGymRepository       repository.UserGymInterface
 	shopRepository          repository.ShopInterface
 	officialEventRepository repository.OfficialEventInterface
+	transactionManager      repository.TransactionManager
 }
 
 func NewUserGym(
 	userGymRepository repository.UserGymInterface,
 	shopRepository repository.ShopInterface,
 	officialEventRepository repository.OfficialEventInterface,
+	transactionManager repository.TransactionManager,
 ) UserGymInterface {
 	return &UserGym{
 		userGymRepository:       userGymRepository,
 		shopRepository:          shopRepository,
 		officialEventRepository: officialEventRepository,
+		transactionManager:      transactionManager,
 	}
 }
 
@@ -97,30 +100,44 @@ func (u *UserGym) Create(
 		return nil, err
 	}
 
-	views, err := u.userGymRepository.FindByUserId(ctx, uid)
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	for _, view := range views {
-		if view.Shop.ID == shopId {
-			return nil, apperror.ErrAlreadyExists
-		}
-	}
-
-	// 上限に達していたら、どれを外すかはユーザーに選ばせる(自動で押し出さない)。
-	if len(views) >= MaxUserGymsPerUser {
-		return nil, apperror.ErrTooManyUserGyms
-	}
-
 	createdAt := timeNow()
 
-	if err := u.userGymRepository.Create(
-		ctx,
-		entity.NewUserGym(uid, shopId, createdAt),
-	); err != nil {
-		logError(ctx, err)
+	// 「今の件数を数える」と「1件足す」の間に同じユーザの別リクエストが割り込むと、
+	// 双方が上限未満と判断して上限を超えて登録できてしまう。1つのトランザクションに
+	// まとめたうえで、先頭でユーザ単位のロックを取って直列化する。
+	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.userGymRepository.LockByUserId(ctx, uid); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		views, err := u.userGymRepository.FindByUserId(ctx, uid)
+		if err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		for _, view := range views {
+			if view.Shop.ID == shopId {
+				return apperror.ErrAlreadyExists
+			}
+		}
+
+		// 上限に達していたら、どれを外すかはユーザーに選ばせる(自動で押し出さない)。
+		if len(views) >= MaxUserGymsPerUser {
+			return apperror.ErrTooManyUserGyms
+		}
+
+		if err := u.userGymRepository.Create(
+			ctx,
+			entity.NewUserGym(uid, shopId, createdAt),
+		); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 

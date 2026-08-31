@@ -97,3 +97,17 @@ func (mr *MockUserGymInterfaceMockRecorder) FindByUserId(ctx, uid any) *gomock.C
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserId", reflect.TypeOf((*MockUserGymInterface)(nil).FindByUserId), ctx, uid)
 }
+
+// LockByUserId mocks base method.
+func (m *MockUserGymInterface) LockByUserId(ctx context.Context, uid string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LockByUserId", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LockByUserId indicates an expected call of LockByUserId.
+func (mr *MockUserGymInterfaceMockRecorder) LockByUserId(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByUserId", reflect.TypeOf((*MockUserGymInterface)(nil).LockByUserId), ctx, uid)
+}

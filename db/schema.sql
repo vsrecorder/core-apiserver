@@ -106,6 +106,15 @@ CREATE TABLE official_events (
     FOREIGN KEY (shop_id)   REFERENCES shops (id)
 );
 
+-- Myジムのイベント一覧(OfficialEvent.FindByShopIds)は「登録店舗の、今日から2週間」を引く。
+-- official_events は100万行を超えており、索引が無いと毎回この全件を走査する。
+-- ホームのパネルは全ログインユーザが開くたびに叩くため、走査量がそのまま
+-- 共有バッファを流し続けることになる(本番はDBとアプリが同一VMに同居している)。
+--
+-- 実測(2026-09-01・約113万行): 77.6ms / 42,032ブロック読み込み → 4.6ms / 10ブロック。
+-- shop_id を先頭に置くのは、等値(IN)で絞ってから date の範囲を辿るため。
+CREATE INDEX idx_official_events_shop_id_date ON official_events (shop_id, date);
+
 
 
 -- Tonamel の大会情報(タイトル・説明・画像)を保持するキャッシュテーブル。

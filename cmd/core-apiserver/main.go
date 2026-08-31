@@ -289,6 +289,7 @@ func main() {
 			infrastructure.NewUserGym(db),
 			infrastructure.NewShop(db),
 			infrastructure.NewOfficialEvent(db),
+			infrastructure.NewTransactionManager(db),
 		),
 	).RegisterRoute(relativePath)
 

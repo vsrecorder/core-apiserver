@@ -16,6 +16,18 @@ type UserGymInterface interface {
 		uid string,
 	) ([]*entity.UserGymView, error)
 
+	// LockByUserId は uid のMyジムを更新する間、同じユーザによる同時更新を待たせる。
+	//
+	// 登録は「今の件数を数えてから1件足す」ため、その間に別のリクエストが割り込むと
+	// 双方が上限未満と判断して上限を超えて登録できてしまう(並列リクエストで再現する)。
+	// 行ロックでは1件も登録が無いときにロックする対象が存在しないため、
+	// ユーザ単位のロックで直列化する。トランザクション内でのみ意味を持ち、
+	// コミット/ロールバックで自動的に解放される。
+	LockByUserId(
+		ctx context.Context,
+		uid string,
+	) error
+
 	// Create はMyジムを1件登録する。
 	// 同じ店舗の重複登録は主キー違反になるため、呼び出し側で登録済みかを確認する。
 	Create(

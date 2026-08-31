@@ -29,7 +29,15 @@ func setup4TestUserGymUsecase(t *testing.T) (UserGymInterface, *userGymUsecaseMo
 		officialEvent: mock_repository.NewMockOfficialEventInterface(mockCtrl),
 	}
 
-	return NewUserGym(m.userGym, m.shop, m.officialEvent), m
+	// 登録は1トランザクションで行う。ここでは中の関数をそのまま実行する。
+	transactionManager := mock_repository.NewMockTransactionManager(mockCtrl)
+	transactionManager.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, fn func(context.Context) error) error {
+			return fn(ctx)
+		},
+	).AnyTimes()
+
+	return NewUserGym(m.userGym, m.shop, m.officialEvent, transactionManager), m
 }
 
 func newTestShop(id uint) *entity.Shop {
@@ -74,6 +82,7 @@ func TestUserGymUsecase(t *testing.T) {
 			overrideTimeNow(t, now)
 
 			m.shop.EXPECT().FindById(context.Background(), uint(10317)).Return(newTestShop(10317), nil)
+			m.userGym.EXPECT().LockByUserId(context.Background(), uid).Return(nil)
 			m.userGym.EXPECT().FindByUserId(context.Background(), uid).Return([]*entity.UserGymView{}, nil)
 			m.userGym.EXPECT().Create(context.Background(), entity.NewUserGym(uid, 10317, now)).Return(nil)
 
@@ -94,6 +103,7 @@ func TestUserGymUsecase(t *testing.T) {
 			}
 
 			m.shop.EXPECT().FindById(context.Background(), uint(10317)).Return(newTestShop(10317), nil)
+			m.userGym.EXPECT().LockByUserId(context.Background(), uid).Return(nil)
 			m.userGym.EXPECT().FindByUserId(context.Background(), uid).Return(newTestUserGymViews(shopIds...), nil)
 			// 古いものを押し出さない(Create も Delete も呼ばれない)
 
@@ -107,6 +117,7 @@ func TestUserGymUsecase(t *testing.T) {
 			usecase, m := setup4TestUserGymUsecase(t)
 
 			m.shop.EXPECT().FindById(context.Background(), uint(10317)).Return(newTestShop(10317), nil)
+			m.userGym.EXPECT().LockByUserId(context.Background(), uid).Return(nil)
 			m.userGym.EXPECT().FindByUserId(context.Background(), uid).Return(newTestUserGymViews(10317), nil)
 
 			ret, err := usecase.Create(context.Background(), uid, 10317)

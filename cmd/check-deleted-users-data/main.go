@@ -355,6 +355,19 @@ var specs = []tableSpec{
 		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
 	},
 	{
+		name:     "user_gyms",
+		category: categoryLeak,
+		// Myジム。参照先の shops はマスタなので残り、この行は user_id からしか辿れない。
+		query: `SELECT t.user_id, COUNT(*) FROM user_gyms t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `DELETE FROM user_gyms t USING users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
+	},
+	{
 		name:     "tags",
 		category: categoryLeak,
 		// プリセット(user_id='')は全ユーザー共通で誰のものでもないため、

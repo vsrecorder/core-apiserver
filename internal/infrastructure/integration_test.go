@@ -518,7 +518,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 		"match_tags", "record_tags", "deck_code_tags", "deck_tags", "tags",
 		"user_favorite_decks", "user_streaks", "user_daily_activities",
 		"user_badges", "user_environment_badges", "notifications", "users_players",
-		"user_acquisitions", "user_gyms", "shops",
+		"user_acquisitions", "user_gyms",
 		"games", "matches", "records", "deck_codes", "decks", "unofficial_events",
 		"pokemon_sprites",
 	)
@@ -1479,11 +1479,16 @@ func TestIntegrationUserAcquisitionRepository(t *testing.T) {
 //
 // model.Shop は prefectures を結合して受けるための読み出し専用の形(shops に無い
 // prefecture_name を含む)なので、書き込みには使えず生SQLで入れる。
+// shops は全テストで共有するマスタのため TRUNCATE しない。
+// go test はパッケージを並列に走らせるので、ここで TRUNCATE すると
+// 他パッケージが同じ行に触っているトランザクションとロックが交差し、
+// デッドロック(SQLSTATE 40P01)になる。テスト用の行は固有IDで入れ、消さずに残す。
 func insertTestShop(t *testing.T, db *gorm.DB, id uint, name string, prefectureId uint, address string) {
 	t.Helper()
 
 	require.NoError(t, db.Exec(
-		`INSERT INTO shops (id, name, term, prefecture_id, address) VALUES (?, ?, 1, ?, ?)`,
+		`INSERT INTO shops (id, name, term, prefecture_id, address) VALUES (?, ?, 1, ?, ?)
+		 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, address = EXCLUDED.address`,
 		id, name, prefectureId, address,
 	).Error)
 }
@@ -1491,14 +1496,14 @@ func insertTestShop(t *testing.T, db *gorm.DB, id uint, name string, prefectureI
 // Myジムは user_gyms と shops(+prefectures)の結合で組み立てる。JOINの当たり方・
 // 並び順・店舗が消えたときの落ち方は sqlmock では確かめられないため、実DBで見る。
 func TestIntegrationUserGymRepository(t *testing.T) {
-	db := setupIntegrationDB(t, "user_gyms", "official_events", "shops")
+	db := setupIntegrationDB(t, "user_gyms")
 
 	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 	// 東京(13)の2店舗と北海道(1)の1店舗。並び順の検証に使う。
-	insertTestShop(t, db, 90001, "テストカードショップ町田店", 13, "町田市原町田1-1")
-	insertTestShop(t, db, 90002, "テストカードショップ新宿店", 13, "新宿区西新宿1-1")
-	insertTestShop(t, db, 90003, "テストカードショップ札幌店", 1, "札幌市北区北七条1-1")
+	insertTestShop(t, db, 90001, "統合テスト用カードショップA", 13, "架空県テスト市1-1")
+	insertTestShop(t, db, 90002, "統合テスト用カードショップB", 13, "架空県テスト市2-2")
+	insertTestShop(t, db, 90003, "統合テスト用カードショップC", 1, "架空道テスト市3-3")
 
 	ctx := context.Background()
 	r := NewUserGym(db)
@@ -1517,7 +1522,7 @@ func TestIntegrationUserGymRepository(t *testing.T) {
 
 		// 登録した順(古い順)に並ぶ
 		require.Equal(t, uint(90001), views[0].Shop.ID)
-		require.Equal(t, "テストカードショップ町田店", views[0].Shop.Name)
+		require.Equal(t, "統合テスト用カードショップA", views[0].Shop.Name)
 		// prefectures を結合して都道府県名まで埋まっている
 		require.Equal(t, "東京都", views[0].Shop.PrefectureName)
 		require.Equal(t, uint(90003), views[1].Shop.ID)
@@ -1567,6 +1572,14 @@ func TestIntegrationUserGymRepository(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	// 上限チェックの直列化に使うロック。行が1件も無い状態でも取得できる必要がある
+	// (行ロックでは対象が無くロックできないため、アドバイザリロックにしている)。
+	t.Run("正常系_登録が無くてもユーザ単位のロックを取得できる", func(t *testing.T) {
+		require.NoError(t, NewTransactionManager(db).Do(ctx, func(ctx context.Context) error {
+			return r.LockByUserId(ctx, "no-such-user")
+		}))
+	})
+
 	t.Run("正常系_Myジムをまとめて削除できる", func(t *testing.T) {
 		require.NoError(t, r.DeleteByUserId(ctx, uid))
 
@@ -1576,27 +1589,29 @@ func TestIntegrationUserGymRepository(t *testing.T) {
 		require.Empty(t, views)
 	})
 
+	// shops は他テストと共有するマスタで、実データも入りうる。キーワードは
+	// このテストが入れた行だけに当たる固有の文字列を使う。
 	t.Run("正常系_店舗をキーワードで検索できる", func(t *testing.T) {
 		// 店舗名の部分一致
-		shops, err := shopRepository.Find(ctx, "札幌店", 50)
+		shops, err := shopRepository.Find(ctx, "カードショップC", 50)
 		require.NoError(t, err)
 		require.Len(t, shops, 1)
 		require.Equal(t, uint(90003), shops[0].ID)
 
 		// 住所の部分一致でも当たる
-		shops, err = shopRepository.Find(ctx, "町田市", 50)
+		shops, err = shopRepository.Find(ctx, "架空県テスト市1-1", 50)
 		require.NoError(t, err)
 		require.Len(t, shops, 1)
 		require.Equal(t, uint(90001), shops[0].ID)
 
 		// 共通部分で引くと都道府県順→店舗名順で返る
-		// (北海道(1)の札幌店が、東京(13)の新宿店・町田店より先に来る)
-		shops, err = shopRepository.Find(ctx, "テストカードショップ", 50)
+		// (北海道(1)のCが、東京(13)のA・Bより先に来る)
+		shops, err = shopRepository.Find(ctx, "統合テスト用カードショップ", 50)
 		require.NoError(t, err)
 		require.Len(t, shops, 3)
-		require.Equal(t, uint(90003), shops[0].ID) // 北海道 札幌店
-		require.Equal(t, uint(90002), shops[1].ID) // 東京 新宿店
-		require.Equal(t, uint(90001), shops[2].ID) // 東京 町田店
+		require.Equal(t, uint(90003), shops[0].ID) // 北海道 C
+		require.Equal(t, uint(90001), shops[1].ID) // 東京 A
+		require.Equal(t, uint(90002), shops[2].ID) // 東京 B
 
 		// キーワードの "%" はパターンとして効かない
 		shops, err = shopRepository.Find(ctx, "%", 50)
@@ -1604,7 +1619,7 @@ func TestIntegrationUserGymRepository(t *testing.T) {
 		require.Empty(t, shops)
 
 		// limit で打ち切られる
-		shops, err = shopRepository.Find(ctx, "テストカードショップ", 1)
+		shops, err = shopRepository.Find(ctx, "統合テスト用カードショップ", 1)
 		require.NoError(t, err)
 		require.Len(t, shops, 1)
 	})
@@ -1619,10 +1634,13 @@ func TestIntegrationUserGymRepository(t *testing.T) {
 // Myジムのイベント一覧は official_events を shop_id の集合と期間で引く。
 // 実スキーマとの整合(カラム名・DATE型の突き合わせ)を実DBで確認する。
 func TestIntegrationOfficialEventFindByShopIds(t *testing.T) {
-	db := setupIntegrationDB(t, "user_gyms", "official_events", "shops")
+	db := setupIntegrationDB(t, "user_gyms")
 
-	insertTestShop(t, db, 90001, "テストカードショップ町田店", 13, "町田市原町田1-1")
-	insertTestShop(t, db, 90002, "テストカードショップ新宿店", 13, "新宿区西新宿1-1")
+	insertTestShop(t, db, 90001, "統合テスト用カードショップA", 13, "架空県テスト市1-1")
+	insertTestShop(t, db, 90002, "統合テスト用カードショップB", 13, "架空県テスト市2-2")
+
+	// official_events も共有マスタなので、このテストが使うID範囲だけを消して作り直す
+	require.NoError(t, db.Exec(`DELETE FROM official_events WHERE id BETWEEN 900000 AND 900999`).Error)
 
 	today := time.Now().Local().Truncate(24 * time.Hour)
 

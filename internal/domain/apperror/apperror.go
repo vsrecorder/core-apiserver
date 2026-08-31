@@ -60,4 +60,9 @@ var (
 	// endpoint を変えて無制限に登録されると、配信バッチが外部へ POST を繰り返す増幅器になるため。
 	// HTTP では 409 Conflict に対応する。
 	ErrTooManyPushSubscriptions = errors.New("too many push subscriptions")
+
+	// ErrTooManyUserGyms は1ユーザーのMyジム登録数が上限に達している場合に返す。
+	// 上限を超えたぶんを黙って押し出さず、どれを外すかはユーザーに選ばせる。
+	// HTTP では 409 Conflict に対応する。
+	ErrTooManyUserGyms = errors.New("too many user gyms")
 )

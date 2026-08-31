@@ -518,7 +518,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 		"match_tags", "record_tags", "deck_code_tags", "deck_tags", "tags",
 		"user_favorite_decks", "user_streaks", "user_daily_activities",
 		"user_badges", "user_environment_badges", "notifications", "users_players",
-		"user_acquisitions",
+		"user_acquisitions", "user_gyms", "shops",
 		"games", "matches", "records", "deck_codes", "decks", "unofficial_events",
 		"pokemon_sprites",
 	)
@@ -592,6 +592,9 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 	require.NoError(t, db.Create(&model.UserFavoriteDeck{UserId: otherUid, DeckId: "deck-w1", CreatedAt: now}).Error)
 	require.NoError(t, db.Create(&model.UserFavoriteDeck{UserId: otherUid, DeckId: "deck-o1", CreatedAt: now}).Error)
 
+	// Myジムの参照先。マスタなので退会では消えない(消えるのは user_gyms の行だけ)。
+	insertTestShop(t, db, 90101, "テストカードショップ", 13, "町田市原町田1-1")
+
 	// ユーザ単位の付随データ(いずれも論理削除を持たない)
 	source := "x"
 	for _, uid := range []string{withdrawUid, otherUid} {
@@ -602,6 +605,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 		require.NoError(t, db.Create(&model.Notification{ID: "ntf-" + uid[:4], CreatedAt: now, UserId: uid, Category: "badge", Title: "t", Body: "b"}).Error)
 		require.NoError(t, db.Create(&model.UserPlayer{ID: "up-" + uid[:4], CreatedAt: now, UpdatedAt: now, UserId: uid, PlayerId: "1234567890123456"}).Error)
 		require.NoError(t, db.Create(&model.UserAcquisition{UserId: uid, Source: &source, CreatedAt: now, UpdatedAt: now}).Error)
+		require.NoError(t, db.Create(&model.UserGym{UserId: uid, ShopId: 90101, CreatedAt: now}).Error)
 	}
 
 	// 退会処理(usecase.User.Delete)が呼ぶのと同じ順序・同じリポジトリで消す。
@@ -619,6 +623,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 	require.NoError(t, NewNotification(db).DeleteByUserId(ctx, withdrawUid))
 	require.NoError(t, NewUserPlayer(db).DeleteByUserId(ctx, withdrawUid))
 	require.NoError(t, NewUserAcquisition(db).DeleteByUserId(ctx, withdrawUid))
+	require.NoError(t, NewUserGym(db).DeleteByUserId(ctx, withdrawUid))
 
 	// alive は論理削除されずに残っている行のIDを返す
 	alive := func(table string) []string {
@@ -692,7 +697,7 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 	t.Run("正常系_ユーザ単位の付随データが残らない", func(t *testing.T) {
 		for _, table := range []string{
 			"user_streaks", "user_daily_activities", "user_badges",
-			"user_environment_badges", "notifications", "user_acquisitions",
+			"user_environment_badges", "notifications", "user_acquisitions", "user_gyms",
 		} {
 			require.Zero(t, remaining(table, "user_id = ?", withdrawUid), "%s に退会者の行が残っている", table)
 			require.Equal(t, int64(1), remaining(table, "user_id = ?", otherUid), "%s の他人の行が巻き込まれている", table)
@@ -700,6 +705,9 @@ func TestIntegrationDeleteByUserId(t *testing.T) {
 
 		require.Zero(t, remaining("users_players", "user_id = ? AND deleted_at IS NULL", withdrawUid))
 		require.Equal(t, int64(1), remaining("users_players", "user_id = ? AND deleted_at IS NULL", otherUid))
+
+		// Myジムの参照先はマスタなので、退会で店舗そのものを消してはいけない。
+		require.Equal(t, int64(1), remaining("shops", "id = ?", 90101))
 	})
 }
 
@@ -1464,5 +1472,206 @@ func TestIntegrationUserAcquisitionRepository(t *testing.T) {
 		require.Nil(t, m.Source)
 		require.Nil(t, m.Campaign)
 		require.Nil(t, m.LandingAt)
+	})
+}
+
+// insertTestShop は shops へテスト用の店舗を1件入れる。
+//
+// model.Shop は prefectures を結合して受けるための読み出し専用の形(shops に無い
+// prefecture_name を含む)なので、書き込みには使えず生SQLで入れる。
+func insertTestShop(t *testing.T, db *gorm.DB, id uint, name string, prefectureId uint, address string) {
+	t.Helper()
+
+	require.NoError(t, db.Exec(
+		`INSERT INTO shops (id, name, term, prefecture_id, address) VALUES (?, ?, 1, ?, ?)`,
+		id, name, prefectureId, address,
+	).Error)
+}
+
+// Myジムは user_gyms と shops(+prefectures)の結合で組み立てる。JOINの当たり方・
+// 並び順・店舗が消えたときの落ち方は sqlmock では確かめられないため、実DBで見る。
+func TestIntegrationUserGymRepository(t *testing.T) {
+	db := setupIntegrationDB(t, "user_gyms", "official_events", "shops")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	// 東京(13)の2店舗と北海道(1)の1店舗。並び順の検証に使う。
+	insertTestShop(t, db, 90001, "テストカードショップ町田店", 13, "町田市原町田1-1")
+	insertTestShop(t, db, 90002, "テストカードショップ新宿店", 13, "新宿区西新宿1-1")
+	insertTestShop(t, db, 90003, "テストカードショップ札幌店", 1, "札幌市北区北七条1-1")
+
+	ctx := context.Background()
+	r := NewUserGym(db)
+	shopRepository := NewShop(db)
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	t.Run("正常系_登録したMyジムを店舗情報つきで取得できる", func(t *testing.T) {
+		require.NoError(t, r.Create(ctx, entity.NewUserGym(uid, 90001, now.Add(-time.Hour))))
+		require.NoError(t, r.Create(ctx, entity.NewUserGym(uid, 90003, now)))
+
+		views, err := r.FindByUserId(ctx, uid)
+
+		require.NoError(t, err)
+		require.Len(t, views, 2)
+
+		// 登録した順(古い順)に並ぶ
+		require.Equal(t, uint(90001), views[0].Shop.ID)
+		require.Equal(t, "テストカードショップ町田店", views[0].Shop.Name)
+		// prefectures を結合して都道府県名まで埋まっている
+		require.Equal(t, "東京都", views[0].Shop.PrefectureName)
+		require.Equal(t, uint(90003), views[1].Shop.ID)
+		require.Equal(t, "北海道", views[1].Shop.PrefectureName)
+	})
+
+	t.Run("正常系_解除したMyジムは一覧に残らない", func(t *testing.T) {
+		require.NoError(t, r.Delete(ctx, uid, 90003))
+
+		views, err := r.FindByUserId(ctx, uid)
+
+		require.NoError(t, err)
+		require.Len(t, views, 1)
+		require.Equal(t, uint(90001), views[0].Shop.ID)
+	})
+
+	// 解除は行の削除で表すため、同じ店舗を登録し直せる
+	t.Run("正常系_解除した店舗をもう一度登録できる", func(t *testing.T) {
+		require.NoError(t, r.Create(ctx, entity.NewUserGym(uid, 90003, now)))
+		require.NoError(t, r.Delete(ctx, uid, 90003))
+
+		views, err := r.FindByUserId(ctx, uid)
+
+		require.NoError(t, err)
+		require.Len(t, views, 1)
+	})
+
+	// 参照先を欠いた登録が残らないことは、FindByUserId の内部結合ではなく
+	// shops へのFKが担保している。FKが外れると「店舗名の無いMyジム」が作れてしまう。
+	t.Run("正常系_存在しない店舗は登録できない", func(t *testing.T) {
+		err := r.Create(ctx, entity.NewUserGym(uid, 90999, now))
+
+		require.Error(t, err)
+
+		views, err := r.FindByUserId(ctx, uid)
+
+		require.NoError(t, err)
+		require.Len(t, views, 1)
+		require.Equal(t, uint(90001), views[0].Shop.ID)
+	})
+
+	// 登録がある店舗はマスタから消せない(消すなら user_gyms を先に消す必要がある)。
+	// 取り込みバッチは店舗を Save するだけで消さないため、運用上ここは衝突しない。
+	t.Run("正常系_登録がある店舗はFKに守られてマスタから消せない", func(t *testing.T) {
+		err := db.Exec(`DELETE FROM shops WHERE id = ?`, 90001).Error
+
+		require.Error(t, err)
+	})
+
+	t.Run("正常系_Myジムをまとめて削除できる", func(t *testing.T) {
+		require.NoError(t, r.DeleteByUserId(ctx, uid))
+
+		views, err := r.FindByUserId(ctx, uid)
+
+		require.NoError(t, err)
+		require.Empty(t, views)
+	})
+
+	t.Run("正常系_店舗をキーワードで検索できる", func(t *testing.T) {
+		// 店舗名の部分一致
+		shops, err := shopRepository.Find(ctx, "札幌店", 50)
+		require.NoError(t, err)
+		require.Len(t, shops, 1)
+		require.Equal(t, uint(90003), shops[0].ID)
+
+		// 住所の部分一致でも当たる
+		shops, err = shopRepository.Find(ctx, "町田市", 50)
+		require.NoError(t, err)
+		require.Len(t, shops, 1)
+		require.Equal(t, uint(90001), shops[0].ID)
+
+		// 共通部分で引くと都道府県順→店舗名順で返る
+		// (北海道(1)の札幌店が、東京(13)の新宿店・町田店より先に来る)
+		shops, err = shopRepository.Find(ctx, "テストカードショップ", 50)
+		require.NoError(t, err)
+		require.Len(t, shops, 3)
+		require.Equal(t, uint(90003), shops[0].ID) // 北海道 札幌店
+		require.Equal(t, uint(90002), shops[1].ID) // 東京 新宿店
+		require.Equal(t, uint(90001), shops[2].ID) // 東京 町田店
+
+		// キーワードの "%" はパターンとして効かない
+		shops, err = shopRepository.Find(ctx, "%", 50)
+		require.NoError(t, err)
+		require.Empty(t, shops)
+
+		// limit で打ち切られる
+		shops, err = shopRepository.Find(ctx, "テストカードショップ", 1)
+		require.NoError(t, err)
+		require.Len(t, shops, 1)
+	})
+
+	t.Run("正常系_存在しない店舗はErrRecordNotFoundになる", func(t *testing.T) {
+		_, err := shopRepository.FindById(ctx, 90999)
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+}
+
+// Myジムのイベント一覧は official_events を shop_id の集合と期間で引く。
+// 実スキーマとの整合(カラム名・DATE型の突き合わせ)を実DBで確認する。
+func TestIntegrationOfficialEventFindByShopIds(t *testing.T) {
+	db := setupIntegrationDB(t, "user_gyms", "official_events", "shops")
+
+	insertTestShop(t, db, 90001, "テストカードショップ町田店", 13, "町田市原町田1-1")
+	insertTestShop(t, db, 90002, "テストカードショップ新宿店", 13, "新宿区西新宿1-1")
+
+	today := time.Now().Local().Truncate(24 * time.Hour)
+
+	insertTestOfficialEvent := func(id uint, shopId uint, date time.Time, startedAt time.Time) {
+		t.Helper()
+
+		require.NoError(t, db.Exec(
+			`INSERT INTO official_events (id, title, address, venue, date, started_at, ended_at, type_id, type_name, shop_id, shop_name)
+			 VALUES (?, 'ジムイベント', '東京都', '会場', ?, ?, ?, 4, 'ジムイベント', ?, 'テスト店')`,
+			id, date, startedAt, startedAt.Add(2*time.Hour), shopId,
+		).Error)
+	}
+
+	// 同じ日の別時刻・別の日・範囲外・登録していない店舗
+	insertTestOfficialEvent(900002, 90001, today, today.Add(14*time.Hour))
+	insertTestOfficialEvent(900001, 90001, today, today.Add(10*time.Hour))
+	insertTestOfficialEvent(900003, 90002, today.AddDate(0, 0, 3), today.AddDate(0, 0, 3).Add(10*time.Hour))
+	insertTestOfficialEvent(900004, 90001, today.AddDate(0, 0, 30), today.AddDate(0, 0, 30).Add(10*time.Hour))
+
+	r := NewOfficialEvent(db)
+	ctx := context.Background()
+
+	t.Run("正常系_指定店舗の期間内イベントを開催日時順で返す", func(t *testing.T) {
+		events, err := r.FindByShopIds(ctx, []uint{90001, 90002}, today, today.AddDate(0, 0, 14))
+
+		require.NoError(t, err)
+		require.Len(t, events, 3)
+
+		// 同じ日は開始時刻の昇順。日付をまたぐと日付順。
+		require.Equal(t, uint(900001), events[0].ID)
+		require.Equal(t, uint(900002), events[1].ID)
+		require.Equal(t, uint(900003), events[2].ID)
+		require.Equal(t, uint(90001), events[0].ShopId)
+	})
+
+	t.Run("正常系_登録していない店舗のイベントは含まれない", func(t *testing.T) {
+		events, err := r.FindByShopIds(ctx, []uint{90001}, today, today.AddDate(0, 0, 14))
+
+		require.NoError(t, err)
+		require.Len(t, events, 2)
+		for _, event := range events {
+			require.Equal(t, uint(90001), event.ShopId)
+		}
+	})
+
+	t.Run("正常系_店舗IDが空ならクエリを投げずに空スライスを返す", func(t *testing.T) {
+		events, err := r.FindByShopIds(ctx, []uint{}, today, today.AddDate(0, 0, 14))
+
+		require.NoError(t, err)
+		require.Empty(t, events)
 	})
 }

@@ -525,3 +525,36 @@ func GetUserAcquisitionCreateRequest(ctx *gin.Context) dto.UserAcquisitionCreate
 
 	return ret
 }
+
+func SetKeyword(ctx *gin.Context, value string) {
+	ctx.Set("keyword", value)
+}
+
+func GetKeyword(ctx *gin.Context) string {
+	value, _ := ctx.Get("keyword")
+	keyword, _ := value.(string)
+
+	return keyword
+}
+
+func SetShopId(ctx *gin.Context, value uint) {
+	ctx.Set("shop_id", value)
+}
+
+func GetShopId(ctx *gin.Context) uint {
+	value, _ := ctx.Get("shop_id")
+	shopId, _ := value.(uint)
+
+	return shopId
+}
+
+func SetUserGymCreateRequest(ctx *gin.Context, value dto.UserGymCreateRequest) {
+	ctx.Set("user_gym_create_request", value)
+}
+
+func GetUserGymCreateRequest(ctx *gin.Context) dto.UserGymCreateRequest {
+	value, _ := ctx.Get("user_gym_create_request")
+	ret, _ := value.(dto.UserGymCreateRequest)
+
+	return ret
+}

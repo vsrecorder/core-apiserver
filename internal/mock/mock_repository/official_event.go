@@ -71,3 +71,18 @@ func (mr *MockOfficialEventInterfaceMockRecorder) FindById(ctx, id any) *gomock.
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockOfficialEventInterface)(nil).FindById), ctx, id)
 }
+
+// FindByShopIds mocks base method.
+func (m *MockOfficialEventInterface) FindByShopIds(ctx context.Context, shopIds []uint, startDate, endDate time.Time) ([]*entity.OfficialEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByShopIds", ctx, shopIds, startDate, endDate)
+	ret0, _ := ret[0].([]*entity.OfficialEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByShopIds indicates an expected call of FindByShopIds.
+func (mr *MockOfficialEventInterfaceMockRecorder) FindByShopIds(ctx, shopIds, startDate, endDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByShopIds", reflect.TypeOf((*MockOfficialEventInterface)(nil).FindByShopIds), ctx, shopIds, startDate, endDate)
+}

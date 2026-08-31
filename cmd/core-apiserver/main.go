@@ -256,6 +256,7 @@ func main() {
 			infrastructure.NewPushSubscription(db),
 			infrastructure.NewPushDelivery(db),
 			infrastructure.NewUserAcquisition(db),
+			infrastructure.NewUserGym(db),
 			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
 		),
@@ -271,6 +272,22 @@ func main() {
 	controller.NewOfficialEvent(
 		r,
 		usecase.NewOfficialEvent(
+			infrastructure.NewOfficialEvent(db),
+		),
+	).RegisterRoute(relativePath)
+
+	controller.NewShop(
+		r,
+		usecase.NewShop(
+			infrastructure.NewShop(db),
+		),
+	).RegisterRoute(relativePath)
+
+	controller.NewUserGym(
+		r,
+		usecase.NewUserGym(
+			infrastructure.NewUserGym(db),
+			infrastructure.NewShop(db),
 			infrastructure.NewOfficialEvent(db),
 		),
 	).RegisterRoute(relativePath)

@@ -1081,6 +1081,27 @@ CREATE TABLE user_acquisitions (
 -- インデックスは持たせない(user_id の主キーのみ)。
 
 
+-- Myジム。ユーザが「よく行く店舗」として登録した shops への参照。
+-- ホームのMyジムパネルが、ここに登録された店舗の公式イベント(official_events)を引く。
+--
+-- 現在の上限はアプリ側(usecase.MaxUserGymsPerUser)が持ち、ここでは制約しない。
+-- 上限に達した状態での追加はエラーにする(お気に入りデッキのような自動の押し出しはしない)。
+-- ユーザが3枠を明示的に選ぶものなので、黙って古いものが外れる方が驚きが大きいため。
+-- 解除は行の削除で表すため、論理削除(deleted_at)は持たない。
+-- created_at は登録した日時で、一覧の並び順(古い順)にも使う。
+--
+-- users への FK は張らない。users を参照する子テーブル(users_players / user_streaks)に
+-- FK を張らないのが本リポジトリの作法。
+CREATE TABLE user_gyms (
+    user_id    VARCHAR(32) NOT NULL,
+    shop_id    INT         NOT NULL,
+    created_at TIMESTAMP   NOT NULL,
+    -- 同じ店舗を重複して登録できないことは主キーで担保する
+    PRIMARY KEY (user_id, shop_id),
+    FOREIGN KEY (shop_id) REFERENCES shops (id)
+);
+
+
 GRANT SELECT ON shops                   TO grafana;
 GRANT SELECT ON official_events         TO grafana;
 GRANT SELECT ON unofficial_events       TO grafana;
@@ -1134,3 +1155,4 @@ GRANT SELECT ON push_subscriptions      TO grafana;
 GRANT SELECT ON push_deliveries         TO grafana;
 
 GRANT SELECT ON user_acquisitions       TO grafana;
+GRANT SELECT ON user_gyms               TO grafana;

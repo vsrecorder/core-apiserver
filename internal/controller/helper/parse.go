@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,9 @@ const (
 	DefaultAllTime         = false
 	// DefaultRegulationId は「レギュレーションで絞り込まない」を表す。
 	DefaultRegulationId = 0
+	// MaxKeywordLength は店舗検索のキーワードの最大長。
+	// 一致対象の shops.name / shops.address がどちらも VARCHAR(255) のため。
+	MaxKeywordLength = 255
 
 	DateLayout = time.DateOnly
 )
@@ -411,4 +415,54 @@ func ParseQueryWeek(ctx *gin.Context) (string, error) {
 	}
 
 	return query, nil
+}
+
+// ParseQueryKeyword は店舗検索のキーワードを解析する。
+//
+// 前後の空白は落とし、長すぎる入力は弾く(部分一致の対象は店舗名と住所で、
+// どちらも VARCHAR(255) のため、それを超える長さは一致しようがない)。
+func ParseQueryKeyword(ctx *gin.Context) (string, error) {
+	keyword := strings.TrimSpace(GetQueryKeyword(ctx))
+
+	if len(keyword) > MaxKeywordLength {
+		return "", errors.New("bad query parameter")
+	}
+
+	return keyword, nil
+}
+
+// ParseParamShopId はパスの :shop_id を解析する。
+func ParseParamShopId(ctx *gin.Context) (uint, error) {
+	shopId, err := strconv.Atoi(GetParamShopId(ctx))
+
+	if err != nil {
+		return 0, err
+	} else if shopId <= 0 {
+		return 0, errors.New("bad path parameter")
+	}
+
+	return uint(shopId), nil
+}
+
+// ParseQueryLimitOptional は limit を解析する。未指定のときは 0 を返し、
+// 既定値の決定を呼び出し側(usecase)へ委ねる。
+//
+// ParseQueryLimit は未指定を一覧向けの DefaultLimit(10) で埋めるため、
+// 既定件数がそれと異なるAPI(店舗検索など)ではこちらを使う。
+func ParseQueryLimitOptional(ctx *gin.Context) (int, error) {
+	query := GetQueryLimit(ctx)
+
+	if query == "" {
+		return 0, nil
+	}
+
+	limit, err := strconv.Atoi(query)
+
+	if err != nil { // 取得したクエリパラメータが数値か否か
+		return 0, err
+	} else if limit < 0 {
+		return 0, errors.New("bad query parameter")
+	}
+
+	return limit, nil
 }

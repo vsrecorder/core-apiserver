@@ -81,8 +81,9 @@ func TestOfficialEventInfrastructure(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 	){
-		"Find":     test_OfficialEventInfrastructure_Find,
-		"FindById": test_OfficialEventInfrastructure_FindById,
+		"Find":          test_OfficialEventInfrastructure_Find,
+		"FindById":      test_OfficialEventInfrastructure_FindById,
+		"FindByShopIds": test_OfficialEventInfrastructure_FindByShopIds,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -306,6 +307,47 @@ func test_OfficialEventInfrastructure_FindById(t *testing.T) {
 		require.Equal(t, uint(1), officialEvent.TypeId)
 		require.Equal(t, uint(5000), officialEvent.Capacity)
 		require.Equal(t, uint(40), officialEvent.PrefectureId)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func test_OfficialEventInfrastructure_FindByShopIds(t *testing.T) {
+	date := time.Date(2025, 2, 15, 0, 0, 0, 0, time.UTC)
+	startedAt := time.Date(2025, 2, 15, 7, 30, 0, 0, time.UTC)
+	endedAt := time.Date(2025, 2, 15, 20, 50, 0, 0, time.UTC)
+	endDate := date.AddDate(0, 0, 14)
+
+	t.Run("正常系_指定した店舗の期間内イベントを開催日時順で返す", func(t *testing.T) {
+		r, mock, err := setup4OfficialEventInfrastructure()
+		require.NoError(t, err)
+
+		mock.ExpectQuery(officialEventQuery(
+			`WHERE official_events.shop_id IN ($1,$2) AND official_events.date BETWEEN $3 AND $4 `+
+				`ORDER BY official_events.date ASC, official_events.started_at ASC, official_events.id ASC`,
+		)).WithArgs(
+			uint(10317),
+			uint(10318),
+			date,
+			endDate,
+		).WillReturnRows(officialEventRows(date, startedAt, endedAt))
+
+		events, err := r.FindByShopIds(context.Background(), []uint{10317, 10318}, date, endDate)
+
+		require.NoError(t, err)
+		require.Len(t, events, 1)
+		require.Equal(t, uint(606466), events[0].ID)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// Myジム未登録のユーザで店舗マスタ全件を走査するクエリを投げない
+	t.Run("正常系_店舗IDが空ならクエリを投げずに空スライスを返す", func(t *testing.T) {
+		r, mock, err := setup4OfficialEventInfrastructure()
+		require.NoError(t, err)
+
+		events, err := r.FindByShopIds(context.Background(), []uint{}, date, endDate)
+
+		require.NoError(t, err)
+		require.Empty(t, events)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }

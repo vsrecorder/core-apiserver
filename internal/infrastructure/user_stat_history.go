@@ -47,7 +47,12 @@ func (i *UserStatHistory) FindUserStatHistory(
 		Where("records.event_date >= ? AND records.event_date < ?", fromDate, toDate)
 
 	if deckId != "" {
-		query = query.Where("matches.deck_id = ?", deckId)
+		// デッキセレクタは records.deck_id を基準に選択肢を作っている（deck_usage_stat.go参照）。
+		// matches.deck_id はマッチ作成時点の値がコピーされたまま更新されないため、
+		// 記録後にデッキを変更した対戦がズレて、選択肢に出ているデッキの推移が
+		// 実際より少なく（別のデッキでは多く）出てしまう。
+		// そのため records.deck_id で絞り込み、選択肢と実データの基準を一致させる。
+		query = query.Where("records.deck_id = ?", deckId)
 	}
 
 	// レギュレーション(スタンダード/エクストラ/殿堂)での絞り込み。0 は絞り込みなし。

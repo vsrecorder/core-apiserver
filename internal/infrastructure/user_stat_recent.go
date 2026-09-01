@@ -43,7 +43,9 @@ func (i *UserStatRecent) FindRecentMatches(
 		Select(
 			"matches.id AS match_id, "+
 				"records.event_date AS event_date, "+
-				"matches.deck_id AS deck_id, "+
+				// デッキは records.deck_id を正とする(matches.deck_id は記録後の
+				// デッキ変更に追随しないため使わない。deck_usage_stat と同じ方針)。
+				"records.deck_id AS deck_id, "+
 				"matches.opponents_deck_info AS opponents_deck_info, "+
 				"matches.victory_flg AS victory_flg, "+
 				"matches.draw_flg AS draw_flg",
@@ -52,7 +54,8 @@ func (i *UserStatRecent) FindRecentMatches(
 		Where("matches.user_id = ? AND matches.deleted_at IS NULL", userId)
 
 	if deckId != "" {
-		query = query.Where("matches.deck_id = ?", deckId)
+		// 上の SELECT と同じく records.deck_id を正とする。
+		query = query.Where("records.deck_id = ?", deckId)
 	}
 
 	// レギュレーション(スタンダード/エクストラ/殿堂)での絞り込み。0 は絞り込みなし。

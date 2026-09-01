@@ -50,7 +50,7 @@ func TestUserStatHistoryInfrastructure(t *testing.T) {
 
 		deckId := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-		mock.ExpectQuery(`SELECT TO_CHAR.*matches\.deck_id = \$4.*GROUP BY`).
+		mock.ExpectQuery(`SELECT TO_CHAR.*records\.deck_id = \$4.*GROUP BY`).
 			WithArgs(uid, fromDate, toDate, deckId).
 			WillReturnRows(sqlmock.NewRows(monthlyColumns))
 

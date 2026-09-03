@@ -465,9 +465,23 @@ func main() {
 		infrastructure.NewCityleagueSchedule(db),
 	).RegisterRoute(relativePath)
 
+	controller.NewChampionsleagueSchedule(
+		r,
+		usecase.NewChampionsleagueSchedule(
+			infrastructure.NewChampionsleagueSchedule(db),
+		),
+	).RegisterRoute(relativePath)
+
 	controller.NewCityleagueResult(
 		r,
 		infrastructure.NewCityleagueResult(db),
+	).RegisterRoute(relativePath)
+
+	controller.NewChampionsleagueResult(
+		r,
+		usecase.NewChampionsleagueResult(
+			infrastructure.NewChampionsleagueResult(db),
+		),
 	).RegisterRoute(relativePath)
 
 	controller.NewStandardRegulation(

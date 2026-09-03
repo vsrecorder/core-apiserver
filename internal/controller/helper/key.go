@@ -569,3 +569,14 @@ func GetUserGymCreateRequest(ctx *gin.Context) dto.UserGymCreateRequest {
 
 	return ret
 }
+
+func SetChampionsleagueScheduleId(ctx *gin.Context, value string) {
+	ctx.Set("championsleague_schedule_id", value)
+}
+
+func GetChampionsleagueScheduleId(ctx *gin.Context) string {
+	value, _ := ctx.Get("championsleague_schedule_id")
+	championsleagueScheduleId, _ := value.(string)
+
+	return championsleagueScheduleId
+}

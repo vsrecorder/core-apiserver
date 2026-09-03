@@ -7,6 +7,7 @@
 package httpclient
 
 import (
+	"bytes"
 	"net/http"
 	"net/url"
 	"time"
@@ -27,4 +28,16 @@ func Get(url string) (*http.Response, error) {
 // PostForm はタイムアウト付きで http.PostForm 相当のリクエストを行う。
 func PostForm(url string, data url.Values) (*http.Response, error) {
 	return client.PostForm(url, data)
+}
+
+// PostJSON はタイムアウト付きで application/json のPOSTリクエストを行う。
+// Slackのincoming webhookのように、JSONボディを送る通知先で使う。
+func PostJSON(url string, body []byte) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	return client.Do(req)
 }

@@ -107,3 +107,9 @@ func GetQueryWeek(ctx *gin.Context) string {
 func GetQueryKeyword(ctx *gin.Context) string {
 	return ctx.Query("keyword")
 }
+
+// GetQueryChampionsleagueScheduleId は GET /championsleague_results の絞り込み対象の大会ID
+// (championsleague_schedules.id。例 "cl2027_yokohama")。
+func GetQueryChampionsleagueScheduleId(ctx *gin.Context) string {
+	return ctx.Query("championsleague_schedule_id")
+}

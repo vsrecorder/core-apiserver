@@ -15,7 +15,7 @@ APIのベースパスは `/api/v1beta`、待ち受けポートは `8914`。
 make test              # go mod tidy && make lint-tx && UTC と Asia/Tokyo の両方で go test -v -cover -race ./...
 make lint-tx           # infrastructure の書き込みが dbFromContext を経由しているかの検査
 make run               # go run cmd/core-apiserver/main.go
-make build             # go build -o /dev/null ...（バイナリは作らないコンパイル確認）
+make build             # cmd配下の全コマンドを bin/ へビルド（cronが叩くバイナリもこれで揃う）
 make mockgen           # domain/repository・usecase のインタフェースからモックを再生成
 make integration-test  # 使い捨てPostgresを起動しdb/schema.sqlを適用してTestIntegration*を実行
 ```
@@ -257,7 +257,9 @@ CI（`.github/workflows/`）も同じく両方で実行する。
 ## cmd配下のバッチ
 
 APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバッチは実行できない。ホスト上で
-`go build` したバイナリを叩く（`config/crontab` 参照）。バッチを追加・変更するときの決まり:
+`make build` して `bin/` へ出したバイナリを叩く（`config/crontab` 参照）。`make build` は
+`cmd` 配下を全てビルドするので、バッチを直したらこれを実行するだけでcronの参照先も揃う。
+バッチを追加・変更するときの決まり:
 
 - `main.go` 冒頭のパッケージコメントに、目的・判定基準・冪等性・使い方（実行例）を書く。
   各バッチの仕様はここが正。
@@ -293,12 +295,15 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 唯一の例外は `matches.opponents_user_id` で、これは他のユーザが作った対戦記録の中で
 対戦相手として参照されているもの。他人のデータなので消さない。
 
-**ユーザに紐づくテーブルを追加したら、次の3箇所を必ず揃えて更新すること。**
+**ユーザに紐づくテーブルを追加したら、次の4箇所を必ず揃えて更新すること。**
 
 1. そのテーブルのリポジトリに `DeleteByUserId` を足し、`usecase.User.Delete` から呼ぶ
 2. `internal/usecase/user_test.go` の `expectDeleteAllUserData` に足す
    （呼び忘れるとgomockの未消化EXPECTで落ちる）
 3. `cmd/check-deleted-users-data` の `specs` と、`main_test.go` の `TestSpecs` の一覧に足す
+4. `cmd/purge-deleted-user-data`（退会済みユーザのデータを物理削除するバッチ）の `specs` と、
+   `main_test.go` の一覧に足す。specs の**並び順がそのまま削除順**になるため、FKの子を親より
+   先に置くこと（`TestSpecsDeleteOrder` が依存関係を検査する）
 
 中間テーブルは付与先（deck/record/match など）のリポジトリ側で、親を論理削除する**前に**
 消す。GORMがサブクエリへ `deleted_at IS NULL` を付けるため、親を先に消すと子が消し残る。

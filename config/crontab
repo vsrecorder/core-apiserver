@@ -25,11 +25,12 @@
 #     実行し、.env を確実に読ませる。
 #   - 出力ログの保存先（/var/log/vsrecorder/）は事前に作成し書き込み権限を付与しておく。
 #
-# ■ 事前ビルド（デプロイ時に一度。パスは環境に合わせて読み替える）
-#   cd /opt/vsrecorder/core-apiserver \
-#     && go build -o /opt/vsrecorder/bin/notify-streak-nudge ./cmd/notify-streak-nudge \
-#     && go build -o /opt/vsrecorder/bin/notify-weekly-report ./cmd/notify-weekly-report \
-#     && go build -o /opt/vsrecorder/bin/notify-weekend-reminder ./cmd/notify-weekend-reminder
+# ■ 事前ビルド（デプロイ時と、バッチを修正したとき。パスは環境に合わせて読み替える）
+#   cd /home/ubuntu/vsrecorder/core-apiserver && make build
+#
+#   cmd 配下の全コマンドがリポジトリ直下の bin/ へ出力される（下の各ジョブが叩くパス）。
+#   バッチごとに go build していると、追加・修正したものを取りこぼして cron が古いバイナリの
+#   まま動き続けるため、バッチを直したら必ず make build で作り直すこと。
 
 # cron のタイムゾーン指定
 CRON_TZ=Asia/Tokyo
@@ -70,3 +71,25 @@ CRON_TZ=Asia/Tokyo
 # ※ B-5 (notify-streak-nudge) と P-2 (notify-weekly-report) も同じ .env の VAPID_* を読み、
 #   購読者にはアプリ内通知に加えて push を送る(B1_EXECUTION_STEPS.md Step 2-2)。
 #   鍵を配布したら3本とも再ビルドしてから次の実行を待つこと。
+
+# ── FirebaseとDBのユーザー突合(cmd/check-firebase-users)──
+# 30分ごと。Firebase Authentication のユーザーと、DBの有効なユーザー(deleted_at IS NULL)を
+# 突合し、差異があれば Slack へ通知する。読み取り専用で、FirebaseにもDBにも書き込まない。
+#
+# 検知したい事象は、放置するとユーザーが使えないまま気づかれない次の2つ:
+#   - firebase_only(B:登録未完了) … Firebaseにはいるが users に行が無い。本人はログインした
+#     つもりでサービスを使えていない。
+#   - db_only … DBには有効なのにFirebaseにいない。ログインできない。
+# (firebase_only の A:退会済み は本人の意思による退会の残骸で、Firebase側のユーザーを消すのが対処。
+#  再登録を促す連絡をしてはいけない)
+#
+# 通知先の webhook URL は .env の SLACK_WEBHOOK_URL から読む(URL自体が投稿権限を持つ秘密情報の
+# ため、この crontab には書かない)。差異が無い実行では何も送らないので、30分ごとでも通知は埋もれない。
+# 差異が続いている間は30分ごとに再通知される点に注意(解消するまで鳴り続ける)。
+# ログイン不可・利用不可の検知が目的で、通知を止める抑制はあえて持たせていない。
+#
+# 実行には .env の FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY
+# (または GOOGLE_APPLICATION_CREDENTIALS)が必要。
+# flock -n は Firebase の全件取得が30分に収まらなかったときの多重起動を防ぐ。
+# 30分ごと — FirebaseとDBのユーザー突合(差異があればSlackへ通知)
+*/30 * * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-check-firebase-users.lock /home/ubuntu/vsrecorder/core-apiserver/bin/check-firebase-users -notify-slack >> /var/log/vsrecorder/check-firebase-users.log 2>&1

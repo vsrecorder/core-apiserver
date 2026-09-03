@@ -1741,3 +1741,130 @@ func TestIntegrationOfficialEventFindByShopIds(t *testing.T) {
 		require.Empty(t, events)
 	})
 }
+
+// 大型大会の結果取得。ORDER BY に予約語 rank を素で書いているため、
+// GORMが生成するSQLが実Postgresで通ることと、db/schema.sql との整合を確認する。
+func TestIntegrationChampionsleagueResult(t *testing.T) {
+	db := setupIntegrationDB(t, "championsleague_results", "official_events")
+
+	// FK制約: championsleague_results -> championsleague_schedules / official_events。
+	// championsleague_schedules は db/schema.sql が初期データを持つのでそのまま使う。
+	require.NoError(t, db.Exec(
+		`INSERT INTO official_events (id, title, address, date) VALUES (?, ?, ?, ?)`,
+		1032135, "ポケモンジャパンチャンピオンシップス2026 マスターリーグ Day2", "東京都", time.Date(2026, 6, 7, 0, 0, 0, 0, time.Local),
+	).Error)
+	require.NoError(t, db.Exec(
+		`INSERT INTO official_events (id, title, address, date) VALUES (?, ?, ?, ?)`,
+		1032136, "ポケモンジャパンチャンピオンシップス2026 シニアリーグ Day2", "東京都", time.Date(2026, 6, 7, 0, 0, 0, 0, time.Local),
+	).Error)
+
+	eventDate := time.Date(2026, 6, 7, 0, 0, 0, 0, time.Local)
+
+	insertResult := func(officialEventId uint, leagueType uint, playerId string, rank uint, deckCode string) {
+		t.Helper()
+		require.NoError(t, db.Create(&model.ChampionsleagueResult{
+			ChampionsleagueScheduleId: "pjcs2026",
+			OfficialEventId:           officialEventId,
+			LeagueType:                leagueType,
+			EventDate:                 eventDate,
+			PlayerId:                  playerId,
+			PlayerName:                "テストプレイヤー",
+			Rank:                      rank,
+			DeckCode:                  deckCode,
+		}).Error)
+	}
+
+	// 挿入順を順位の昇順と変えておき、ORDER BY rank が効いていることを確かめられるようにする
+	insertResult(1032135, 4, "0000000002", 2, "bbbbbb-bbbbbb-bbbbbb")
+	insertResult(1032135, 4, "0000000001", 1, "aaaaaa-aaaaaa-aaaaaa")
+	insertResult(1032136, 3, "0000000003", 1, "cccccc-cccccc-cccccc")
+
+	ctx := context.Background()
+	r := NewChampionsleagueResult(db)
+
+	t.Run("正常系_大会IDでイベント単位にまとめて返す", func(t *testing.T) {
+		ret, err := r.FindByChampionsleagueScheduleId(ctx, 0, "pjcs2026")
+
+		require.NoError(t, err)
+		require.Len(t, ret, 2)
+
+		// league_type の降順(マスターが先頭)
+		require.Equal(t, uint(1032135), ret[0].OfficialEventId)
+		require.Equal(t, uint(4), ret[0].LeagueType)
+		require.Len(t, ret[0].EventResults, 2)
+		// rank の昇順
+		require.Equal(t, uint(1), ret[0].EventResults[0].Rank)
+		require.Equal(t, "aaaaaa-aaaaaa-aaaaaa", ret[0].EventResults[0].DeckCode)
+		require.Equal(t, uint(2), ret[0].EventResults[1].Rank)
+
+		require.Equal(t, uint(1032136), ret[1].OfficialEventId)
+		require.Len(t, ret[1].EventResults, 1)
+	})
+
+	t.Run("異常系_結果が無い大会IDはErrRecordNotFoundを返す", func(t *testing.T) {
+		ret, err := r.FindByChampionsleagueScheduleId(ctx, 0, "cl2027_yokohama")
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Nil(t, ret)
+	})
+
+	t.Run("正常系_リーグ区分で絞り込める", func(t *testing.T) {
+		ret, err := r.FindByChampionsleagueScheduleId(ctx, 3, "pjcs2026")
+
+		require.NoError(t, err)
+		require.Len(t, ret, 1)
+		require.Equal(t, uint(1032136), ret[0].OfficialEventId)
+		require.Equal(t, uint(3), ret[0].LeagueType)
+	})
+
+	t.Run("異常系_結果が無いリーグ区分はErrRecordNotFoundを返す", func(t *testing.T) {
+		ret, err := r.FindByChampionsleagueScheduleId(ctx, 1, "pjcs2026")
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Nil(t, ret)
+	})
+
+	t.Run("正常系_FindEventsは入賞者を畳んでイベント単位で返す", func(t *testing.T) {
+		ret, err := r.FindEvents(ctx)
+
+		require.NoError(t, err)
+		require.Len(t, ret, 2)
+		require.Equal(t, "pjcs2026", ret[0].ChampionsleagueScheduleId)
+		require.Equal(t, uint(1032135), ret[0].OfficialEventId)
+		require.Equal(t, uint(4), ret[0].LeagueType)
+		require.Equal(t, uint(1032136), ret[1].OfficialEventId)
+	})
+}
+
+// 大会一覧の取得。db/schema.sql の初期データ(championsleague_schedules)を読めることを確認する。
+func TestIntegrationChampionsleagueSchedule(t *testing.T) {
+	db := setupIntegrationDB(t)
+	r := NewChampionsleagueSchedule(db)
+
+	ctx := context.Background()
+
+	t.Run("正常系_開始日の降順で全大会を返す", func(t *testing.T) {
+		ret, err := r.Find(ctx)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, ret)
+
+		for i := 1; i < len(ret); i++ {
+			require.False(t, ret[i-1].FromDate.Before(ret[i].FromDate))
+		}
+	})
+
+	t.Run("正常系_指定IDの大会を返す", func(t *testing.T) {
+		ret, err := r.FindById(ctx, "pjcs2026")
+
+		require.NoError(t, err)
+		require.Equal(t, "pjcs2026", ret.ID)
+		require.Equal(t, "ポケモンジャパンチャンピオンシップス2026", ret.Title)
+	})
+
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
+		_, err := r.FindById(ctx, "unknown")
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+}

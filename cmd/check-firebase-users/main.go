@@ -27,6 +27,16 @@
 //
 // 本ツールは読み取り専用で、Firebase・DB のいずれにも一切書き込みを行わない。
 //
+// Slack通知:
+//
+//	-notify-slack を指定すると、差異が見つかったときだけ Slack の incoming webhook へ
+//	サマリと該当UIDを送る。定期実行(config/crontab で30分ごと)からログを見に行かずに
+//	気づけるようにするためのもので、差異が無ければ何も送らない。
+//	送信先は環境変数 SLACK_WEBHOOK_URL(.env)で与える。webhook URL はそれ自体が
+//	投稿権限を持つ秘密情報なので、コードやcrontabに直接書かない。
+//	-notify-slack を指定したのに SLACK_WEBHOOK_URL が未設定の場合は、通知されないまま
+//	正常終了したように見えるのを避けるため、突合を始める前にエラー終了する。
+//
 // 認証情報:
 //
 //	GOOGLE_APPLICATION_CREDENTIALS にサービスアカウントJSONのパスを設定するか、
@@ -45,14 +55,21 @@
 //	# 差異があった場合に終了コード 1 を返す(CI・定期実行で検知したい場合)
 //	go run ./cmd/check-firebase-users -exit-code
 //
+//	# 差異があった場合に Slack へ通知する(定期実行用。SLACK_WEBHOOK_URL が必要)
+//	go run ./cmd/check-firebase-users -notify-slack
+//
 // 終了コード: 0 = 正常終了(-exit-code 指定時は差異なし)、1 = エラー(または差異あり)
+// Slack への送信に失敗した場合も、差異を誰も知らないまま終わるのを避けるため 1 を返す。
 package main
 
 import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -65,6 +82,7 @@ import (
 	"google.golang.org/api/option"
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/httpclient"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 )
@@ -73,6 +91,11 @@ const (
 	ExitCodeOK = iota
 	ExitCodeNG
 )
+
+// maxSlackListItems は Slack へ載せるUIDの上限(種別ごと)。Slack のメッセージには
+// 文字数上限があり、差異が大量に出たときに投稿ごと失敗して何も通知されなくなるのを避ける。
+// 超過分は件数だけ伝え、詳細はログを見てもらう。
+const maxSlackListItems = 20
 
 // dbUser は突合に必要な users テーブルの情報。deleted_at が入っている行(退会済み)も
 // 「Firebaseには残っているが退会済み」というケースを区別して報告するために読み込む。
@@ -93,10 +116,19 @@ type firebaseUser struct {
 func main() {
 	verbose := flag.Bool("verbose", false, "UIDに加えてメールアドレスや作成日時などの詳細を表示する")
 	exitCode := flag.Bool("exit-code", false, "true の場合、差異が見つかったら終了コード1で終了する")
+	notifySlack := flag.Bool("notify-slack", false, "true の場合、差異が見つかったら SLACK_WEBHOOK_URL へ通知する")
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load .env file: %v", err)
+	}
+
+	// 通知先が無いまま突合まで走ると、差異があっても誰にも届かないまま正常終了に見えてしまう。
+	// 設定漏れは起動直後に気づけるよう、ここで打ち切る。
+	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+	if *notifySlack && slackWebhookURL == "" {
+		log.Printf("SLACK_WEBHOOK_URL is not set: -notify-slack requires it\n")
+		os.Exit(ExitCodeNG)
 	}
 
 	ctx := context.Background()
@@ -131,12 +163,7 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
-	activeCount := 0
-	for _, u := range dbUsers {
-		if u.DeletedAt == nil {
-			activeCount++
-		}
-	}
+	activeCount := countActiveDBUsers(dbUsers)
 
 	log.Printf("firebase: %d users, db: %d users (有効: %d, 退会済み: %d)\n",
 		len(firebaseUsers), len(dbUsers), activeCount, len(dbUsers)-activeCount)
@@ -145,7 +172,27 @@ func main() {
 
 	report(firebaseOnly, dbOnly, dbUsers, firebaseUsers, *verbose)
 
-	if *exitCode && (len(firebaseOnly) > 0 || len(dbOnly) > 0) {
+	hasDiff := len(firebaseOnly) > 0 || len(dbOnly) > 0
+
+	// 通知はレポートを出し切ってから行う。Slackが落ちていても、ログには結果が残るようにする。
+	notifyFailed := false
+	if *notifySlack && hasDiff {
+		message := buildSlackMessage(firebaseOnly, dbOnly, dbUsers, firebaseUsers)
+
+		if err := notifyToSlack(slackWebhookURL, message); err != nil {
+			log.Printf("failed to notify to slack: %v\n", err)
+			notifyFailed = true
+		} else {
+			log.Printf("notified the difference to slack\n")
+		}
+	}
+
+	// 通知できなかった場合は差異が誰にも届いていないため、cronのログや監視で拾えるよう異常終了にする
+	if notifyFailed {
+		os.Exit(ExitCodeNG)
+	}
+
+	if *exitCode && hasDiff {
 		os.Exit(ExitCodeNG)
 	}
 
@@ -340,4 +387,97 @@ func report(
 			}
 		}
 	}
+}
+
+// buildSlackMessage は差異の内容を Slack へ投稿する本文へ組み立てる。
+// 差異が無いときは呼ばれない前提(通知するのは差異があるときだけ)。
+//
+// ログと同様に firebase_only は A / B に分けて出す。両者は原因も対処も正反対で、
+// 「A:退会済み」へ再登録を促すような連絡をしてしまわないよう、通知の時点で区別しておく。
+func buildSlackMessage(
+	firebaseOnly []string,
+	dbOnly []string,
+	dbUsers map[string]*dbUser,
+	firebaseUsers map[string]*firebaseUser,
+) string {
+	var sb strings.Builder
+
+	sb.WriteString(":rotating_light: *check-firebase-users*: Firebaseのユーザーと、DBの有効なユーザー(deleted_at IS NULL)に差異があります\n")
+	sb.WriteString(fmt.Sprintf("firebase: %d 件 / db(有効): %d 件\n", len(firebaseUsers), countActiveDBUsers(dbUsers)))
+
+	if len(firebaseOnly) > 0 {
+		countByLabel := map[string]int{}
+		for _, uid := range firebaseOnly {
+			label, _ := classifyFirebaseOnly(uid, dbUsers)
+			countByLabel[label]++
+		}
+
+		sb.WriteString(fmt.Sprintf("\n*firebase_only: %d 件* (A:退会済み %d 件 / B:登録未完了 %d 件)\n",
+			len(firebaseOnly), countByLabel["A:退会済み"], countByLabel["B:登録未完了"]))
+		sb.WriteString("A:退会済み = 退会時にFirebase側の削除が失敗して残ったもの。再登録を促す連絡をしてはいけない\n")
+		sb.WriteString("B:登録未完了 = 登録がDB登録前に中断したもの。本人はログインしたつもりでサービスを使えていない\n")
+
+		for i, uid := range firebaseOnly {
+			if i >= maxSlackListItems {
+				sb.WriteString(fmt.Sprintf("• ...他 %d 件(詳細はサーバのログを参照)\n", len(firebaseOnly)-maxSlackListItems))
+				break
+			}
+
+			label, state := classifyFirebaseOnly(uid, dbUsers)
+			sb.WriteString(fmt.Sprintf("• `%s` [%s] %s\n", uid, label, state))
+		}
+	}
+
+	if len(dbOnly) > 0 {
+		sb.WriteString(fmt.Sprintf("\n*db_only: %d 件* (Firebaseに存在しないためログインできません)\n", len(dbOnly)))
+
+		for i, uid := range dbOnly {
+			if i >= maxSlackListItems {
+				sb.WriteString(fmt.Sprintf("• ...他 %d 件(詳細はサーバのログを参照)\n", len(dbOnly)-maxSlackListItems))
+				break
+			}
+
+			sb.WriteString(fmt.Sprintf("• `%s`\n", uid))
+		}
+	}
+
+	return sb.String()
+}
+
+// countActiveDBUsers は DB 上の有効な(退会していない)ユーザー数を返す。
+func countActiveDBUsers(dbUsers map[string]*dbUser) int {
+	count := 0
+	for _, u := range dbUsers {
+		if u.DeletedAt == nil {
+			count++
+		}
+	}
+
+	return count
+}
+
+// notifyToSlack は incoming webhook へメッセージを投稿する。
+// タイムアウトの無い http.DefaultClient を使うと、Slackが応答しないときにバッチが
+// 終わらず次回起動と重なるため、必ず internal/httpclient を経由する。
+func notifyToSlack(webhookURL string, message string) error {
+	payload, err := json.Marshal(struct {
+		Text string `json:"text"`
+	}{Text: message})
+	if err != nil {
+		return err
+	}
+
+	resp, err := httpclient.PostJSON(webhookURL, payload)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Slackは失敗理由を "invalid_payload" のようにボディへ入れて返すため、原因調査用に読み取る
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return fmt.Errorf("slack webhook returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	return nil
 }

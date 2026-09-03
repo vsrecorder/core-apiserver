@@ -39,7 +39,7 @@ integration-test:
 	@until docker exec vsrecorder-test-db pg_isready -U vsrecorder >/dev/null 2>&1; do sleep 1; done
 	docker exec -i vsrecorder-test-db psql -q -U vsrecorder -d vsrecorder_test < db/schema.sql
 	TZ=Asia/Tokyo VSRECORDER_TEST_DATABASE_URL="host=localhost port=15432 user=vsrecorder password=vsrecorder dbname=vsrecorder_test sslmode=disable TimeZone=Asia/Tokyo" \
-		go test -p 1 -count=1 -v -run TestIntegration ./internal/infrastructure/ ./cmd/backfill-acespec-tags/ ./cmd/check-deleted-users-data/ ; \
+		go test -p 1 -count=1 -v -run TestIntegration ./internal/infrastructure/ ./cmd/backfill-acespec-tags/ ./cmd/check-deleted-users-data/ ./cmd/purge-deleted-user-data/ ; \
 		status=$$?; docker rm -f vsrecorder-test-db >/dev/null; exit $$status
 
 .PHONY: run
@@ -47,10 +47,15 @@ run:
 	go mod tidy
 	go run cmd/core-apiserver/main.go
 
+# build は cmd 配下の全コマンドを bin/ へ出力する(バイナリ名はディレクトリ名)。
+# APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバッチを実行できず、cron は
+# ホスト上の bin/ のバイナリを叩く(config/crontab)。コマンドごとに go build していると
+# 追加・修正したバッチのビルドを忘れ、cron が古いバイナリのまま動き続けるため、
+# 1コマンドで全部揃うようにしている。bin/ は .gitignore 済み。
 .PHONY: build
 build:
 	go mod tidy
-	go build -o /dev/null cmd/core-apiserver/main.go
+	go build -o bin/ ./cmd/...
 
 PHONY: mockgen
 mockgen:
@@ -90,6 +95,8 @@ mockgen:
 	mockgen -source=./internal/domain/repository/user_player.go -destination=./internal/mock/mock_repository/user_player.go
 	mockgen -source=./internal/domain/repository/transaction.go -destination=./internal/mock/mock_repository/transaction.go
 	mockgen -source=./internal/domain/repository/calendar.go -destination=./internal/mock/mock_repository/calendar.go
+	mockgen -source=./internal/domain/repository/championsleague_result.go -destination=./internal/mock/mock_repository/championsleague_result.go
+	mockgen -source=./internal/domain/repository/championsleague_schedule.go -destination=./internal/mock/mock_repository/championsleague_schedule.go
 	mockgen -source=./internal/domain/repository/cityleague_result.go -destination=./internal/mock/mock_repository/cityleague_result.go
 	mockgen -source=./internal/domain/repository/cityleague_schedule.go -destination=./internal/mock/mock_repository/cityleague_schedule.go
 	mockgen -source=./internal/domain/repository/unofficial_event.go -destination=./internal/mock/mock_repository/unofficial_event.go
@@ -129,6 +136,8 @@ mockgen:
 	mockgen -source=./internal/usecase/notification.go -destination=./internal/mock/mock_usecase/notification.go
 	mockgen -source=./internal/usecase/environment_badge.go -destination=./internal/mock/mock_usecase/environment_badge.go
 	mockgen -source=./internal/usecase/environment_badge_evaluation.go -destination=./internal/mock/mock_usecase/environment_badge_evaluation.go
+	mockgen -source=./internal/usecase/championsleague_result.go -destination=./internal/mock/mock_usecase/championsleague_result.go
+	mockgen -source=./internal/usecase/championsleague_schedule.go -destination=./internal/mock/mock_usecase/championsleague_schedule.go
 	mockgen -source=./internal/usecase/cityleague_result.go -destination=./internal/mock/mock_usecase/cityleague_result.go
 	mockgen -source=./internal/usecase/calendar.go -destination=./internal/mock/mock_usecase/calendar.go
 	mockgen -source=./internal/usecase/championship_series.go -destination=./internal/mock/mock_usecase/championship_series.go

@@ -189,3 +189,37 @@ func TestNotifyToSlack(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+// 件数のサマリは、退会済みとデータ物理削除済みを分けて出す。
+func TestCountDBUsers(t *testing.T) {
+	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	purgedAt := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	dbUsers := map[string]*dbUser{
+		"uid_active":   {ID: "uid_active"},
+		"uid_active_2": {ID: "uid_active_2"},
+		// 退会済み。データはまだ残っている
+		"uid_withdrawn": {ID: "uid_withdrawn", DeletedAt: &deletedAt},
+		// 退会後にデータを物理削除済み。退会済みには数えない
+		"uid_purged": {ID: "uid_purged", DeletedAt: &deletedAt, PurgedAt: &purgedAt},
+	}
+
+	assert.Equal(t, 2, countActiveDBUsers(dbUsers))
+	assert.Equal(t, 1, countWithdrawnDBUsers(dbUsers), "物理削除済みを退会済みに数えてはいけない")
+	assert.Equal(t, 1, countPurgedDBUsers(dbUsers))
+}
+
+// 物理削除済みでも「退会した」ことに変わりはなく、Firebase 側にユーザーが残っているなら
+// 対処(Firebaseの削除)は同じ。分類は物理削除の有無で変えない。
+func TestClassifyFirebaseOnly_物理削除済み(t *testing.T) {
+	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	purgedAt := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	dbUsers := map[string]*dbUser{
+		"uid_purged": {ID: "uid_purged", DeletedAt: &deletedAt, PurgedAt: &purgedAt},
+	}
+
+	label, _ := classifyFirebaseOnly("uid_purged", dbUsers)
+
+	assert.Equal(t, "A:退会済み", label)
+}

@@ -25,6 +25,12 @@
 // Firebase Authentication にはユーザーの論理削除の概念がなく、ListUsers は削除済み
 // ユーザーを返さないため、Firebase 側は「存在する = 有効」として扱う。
 //
+// 件数のサマリでは、退会後に cmd/purge-deleted-user-data でデータを物理削除したユーザーを
+// 「退会済み」には数えず別に出す。users の行は残るが実体はもう無く、退会済みとして数えると
+// 「Firebase側の後始末が要るかもしれない退会ユーザー」が何人いるのかを読み取れなくなるため。
+// 一方で差異の分類(A:退会済み)は物理削除の有無で変えない。Firebase にユーザーが残っている
+// なら、どちらも「Firebase 側の削除が必要」で取るべき対処が同じであるため。
+//
 // 本ツールは読み取り専用で、Firebase・DB のいずれにも一切書き込みを行わない。
 //
 // Slack通知:
@@ -104,6 +110,10 @@ type dbUser struct {
 	Name      string
 	CreatedAt time.Time
 	DeletedAt *time.Time
+
+	// PurgedAt は退会後に紐づくデータを物理削除した日時(cmd/purge-deleted-user-data が入れる)。
+	// 未実行なら nil。件数の内訳を分けるために読む。
+	PurgedAt *time.Time
 }
 
 // firebaseUser は突合に必要な Firebase Authentication 上のユーザー情報。
@@ -163,10 +173,9 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
-	activeCount := countActiveDBUsers(dbUsers)
-
-	log.Printf("firebase: %d users, db: %d users (有効: %d, 退会済み: %d)\n",
-		len(firebaseUsers), len(dbUsers), activeCount, len(dbUsers)-activeCount)
+	log.Printf("firebase: %d users, db: %d users (有効: %d, 退会済み: %d, データ物理削除済み: %d)\n",
+		len(firebaseUsers), len(dbUsers),
+		countActiveDBUsers(dbUsers), countWithdrawnDBUsers(dbUsers), countPurgedDBUsers(dbUsers))
 
 	firebaseOnly, dbOnly := diff(firebaseUsers, dbUsers)
 
@@ -294,6 +303,8 @@ func listDBUsers(db *gorm.DB) (map[string]*dbUser, error) {
 			deletedAt := row.DeletedAt.Time
 			u.DeletedAt = &deletedAt
 		}
+
+		u.PurgedAt = row.PurgedAt
 
 		users[row.ID] = u
 	}
@@ -449,6 +460,34 @@ func countActiveDBUsers(dbUsers map[string]*dbUser) int {
 	count := 0
 	for _, u := range dbUsers {
 		if u.DeletedAt == nil {
+			count++
+		}
+	}
+
+	return count
+}
+
+// countWithdrawnDBUsers は退会済みのユーザー数を返す。
+//
+// データを物理削除済み(cmd/purge-deleted-user-data 実行済み)のユーザーはこの件数に含めない。
+// users の行は残るが実体はもう無く、退会済みとして数えると「Firebase側の後始末が要るかも
+// しれない退会ユーザー」が何人いるのかを読み取れなくなるため。件数は別に数えて併記する。
+func countWithdrawnDBUsers(dbUsers map[string]*dbUser) int {
+	count := 0
+	for _, u := range dbUsers {
+		if u.DeletedAt != nil && u.PurgedAt == nil {
+			count++
+		}
+	}
+
+	return count
+}
+
+// countPurgedDBUsers は退会後に紐づくデータを物理削除済みのユーザー数を返す。
+func countPurgedDBUsers(dbUsers map[string]*dbUser) int {
+	count := 0
+	for _, u := range dbUsers {
+		if u.PurgedAt != nil {
 			count++
 		}
 	}

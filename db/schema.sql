@@ -452,7 +452,17 @@ CREATE TABLE users (
     updated_at  TIMESTAMP NOT NULL,
     deleted_at  TIMESTAMP DEFAULT NULL,
     name        VARCHAR(63) DEFAULT NULL,
-    image_url   VARCHAR(255) DEFAULT NULL
+    image_url   VARCHAR(255) DEFAULT NULL,
+    -- 退会後、紐づくデータを cmd/purge-deleted-user-data で物理削除した日時。
+    --
+    -- 行そのものは消さずに残す(消すと usecase.User.Create の IsWithdrawn による
+    -- 「退会済みUIDでの再登録拒否」が効かなくなり、check-deleted-users-data も
+    -- users との結合で検出しているため消し残しを追えなくなる)。そのうえで
+    -- 「退会しただけ」と「データはもう存在しない」を区別するための列。
+    --
+    -- 退会ユーザは全ユーザのごく一部で、絞り込みも一覧取得のあとGo側で行うため索引は張らない。
+    -- 列の位置は本番の ALTER TABLE ... ADD COLUMN で付く位置(末尾)に合わせてある。
+    purged_at   TIMESTAMP DEFAULT NULL
 );
 
 CREATE INDEX idx_users_created_at ON users(created_at);

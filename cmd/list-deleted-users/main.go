@@ -21,6 +21,11 @@
 //   - 期間の絞り込み … -since はその日の0時を含み、-until はその日の翌日0時を含まない
 //     半開区間。日付の境界は実行環境のローカルタイムゾーン(本番・開発機はJST)で解釈する。
 //
+//   - 完全削除済み … users.purged_at IS NOT NULL。cmd/purge-deleted-user-data で紐づく
+//     データを物理削除したユーザで、users の行だけが残っている状態。データがもう存在せず
+//     「退会ユーザの一覧」として見たいものではないため、既定では一覧から除外する
+//     (-include-purged で表示できる)。件数はサマリに出す。
+//
 // 本ツールは読み取り専用で、DB に一切書き込みを行わない。何度実行しても結果は変わらない。
 // 差異を検出する性質のツールではないため、他の調査ツールが持つ -exit-code は用意していない
 // (退会ユーザが存在すること自体は異常ではなく、終了コードで知らせる意味がないため)。
@@ -38,6 +43,9 @@
 //
 //	# 直近の10件だけを表示する
 //	go run ./cmd/list-deleted-users -limit 10
+//
+//	# データを物理削除済み(cmd/purge-deleted-user-data 実行済み)のユーザも含めて表示する
+//	go run ./cmd/list-deleted-users -include-purged
 //
 // 終了コード: 0 = 正常終了、1 = エラー(引数不正・DB接続失敗など)
 package main
@@ -70,6 +78,10 @@ type deletedUser struct {
 	Name      string
 	CreatedAt time.Time
 	DeletedAt time.Time
+
+	// PurgedAt は cmd/purge-deleted-user-data で紐づくデータを物理削除した日時。
+	// 未実行なら nil。
+	PurgedAt *time.Time
 }
 
 // userCounts は users テーブル全体の内訳。退会ユーザの件数だけを見ても多いのか少ないのか
@@ -78,6 +90,7 @@ type userCounts struct {
 	Total   int64
 	Active  int64
 	Deleted int64
+	Purged  int64
 }
 
 // filterCondition は -user-id / -since / -until による絞り込み条件。
@@ -91,6 +104,9 @@ type filterCondition struct {
 	// Until は上限(この時刻を含まない)。ゼロ値なら上限なし。
 	// -until に指定された日の翌日0時が入る(その日を含めるため)。
 	Until time.Time
+
+	// IncludePurged は、データを物理削除済み(purged_at IS NOT NULL)のユーザも一覧に含めるか。
+	IncludePurged bool
 }
 
 func main() {
@@ -98,13 +114,14 @@ func main() {
 	since := flag.String("since", "", "退会日がこの日以降のユーザーだけを対象にする(YYYY-MM-DD。その日を含む)")
 	until := flag.String("until", "", "退会日がこの日以前のユーザーだけを対象にする(YYYY-MM-DD。その日を含む)")
 	limit := flag.Int("limit", 0, "表示する最大件数(退会日の新しい順。0 で全件)")
+	includePurged := flag.Bool("include-purged", false, "cmd/purge-deleted-user-data でデータを物理削除済みのユーザーも表示する")
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load .env file: %v", err)
 	}
 
-	cond, err := buildFilterCondition(*targetUserId, *since, *until, time.Local)
+	cond, err := buildFilterCondition(*targetUserId, *since, *until, *includePurged, time.Local)
 	if err != nil {
 		log.Printf("invalid flag: %v\n", err)
 		os.Exit(ExitCodeNG)
@@ -150,8 +167,14 @@ func main() {
 //
 // 期間は from の0時 〜 to の翌日0時(含まない)の半開区間として扱う(統計APIの期間の扱いに揃えている)。
 // 日付の境界は環境によって変わらないよう loc を明示して解釈する(本番・開発機はJST)。
-func buildFilterCondition(userId string, since string, until string, loc *time.Location) (*filterCondition, error) {
-	cond := &filterCondition{UserID: userId}
+func buildFilterCondition(
+	userId string,
+	since string,
+	until string,
+	includePurged bool,
+	loc *time.Location,
+) (*filterCondition, error) {
+	cond := &filterCondition{UserID: userId, IncludePurged: includePurged}
 
 	if since != "" {
 		t, err := time.ParseInLocation(dateLayout, since, loc)
@@ -177,6 +200,12 @@ func buildFilterCondition(userId string, since string, until string, loc *time.L
 
 // match は退会ユーザが絞り込み条件に合致するかを返す。
 func (c *filterCondition) match(u *deletedUser) bool {
+	// データを物理削除済みのユーザは、もう中身が無く「退会ユーザの一覧」として見たいものでは
+	// ないため既定では出さない。件数はサマリに出しているので、消えたことには気づける。
+	if !c.IncludePurged && u.PurgedAt != nil {
+		return false
+	}
+
 	if c.UserID != "" && u.ID != c.UserID {
 		return false
 	}
@@ -209,6 +238,10 @@ func (c *filterCondition) String() string {
 		conditions = append(conditions, "until="+c.Until.AddDate(0, 0, -1).Format(dateLayout))
 	}
 
+	if c.IncludePurged {
+		conditions = append(conditions, "include-purged")
+	}
+
 	return strings.Join(conditions, " ")
 }
 
@@ -225,10 +258,16 @@ func countUsers(db *gorm.DB) (*userCounts, error) {
 		return nil, tx.Error
 	}
 
+	var purged int64
+	if tx := db.Unscoped().Model(&model.User{}).Where("purged_at IS NOT NULL").Count(&purged); tx.Error != nil {
+		return nil, tx.Error
+	}
+
 	return &userCounts{
 		Total:   total,
 		Active:  total - deleted,
 		Deleted: deleted,
+		Purged:  purged,
 	}, nil
 }
 
@@ -251,6 +290,7 @@ func listDeletedUsers(db *gorm.DB) ([]*deletedUser, error) {
 			Name:      row.Name,
 			CreatedAt: row.CreatedAt,
 			DeletedAt: row.DeletedAt.Time,
+			PurgedAt:  row.PurgedAt,
 		})
 	}
 
@@ -291,9 +331,20 @@ func displayName(name string) string {
 	return name
 }
 
+// purgedLabel は物理削除済みのユーザに付ける表示。-include-purged で一覧に含めたときに、
+// 通常の退会ユーザと見分けられるようにする。未実行なら何も付けない。
+func purgedLabel(purgedAt *time.Time) string {
+	if purgedAt == nil {
+		return ""
+	}
+
+	return " purged_at=" + purgedAt.Format(time.RFC3339)
+}
+
 // report は結果を標準出力へ出力する。limit が 0 より大きい場合は先頭 limit 件だけを表示する。
 func report(counts *userCounts, cond *filterCondition, users []*deletedUser, limit int) {
-	log.Printf("users: 全 %d 件 (有効: %d, 退会済み: %d)\n", counts.Total, counts.Active, counts.Deleted)
+	log.Printf("users: 全 %d 件 (有効: %d, 退会済み: %d [うちデータ物理削除済み: %d])\n",
+		counts.Total, counts.Active, counts.Deleted, counts.Purged)
 
 	if condition := cond.String(); condition != "" {
 		log.Printf("条件: %s\n", condition)
@@ -301,6 +352,12 @@ func report(counts *userCounts, cond *filterCondition, users []*deletedUser, lim
 
 	if len(users) == 0 {
 		log.Printf("対象: 0 件 (条件に合致する退会ユーザーはありません)\n")
+
+		// -user-id で指定したユーザが物理削除済みだと、理由が分からないまま0件になる
+		if !cond.IncludePurged && counts.Purged > 0 {
+			log.Printf("(データ物理削除済みの %d 件は一覧から除外しています。-include-purged で表示できます)\n", counts.Purged)
+		}
+
 		return
 	}
 
@@ -313,12 +370,13 @@ func report(counts *userCounts, cond *filterCondition, users []*deletedUser, lim
 	}
 
 	for _, u := range shown {
-		log.Printf("  uid=%s name=%s created_at=%s deleted_at=%s 利用日数=%d\n",
+		log.Printf("  uid=%s name=%s created_at=%s deleted_at=%s 利用日数=%d%s\n",
 			u.ID,
 			displayName(u.Name),
 			u.CreatedAt.Format(time.RFC3339),
 			u.DeletedAt.Format(time.RFC3339),
 			usageDays(u.CreatedAt, u.DeletedAt),
+			purgedLabel(u.PurgedAt),
 		)
 	}
 }

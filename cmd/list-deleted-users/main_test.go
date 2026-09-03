@@ -14,7 +14,7 @@ var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
 
 func TestBuildFilterCondition(t *testing.T) {
 	t.Run("正常系_未指定なら絞り込まない", func(t *testing.T) {
-		cond, err := buildFilterCondition("", "", "", jst)
+		cond, err := buildFilterCondition("", "", "", false, jst)
 
 		require.NoError(t, err)
 		assert.Empty(t, cond.UserID)
@@ -24,7 +24,7 @@ func TestBuildFilterCondition(t *testing.T) {
 	})
 
 	t.Run("正常系_untilは指定した日を含むよう翌日0時になる", func(t *testing.T) {
-		cond, err := buildFilterCondition("uid_1", "2026-01-01", "2026-03-31", jst)
+		cond, err := buildFilterCondition("uid_1", "2026-01-01", "2026-03-31", false, jst)
 
 		require.NoError(t, err)
 		assert.Equal(t, "uid_1", cond.UserID)
@@ -33,7 +33,7 @@ func TestBuildFilterCondition(t *testing.T) {
 	})
 
 	t.Run("正常系_日付の境界は渡したLocationで解釈する", func(t *testing.T) {
-		cond, err := buildFilterCondition("", "2026-01-01", "", time.UTC)
+		cond, err := buildFilterCondition("", "2026-01-01", "", false, time.UTC)
 
 		require.NoError(t, err)
 		// JSTで解釈した場合の 2026-01-01 00:00 は UTC では前日15時。Location を取り違えると
@@ -43,13 +43,13 @@ func TestBuildFilterCondition(t *testing.T) {
 	})
 
 	t.Run("異常系_日付として解釈できない", func(t *testing.T) {
-		_, err := buildFilterCondition("", "2026/01/01", "", jst)
+		_, err := buildFilterCondition("", "2026/01/01", "", false, jst)
 
 		assert.Error(t, err)
 	})
 
 	t.Run("異常系_untilが日付として解釈できない", func(t *testing.T) {
-		_, err := buildFilterCondition("", "", "2026-13-01", jst)
+		_, err := buildFilterCondition("", "", "2026-13-01", false, jst)
 
 		assert.Error(t, err)
 	})
@@ -57,7 +57,7 @@ func TestBuildFilterCondition(t *testing.T) {
 
 func TestFilterConditionString(t *testing.T) {
 	t.Run("正常系_untilは指定された日に戻して表示する", func(t *testing.T) {
-		cond, err := buildFilterCondition("uid_1", "2026-01-01", "2026-03-31", jst)
+		cond, err := buildFilterCondition("uid_1", "2026-01-01", "2026-03-31", false, jst)
 
 		require.NoError(t, err)
 		assert.Equal(t, "user-id=uid_1 since=2026-01-01 until=2026-03-31", cond.String())
@@ -74,7 +74,7 @@ func TestFilterUsers(t *testing.T) {
 	}
 
 	t.Run("正常系_条件が無ければ全件を並び順のまま返す", func(t *testing.T) {
-		cond, err := buildFilterCondition("", "", "", jst)
+		cond, err := buildFilterCondition("", "", "", false, jst)
 		require.NoError(t, err)
 
 		matched := filterUsers(users, cond)
@@ -85,7 +85,7 @@ func TestFilterUsers(t *testing.T) {
 	})
 
 	t.Run("正常系_期間の両端を含む", func(t *testing.T) {
-		cond, err := buildFilterCondition("", "2026-01-01", "2026-03-31", jst)
+		cond, err := buildFilterCondition("", "2026-01-01", "2026-03-31", false, jst)
 		require.NoError(t, err)
 
 		matched := filterUsers(users, cond)
@@ -98,7 +98,7 @@ func TestFilterUsers(t *testing.T) {
 	})
 
 	t.Run("正常系_user_idで絞り込む", func(t *testing.T) {
-		cond, err := buildFilterCondition("uid_1", "", "", jst)
+		cond, err := buildFilterCondition("uid_1", "", "", false, jst)
 		require.NoError(t, err)
 
 		matched := filterUsers(users, cond)
@@ -108,7 +108,7 @@ func TestFilterUsers(t *testing.T) {
 	})
 
 	t.Run("正常系_合致しなければ空になる", func(t *testing.T) {
-		cond, err := buildFilterCondition("uid_not_found", "", "", jst)
+		cond, err := buildFilterCondition("uid_not_found", "", "", false, jst)
 		require.NoError(t, err)
 
 		assert.Empty(t, filterUsers(users, cond))
@@ -144,5 +144,58 @@ func TestDisplayName(t *testing.T) {
 
 	t.Run("正常系_空文字なら未設定と分かる表示にする", func(t *testing.T) {
 		assert.Equal(t, "(未設定)", displayName(""))
+	})
+}
+
+func TestFilterUsers_物理削除済み(t *testing.T) {
+	purgedAt := time.Date(2026, 4, 2, 0, 0, 0, 0, jst)
+
+	users := []*deletedUser{
+		{ID: "uid_purged", DeletedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, jst), PurgedAt: &purgedAt},
+		{ID: "uid_deleted", DeletedAt: time.Date(2026, 3, 1, 0, 0, 0, 0, jst)},
+	}
+
+	t.Run("正常系_既定では物理削除済みを一覧に出さない", func(t *testing.T) {
+		cond, err := buildFilterCondition("", "", "", false, jst)
+		require.NoError(t, err)
+
+		matched := filterUsers(users, cond)
+
+		require.Len(t, matched, 1)
+		assert.Equal(t, "uid_deleted", matched[0].ID)
+	})
+
+	t.Run("正常系_includePurgedなら物理削除済みも出す", func(t *testing.T) {
+		cond, err := buildFilterCondition("", "", "", true, jst)
+		require.NoError(t, err)
+
+		assert.Len(t, filterUsers(users, cond), 2)
+	})
+
+	t.Run("正常系_user_idで名指ししても既定では出さない", func(t *testing.T) {
+		// 明示的に指定されても扱いを変えない。0件になる理由は report がヒントとして表示する
+		cond, err := buildFilterCondition("uid_purged", "", "", false, jst)
+		require.NoError(t, err)
+
+		assert.Empty(t, filterUsers(users, cond))
+	})
+
+	t.Run("正常系_条件の表示にinclude-purgedが出る", func(t *testing.T) {
+		cond, err := buildFilterCondition("", "", "", true, jst)
+		require.NoError(t, err)
+
+		assert.Equal(t, "include-purged", cond.String())
+	})
+}
+
+func TestPurgedLabel(t *testing.T) {
+	t.Run("正常系_物理削除済みなら日時を添える", func(t *testing.T) {
+		purgedAt := time.Date(2026, 4, 2, 15, 4, 5, 0, time.UTC)
+
+		assert.Equal(t, " purged_at=2026-04-02T15:04:05Z", purgedLabel(&purgedAt))
+	})
+
+	t.Run("正常系_未実行なら何も付けない", func(t *testing.T) {
+		assert.Empty(t, purgedLabel(nil))
 	})
 }

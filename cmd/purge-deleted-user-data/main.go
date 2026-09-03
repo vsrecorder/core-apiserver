@@ -17,6 +17,8 @@
 //
 //   - users の行自体は削除しない。usecase.User.Create が IsWithdrawn で「退会済みのUIDでの
 //     再登録」を拒否しており、行を消すとその防御が効かなくなるため。退会の記録としても残す。
+//     代わりに users.purged_at へ実行日時を記録し、「退会しただけ」と「データはもう存在しない」を
+//     区別できるようにする。記録した以降、cmd/list-deleted-users の一覧には既定で表示されなくなる。
 //
 //   - matches.opponents_user_id(他のユーザの対戦記録から対戦相手として参照されているもの)は
 //     書き換えない。他人が作成したデータであり、退会処理も同じ扱いにしているため。
@@ -25,7 +27,9 @@
 //     巻き込んで削除する(親を物理削除する以上、FK制約により先に消す必要があるため)。
 //     巻き込む件数は実行前に警告として表示する。通常は0件になる。
 //
-// 冪等性: 2回目以降の実行は対象が0件になるだけで、結果は変わらない。
+// 冪等性: 2回目以降の実行は、purged_at が記録済みで対象も0件のため何もせずに終了する。
+// 削除するデータが元々0件のユーザ(登録しただけで退会した等)に対しても、実行すれば
+// purged_at は記録する。「完全削除を実施した」という事実は件数によらず残す必要があるため。
 //
 // 安全のための作り:
 //
@@ -283,6 +287,9 @@ type targetUser struct {
 	Name      string
 	CreatedAt string
 	DeletedAt string
+
+	// PurgedAt は物理削除を実行済みの場合のみ非空。再実行を冪等にするために見る。
+	PurgedAt string
 }
 
 func main() {
@@ -330,6 +337,10 @@ func main() {
 	log.Printf("対象ユーザ: user_id=%s name=%s created_at=%s deleted_at=%s\n",
 		user.ID, displayName(user.Name), user.CreatedAt, user.DeletedAt)
 
+	if user.PurgedAt != "" {
+		log.Printf("このユーザは %s に物理削除済みです\n", user.PurgedAt)
+	}
+
 	counts, err := countAll(db, *targetUserId)
 	if err != nil {
 		log.Printf("failed to count target rows: %v\n", err)
@@ -344,20 +355,29 @@ func main() {
 
 	reportCounts(counts, foreignCounts)
 
-	if total(counts) == 0 {
+	// 削除するものが無く、実行済みの記録もあるなら何もしない(再実行を冪等にする)
+	if total(counts) == 0 && user.PurgedAt != "" {
 		log.Printf("物理削除するデータはありません\n")
 		os.Exit(ExitCodeOK)
 	}
 
 	if *dryRun {
-		log.Printf("dry-run のため削除しません(実際に削除するには -dry-run=false を指定してください)\n")
+		if total(counts) == 0 {
+			// 件数が0でも「完全削除を実施した」記録は残す。記録が無いままだと
+			// list-deleted-users の一覧に退会ユーザとして出続けるため。
+			log.Printf("物理削除するデータはありませんが、users.purged_at に実行日時を記録します\n")
+		}
+
+		log.Printf("dry-run のため実行しません(実際に削除するには -dry-run=false を指定してください)\n")
 		os.Exit(ExitCodeOK)
 	}
 
 	// users の行は残す。usecase.User.Create の IsWithdrawn による再登録拒否を効かせ続けるため。
-	log.Printf("users の行(user_id=%s)は退会済みのまま残します\n", user.ID)
+	log.Printf("users の行(user_id=%s)は退会済みのまま残し、purged_at に実行日時を記録します\n", user.ID)
 
-	if !*yes && !confirm(fmt.Sprintf("user_id=%s のデータ %d 件を物理削除します。元に戻せません。", user.ID, total(counts))) {
+	// 削除するものが無い場合は purged_at を記録するだけなので、取り返しのつかない操作にはならない
+	if total(counts) > 0 && !*yes &&
+		!confirm(fmt.Sprintf("user_id=%s のデータ %d 件を物理削除します。元に戻せません。", user.ID, total(counts))) {
 		log.Printf("削除を中止しました\n")
 		os.Exit(ExitCodeOK)
 	}
@@ -372,7 +392,13 @@ func main() {
 		log.Printf("  %-24s %6d 件 削除しました\n", r.table, r.count)
 	}
 
-	log.Printf("合計 %d 件を物理削除しました\n", total(results))
+	if total(results) == 0 {
+		log.Printf("物理削除するデータはありませんでした\n")
+	} else {
+		log.Printf("合計 %d 件を物理削除しました\n", total(results))
+	}
+
+	log.Printf("users.purged_at に実行日時を記録しました(list-deleted-users の一覧には既定で表示されなくなります)\n")
 
 	os.Exit(ExitCodeOK)
 }
@@ -393,12 +419,18 @@ func findDeletedUser(db *gorm.DB, userId string) (*targetUser, error) {
 
 	row := rows[0]
 
-	return &targetUser{
+	user := &targetUser{
 		ID:        row.ID,
 		Name:      row.Name,
 		CreatedAt: row.CreatedAt.Format(timeLayout),
 		DeletedAt: row.DeletedAt.Time.Format(timeLayout),
-	}, nil
+	}
+
+	if row.PurgedAt != nil {
+		user.PurgedAt = row.PurgedAt.Format(timeLayout)
+	}
+
+	return user, nil
 }
 
 // timeLayout は表示に使う日時の書式。
@@ -559,7 +591,36 @@ func purgeInTx(tx *gorm.DB, userId string) ([]tableCount, error) {
 		}
 	}
 
+	if err := markPurged(tx, userId); err != nil {
+		return nil, err
+	}
+
 	return results, nil
+}
+
+// markPurged は「このユーザのデータは物理削除済み」であることを users.purged_at へ記録する。
+//
+// users の行は残す方針のため、この記録が無いと「退会しただけ」と区別がつかず、
+// cmd/list-deleted-users の一覧にも退会ユーザとして出続ける。削除と同じトランザクションで
+// 書くことで、「消したのに記録が無い」「記録だけあってデータが残っている」状態を作らない。
+//
+// 消し残しがあって再実行した場合は、実際に消え切った日時が正しいため now() で上書きする。
+func markPurged(tx *gorm.DB, userId string) error {
+	ret := tx.Exec(
+		`UPDATE users SET purged_at = now() WHERE id = @user_id AND deleted_at IS NOT NULL`,
+		namedUserId(userId),
+	)
+	if ret.Error != nil {
+		return fmt.Errorf("users.purged_at: %w", ret.Error)
+	}
+
+	// 対象は退会済みユーザとして存在することを確認済みのため、更新できないのは想定外
+	// (実行中に行が消された等)。記録の無い削除を成立させないようロールバックさせる。
+	if ret.RowsAffected == 0 {
+		return fmt.Errorf("users.purged_at: 退会済みユーザ(user_id=%s)の行を更新できませんでした", userId)
+	}
+
+	return nil
 }
 
 // confirm は標準入力から yes の入力を求める。yes 以外の入力・入力の失敗はすべて中止として扱う。

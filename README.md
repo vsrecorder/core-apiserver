@@ -105,7 +105,7 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 | -------- | ---- |
 | [`sync-pokemon-avatars`](cmd/sync-pokemon-avatars/) | 公式サイト（プレイヤーズクラブ）のアバター一覧API から `avatarList` を取得し、`pokemon_avatars` テーブルへ upsert します。新規アバターの追加やタイトル・画像URLの変更に追随するため、定期実行を想定しています。 |
 | [`repair-streaks`](cmd/repair-streaks/) | 何らかの理由で `user_streaks` が現存の `records` と食い違った場合に、`records` の日付からゼロから週次ストリーク状態を再計算し、行ごと上書きして復旧します。`-dry-run` / `-user-id` フラグを持ちます。 |
-| [`purge-deleted-user-data`](cmd/purge-deleted-user-data/) | 退会したユーザー (`deleted_at IS NOT NULL`) に紐づくデータを、論理削除済みかどうかを問わず**物理削除**します。対象は `-user-id` で指定した1ユーザーのみで、退会済みでなければ何もしません。`users` の行と、他ユーザーの対戦記録に残る `opponents_user_id` は残します。既定は `-dry-run=true`（件数の確認のみ）で、削除は1トランザクション + 実行前の確認 + 削除後の検算つきです。 |
+| [`purge-deleted-user-data`](cmd/purge-deleted-user-data/) | 退会したユーザー (`deleted_at IS NOT NULL`) に紐づくデータを、論理削除済みかどうかを問わず**物理削除**します。対象は `-user-id` で指定した1ユーザーのみで、退会済みでなければ何もしません。`users` の行は残したまま `purged_at` へ実行日時を記録し（`list-deleted-users` の一覧から外れます）、他ユーザーの対戦記録に残る `opponents_user_id` も書き換えません。既定は `-dry-run=true`（件数の確認のみ）で、削除は1トランザクション + 実行前の確認 + 削除後の検算つきです。 |
 
 ### 調査・確認ツール
 
@@ -115,7 +115,7 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 | -------- | ---- |
 | [`check-firebase-users`](cmd/check-firebase-users/) | Firebase Authentication 上のユーザーと、DB (`users`) の有効なユーザー (`deleted_at IS NULL`) を突合し、差異（Firebaseのみ存在＝退会済み／登録未完了、DBのみ存在）を検出します。読み取り専用で一切書き込みません。`-notify-slack` を指定すると差異があったときだけ `SLACK_WEBHOOK_URL` へ通知します（30分ごとに定期実行。[config/crontab](config/crontab) 参照）。 |
 | [`check-deleted-users-data`](cmd/check-deleted-users-data/) | 退会したユーザー (`deleted_at IS NOT NULL`) が作成したデータが残っていないかを検算し、削除漏れ (NG) / 未対応 (WARN) / 参照 (INFO) に分類して表示します。既定は確認のみで、`-delete` を指定したときに限り退会処理と揃えた方法で削除します。 |
-| [`list-deleted-users`](cmd/list-deleted-users/) | 退会したユーザー (`deleted_at IS NOT NULL`) の情報を、登録日・退会日・利用日数とあわせて退会日の新しい順に一覧表示します。`-user-id` / `-since` / `-until` / `-limit` フラグで絞り込めます。読み取り専用で一切書き込みません。 |
+| [`list-deleted-users`](cmd/list-deleted-users/) | 退会したユーザー (`deleted_at IS NOT NULL`) の情報を、登録日・退会日・利用日数とあわせて退会日の新しい順に一覧表示します。`-user-id` / `-since` / `-until` / `-limit` フラグで絞り込めます。`purge-deleted-user-data` でデータを物理削除済みのユーザー (`purged_at IS NOT NULL`) は既定で一覧から除外し、`-include-purged` で表示できます。読み取り専用で一切書き込みません。 |
 
 ## セットアップ
 

@@ -50,6 +50,8 @@ func TestIntegrationPurge(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, counts, len(specs), "件数を数えられていないテーブルがある")
 
+		require.Zero(t, countByQuery(t, tx, purgedQuery), "前提: 実行前は purged_at が未記録であること")
+
 		results, err := purgeInTx(tx, testTargetUserId)
 		require.NoError(t, err)
 
@@ -104,7 +106,14 @@ func assertTargetDataGone(t *testing.T, tx *gorm.DB) {
 	assert.Equal(t, int64(1),
 		countByQuery(t, tx, "SELECT COUNT(*) FROM users WHERE id = '"+testTargetUserId+"'"),
 		"users の行まで消してはいけない")
+
+	// 行を残す代わりに purged_at へ記録する。これが無いと cmd/list-deleted-users の一覧に
+	// 退会ユーザとして出続け、「退会しただけ」と区別できない。
+	assert.Equal(t, int64(1), countByQuery(t, tx, purgedQuery), "users.purged_at が記録されていない")
 }
+
+// purgedQuery は対象ユーザの purged_at が記録されているかを数えるSQL。
+const purgedQuery = "SELECT COUNT(*) FROM users WHERE id = '" + testTargetUserId + "' AND purged_at IS NOT NULL"
 
 // 他のユーザのデータが巻き添えで消えていないことを確認する。
 func assertOtherUserDataKept(t *testing.T, tx *gorm.DB) {

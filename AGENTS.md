@@ -308,6 +308,21 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 中間テーブルは付与先（deck/record/match など）のリポジトリ側で、親を論理削除する**前に**
 消す。GORMがサブクエリへ `deleted_at IS NULL` を付けるため、親を先に消すと子が消し残る。
 
+### 退会済みユーザのデータの物理削除
+
+個人情報の削除要求などで、論理削除された実体も含めてDBから消したい場合は
+`cmd/purge-deleted-user-data`（`-user-id` 必須・`-dry-run` 既定 true）を使う。
+
+**`users` の行は消さない。** 消すと `usecase.User.Create` の `IsWithdrawn` による
+「退会済みUIDでの再登録拒否」が効かなくなり、`cmd/check-deleted-users-data` も users との
+結合で検出しているため消し残しを追えなくなる。代わりに `users.purged_at` へ実行日時を記録し、
+「退会しただけ」と「データはもう存在しない」を区別する。`cmd/list-deleted-users` は
+`purged_at` が入った行を既定で一覧から外す（`-include-purged` で表示）。
+
+`users.purged_at` はバッチ専用の列で、APIからは書き込まない。`model.User` の `PurgedAt` に
+`gorm:"->"`（読み取り専用）を付けてあるのは、GORMの `Save` が全カラムを更新するため、
+タグが無いとプロフィール更新のたびに NULL で上書きされてしまうから。
+
 ## コーディングスタイル
 
 - コメント・ドキュメント・テスト名は日本語。コメントには「何をしているか」ではなく

@@ -193,6 +193,17 @@ func seed(t *testing.T, tx *gorm.DB) {
 	exec(`INSERT INTO deck_codes (id, created_at, updated_at, user_id, deck_id) VALUES (?, now(), now(), ?, ?)`,
 		deckCodeId, testTargetUserId, deckId)
 
+	// --- みんなの公開デッキへの投稿と、それに他ユーザが付けたいいね ---
+	// 投稿は decks / deck_codes を FK で参照するため、デッキより先に消える必要がある(specs の順序)。
+	deckCodePostId := testId("DP1")
+	exec(`INSERT INTO deck_code_posts (id, created_at, updated_at, user_id, deck_id, deck_code_id, published_at)
+	      VALUES (?, now(), now(), ?, ?, ?, now())`,
+		deckCodePostId, testTargetUserId, deckId, deckCodeId)
+	exec(`INSERT INTO deck_code_post_likes (post_id, user_id, created_at) VALUES (?, ?, now())`,
+		deckCodePostId, testOtherUserId)
+	exec(`INSERT INTO deck_code_post_imports (post_id, user_id, created_at) VALUES (?, ?, now())`,
+		deckCodePostId, testOtherUserId)
+
 	// --- 記録・対戦・対局 ---
 	exec(`INSERT INTO records (id, created_at, updated_at, user_id) VALUES (?, now(), now(), ?), (?, now(), now(), ?)`,
 		recordId, testTargetUserId, otherRecordId, testOtherUserId)

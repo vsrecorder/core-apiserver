@@ -96,6 +96,7 @@ func TestDeckUsecase(t *testing.T) {
 		mockRepository *mock_repository.MockDeckInterface,
 		mockDeckAsset *mock_repository.MockDeckAssetInterface,
 		mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+		mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 		usecase DeckInterface,
 	){
 		"Find":                 test_DeckUsecase_Find,
@@ -117,6 +118,8 @@ func TestDeckUsecase(t *testing.T) {
 			mockRepository := mock_repository.NewMockDeckInterface(mockCtrl)
 			mockDeckAsset := mock_repository.NewMockDeckAssetInterface(mockCtrl)
 			mockUserFavoriteDeck := mock_repository.NewMockUserFavoriteDeckInterface(mockCtrl)
+			// みんなの公開デッキの投稿。アーカイブ・削除の連動(取り下げ)を Archive / Delete のテストで検証する。
+			mockDeckCodePost := mock_repository.NewMockDeckCodePostInterface(mockCtrl)
 			usecase := NewDeck(
 				mockRepository,
 				mockDeckAsset,
@@ -124,9 +127,10 @@ func TestDeckUsecase(t *testing.T) {
 				stubTagRepository{},
 				stubTransactionManager{},
 				stubBadgeEvaluation{},
+				mockDeckCodePost,
 			)
 
-			fn(t, mockRepository, mockDeckAsset, mockUserFavoriteDeck, usecase)
+			fn(t, mockRepository, mockDeckAsset, mockUserFavoriteDeck, mockDeckCodePost, usecase)
 		})
 	}
 }
@@ -136,6 +140,7 @@ func test_DeckUsecase_Find(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_デッキ一覧をそのまま返す", func(t *testing.T) {
@@ -189,6 +194,7 @@ func test_DeckUsecase_FindAll(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_指定ユーザの全デッキを返す", func(t *testing.T) {
@@ -240,6 +246,7 @@ func test_DeckUsecase_FindOnCursor(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_カーソル以降のデッキ一覧を返す", func(t *testing.T) {
@@ -293,6 +300,7 @@ func test_DeckUsecase_FindById(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_指定IDのデッキを返す", func(t *testing.T) {
@@ -339,6 +347,7 @@ func test_DeckUsecase_FindByUserId(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_未アーカイブのデッキ一覧を返す", func(t *testing.T) {
@@ -424,6 +433,7 @@ func test_DeckUsecase_FindByUserIdOnCursor(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	t.Run("正常系_カーソル以降の未アーカイブデッキ一覧を返す", func(t *testing.T) {
@@ -509,6 +519,7 @@ func test_DeckUsecase_Create(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -622,6 +633,7 @@ func test_DeckUsecase_Create(
 			stubTagRepository{},
 			stubTransactionManager{},
 			errBadgeEvaluation{},
+			mockDeckCodePost,
 		)
 		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil, nil)
 
@@ -639,6 +651,7 @@ func test_DeckUsecase_Update(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -739,6 +752,7 @@ func test_DeckUsecase_Archive(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -752,9 +766,12 @@ func test_DeckUsecase_Archive(
 		deck := entity.NewDeck(id, createdAt, time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
 
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
-		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
-		// アーカイブすると、そのデッキのお気に入りも解除される
-		mockUserFavoriteDeck.EXPECT().Delete(context.Background(), uid, id).Return(nil)
+		gomock.InOrder(
+			mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil),
+			// アーカイブすると、みんなの公開デッキの投稿は取り下がり、お気に入りも解除される
+			mockDeckCodePost.EXPECT().UnpublishByDeckId(context.Background(), id, gomock.Any()).Return(nil),
+			mockUserFavoriteDeck.EXPECT().Delete(context.Background(), uid, id).Return(nil),
+		)
 
 		ret, err := usecase.Archive(context.Background(), id)
 
@@ -793,6 +810,22 @@ func test_DeckUsecase_Archive(
 		require.Empty(t, ret)
 	})
 
+	t.Run("異常系_投稿の取り下げに失敗したらエラーを返す", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		deck := entity.NewDeck(id, time.Now().Local(), time.Time{}, time.Time{}, uid, "テストデッキ", false, nil, nil)
+
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(deck, nil)
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+		mockDeckCodePost.EXPECT().UnpublishByDeckId(context.Background(), id, gomock.Any()).Return(errors.New(""))
+
+		ret, err := usecase.Archive(context.Background(), id)
+
+		require.Error(t, err)
+		require.Empty(t, ret)
+	})
+
 	// DB接続エラーなど ErrRecordNotFound 以外のエラーもそのまま返す
 	// (取得できていないDeckを参照してnilパニックを起こさないこと)
 	t.Run("異常系_NotFound以外の取得エラーもそのまま返す", func(t *testing.T) {
@@ -813,6 +846,7 @@ func test_DeckUsecase_Unarchive(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -884,6 +918,7 @@ func test_DeckUsecase_Favorite(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -982,6 +1017,7 @@ func test_DeckUsecase_Unfavorite(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -1019,21 +1055,36 @@ func test_DeckUsecase_Delete(
 	mockRepository *mock_repository.MockDeckInterface,
 	mockDeckAsset *mock_repository.MockDeckAssetInterface,
 	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
+	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 	usecase DeckInterface,
 ) {
-	t.Run("正常系_リポジトリのDeleteを呼び出す", func(t *testing.T) {
+	t.Run("正常系_投稿を取り下げてからリポジトリのDeleteを呼び出す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
-		mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
+		gomock.InOrder(
+			// 削除したデッキがみんなの公開デッキに残らないよう、先に取り下げる
+			mockDeckCodePost.EXPECT().UnpublishByDeckId(context.Background(), id, gomock.Any()).Return(nil),
+			mockRepository.EXPECT().Delete(context.Background(), id).Return(nil),
+		)
 
 		require.NoError(t, usecase.Delete(context.Background(), id))
+	})
+
+	t.Run("異常系_取り下げに失敗したら削除しない", func(t *testing.T) {
+		id, err := generateId()
+		require.NoError(t, err)
+
+		mockDeckCodePost.EXPECT().UnpublishByDeckId(context.Background(), id, gomock.Any()).Return(errors.New(""))
+
+		require.Error(t, usecase.Delete(context.Background(), id))
 	})
 
 	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
 
+		mockDeckCodePost.EXPECT().UnpublishByDeckId(context.Background(), id, gomock.Any()).Return(nil)
 		mockRepository.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 		require.Equal(t, usecase.Delete(context.Background(), id), errors.New(""))
@@ -1056,6 +1107,7 @@ func TestDeckUsecaseCreateAppliesTagsToDeckCode(t *testing.T) {
 		mockTag,
 		stubTransactionManager{},
 		stubBadgeEvaluation{},
+		mock_repository.NewMockDeckCodePostInterface(mockCtrl),
 	)
 
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -1101,6 +1153,7 @@ func TestDeckUsecaseCreateDeckCodeWithoutTags(t *testing.T) {
 		mockTag,
 		stubTransactionManager{},
 		stubBadgeEvaluation{},
+		mock_repository.NewMockDeckCodePostInterface(mockCtrl),
 	)
 
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"

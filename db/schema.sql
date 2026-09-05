@@ -1175,3 +1175,80 @@ GRANT SELECT ON push_deliveries         TO grafana;
 
 GRANT SELECT ON user_acquisitions       TO grafana;
 GRANT SELECT ON user_gyms               TO grafana;
+
+
+-- みんなの公開デッキ(公開したデッキコードの投稿)。1行が「あるデッキコード(バージョン)を
+-- タイムラインへ公開したこと」を表す。
+--
+-- 取り下げは unpublished_at で表し、行は残す(公開し直しの間隔制限と、いいね数などの
+-- 実績を追えるようにするため)。公開し直しは別の行(別ID)として作るので、
+-- 「公開中の投稿は1コードにつき1件」は部分一意索引で担保する。
+-- hidden_at は運営の非表示で、APIからは書き込まない(psql で入れる)。
+-- ace_spec_card_id / ace_spec_card_name / ace_spec_image_url は公開時に deckcard-api で判定した
+-- ACE SPEC。表示にも使う(一覧でカードごとに acespec API を引かない)。入っていなければ空文字。
+-- いいね数は deck_code_post_likes を、取り込み数は deck_code_post_imports を数えて出す
+-- (非正規化した列は持たない。取り消し・退会時の削除・取り下げ時の一括削除で数が狂わないようにするため)。
+-- 論理削除(deleted_at)は持たない。退会時はいいねごと物理削除する。
+CREATE TABLE deck_code_posts (
+    id                 VARCHAR(26) PRIMARY KEY,
+    created_at         TIMESTAMP NOT NULL,
+    updated_at         TIMESTAMP NOT NULL,
+    user_id            VARCHAR(32) NOT NULL,
+    deck_id            VARCHAR(26) NOT NULL,
+    deck_code_id       VARCHAR(26) NOT NULL,
+    published_at       TIMESTAMP NOT NULL,
+    unpublished_at     TIMESTAMP DEFAULT NULL,
+    hidden_at          TIMESTAMP DEFAULT NULL,
+    ace_spec_card_id   VARCHAR(16) NOT NULL DEFAULT '',
+    ace_spec_card_name VARCHAR(64) NOT NULL DEFAULT '',
+    ace_spec_image_url VARCHAR(256) NOT NULL DEFAULT '',
+    FOREIGN KEY (deck_id)      REFERENCES decks (id),
+    FOREIGN KEY (deck_code_id) REFERENCES deck_codes (id)
+);
+
+-- 取り下げていない投稿は1コードにつき1件(運営が非表示にした投稿も枠を占有する。
+-- 非表示のまま公開し直せないようにするため)。
+CREATE UNIQUE INDEX idx_deck_code_posts_active_deck_code_id
+    ON deck_code_posts (deck_code_id) WHERE unpublished_at IS NULL;
+-- タイムライン(公開中を新しい順)。環境の期間で published_at を範囲指定するため、
+-- 公開中に絞った部分索引にする。
+CREATE INDEX idx_deck_code_posts_active_published_at
+    ON deck_code_posts (published_at DESC) WHERE unpublished_at IS NULL AND hidden_at IS NULL;
+-- 投稿者ページと退会時の削除で引く。
+CREATE INDEX idx_deck_code_posts_user_id ON deck_code_posts (user_id);
+-- デッキのアーカイブ・削除に連動した取り下げで引く。
+CREATE INDEX idx_deck_code_posts_deck_id ON deck_code_posts (deck_id);
+
+-- 投稿へのいいね。1ユーザ1投稿につき1件で、取り消しは行の物理削除で表す。
+CREATE TABLE deck_code_post_likes (
+    post_id     VARCHAR(26) NOT NULL,
+    user_id     VARCHAR(32) NOT NULL,
+    created_at  TIMESTAMP NOT NULL,
+    PRIMARY KEY (post_id, user_id),
+    FOREIGN KEY (post_id) REFERENCES deck_code_posts (id)
+);
+
+-- 退会時に、そのユーザが押したいいねをまとめて消すために引く。
+CREATE INDEX idx_deck_code_post_likes_user_id ON deck_code_post_likes (user_id);
+
+-- 投稿の「取り込む」の利用記録。運営の指標(どの投稿が取り込まれたか)で、画面には出さない。
+-- 同じ人が何度押しても1回として数えるため (post_id, user_id) を主キーにする
+-- (押した回数を数えると、繰り返し押すだけで指標を水増しできる)。取り下げても残す。
+CREATE TABLE deck_code_post_imports (
+    post_id     VARCHAR(26) NOT NULL,
+    user_id     VARCHAR(32) NOT NULL,
+    created_at  TIMESTAMP NOT NULL,
+    PRIMARY KEY (post_id, user_id),
+    FOREIGN KEY (post_id) REFERENCES deck_code_posts (id)
+);
+
+-- 退会時に、そのユーザの取り込み記録をまとめて消すために引く。
+CREATE INDEX idx_deck_code_post_imports_user_id ON deck_code_post_imports (user_id);
+-- 人気順(直近7日間のいいね数)の集計と、日次のまとめ通知(期間内のいいねを投稿ごとに
+-- 集計)で引く。post_id を含めて索引だけで数えられるようにする。
+CREATE INDEX idx_deck_code_post_likes_created_at ON deck_code_post_likes (created_at, post_id);
+
+-- Grafana の読み取り権限(他のテーブルの GRANT は上にまとめてあるが、これらはテーブル定義の後に置く)
+GRANT SELECT ON deck_code_posts         TO grafana;
+GRANT SELECT ON deck_code_post_likes    TO grafana;
+GRANT SELECT ON deck_code_post_imports  TO grafana;

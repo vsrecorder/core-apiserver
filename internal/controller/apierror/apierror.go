@@ -147,6 +147,19 @@ var (
 	// ErrTooManyRequests は短時間に試行が集中し、レート制限に達した場合(429)。
 	ErrTooManyRequests = New(http.StatusTooManyRequests, errors.New("too many requests"))
 
+	// ErrDeckArchived はアーカイブ済みのデッキを公開しようとした場合(409)。
+	ErrDeckArchived = New(http.StatusConflict, errors.New("deck is archived"))
+
+	// ErrRepublishTooSoon は同じデッキコードを短い間隔で公開し直そうとした場合(429)。
+	ErrRepublishTooSoon = New(http.StatusTooManyRequests, errors.New("republish too soon"))
+
+	// ErrDeckCodePostUnpublished は取り下げ済み(または運営が非表示にした)投稿を
+	// 開こうとした場合(410)。個別ページが「公開を終了しました」を出すために 404 と区別する。
+	ErrDeckCodePostUnpublished = New(http.StatusGone, errors.New("unpublished"))
+
+	// ErrDeckCodePostHidden は運営が非表示にした投稿のデッキコードを公開し直そうとした場合(403)。
+	ErrDeckCodePostHidden = New(http.StatusForbidden, errors.New("deck code post is hidden by the operator"))
+
 	// ErrUserPlayerLinkingDisabled はプレイヤーID連携機能が運用者によって
 	// 一時的に無効化されている場合(503)。
 	ErrUserPlayerLinkingDisabled = New(http.StatusServiceUnavailable, errors.New("player id linking is currently disabled"))

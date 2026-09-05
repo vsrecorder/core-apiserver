@@ -580,3 +580,50 @@ func GetChampionsleagueScheduleId(ctx *gin.Context) string {
 
 	return championsleagueScheduleId
 }
+
+// SetSort / GetSort は一覧の並び順(みんなの公開デッキの new / popular)。
+func SetSort(ctx *gin.Context, value string) {
+	ctx.Set("sort", value)
+}
+
+func GetSort(ctx *gin.Context) string {
+	value, _ := ctx.Get("sort")
+	sort, _ := value.(string)
+
+	return sort
+}
+
+// SetAceSpecCardId / GetAceSpecCardId は ACE SPEC カードIDでの絞り込み。空は絞り込みなし。
+func SetAceSpecCardId(ctx *gin.Context, value string) {
+	ctx.Set("ace_spec_card_id", value)
+}
+
+func GetAceSpecCardId(ctx *gin.Context) string {
+	value, _ := ctx.Get("ace_spec_card_id")
+	id, _ := value.(string)
+
+	return id
+}
+
+// SetPokemonSpriteIds / GetPokemonSpriteIds はスプライトでの絞り込み(最大2体)。空は絞り込みなし。
+func SetPokemonSpriteIds(ctx *gin.Context, value []string) {
+	ctx.Set("pokemon_sprite_ids", value)
+}
+
+func GetPokemonSpriteIds(ctx *gin.Context) []string {
+	value, _ := ctx.Get("pokemon_sprite_ids")
+	ids, _ := value.([]string)
+
+	return ids
+}
+
+func SetDeckCodePostCreateRequest(ctx *gin.Context, value dto.DeckCodePostCreateRequest) {
+	ctx.Set("deck_code_post_create_request", value)
+}
+
+func GetDeckCodePostCreateRequest(ctx *gin.Context) dto.DeckCodePostCreateRequest {
+	value, _ := ctx.Get("deck_code_post_create_request")
+	req, _ := value.(dto.DeckCodePostCreateRequest)
+
+	return req
+}

@@ -84,6 +84,11 @@ const (
 	// 無いが、もし存在すると decks を物理削除できないため、デッキ経由のものも対象に含める。
 	targetDeckCodes = `SELECT id FROM deck_codes WHERE user_id = @user_id OR deck_id IN (` + targetDecks + `)`
 
+	// targetDeckCodePosts は本人の投稿と、本人のデッキに紐づく投稿(他人が本人のデッキに
+	// 作ったコードで公開したものを含む)。deck_code_posts は decks / deck_codes を参照するため、
+	// デッキを消す前にこれらを消す。
+	targetDeckCodePosts = `SELECT id FROM deck_code_posts WHERE user_id = @user_id OR deck_id IN (` + targetDecks + `)`
+
 	// matches.record_id は records へのFK。user_id が食い違う不整合があっても records を
 	// 消せるよう、記録経由のものも対象に含める。
 	targetMatches = `SELECT id FROM matches WHERE user_id = @user_id OR record_id IN (` + targetRecords + `)`
@@ -170,6 +175,23 @@ var specs = []tableSpec{
 		name:  "records",
 		where: `user_id = @user_id`,
 		note:  "記録",
+	},
+
+	// --- みんなの公開デッキへの投稿。deck_codes / decks を参照するため、それらより先に消す ---
+	{
+		name:  "deck_code_post_likes",
+		where: `user_id = @user_id OR post_id IN (` + targetDeckCodePosts + `)`,
+		note:  "投稿へのいいね。本人が押したものと、消す投稿に付いたもの",
+	},
+	{
+		name:  "deck_code_post_imports",
+		where: `user_id = @user_id OR post_id IN (` + targetDeckCodePosts + `)`,
+		note:  "投稿の取り込み記録。本人が取り込んだものと、消す投稿に付いたもの",
+	},
+	{
+		name:  "deck_code_posts",
+		where: `id IN (` + targetDeckCodePosts + `)`,
+		note:  "みんなの公開デッキへの投稿。本人のものと、本人のデッキに紐づくもの(デッキの FK を先に外す)",
 	},
 
 	// --- デッキ(decks)の子。decks より先に消す ---

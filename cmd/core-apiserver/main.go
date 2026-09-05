@@ -257,6 +257,7 @@ func main() {
 			infrastructure.NewPushDelivery(db),
 			infrastructure.NewUserAcquisition(db),
 			infrastructure.NewUserGym(db),
+			infrastructure.NewDeckCodePost(db),
 			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
 		),
@@ -313,6 +314,7 @@ func main() {
 			infrastructure.NewTag(db),
 			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
+			infrastructure.NewDeckCodePost(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -327,6 +329,7 @@ func main() {
 			infrastructure.NewTag(db),
 			badgeEvaluation,
 			infrastructure.NewTransactionManager(db),
+			infrastructure.NewDeckCodePost(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -335,6 +338,27 @@ func main() {
 		infrastructure.NewTag(db),
 		usecase.NewTag(
 			infrastructure.NewTag(db),
+		),
+	).RegisterRoute(relativePath)
+
+	controller.NewDeckCodePost(
+		r,
+		infrastructure.NewDeckCodePost(db),
+		infrastructure.NewDeck(db),
+		usecase.NewDeckCodePost(
+			infrastructure.NewDeckCodePost(db),
+			infrastructure.NewDeck(db),
+			infrastructure.NewDeckCode(db),
+			infrastructure.NewUser(db),
+			infrastructure.NewEnvironment(db),
+			infrastructure.NewChampionshipSeries(db),
+			usecase.NewDesignation(
+				infrastructure.NewDesignation(db),
+				infrastructure.NewDesignationStats(db),
+				infrastructure.NewChampionshipSeries(db),
+				infrastructure.NewUserPlayer(db),
+			),
+			infrastructure.NewDeckCard(infrastructure.DeckCardAPIBaseURLFromEnv()),
 		),
 	).RegisterRoute(relativePath)
 

@@ -33,6 +33,7 @@ func setup4DeckCodeUsecase(t *testing.T) (
 	*mock_repository.MockDeckCodeInterface,
 	*mock_repository.MockDeckAssetInterface,
 	*bool,
+	*mock_repository.MockDeckCodePostInterface,
 	DeckCodeInterface,
 ) {
 	mockCtrl := gomock.NewController(t)
@@ -49,10 +50,13 @@ func setup4DeckCodeUsecase(t *testing.T) (
 		ReplaceDeckCodeTags(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil).AnyTimes()
 
-	badgeEvaluationCalled := false
-	usecase := NewDeckCode(mockRepository, mockDeckAsset, mockTagRepository, spyDeckCodeBadgeEvaluation{called: &badgeEvaluationCalled}, stubTransactionManager{})
+	// みんなの公開デッキの投稿。バージョン削除の連動(取り下げ)を Delete のテストで検証する。
+	mockDeckCodePost := mock_repository.NewMockDeckCodePostInterface(mockCtrl)
 
-	return mockRepository, mockDeckAsset, &badgeEvaluationCalled, usecase
+	badgeEvaluationCalled := false
+	usecase := NewDeckCode(mockRepository, mockDeckAsset, mockTagRepository, spyDeckCodeBadgeEvaluation{called: &badgeEvaluationCalled}, stubTransactionManager{}, mockDeckCodePost)
+
+	return mockRepository, mockDeckAsset, &badgeEvaluationCalled, mockDeckCodePost, usecase
 }
 
 func TestDeckCodeUsecase(t *testing.T) {
@@ -62,7 +66,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 
 	t.Run("FindById", func(t *testing.T) {
 		t.Run("正常系_指定IDのデッキコードを返す", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, _, _, usecase := setup4DeckCodeUsecase(t)
 
 			id, err := generateId()
 			require.NoError(t, err)
@@ -78,7 +82,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		})
 
 		t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, _, _, usecase := setup4DeckCodeUsecase(t)
 
 			id, err := generateId()
 			require.NoError(t, err)
@@ -94,7 +98,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 
 	t.Run("FindByDeckId", func(t *testing.T) {
 		t.Run("正常系_指定デッキのデッキコード一覧を返す", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, _, _, usecase := setup4DeckCodeUsecase(t)
 
 			deckCodes := []*entity.DeckCode{{ID: "01HD7Y3K8D6FDHMHTZ2GT41TC1", DeckId: deckId}}
 
@@ -108,7 +112,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		})
 
 		t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, _, _, usecase := setup4DeckCodeUsecase(t)
 
 			mockRepository.EXPECT().FindByDeckId(context.Background(), deckId).Return(nil, errors.New(""))
 
@@ -121,7 +125,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 
 	t.Run("Create", func(t *testing.T) {
 		t.Run("正常系_コード未指定なら外部アップロードと称号評価なしで保存する", func(t *testing.T) {
-			mockRepository, _, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, badgeEvaluationCalled, _, usecase := setup4DeckCodeUsecase(t)
 
 			param := NewDeckCodeCreateParam(uid, deckId, "", false, "", nil)
 
@@ -139,7 +143,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		})
 
 		t.Run("正常系_コード指定時はHTMLと画像をアップロードして保存し称号評価する", func(t *testing.T) {
-			mockRepository, mockDeckAsset, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, mockDeckAsset, badgeEvaluationCalled, _, usecase := setup4DeckCodeUsecase(t)
 
 			param := NewDeckCodeCreateParam(uid, deckId, code, true, "メモ", nil)
 
@@ -159,7 +163,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		})
 
 		t.Run("異常系_HTMLアップロード失敗時は画像アップロードも保存も行わない", func(t *testing.T) {
-			_, mockDeckAsset, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
+			_, mockDeckAsset, badgeEvaluationCalled, _, usecase := setup4DeckCodeUsecase(t)
 
 			param := NewDeckCodeCreateParam(uid, deckId, code, false, "", nil)
 
@@ -173,7 +177,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		})
 
 		t.Run("異常系_画像アップロード失敗時は保存を行わない", func(t *testing.T) {
-			_, mockDeckAsset, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
+			_, mockDeckAsset, badgeEvaluationCalled, _, usecase := setup4DeckCodeUsecase(t)
 
 			param := NewDeckCodeCreateParam(uid, deckId, code, false, "", nil)
 
@@ -190,7 +194,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		})
 
 		t.Run("異常系_保存失敗時はエラーを返し称号評価しない", func(t *testing.T) {
-			mockRepository, _, badgeEvaluationCalled, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, badgeEvaluationCalled, _, usecase := setup4DeckCodeUsecase(t)
 
 			param := NewDeckCodeCreateParam(uid, deckId, "", false, "", nil)
 
@@ -206,7 +210,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 
 	t.Run("Update", func(t *testing.T) {
 		t.Run("正常系_公開設定とメモのみ更新され他は維持される", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, _, _, usecase := setup4DeckCodeUsecase(t)
 
 			id, err := generateId()
 			require.NoError(t, err)
@@ -232,7 +236,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		})
 
 		t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, _, _, usecase := setup4DeckCodeUsecase(t)
 
 			id, err := generateId()
 			require.NoError(t, err)
@@ -246,7 +250,7 @@ func TestDeckCodeUsecase(t *testing.T) {
 		})
 
 		t.Run("異常系_保存失敗時はエラーを返す", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+			mockRepository, _, _, _, usecase := setup4DeckCodeUsecase(t)
 
 			id, err := generateId()
 			require.NoError(t, err)
@@ -264,23 +268,39 @@ func TestDeckCodeUsecase(t *testing.T) {
 	})
 
 	t.Run("Delete", func(t *testing.T) {
-		t.Run("正常系_リポジトリのDeleteを呼び出す", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+		t.Run("正常系_投稿を取り下げてからリポジトリのDeleteを呼び出す", func(t *testing.T) {
+			mockRepository, _, _, mockDeckCodePost, usecase := setup4DeckCodeUsecase(t)
 
 			id, err := generateId()
 			require.NoError(t, err)
 
-			mockRepository.EXPECT().Delete(context.Background(), id).Return(nil)
+			gomock.InOrder(
+				// 削除したバージョンがみんなの公開デッキに残らないよう、先に取り下げる
+				mockDeckCodePost.EXPECT().UnpublishByDeckCodeId(context.Background(), id, gomock.Any()).Return(nil),
+				mockRepository.EXPECT().Delete(context.Background(), id).Return(nil),
+			)
 
 			require.NoError(t, usecase.Delete(context.Background(), id))
 		})
 
-		t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
-			mockRepository, _, _, usecase := setup4DeckCodeUsecase(t)
+		t.Run("異常系_取り下げに失敗したら削除しない", func(t *testing.T) {
+			_, _, _, mockDeckCodePost, usecase := setup4DeckCodeUsecase(t)
 
 			id, err := generateId()
 			require.NoError(t, err)
 
+			mockDeckCodePost.EXPECT().UnpublishByDeckCodeId(context.Background(), id, gomock.Any()).Return(errors.New(""))
+
+			require.Error(t, usecase.Delete(context.Background(), id))
+		})
+
+		t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
+			mockRepository, _, _, mockDeckCodePost, usecase := setup4DeckCodeUsecase(t)
+
+			id, err := generateId()
+			require.NoError(t, err)
+
+			mockDeckCodePost.EXPECT().UnpublishByDeckCodeId(context.Background(), id, gomock.Any()).Return(nil)
 			mockRepository.EXPECT().Delete(context.Background(), id).Return(errors.New(""))
 
 			require.Error(t, usecase.Delete(context.Background(), id))

@@ -150,6 +150,9 @@ type Deck struct {
 	tag                repository.TagInterface
 	transactionManager repository.TransactionManager
 	badgeEvaluation    BadgeEvaluationInterface
+	// deckCodePost はみんなの公開デッキへの投稿。アーカイブ・削除したデッキの投稿を
+	// 連動して取り下げるために使う。nil なら連動しない(投稿機能を持たないテスト用)。
+	deckCodePost repository.DeckCodePostInterface
 }
 
 func NewDeck(
@@ -159,6 +162,7 @@ func NewDeck(
 	tag repository.TagInterface,
 	transactionManager repository.TransactionManager,
 	badgeEvaluation BadgeEvaluationInterface,
+	deckCodePost repository.DeckCodePostInterface,
 ) DeckInterface {
 	return &Deck{
 		repository,
@@ -167,7 +171,20 @@ func NewDeck(
 		tag,
 		transactionManager,
 		badgeEvaluation,
+		deckCodePost,
 	}
+}
+
+// unpublishDeckCodePosts はデッキの公開中の投稿(みんなの公開デッキ)を取り下げる。
+// アーカイブ・削除したデッキがタイムラインに残らないようにする連動処理で、
+// 呼び出し側のトランザクションの中で実行する。
+func (u *Deck) unpublishDeckCodePosts(ctx context.Context, deckId string, at time.Time) error {
+	if err := u.deckCodePost.UnpublishByDeckId(ctx, deckId, at); err != nil {
+		logError(ctx, err)
+		return err
+	}
+
+	return nil
 }
 
 // syncDeckTags は付与先について、param で指定されたタグIDのうち userId が付与できる
@@ -497,11 +514,15 @@ func (u *Deck) Archive(
 		ret.PokemonSprites,
 	)
 
-	// アーカイブとお気に入りの解除は別テーブルへの更新になるため、
-	// 片方だけが成功して食い違わないよう1つのトランザクションにまとめる。
+	// アーカイブとお気に入りの解除・みんなの公開デッキからの取り下げは別テーブルへの更新になるため、
+	// 一部だけが成功して食い違わないよう1つのトランザクションにまとめる。
 	if err := u.transactionManager.Do(ctx, func(ctx context.Context) error {
 		if err := u.repository.Save(ctx, deck); err != nil {
 			logError(ctx, err)
+			return err
+		}
+
+		if err := u.unpublishDeckCodePosts(ctx, id, archivedAt); err != nil {
 			return err
 		}
 
@@ -645,12 +666,19 @@ func (u *Deck) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	err := u.repository.Delete(ctx, id)
+	// 削除したデッキの投稿(みんなの公開デッキ)も同じトランザクションで取り下げる。
+	// 投稿だけ残ると、結合先のデッキが無い投稿がタイムラインから消えず、
+	// 個別ページも開けない中途半端な状態になる。
+	return u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.unpublishDeckCodePosts(ctx, id, time.Now().Local()); err != nil {
+			return err
+		}
 
-	if err != nil {
-		logError(ctx, err)
-		return err
-	}
+		if err := u.repository.Delete(ctx, id); err != nil {
+			logError(ctx, err)
+			return err
+		}
 
-	return nil
+		return nil
+	})
 }

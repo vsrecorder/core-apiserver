@@ -85,6 +85,7 @@ type User struct {
 	pushDeliveryRepository         repository.PushDeliveryInterface
 	userAcquisitionRepository      repository.UserAcquisitionInterface
 	userGymRepository              repository.UserGymInterface
+	deckCodePostRepository         repository.DeckCodePostInterface
 	transactionManager             repository.TransactionManager
 	badgeEvaluation                BadgeEvaluationInterface
 }
@@ -106,6 +107,7 @@ func NewUser(
 	pushDeliveryRepository repository.PushDeliveryInterface,
 	userAcquisitionRepository repository.UserAcquisitionInterface,
 	userGymRepository repository.UserGymInterface,
+	deckCodePostRepository repository.DeckCodePostInterface,
 	transactionManager repository.TransactionManager,
 	badgeEvaluation BadgeEvaluationInterface,
 ) UserInterface {
@@ -127,6 +129,7 @@ func NewUser(
 		pushDeliveryRepository:         pushDeliveryRepository,
 		userAcquisitionRepository:      userAcquisitionRepository,
 		userGymRepository:              userGymRepository,
+		deckCodePostRepository:         deckCodePostRepository,
 		transactionManager:             transactionManager,
 		badgeEvaluation:                badgeEvaluation,
 	}
@@ -250,6 +253,13 @@ func (u *User) Delete(
 	// トランザクションの保持時間が線形に伸びるため、まとめて削除する。
 	return u.transactionManager.Do(ctx, func(ctx context.Context) error {
 		if err := u.recordRepository.DeleteByUserId(ctx, id); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
+		// みんなの公開デッキへの投稿(と、そのいいね・本人が押したいいね)は decks / deck_codes を
+		// FK で参照するため、デッキより先に物理削除する。
+		if err := u.deckCodePostRepository.DeleteByUserId(ctx, id); err != nil {
 			logError(ctx, err)
 			return err
 		}

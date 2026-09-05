@@ -65,4 +65,16 @@ var (
 	// 上限を超えたぶんを黙って押し出さず、どれを外すかはユーザーに選ばせる。
 	// HTTP では 409 Conflict に対応する。
 	ErrTooManyUserGyms = errors.New("too many user gyms")
+
+	// ErrDeckArchived はアーカイブ済みのデッキに対して、公開など
+	// 利用中のデッキにしかできない操作をしようとした場合に返す。HTTP では 409 に対応する。
+	ErrDeckArchived = errors.New("deck is archived")
+
+	// ErrRepublishTooSoon は同じデッキコードを短い間隔で公開し直そうとした場合に返す
+	// (みんなの公開デッキへの掲載)。HTTP では 429 に対応する。
+	ErrRepublishTooSoon = errors.New("republish too soon")
+
+	// ErrDeckCodePostHidden は運営が非表示にした投稿のデッキコードを公開し直そうとした場合に返す
+	// (取り下げて別の投稿として作り直しても表示に戻せないようにする)。HTTP では 403 に対応する。
+	ErrDeckCodePostHidden = errors.New("deck code post is hidden")
 )

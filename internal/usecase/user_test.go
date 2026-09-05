@@ -34,6 +34,7 @@ type userUsecaseMocks struct {
 	pushDelivery         *mock_repository.MockPushDeliveryInterface
 	userAcquisition      *mock_repository.MockUserAcquisitionInterface
 	userGym              *mock_repository.MockUserGymInterface
+	deckCodePost         *mock_repository.MockDeckCodePostInterface
 }
 
 func newUserUsecaseMocks(ctrl *gomock.Controller) *userUsecaseMocks {
@@ -54,6 +55,7 @@ func newUserUsecaseMocks(ctrl *gomock.Controller) *userUsecaseMocks {
 		pushDelivery:         mock_repository.NewMockPushDeliveryInterface(ctrl),
 		userAcquisition:      mock_repository.NewMockUserAcquisitionInterface(ctrl),
 		userGym:              mock_repository.NewMockUserGymInterface(ctrl),
+		deckCodePost:         mock_repository.NewMockDeckCodePostInterface(ctrl),
 	}
 }
 
@@ -76,6 +78,7 @@ func (m *userUsecaseMocks) expectDeleteAllUserData(ctx context.Context, id strin
 	m.pushDelivery.EXPECT().DeleteByUserId(ctx, id).Return(nil)
 	m.userAcquisition.EXPECT().DeleteByUserId(ctx, id).Return(nil)
 	m.userGym.EXPECT().DeleteByUserId(ctx, id).Return(nil)
+	m.deckCodePost.EXPECT().DeleteByUserId(ctx, id).Return(nil)
 }
 
 func TestUserUsecase(t *testing.T) {
@@ -104,6 +107,7 @@ func TestUserUsecase(t *testing.T) {
 		m.pushDelivery,
 		m.userAcquisition,
 		m.userGym,
+		m.deckCodePost,
 		mockTransactionManager,
 		stubBadgeEvaluation{},
 	)
@@ -372,10 +376,23 @@ func test_UserUsecase_Delete(t *testing.T, m *userUsecaseMocks, usecase UserInte
 		require.Error(t, err)
 	})
 
+	t.Run("異常系_みんなの公開デッキの投稿の削除に失敗", func(t *testing.T) {
+		id, _ := generateId()
+
+		// 投稿はデッキ・デッキコードを参照するため、それらより先に消す。ここで失敗したら以降は呼ばない。
+		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.deckCodePost.EXPECT().DeleteByUserId(context.Background(), id).Return(errors.New(""))
+
+		err := usecase.Delete(context.Background(), id)
+
+		require.Error(t, err)
+	})
+
 	t.Run("異常系_デッキの削除に失敗", func(t *testing.T) {
 		id, _ := generateId()
 
 		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.deckCodePost.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(errors.New(""))
 
 		err := usecase.Delete(context.Background(), id)
@@ -387,6 +404,7 @@ func test_UserUsecase_Delete(t *testing.T, m *userUsecaseMocks, usecase UserInte
 		id, _ := generateId()
 
 		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.deckCodePost.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(errors.New(""))
 
@@ -399,6 +417,7 @@ func test_UserUsecase_Delete(t *testing.T, m *userUsecaseMocks, usecase UserInte
 		id, _ := generateId()
 
 		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.deckCodePost.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		m.tag.EXPECT().DeleteByUserId(context.Background(), id).Return(errors.New(""))
@@ -412,6 +431,7 @@ func test_UserUsecase_Delete(t *testing.T, m *userUsecaseMocks, usecase UserInte
 		id, _ := generateId()
 
 		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.deckCodePost.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		m.tag.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
@@ -431,6 +451,7 @@ func test_UserUsecase_Delete(t *testing.T, m *userUsecaseMocks, usecase UserInte
 		id, _ := generateId()
 
 		mockRecordRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
+		m.deckCodePost.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		mockDeckCodeRepository.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)
 		m.tag.EXPECT().DeleteByUserId(context.Background(), id).Return(nil)

@@ -53,6 +53,7 @@ func TestSpecs(t *testing.T) {
 			"tags", "user_favorite_decks", "user_streaks", "user_daily_activities",
 			"user_badges", "user_environment_badges", "notifications", "users_players",
 			"push_subscriptions", "push_deliveries", "user_acquisitions", "user_gyms",
+			"deck_code_posts", "deck_code_post_likes",
 			// 中間テーブル(user_id を持たず、上のテーブルからFKでたどる)
 			"deck_tags", "deck_code_tags", "record_tags", "match_tags",
 			"match_pokemon_sprites", "deck_pokemon_sprites",
@@ -80,6 +81,9 @@ func TestSpecsDeleteOrder(t *testing.T) {
 		{"matches", "records"},
 		{"record_tags", "records"},
 		{"deck_code_tags", "deck_codes"},
+		{"deck_code_post_likes", "deck_code_posts"},
+		{"deck_code_posts", "deck_codes"},
+		{"deck_code_posts", "decks"},
 		{"deck_codes", "decks"},
 		{"deck_tags", "decks"},
 		{"deck_pokemon_sprites", "decks"},

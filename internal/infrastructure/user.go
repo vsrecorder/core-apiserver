@@ -32,7 +32,7 @@ func (i *User) FindById(
 	}
 
 	// Twitter/Googleのアイコン画像を大きくする
-	model.ImageURL = strings.Replace(strings.Replace(model.ImageURL, "_normal", "", -1), "=s96-c", "", -1)
+	model.ImageURL = normalizeUserImageURL(model.ImageURL)
 
 	user := entity.NewUser(
 		model.ID,
@@ -94,4 +94,11 @@ func (i *User) Delete(
 	}
 
 	return nil
+}
+
+// normalizeUserImageURL はプロバイダから受け取ったアイコンURLを、大きいサイズを指す形に直す。
+// X(Twitter)の "_normal"(48px)と Google の "=s96-c"(96px)の指定を外す。
+// ユーザの読み取りと、投稿者・いいねした人のアイコン(みんなの公開デッキ)で共通に使う。
+func normalizeUserImageURL(imageURL string) string {
+	return strings.Replace(strings.Replace(imageURL, "_normal", "", -1), "=s96-c", "", -1)
 }

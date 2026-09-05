@@ -72,6 +72,15 @@ CRON_TZ=Asia/Tokyo
 #   購読者にはアプリ内通知に加えて push を送る(B1_EXECUTION_STEPS.md Step 2-2)。
 #   鍵を配布したら3本とも再ビルドしてから次の実行を待つこと。
 
+# ── みんなの公開デッキ いいねのまとめ通知（cmd/notify-deck-code-post-likes）──
+# 毎日 08:00 JST。前日(0:00〜24:00)に自分の公開デッキへ付いたいいねを投稿ごとに1通にまとめて、
+# 投稿者へアプリ内通知(+push)を作成する。文面は定型で、いいねした人が書いた文章は流れない。
+# 同じ投稿・同じ日の通知は二重に作らないため、多重起動しても安全。
+# 対象日は -date=YYYY-MM-DD で指定でき、未指定なら前日。
+# 検証時は -dry-run=true にすると対象をログ出力するだけで通知は作られない。
+# 毎日 08:00 JST — みんなの公開デッキ いいねのまとめ通知
+0 8 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-deck-code-post-likes.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-deck-code-post-likes -dry-run=false >> /var/log/vsrecorder/deck-code-post-likes.log 2>&1
+
 # ── FirebaseとDBのユーザー突合(cmd/check-firebase-users)──
 # 30分ごと。Firebase Authentication のユーザーと、DBの有効なユーザー(deleted_at IS NULL)を
 # 突合し、差異があれば Slack へ通知する。読み取り専用で、FirebaseにもDBにも書き込まない。

@@ -90,6 +90,9 @@ type DeckCode struct {
 	// transactionManager はデッキコード本体(deck_codes)とタグの付与(deck_code_tags)を
 	// 1つのトランザクションにまとめるために使う。
 	transactionManager repository.TransactionManager
+	// deckCodePost はみんなの公開デッキへの投稿。削除したバージョンの投稿を連動して
+	// 取り下げるために使う。nil なら連動しない(投稿機能を持たないテスト用)。
+	deckCodePost repository.DeckCodePostInterface
 }
 
 func NewDeckCode(
@@ -98,8 +101,9 @@ func NewDeckCode(
 	tag repository.TagInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	transactionManager repository.TransactionManager,
+	deckCodePost repository.DeckCodePostInterface,
 ) DeckCodeInterface {
-	return &DeckCode{repository, deckAsset, tag, badgeEvaluation, transactionManager}
+	return &DeckCode{repository, deckAsset, tag, badgeEvaluation, transactionManager, deckCodePost}
 }
 
 // syncDeckCodeTags は deckCodeId について、userId が付与できる有効なタグ(自分のタグ or
@@ -275,12 +279,18 @@ func (u *DeckCode) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	err := u.repository.Delete(ctx, id)
+	// 削除したバージョンの投稿(みんなの公開デッキ)も同じトランザクションで取り下げる。
+	return u.transactionManager.Do(ctx, func(ctx context.Context) error {
+		if err := u.deckCodePost.UnpublishByDeckCodeId(ctx, id, time.Now().Local()); err != nil {
+			logError(ctx, err)
+			return err
+		}
 
-	if err != nil {
-		logError(ctx, err)
-		return err
-	}
+		if err := u.repository.Delete(ctx, id); err != nil {
+			logError(ctx, err)
+			return err
+		}
 
-	return nil
+		return nil
+	})
 }

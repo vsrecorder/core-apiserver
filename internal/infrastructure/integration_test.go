@@ -26,6 +26,7 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 )
 
@@ -1866,5 +1867,321 @@ func TestIntegrationChampionsleagueSchedule(t *testing.T) {
 		_, err := r.FindById(ctx, "unknown")
 
 		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+}
+
+// みんなの公開デッキ(deck_code_posts / deck_code_post_likes)の実DBスモークテスト。
+// 投稿者・デッキ・コード・スプライト・いいねした人を JOIN と窓関数で1クエリに寄せているため、
+// sqlmock では確かめられない SQL の正しさをここで見る。
+func TestIntegrationDeckCodePostRepository(t *testing.T) {
+	db := setupIntegrationDB(t,
+		"deck_code_post_imports", "deck_code_post_likes", "deck_code_posts",
+		"deck_pokemon_sprites", "pokemon_sprites", "deck_codes", "decks", "users",
+	)
+	r := NewDeckCodePost(db)
+	ctx := context.Background()
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	author := "author-uid-000000000000000001"
+	viewer := "viewer-uid-000000000000000001"
+	other := "other-uid-0000000000000000001"
+	deckId := "01HD7Y3K8D6FDHMHTZ2GT41TD1"
+	deckCodeId := "01HD7Y3K8D6FDHMHTZ2GT41TC1"
+	postId := "01HD7Y3K8D6FDHMHTZ2GT41TP1"
+
+	// 投稿者・閲覧者・第三者と、投稿するデッキ(スプライト2体)・コードを用意する
+	require.NoError(t, db.Create(model.NewUser(author, now, "投稿者", "https://pbs.twimg.com/a_normal.jpg")).Error)
+	require.NoError(t, db.Create(model.NewUser(viewer, now, "閲覧者", "")).Error)
+	require.NoError(t, db.Create(model.NewUser(other, now, "第三者", "")).Error)
+	require.NoError(t, db.Create(model.NewDeck(deckId, now, sql.NullTime{}, author, "ドラパルト ヨノワール型", true)).Error)
+	require.NoError(t, db.Create(model.NewDeckCode(deckCodeId, now, author, deckId, "kVkFF5-pQ2sZa-VFVfkV", true, "")).Error)
+	require.NoError(t, db.Create(&model.PokemonSprite{ID: "0887", Name: "ドラパルト"}).Error)
+	require.NoError(t, db.Create(&model.PokemonSprite{ID: "0477", Name: "ヨノワール"}).Error)
+	require.NoError(t, db.Create(model.NewDeckPokemonSprite(deckId, 1, "0887")).Error)
+	require.NoError(t, db.Create(model.NewDeckPokemonSprite(deckId, 2, "0477")).Error)
+
+	t.Run("正常系_保存した投稿を投稿者・デッキ名・スプライト・コード付きで取得できる", func(t *testing.T) {
+		post := entity.NewDeckCodePost(postId, now, now, author, deckId, deckCodeId, now, time.Time{}, time.Time{}, "46232", "プライムキャッチャー", 0)
+		post.AceSpecImageURL = "https://example.com/46232.jpg"
+		require.NoError(t, r.Save(ctx, post))
+
+		ret, err := r.FindById(ctx, postId, viewer)
+
+		require.NoError(t, err)
+		require.Equal(t, postId, ret.ID)
+		require.Equal(t, "投稿者", ret.User.Name)
+		require.Equal(t, "https://pbs.twimg.com/a.jpg", ret.User.ImageURL, "アイコンは大きいサイズのURLに直す")
+		require.Equal(t, "ドラパルト ヨノワール型", ret.DeckName)
+		require.Equal(t, "kVkFF5-pQ2sZa-VFVfkV", ret.Code)
+		require.Len(t, ret.PokemonSprites, 2)
+		require.Equal(t, "0887", ret.PokemonSprites[0].ID)
+		require.Equal(t, uint(1), ret.PokemonSprites[0].Position)
+		require.Equal(t, "46232", ret.AceSpecCardId)
+		require.Equal(t, "https://example.com/46232.jpg", ret.AceSpecImageURL)
+		require.False(t, ret.LikedByMe)
+		require.True(t, ret.IsActive())
+		require.Empty(t, ret.RecentLikers)
+
+		lite, err := r.FindLiteById(ctx, postId)
+		require.NoError(t, err)
+		require.Equal(t, author, lite.UserId)
+		require.True(t, lite.IsActive())
+
+		_, err = r.FindLiteById(ctx, "01HD7Y3K8D6FDHMHTZ2GT41TXX")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+
+	t.Run("正常系_一覧は環境の期間とACE SPECで絞り込める", func(t *testing.T) {
+		filter := &repository.DeckCodePostFilter{
+			From:          now.Add(-time.Hour),
+			To:            now.Add(time.Hour),
+			AceSpecCardId: "46232",
+			PopularSince:  now.Add(-7 * 24 * time.Hour),
+		}
+		posts, err := r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Len(t, posts, 1)
+
+		// 期間外
+		filter.From = now.Add(time.Minute)
+		posts, err = r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Empty(t, posts)
+
+		// 終了日を区切らない(現在の環境)
+		filter.From = now.Add(-time.Hour)
+		filter.To = time.Time{}
+		posts, err = r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Len(t, posts, 1)
+
+		// ACE SPEC 不一致
+		filter.AceSpecCardId = "1"
+		posts, err = r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Empty(t, posts)
+	})
+
+	t.Run("正常系_スプライトで絞り込め2体指定なら両方を持つデッキだけになる", func(t *testing.T) {
+		filter := &repository.DeckCodePostFilter{PokemonSpriteIds: []string{"0477"}, PopularSince: now.Add(-time.Hour)}
+		posts, err := r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Len(t, posts, 1, "2体目のスプライトでも対象になる")
+
+		filter.PokemonSpriteIds = []string{"0887", "0477"}
+		posts, err = r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Len(t, posts, 1, "両方を持つデッキは対象")
+
+		filter.PokemonSpriteIds = []string{"0887", "9999"}
+		posts, err = r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Empty(t, posts, "片方しか持たないデッキは対象外")
+
+		filter.PokemonSpriteIds = []string{"9999"}
+		posts, err = r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Empty(t, posts)
+	})
+
+	t.Run("正常系_いいねは1人1回で件数と直近のいいねした人が付く", func(t *testing.T) {
+		require.NoError(t, r.Like(ctx, postId, viewer, now))
+		require.NoError(t, r.Like(ctx, postId, viewer, now.Add(time.Second)), "二重押しは何もしない")
+		require.NoError(t, r.Like(ctx, postId, other, now.Add(2*time.Second)))
+
+		ret, err := r.FindById(ctx, postId, viewer)
+		require.NoError(t, err)
+		require.Equal(t, 2, ret.LikeCount, "いいね数は行を数えて出す")
+		require.True(t, ret.LikedByMe)
+		require.Len(t, ret.RecentLikers, 2)
+		require.Equal(t, "第三者", ret.RecentLikers[0].Name, "新しい順")
+
+		likers, err := r.FindLikers(ctx, postId, 10, 0)
+		require.NoError(t, err)
+		require.Len(t, likers, 2)
+		require.Equal(t, other, likers[0].User.ID)
+
+		summary, err := r.SummarizeByUserId(ctx, author)
+		require.NoError(t, err)
+		require.Equal(t, 1, summary.PostCount)
+		require.Equal(t, 2, summary.LikeCountTotal)
+
+		// 人気順は直近のいいね数で並ぶ(1件しか無いので落ちないことの確認)
+		posts, err := r.Find(ctx, &repository.DeckCodePostFilter{Sort: repository.DeckCodePostSortPopular, PopularSince: now.Add(-time.Hour)}, 10, 0)
+		require.NoError(t, err)
+		require.Len(t, posts, 1)
+	})
+
+	t.Run("正常系_いいねの取り消しで件数が戻る", func(t *testing.T) {
+		require.NoError(t, r.Unlike(ctx, postId, viewer))
+		require.NoError(t, r.Unlike(ctx, postId, viewer), "押していなければ何もしない")
+
+		ret, err := r.FindById(ctx, postId, viewer)
+		require.NoError(t, err)
+		require.Equal(t, 1, ret.LikeCount)
+		require.False(t, ret.LikedByMe)
+	})
+
+	t.Run("正常系_取り込みは同じ人なら1回として記録する", func(t *testing.T) {
+		require.NoError(t, r.RecordImport(ctx, postId, viewer, now))
+		require.NoError(t, r.RecordImport(ctx, postId, viewer, now.Add(time.Second)), "2回目は何もしない")
+		require.NoError(t, r.RecordImport(ctx, postId, other, now))
+
+		var count int64
+		require.NoError(t, db.Model(&model.DeckCodePostImport{}).Where("post_id = ?", postId).Count(&count).Error)
+		require.Equal(t, int64(2), count)
+	})
+
+	t.Run("正常系_運営の非表示は一覧から外れるが枠は占有したままになる", func(t *testing.T) {
+		require.NoError(t, db.Exec("UPDATE deck_code_posts SET hidden_at = ? WHERE id = ?", now, postId).Error)
+
+		posts, err := r.Find(ctx, &repository.DeckCodePostFilter{PopularSince: now.Add(-time.Hour)}, 10, 0)
+		require.NoError(t, err)
+		require.Empty(t, posts, "閲覧者向けの一覧には出ない")
+
+		// 投稿者から見れば「公開中」のまま(取り下げはできる)。同じコードの公開し直しは部分一意索引に当たる。
+		active, err := r.FindActiveByDeckCodeId(ctx, deckCodeId)
+		require.NoError(t, err)
+		require.Equal(t, postId, active.ID)
+
+		dup := entity.NewDeckCodePost("01HD7Y3K8D6FDHMHTZ2GT41TP0", now, now, author, deckId, deckCodeId, now.Add(time.Minute), time.Time{}, time.Time{}, "", "", 0)
+		require.ErrorIs(t, r.Save(ctx, dup), apperror.ErrAlreadyExists)
+
+		require.NoError(t, db.Exec("UPDATE deck_code_posts SET hidden_at = NULL WHERE id = ?", postId).Error)
+	})
+
+	t.Run("正常系_デッキ単位の取り下げでいいねごと消え公開中の投稿から外れる", func(t *testing.T) {
+		active, err := r.FindActiveByDeckId(ctx, deckId)
+		require.NoError(t, err)
+		require.Len(t, active, 1)
+
+		unpublishedAt := now.Add(time.Minute)
+		require.NoError(t, r.UnpublishByDeckId(ctx, deckId, unpublishedAt))
+
+		_, err = r.FindActiveByDeckCodeId(ctx, deckCodeId)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+
+		latest, err := r.FindLatestByDeckCodeId(ctx, deckCodeId)
+		require.NoError(t, err)
+		require.Equal(t, postId, latest.ID)
+		require.False(t, latest.UnpublishedAt.IsZero())
+
+		likers, err := r.FindLikers(ctx, postId, 10, 0)
+		require.NoError(t, err)
+		require.Empty(t, likers)
+
+		// 取り下げ済みでも FindById では引ける(個別ページの 410 判定用)。いいねは消えている。
+		ret, err := r.FindById(ctx, postId, "")
+		require.NoError(t, err)
+		require.False(t, ret.IsActive())
+		require.Equal(t, 0, ret.LikeCount)
+	})
+
+	t.Run("正常系_公開し直しは別の投稿として作られ二重の公開は一意制約で弾く", func(t *testing.T) {
+		post := entity.NewDeckCodePost("01HD7Y3K8D6FDHMHTZ2GT41TP2", now, now, author, deckId, deckCodeId, now.Add(2*time.Minute), time.Time{}, time.Time{}, "", "", 0)
+		require.NoError(t, r.Save(ctx, post))
+
+		ret, err := r.FindActiveByDeckCodeId(ctx, deckCodeId)
+		require.NoError(t, err)
+		require.Equal(t, post.ID, ret.ID)
+
+		// 公開中がある状態で同じコードをもう1件公開すると部分一意索引で弾かれる
+		dup := entity.NewDeckCodePost("01HD7Y3K8D6FDHMHTZ2GT41TP3", now, now, author, deckId, deckCodeId, now.Add(3*time.Minute), time.Time{}, time.Time{}, "", "", 0)
+		require.ErrorIs(t, r.Save(ctx, dup), apperror.ErrAlreadyExists)
+	})
+
+	t.Run("正常系_退会時の削除で投稿と押したいいねが消える", func(t *testing.T) {
+		activeId := "01HD7Y3K8D6FDHMHTZ2GT41TP2"
+		require.NoError(t, r.Like(ctx, activeId, viewer, now))
+
+		// 閲覧者の退会: 押したいいねが消え、投稿の件数が戻る
+		require.NoError(t, r.DeleteByUserId(ctx, viewer))
+		ret, err := r.FindById(ctx, activeId, "")
+		require.NoError(t, err)
+		require.Equal(t, 0, ret.LikeCount)
+
+		// 第三者が投稿者のデッキに作ったコードの投稿も、投稿者(デッキの持ち主)の退会で消える
+		otherCodeId := "01HD7Y3K8D6FDHMHTZ2GT41TC9"
+		otherPostId := "01HD7Y3K8D6FDHMHTZ2GT41TP4"
+		require.NoError(t, db.Create(model.NewDeckCode(otherCodeId, now, other, deckId, "gLnLnn-BGH9q3-9LnQLg", true, "")).Error)
+		require.NoError(t, r.Save(ctx, entity.NewDeckCodePost(otherPostId, now, now, other, deckId, otherCodeId, now, time.Time{}, time.Time{}, "", "", 0)))
+		require.NoError(t, r.Like(ctx, otherPostId, author, now))
+
+		// 投稿者の退会: 本人の投稿と、本人のデッキに紐づく投稿がいいねごと消える
+		require.NoError(t, r.DeleteByUserId(ctx, author))
+		_, err = r.FindById(ctx, activeId, "")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		_, err = r.FindLiteById(ctx, otherPostId)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+
+		var count int64
+		require.NoError(t, db.Model(&model.DeckCodePost{}).Where("deck_id = ?", deckId).Count(&count).Error)
+		require.Equal(t, int64(0), count)
+		require.NoError(t, db.Model(&model.DeckCodePostLike{}).Count(&count).Error)
+		require.Equal(t, int64(0), count)
+		require.NoError(t, db.Model(&model.DeckCodePostImport{}).Count(&count).Error)
+		require.Equal(t, int64(0), count, "取り込み記録も投稿ごと消える")
+	})
+}
+
+// いいねの日次まとめ(FindLikeDigests)の集計。投稿者自身のいいねを除き、
+// 期間内で最後にいいねした人の名前が付くことを見る。
+func TestIntegrationDeckCodePostLikeDigests(t *testing.T) {
+	db := setupIntegrationDB(t,
+		"deck_code_post_likes", "deck_code_posts",
+		"deck_pokemon_sprites", "pokemon_sprites", "deck_codes", "decks", "users",
+	)
+	r := NewDeckCodePost(db)
+	ctx := context.Background()
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	author := "author-uid-000000000000000002"
+	likerA := "liker-a-uid-00000000000000002"
+	likerB := "liker-b-uid-00000000000000002"
+	deckId := "01HD7Y3K8D6FDHMHTZ2GT41TD2"
+	deckCodeId := "01HD7Y3K8D6FDHMHTZ2GT41TC2"
+	postId := "01HD7Y3K8D6FDHMHTZ2GT41TP9"
+
+	require.NoError(t, db.Create(model.NewUser(author, now, "投稿者", "")).Error)
+	require.NoError(t, db.Create(model.NewUser(likerA, now, "さくら", "")).Error)
+	require.NoError(t, db.Create(model.NewUser(likerB, now, "タイチ", "")).Error)
+	require.NoError(t, db.Create(model.NewDeck(deckId, now, sql.NullTime{}, author, "メガサーナイト", true)).Error)
+	require.NoError(t, db.Create(model.NewDeckCode(deckCodeId, now, author, deckId, "gLnLnn-BGH9q3-9LnQLg", true, "")).Error)
+	require.NoError(t, r.Save(ctx, entity.NewDeckCodePost(postId, now, now, author, deckId, deckCodeId, now, time.Time{}, time.Time{}, "", "", 0)))
+
+	from := now.Add(-time.Hour)
+	to := now.Add(time.Hour)
+
+	t.Run("正常系_期間内のいいねを投稿ごとにまとめ最後に押した人の名前が付く", func(t *testing.T) {
+		require.NoError(t, r.Like(ctx, postId, likerA, now.Add(-30*time.Minute)))
+		require.NoError(t, r.Like(ctx, postId, likerB, now.Add(-10*time.Minute)))
+		// 投稿者自身のいいねは数えない
+		require.NoError(t, r.Like(ctx, postId, author, now.Add(-5*time.Minute)))
+
+		digests, err := r.FindLikeDigests(ctx, from, to)
+
+		require.NoError(t, err)
+		require.Len(t, digests, 1)
+		require.Equal(t, postId, digests[0].PostId)
+		require.Equal(t, author, digests[0].OwnerUserId)
+		require.Equal(t, "メガサーナイト", digests[0].DeckName)
+		require.Equal(t, 2, digests[0].LikeCount)
+		require.Equal(t, "タイチ", digests[0].LatestLikerName)
+	})
+
+	t.Run("正常系_期間外のいいねは数えない", func(t *testing.T) {
+		digests, err := r.FindLikeDigests(ctx, now.Add(time.Minute), to)
+
+		require.NoError(t, err)
+		require.Empty(t, digests)
+	})
+
+	t.Run("正常系_取り下げた投稿は対象にしない", func(t *testing.T) {
+		require.NoError(t, r.Unpublish(ctx, postId, now))
+
+		digests, err := r.FindLikeDigests(ctx, from, to)
+
+		require.NoError(t, err)
+		require.Empty(t, digests)
 	})
 }

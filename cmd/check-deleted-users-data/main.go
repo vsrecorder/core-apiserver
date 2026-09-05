@@ -341,6 +341,80 @@ var specs = []tableSpec{
 		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
 	},
 	{
+		name:     "deck_code_post_likes",
+		category: categoryLeak,
+		// 「そのユーザが押したいいね」。自分の投稿へのいいねは投稿の削除で消えるが、
+		// 他人の投稿に押したぶんは user_id からしか辿れない。
+		query: `SELECT t.user_id, COUNT(*) FROM deck_code_post_likes t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `DELETE FROM deck_code_post_likes t USING users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
+	},
+	{
+		name:     "deck_code_post_imports",
+		category: categoryLeak,
+		// 「そのユーザが取り込んだ記録」。他人の投稿を取り込んだぶんは user_id からしか辿れない。
+		query: `SELECT t.user_id, COUNT(*) FROM deck_code_post_imports t
+		        JOIN users u ON u.id = t.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY t.user_id`,
+		deleteQuery: `DELETE FROM deck_code_post_imports t USING users u
+		              WHERE u.id = t.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "t.user_id",
+		note:        "退会処理が user_id で削除する。論理削除を持たないため行ごと消す",
+	},
+	{
+		name:     "deck_code_post_imports.post_id",
+		category: categoryLeak,
+		// 「退会ユーザの投稿(deck_code_posts と同じ対象)を他人が取り込んだ記録」。投稿を消す前に外す。
+		query: `SELECT d.user_id, COUNT(*) FROM deck_code_post_imports t
+		        JOIN deck_code_posts p ON p.id = t.post_id
+		        JOIN decks d ON d.id = p.deck_id
+		        JOIN users u ON u.id = d.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY d.user_id`,
+		deleteQuery: `DELETE FROM deck_code_post_imports t USING deck_code_posts p, decks d, users u
+		              WHERE p.id = t.post_id AND d.id = p.deck_id AND u.id = d.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "d.user_id",
+		note:        "退会処理が投稿ごと削除する(投稿の FK の子)",
+	},
+	{
+		name:     "deck_code_post_likes.post_id",
+		category: categoryLeak,
+		// 「退会ユーザの投稿(下の deck_code_posts と同じ対象)に他人が押したいいね」。
+		// 投稿を消す前に外さないと FK で投稿が消せない。所有者は投稿のデッキの持ち主で数える。
+		query: `SELECT d.user_id, COUNT(*) FROM deck_code_post_likes t
+		        JOIN deck_code_posts p ON p.id = t.post_id
+		        JOIN decks d ON d.id = p.deck_id
+		        JOIN users u ON u.id = d.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY d.user_id`,
+		deleteQuery: `DELETE FROM deck_code_post_likes t USING deck_code_posts p, decks d, users u
+		              WHERE p.id = t.post_id AND d.id = p.deck_id AND u.id = d.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "d.user_id",
+		note:        "退会処理が投稿ごと削除する(投稿の FK の子)",
+	},
+	{
+		name:     "deck_code_posts",
+		category: categoryLeak,
+		// 投稿はデッキに紐づくため、退会ユーザのデッキに紐づく投稿(他人が退会ユーザの
+		// デッキに作ったコードで公開したものを含む)をデッキの持ち主で数える。
+		// 本人の投稿は本人のデッキにしか作れない(usecase で所有者を確認する)ので、これで全て拾える。
+		query: `SELECT d.user_id, COUNT(*) FROM deck_code_posts t
+		        JOIN decks d ON d.id = t.deck_id
+		        JOIN users u ON u.id = d.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY d.user_id`,
+		deleteQuery: `DELETE FROM deck_code_posts t USING decks d, users u
+		              WHERE d.id = t.deck_id AND u.id = d.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "d.user_id",
+		note:        "みんなの公開デッキへの投稿。退会処理がデッキ単位で削除する(いいねごと)。論理削除を持たないため行ごと消す",
+	},
+	{
 		name:     "user_favorite_decks",
 		category: categoryLeak,
 		// 「そのユーザが付けたお気に入り」。自分のデッキに付いたぶんは deck 経由でも消えるが、

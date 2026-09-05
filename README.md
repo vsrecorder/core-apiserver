@@ -106,6 +106,8 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 | [`sync-pokemon-avatars`](cmd/sync-pokemon-avatars/) | 公式サイト（プレイヤーズクラブ）のアバター一覧API から `avatarList` を取得し、`pokemon_avatars` テーブルへ upsert します。新規アバターの追加やタイトル・画像URLの変更に追随するため、定期実行を想定しています。 |
 | [`repair-streaks`](cmd/repair-streaks/) | 何らかの理由で `user_streaks` が現存の `records` と食い違った場合に、`records` の日付からゼロから週次ストリーク状態を再計算し、行ごと上書きして復旧します。`-dry-run` / `-user-id` フラグを持ちます。 |
 | [`purge-deleted-user-data`](cmd/purge-deleted-user-data/) | 退会したユーザー (`deleted_at IS NOT NULL`) に紐づくデータを、論理削除済みかどうかを問わず**物理削除**します。対象は `-user-id` で指定した1ユーザーのみで、退会済みでなければ何もしません。`users` の行は残したまま `purged_at` へ実行日時を記録し（`list-deleted-users` の一覧から外れます）、他ユーザーの対戦記録に残る `opponents_user_id` も書き換えません。既定は `-dry-run=true`（件数の確認のみ）で、削除は1トランザクション + 実行前の確認 + 削除後の検算つきです。 |
+| [`hide-deck-code-post`](cmd/hide-deck-code-post/) | みんなの公開デッキの投稿を運営が非表示にする / 解除します。対象は `-post-id` または `-user-id` で指定し、既定は `-dry-run=true`(対象の確認のみ)。非表示にした投稿は一覧・個別ページ・いいね・取り込みの対象から外れ、投稿者には「運営により非表示」と表示されます。そのデッキコードは取り下げた後も公開し直せません(`-unhide` で解除)。 |
+| [`backfill-deck-code-post-acespec`](cmd/backfill-deck-code-post-acespec/) | みんなの公開デッキの投稿のうち ACE SPEC が空のものを deckcard-api で判定し直して埋めます。公開時の判定が失敗した投稿の取りこぼしを後から回収する用途で、埋めた投稿は個別ページを1回取得して OGP 画像も作り直します(`-refresh-ogp=false` で省略)。`-dry-run` / `-user-id` / `-post-id` / `-limit` を持ちます。 |
 
 ### 調査・確認ツール
 

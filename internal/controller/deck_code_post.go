@@ -51,6 +51,12 @@ func (c *DeckCodePost) RegisterRoute(relativePath string) {
 			c.Get,
 		)
 		r.GET(
+			"/acespecs",
+			authentication.OptionalAuthenticationMiddleware(),
+			validation.DeckCodePostAceSpecsMiddleware(),
+			c.GetAceSpecs,
+		)
+		r.GET(
 			"/:id",
 			authentication.OptionalAuthenticationMiddleware(),
 			c.GetById,
@@ -119,7 +125,7 @@ func (c *DeckCodePost) Get(ctx *gin.Context) {
 	param := &usecase.DeckCodePostFindParam{
 		Sort:             sort,
 		EnvironmentId:    helper.GetEnvironmentId(ctx),
-		AceSpecCardId:    helper.GetAceSpecCardId(ctx),
+		AceSpecCardName:  helper.GetAceSpecCardName(ctx),
 		PokemonSpriteIds: helper.GetPokemonSpriteIds(ctx),
 		ViewerUserId:     helper.GetUID(ctx),
 		Limit:            limit,
@@ -311,4 +317,20 @@ func (c *DeckCodePost) GetByDeckId(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, presenter.NewDeckCodePostGetByDeckIdResponse(posts))
+}
+
+// GetAceSpecs は ACE SPEC での絞り込み候補(環境内の公開中の投稿で使われている ACE SPEC と投稿数)を返す。
+func (c *DeckCodePost) GetAceSpecs(ctx *gin.Context) {
+	result, err := c.usecase.FindAceSpecCounts(ctx.Request.Context(), helper.GetEnvironmentId(ctx))
+	if err != nil {
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx, err)
+			return
+		}
+
+		apierror.ErrInternalServerError.JSON(ctx, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, presenter.NewDeckCodePostGetAceSpecsResponse(result))
 }

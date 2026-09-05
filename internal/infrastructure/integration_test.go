@@ -1933,10 +1933,10 @@ func TestIntegrationDeckCodePostRepository(t *testing.T) {
 
 	t.Run("正常系_一覧は環境の期間とACE SPECで絞り込める", func(t *testing.T) {
 		filter := &repository.DeckCodePostFilter{
-			From:          now.Add(-time.Hour),
-			To:            now.Add(time.Hour),
-			AceSpecCardId: "46232",
-			PopularSince:  now.Add(-7 * 24 * time.Hour),
+			From:            now.Add(-time.Hour),
+			To:              now.Add(time.Hour),
+			AceSpecCardName: "プライムキャッチャー",
+			PopularSince:    now.Add(-7 * 24 * time.Hour),
 		}
 		posts, err := r.Find(ctx, filter, 10, 0)
 		require.NoError(t, err)
@@ -1955,8 +1955,14 @@ func TestIntegrationDeckCodePostRepository(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, posts, 1)
 
+		// ACE SPEC はカード名で絞る(収録セット違いをまとめて拾うため)
+		filter.AceSpecCardName = "プライムキャッチャー"
+		posts, err = r.Find(ctx, filter, 10, 0)
+		require.NoError(t, err)
+		require.Len(t, posts, 1)
+
 		// ACE SPEC 不一致
-		filter.AceSpecCardId = "1"
+		filter.AceSpecCardName = "存在しないカード"
 		posts, err = r.Find(ctx, filter, 10, 0)
 		require.NoError(t, err)
 		require.Empty(t, posts)
@@ -1982,6 +1988,22 @@ func TestIntegrationDeckCodePostRepository(t *testing.T) {
 		posts, err = r.Find(ctx, filter, 10, 0)
 		require.NoError(t, err)
 		require.Empty(t, posts)
+	})
+
+	t.Run("正常系_ACE SPECの候補は投稿数付きで返り判定できていない投稿は数えない", func(t *testing.T) {
+		counts, err := r.FindAceSpecCounts(ctx, &repository.DeckCodePostFilter{From: now.Add(-time.Hour), To: now.Add(time.Hour)})
+		require.NoError(t, err)
+		require.Len(t, counts, 1)
+		require.Equal(t, "プライムキャッチャー", counts[0].CardName)
+		require.Equal(t, "https://example.com/46232.jpg", counts[0].ImageURL)
+		require.Equal(t, 1, counts[0].Count)
+
+		// ACE SPEC が空の投稿は候補に出さない
+		require.NoError(t, db.Exec("UPDATE deck_code_posts SET ace_spec_card_name = '' WHERE id = ?", postId).Error)
+		counts, err = r.FindAceSpecCounts(ctx, &repository.DeckCodePostFilter{From: now.Add(-time.Hour), To: now.Add(time.Hour)})
+		require.NoError(t, err)
+		require.Empty(t, counts)
+		require.NoError(t, db.Exec("UPDATE deck_code_posts SET ace_spec_card_name = 'プライムキャッチャー' WHERE id = ?", postId).Error)
 	})
 
 	t.Run("正常系_いいねは1人1回で件数と直近のいいねした人が付く", func(t *testing.T) {

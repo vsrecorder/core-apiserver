@@ -37,6 +37,18 @@ type DeckCodePostResponse struct {
 	RecentLikers    []DeckCodePostUserResponse `json:"recent_likers"`
 }
 
+// DeckCodePostAceSpecCountResponse は ACE SPEC での絞り込み候補1件(公開中の投稿で使われている ACE SPEC と投稿数)。
+type DeckCodePostAceSpecCountResponse struct {
+	CardName string `json:"card_name"`
+	ImageURL string `json:"image_url"`
+	Count    int    `json:"count"`
+}
+
+type DeckCodePostGetAceSpecsResponse struct {
+	Environment *DeckCodePostEnvironmentResponse   `json:"environment"`
+	AceSpecs    []DeckCodePostAceSpecCountResponse `json:"acespecs"`
+}
+
 // DeckCodePostEnvironmentResponse は一覧の絞り込みに使った環境。
 type DeckCodePostEnvironmentResponse struct {
 	ID       string    `json:"id"`

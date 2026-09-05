@@ -39,7 +39,7 @@ integration-test:
 	@until docker exec vsrecorder-test-db pg_isready -U vsrecorder >/dev/null 2>&1; do sleep 1; done
 	docker exec -i vsrecorder-test-db psql -q -U vsrecorder -d vsrecorder_test < db/schema.sql
 	TZ=Asia/Tokyo VSRECORDER_TEST_DATABASE_URL="host=localhost port=15432 user=vsrecorder password=vsrecorder dbname=vsrecorder_test sslmode=disable TimeZone=Asia/Tokyo" \
-		go test -p 1 -count=1 -v -run TestIntegration ./internal/infrastructure/ ./cmd/backfill-acespec-tags/ ./cmd/check-deleted-users-data/ ./cmd/purge-deleted-user-data/ ./cmd/hide-deck-code-post/ ; \
+		go test -p 1 -count=1 -v -run TestIntegration ./internal/infrastructure/ ./cmd/backfill-acespec-tags/ ./cmd/check-deleted-users-data/ ./cmd/purge-deleted-user-data/ ./cmd/hide-deck-code-post/ ./cmd/backfill-deck-code-post-acespec/ ; \
 		status=$$?; docker rm -f vsrecorder-test-db >/dev/null; exit $$status
 
 .PHONY: run

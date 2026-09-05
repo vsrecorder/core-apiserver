@@ -106,6 +106,16 @@ type DeckCodePostLikeDigest struct {
 	LatestLikerName string
 }
 
+// DeckCodePostAceSpecCount は、公開中の投稿で使われている ACE SPEC 1種と、その投稿数(絞り込みの候補)。
+//
+// 同じカードでも収録セットごとに card_id が違う(「アンフェアスタンプ」は 47870 / 49349 / 45640 …)。
+// 利用者にとっては1枚のカードなので、カード名で束ねて数える。
+type DeckCodePostAceSpecCount struct {
+	CardName string
+	ImageURL string
+	Count    int
+}
+
 // AceSpecCard はデッキコードから判定した ACE SPEC カード(deckcard-api の応答)。
 type AceSpecCard struct {
 	CardId   string

@@ -2,6 +2,7 @@ package validation
 
 import (
 	"regexp"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,8 +21,9 @@ const (
 	ulidLength = 26
 )
 
-// aceSpecCardIdPattern はカードID(公式サイトの数値ID)の形。
-var aceSpecCardIdPattern = regexp.MustCompile(`^[0-9]{1,16}$`)
+// maxAceSpecCardNameLength は ACE SPEC カード名の上限。deck_code_posts.ace_spec_card_name の
+// VARCHAR(64) に合わせる(それより長い名前はどの投稿にも一致しない)。
+const maxAceSpecCardNameLength = 64
 
 // environmentIdPattern は environments.id(英数字8文字以内)の形。
 var environmentIdPattern = regexp.MustCompile(`^[0-9A-Za-z_-]{1,8}$`)
@@ -103,7 +105,7 @@ func parseDeckCodePostPaging(ctx *gin.Context) bool {
 // DeckCodePostGetMiddleware は GET /deck_code_posts のクエリを検証する。
 //   - sort: "" / new / popular
 //   - environment_id: 環境ID(空なら現在の環境)
-//   - acespec_card_id: ACE SPEC カードID(空なら絞り込みなし)
+//   - acespec_card_name: ACE SPEC カード名(空なら絞り込みなし。収録セット違いをまとめて拾う)
 //   - pokemon_sprite_id: スプライトID(繰り返し指定で最大2体。すべてを持つデッキに絞る)
 func DeckCodePostGetMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -126,8 +128,8 @@ func DeckCodePostGetMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		aceSpecCardId := ctx.Query("acespec_card_id")
-		if aceSpecCardId != "" && !aceSpecCardIdPattern.MatchString(aceSpecCardId) {
+		aceSpecCardName := ctx.Query("acespec_card_name")
+		if utf8.RuneCountInString(aceSpecCardName) > maxAceSpecCardNameLength {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
@@ -139,8 +141,20 @@ func DeckCodePostGetMiddleware() gin.HandlerFunc {
 
 		helper.SetSort(ctx, sort)
 		helper.SetEnvironmentId(ctx, environmentId)
-		helper.SetAceSpecCardId(ctx, aceSpecCardId)
+		helper.SetAceSpecCardName(ctx, aceSpecCardName)
 		helper.SetPokemonSpriteIds(ctx, pokemonSpriteIds)
+	}
+}
+
+// DeckCodePostAceSpecsMiddleware は GET /deck_code_posts/acespecs(絞り込み候補)の environment_id を検証する。
+func DeckCodePostAceSpecsMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		environmentId, ok := parseEnvironmentId(ctx)
+		if !ok {
+			return
+		}
+
+		helper.SetEnvironmentId(ctx, environmentId)
 	}
 }
 

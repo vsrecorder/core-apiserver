@@ -276,8 +276,9 @@ func (i *DeckCodePost) Find(
 ) ([]*entity.DeckCodePost, error) {
 	q := applyPeriod(i.baseQuery(ctx, filter.ViewerUserId).Where(deckCodePostVisibleCondition), filter)
 
-	if filter.AceSpecCardId != "" {
-		q = q.Where("deck_code_posts.ace_spec_card_id = ?", filter.AceSpecCardId)
+	if filter.AceSpecCardName != "" {
+		// 収録セット違いをまとめて拾うため、カードIDではなく名前で絞る
+		q = q.Where("deck_code_posts.ace_spec_card_name = ?", filter.AceSpecCardName)
 	}
 	// 指定されたスプライトをすべて持つデッキに絞る(位置は問わない)。2体指定なら両方を持つデッキ
 	for _, spriteId := range filter.PokemonSpriteIds {
@@ -297,6 +298,47 @@ func (i *DeckCodePost) Find(
 	}
 
 	return i.findMany(ctx, q.Order("deck_code_posts.published_at DESC").Limit(limit).Offset(offset))
+}
+
+// FindAceSpecCounts は期間内の閲覧者向けに公開中の投稿で使われている ACE SPEC を投稿数の多い順に返す。
+// 同じカードでも収録セットごとに card_id が違うため、カード名で束ねて数える。
+// 画像URLは収録セットによって違うので、代表として1つ(MAX)を採る。
+func (i *DeckCodePost) FindAceSpecCounts(
+	ctx context.Context,
+	filter *repository.DeckCodePostFilter,
+) ([]*entity.DeckCodePostAceSpecCount, error) {
+	q := dbFromContext(ctx, i.db).WithContext(ctx).
+		Table("deck_code_posts").
+		Select(`
+			deck_code_posts.ace_spec_card_name AS card_name,
+			MAX(deck_code_posts.ace_spec_image_url) AS image_url,
+			COUNT(*) AS count
+		`).
+		Joins("JOIN decks ON decks.id = deck_code_posts.deck_id AND decks.deleted_at IS NULL").
+		Where(deckCodePostVisibleCondition).
+		Where("deck_code_posts.ace_spec_card_name <> ''")
+	q = applyPeriod(q, filter)
+
+	var rows []*struct {
+		CardName string
+		ImageURL string
+		Count    int
+	}
+	if tx := q.Group("deck_code_posts.ace_spec_card_name").
+		Order("count DESC, card_name ASC").
+		Scan(&rows); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, tx.Error
+	}
+
+	ret := make([]*entity.DeckCodePostAceSpecCount, 0, len(rows))
+	for _, r := range rows {
+		ret = append(ret, &entity.DeckCodePostAceSpecCount{
+			CardName: r.CardName, ImageURL: r.ImageURL, Count: r.Count,
+		})
+	}
+
+	return ret, nil
 }
 
 func (i *DeckCodePost) FindById(

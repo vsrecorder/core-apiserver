@@ -593,16 +593,17 @@ func GetSort(ctx *gin.Context) string {
 	return sort
 }
 
-// SetAceSpecCardId / GetAceSpecCardId は ACE SPEC カードIDでの絞り込み。空は絞り込みなし。
-func SetAceSpecCardId(ctx *gin.Context, value string) {
-	ctx.Set("ace_spec_card_id", value)
+// SetAceSpecCardName / GetAceSpecCardName は ACE SPEC カード名での絞り込み。空は絞り込みなし。
+// 収録セット違いを1枚として扱うため、カードIDではなく名前を使う。
+func SetAceSpecCardName(ctx *gin.Context, value string) {
+	ctx.Set("ace_spec_card_name", value)
 }
 
-func GetAceSpecCardId(ctx *gin.Context) string {
-	value, _ := ctx.Get("ace_spec_card_id")
-	id, _ := value.(string)
+func GetAceSpecCardName(ctx *gin.Context) string {
+	value, _ := ctx.Get("ace_spec_card_name")
+	name, _ := value.(string)
 
-	return id
+	return name
 }
 
 // SetPokemonSpriteIds / GetPokemonSpriteIds はスプライトでの絞り込み(最大2体)。空は絞り込みなし。

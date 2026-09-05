@@ -25,8 +25,9 @@ type DeckCodePostFilter struct {
 	To   time.Time
 	// PopularSince は人気順で数えるいいねの開始日時(直近7日間など)。
 	PopularSince time.Time
-	// AceSpecCardId を指定するとその ACE SPEC を採用した投稿だけに絞る。
-	AceSpecCardId string
+	// AceSpecCardName を指定するとその ACE SPEC を採用した投稿だけに絞る。
+	// 収録セット違い(card_id 違い)を1枚として扱うため、IDではなく名前で絞る。
+	AceSpecCardName string
 	// PokemonSpriteIds を指定すると、デッキのスプライト(1体目・2体目)にそれらをすべて含む投稿だけに絞る
 	// (位置は問わない。2体指定なら両方を持つデッキ)。webapp のスプライト選択と同じく最大2件。
 	PokemonSpriteIds []string
@@ -50,6 +51,14 @@ type DeckCodePostInterface interface {
 		limit int,
 		offset int,
 	) ([]*entity.DeckCodePost, error)
+
+	// FindAceSpecCounts は filter(期間)に合う閲覧者向けに公開中の投稿で使われている ACE SPEC を、
+	// 投稿数の多い順に返す(ACE SPEC での絞り込みの候補)。filter の Sort / AceSpecCardName /
+	// PokemonSpriteIds は使わない。判定できていない(空の)投稿は数えない。
+	FindAceSpecCounts(
+		ctx context.Context,
+		filter *DeckCodePostFilter,
+	) ([]*entity.DeckCodePostAceSpecCount, error)
 
 	// FindById は取り下げ済み・非表示も含めて1件返す(個別ページで 410 を返す判定に使う)。
 	// viewerUserId が空でなければ LikedByMe を判定する。

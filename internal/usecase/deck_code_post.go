@@ -38,13 +38,20 @@ type DeckCodePostFindParam struct {
 	// EnvironmentId を指定するとその環境の期間に公開された投稿に絞る。
 	// 空なら現在の環境(今日が属する期間)。
 	EnvironmentId string
-	AceSpecCardId string
+	// AceSpecCardName を指定するとその ACE SPEC を採用した投稿に絞る(収録セット違いも含む)。
+	AceSpecCardName string
 	// PokemonSpriteIds を指定するとそれらをすべて持つデッキの投稿に絞る(最大2体)。
 	PokemonSpriteIds []string
 	// ViewerUserId は閲覧者(未ログインなら空)。いいね済みの判定に使う。
 	ViewerUserId string
 	Limit        int
 	Offset       int
+}
+
+// DeckCodePostAceSpecCountsResult は ACE SPEC での絞り込み候補。絞り込みに使った環境も返す。
+type DeckCodePostAceSpecCountsResult struct {
+	Environment *entity.Environment
+	AceSpecs    []*entity.DeckCodePostAceSpecCount
 }
 
 // DeckCodePostFindResult は一覧の応答。絞り込みに使った環境も返し、
@@ -67,6 +74,13 @@ type DeckCodePostInterface interface {
 		ctx context.Context,
 		param *DeckCodePostFindParam,
 	) (*DeckCodePostFindResult, error)
+
+	// FindAceSpecCounts は環境内の公開中の投稿で使われている ACE SPEC を投稿数順に返す。
+	// environmentId が空なら現在の環境。
+	FindAceSpecCounts(
+		ctx context.Context,
+		environmentId string,
+	) (*DeckCodePostAceSpecCountsResult, error)
 
 	// FindById は取り下げ済み・非表示の投稿も返す(個別ページの 410 判定は controller が行う)。
 	FindById(
@@ -358,7 +372,7 @@ func (u *DeckCodePost) Find(
 		From:             resolved.from,
 		To:               resolved.to,
 		PopularSince:     timeNow().Add(-DeckCodePostPopularWindow),
-		AceSpecCardId:    param.AceSpecCardId,
+		AceSpecCardName:  param.AceSpecCardName,
 		PokemonSpriteIds: param.PokemonSpriteIds,
 		ViewerUserId:     param.ViewerUserId,
 	}
@@ -372,6 +386,24 @@ func (u *DeckCodePost) Find(
 	u.attachDesignationTiers(ctx, posts)
 
 	return &DeckCodePostFindResult{Environment: resolved.env, Posts: posts}, nil
+}
+
+func (u *DeckCodePost) FindAceSpecCounts(
+	ctx context.Context,
+	environmentId string,
+) (*DeckCodePostAceSpecCountsResult, error) {
+	resolved, err := u.resolveEnvironment(ctx, environmentId)
+	if err != nil {
+		return nil, err
+	}
+
+	aceSpecs, err := u.repository.FindAceSpecCounts(ctx, &repository.DeckCodePostFilter{From: resolved.from, To: resolved.to})
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	return &DeckCodePostAceSpecCountsResult{Environment: resolved.env, AceSpecs: aceSpecs}, nil
 }
 
 func (u *DeckCodePost) FindById(
@@ -476,7 +508,7 @@ func (u *DeckCodePost) FindLikers(
 }
 
 // findAceSpec は公開時の ACE SPEC 判定。deckcard-api の失敗で公開を止めないため、
-// 失敗は警告ログに残して「判定なし」を返す。
+// 失敗は警告ログに残して「判定なし」を返す(webapp は保存値が空の投稿だけ acespec API で補う)。
 func (u *DeckCodePost) findAceSpec(ctx context.Context, code string) *entity.AceSpecCard {
 	if u.deckCard == nil || code == "" {
 		return nil

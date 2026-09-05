@@ -558,4 +558,40 @@ func TestDeckCodePostUsecase(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		})
 	})
+
+	t.Run("FindAceSpecCounts", func(t *testing.T) {
+		t.Run("正常系_一覧と同じ期間で候補を引く", func(t *testing.T) {
+			overrideTimeNow(t, now)
+			m, usecase := setup4TestDeckCodePostUsecase(t, stubDeckCard{})
+
+			m.environment.EXPECT().FindByDate(gomock.Any(), now).Return(currentEnv, nil)
+			m.post.EXPECT().FindAceSpecCounts(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, filter *repository.DeckCodePostFilter) ([]*entity.DeckCodePostAceSpecCount, error) {
+					require.Equal(t, time.Date(2026, 7, 31, 0, 0, 0, 0, time.Local), filter.From)
+					require.True(t, filter.To.IsZero(), "現在の環境は終了日で区切らない")
+					return []*entity.DeckCodePostAceSpecCount{
+						{CardName: "アンフェアスタンプ", ImageURL: "https://example.com/47870.jpg", Count: 3},
+					}, nil
+				},
+			)
+
+			result, err := usecase.FindAceSpecCounts(context.Background(), "")
+
+			require.NoError(t, err)
+			require.Equal(t, "m6", result.Environment.ID)
+			require.Len(t, result.AceSpecs, 1)
+			require.Equal(t, "アンフェアスタンプ", result.AceSpecs[0].CardName)
+		})
+
+		t.Run("異常系_指定した環境が無ければNotFound", func(t *testing.T) {
+			m, usecase := setup4TestDeckCodePostUsecase(t, stubDeckCard{})
+
+			m.environment.EXPECT().FindById(gomock.Any(), "zz").Return(nil, apperror.ErrRecordNotFound)
+
+			_, err := usecase.FindAceSpecCounts(context.Background(), "zz")
+
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		})
+	})
+
 }

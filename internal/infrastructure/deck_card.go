@@ -23,10 +23,13 @@ const deckCardAPIDefaultBaseURL = "https://vsrecorder.mobi"
 // 差し替えるのはベースURL側(NewDeckCard の引数)で行う。
 const deckCardAceSpecPathFormat = "/api/v1beta/deckcards/%s/acespec"
 
-// deckCardAPITimeout は deckcard-api への問い合わせの上限。公開リクエストの途中で
-// 同期的に呼ぶため、共通の httpclient(10秒)より短くして公開操作を待たせすぎない。
-// 失敗しても公開は「ACE SPEC なし」で続行する。
-const deckCardAPITimeout = 3 * time.Second
+// deckCardAPITimeout は deckcard-api への問い合わせの上限。
+//
+// そのデッキコードを deckcard-api が初めて見るときは公式サイトからの取得が挟まり、
+// 数秒かかることがある。ここで諦めると「ACE SPEC なし」として空のまま保存され、
+// 表示だけでなく OGP 画像・ACE SPEC での絞り込みにも効き続けるため、公開操作が
+// 多少長くなっても取りこぼさないほうを取る(共通の httpclient と同じ10秒)。
+const deckCardAPITimeout = 10 * time.Second
 
 // deckCardHTTPClient は deckcard-api 用の HTTP クライアント。
 var deckCardHTTPClient = &http.Client{Timeout: deckCardAPITimeout}

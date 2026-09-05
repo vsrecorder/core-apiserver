@@ -72,6 +72,21 @@ func (mr *MockDeckCodePostInterfaceMockRecorder) Find(ctx, filter, limit, offset
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Find", reflect.TypeOf((*MockDeckCodePostInterface)(nil).Find), ctx, filter, limit, offset)
 }
 
+// FindAceSpecCounts mocks base method.
+func (m *MockDeckCodePostInterface) FindAceSpecCounts(ctx context.Context, filter *repository.DeckCodePostFilter) ([]*entity.DeckCodePostAceSpecCount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindAceSpecCounts", ctx, filter)
+	ret0, _ := ret[0].([]*entity.DeckCodePostAceSpecCount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindAceSpecCounts indicates an expected call of FindAceSpecCounts.
+func (mr *MockDeckCodePostInterfaceMockRecorder) FindAceSpecCounts(ctx, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindAceSpecCounts", reflect.TypeOf((*MockDeckCodePostInterface)(nil).FindAceSpecCounts), ctx, filter)
+}
+
 // FindActiveByDeckCodeId mocks base method.
 func (m *MockDeckCodePostInterface) FindActiveByDeckCodeId(ctx context.Context, deckCodeId string) (*entity.DeckCodePost, error) {
 	m.ctrl.T.Helper()

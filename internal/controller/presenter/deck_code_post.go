@@ -88,6 +88,20 @@ func NewDeckCodePostGetResponse(
 	}
 }
 
+func NewDeckCodePostGetAceSpecsResponse(result *usecase.DeckCodePostAceSpecCountsResult) *dto.DeckCodePostGetAceSpecsResponse {
+	aceSpecs := []dto.DeckCodePostAceSpecCountResponse{}
+	for _, a := range result.AceSpecs {
+		aceSpecs = append(aceSpecs, dto.DeckCodePostAceSpecCountResponse{
+			CardName: a.CardName, ImageURL: a.ImageURL, Count: a.Count,
+		})
+	}
+
+	return &dto.DeckCodePostGetAceSpecsResponse{
+		Environment: newDeckCodePostEnvironmentResponse(result.Environment),
+		AceSpecs:    aceSpecs,
+	}
+}
+
 func NewDeckCodePostGetByIdResponse(post *entity.DeckCodePost) *dto.DeckCodePostGetByIdResponse {
 	return &dto.DeckCodePostGetByIdResponse{DeckCodePostResponse: newDeckCodePostResponse(post)}
 }

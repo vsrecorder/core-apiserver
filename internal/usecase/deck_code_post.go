@@ -95,8 +95,9 @@ type DeckCodePostInterface interface {
 		deckId string,
 	) ([]*entity.DeckCodePost, error)
 
-	// FindByUserId は投稿者ページの内容を返す。ユーザが無い、または閲覧者向けに公開中の投稿が
-	// 1件も無ければ ErrRecordNotFound(投稿していない人の情報を出さない)。
+	// FindByUserId は投稿者ページの内容を返す。公開中の投稿が1件も無いユーザでも、
+	// 投稿者の公開情報(名前・アイコン・称号)と0件の集計を返す。
+	// ユーザ自体が無ければ ErrRecordNotFound。
 	FindByUserId(
 		ctx context.Context,
 		uid string,
@@ -452,11 +453,6 @@ func (u *DeckCodePost) FindByUserId(
 	if err != nil {
 		logError(ctx, err)
 		return nil, err
-	}
-	// 公開中の投稿が1件も無いユーザは「存在しない」扱いにする。投稿者ページはログイン不要で
-	// 開けるため、ここで弾かないと任意のユーザIDから名前・アイコン・称号を引けてしまう。
-	if summary.PostCount == 0 {
-		return nil, apperror.ErrRecordNotFound
 	}
 
 	posts, err := u.repository.FindByUserId(ctx, uid, viewerUserId, limit, offset)

@@ -383,11 +383,26 @@ func TestDeckCodePostUsecase(t *testing.T) {
 	})
 
 	t.Run("FindByUserId", func(t *testing.T) {
-		t.Run("異常系_公開中の投稿が無いユーザは存在しない扱いにする", func(t *testing.T) {
+		t.Run("正常系_投稿が無くても投稿者の情報と0件の集計を返す", func(t *testing.T) {
 			m, usecase := setup4TestDeckCodePostUsecase(t, stubDeckCard{})
 
 			m.user.EXPECT().FindById(gomock.Any(), uid).Return(entity.NewUser(uid, now, "投稿者", ""), nil)
 			m.post.EXPECT().SummarizeByUserId(gomock.Any(), uid).Return(&entity.DeckCodePostUserSummary{PostCount: 0}, nil)
+			m.post.EXPECT().FindByUserId(gomock.Any(), uid, "viewer", 20, 0).Return([]*entity.DeckCodePost{}, nil)
+
+			view, err := usecase.FindByUserId(context.Background(), uid, "viewer", 20, 0)
+
+			require.NoError(t, err)
+			require.Equal(t, 0, view.Summary.PostCount)
+			require.Equal(t, 0, view.Summary.LikeCountTotal)
+			require.Empty(t, view.Posts)
+			require.Equal(t, "投稿者", view.User.Name)
+		})
+
+		t.Run("異常系_ユーザが無ければ存在しない扱いにする", func(t *testing.T) {
+			m, usecase := setup4TestDeckCodePostUsecase(t, stubDeckCard{})
+
+			m.user.EXPECT().FindById(gomock.Any(), uid).Return(nil, apperror.ErrRecordNotFound)
 
 			_, err := usecase.FindByUserId(context.Background(), uid, "viewer", 20, 0)
 

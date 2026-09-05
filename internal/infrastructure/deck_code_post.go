@@ -35,8 +35,8 @@ func NewDeckCodePost(
 	return &DeckCodePost{db}
 }
 
-// deckCodePostRow は投稿に、投稿者(users)・デッキ名(decks)・コード(deck_codes)・いいね数を
-// JOIN した1行。一覧で N+1 を避けるため1クエリで引く。
+// deckCodePostRow は投稿に、投稿者(users)・デッキ名(decks)・コード(deck_codes)・いいね数・
+// 取り込まれた人数を JOIN した1行。一覧で N+1 を避けるため1クエリで引く。
 type deckCodePostRow struct {
 	ID              string
 	CreatedAt       time.Time
@@ -51,6 +51,7 @@ type deckCodePostRow struct {
 	AceSpecCardName string
 	AceSpecImageURL string
 	LikeCount       int
+	ImportCount     int
 	UserName        string
 	UserImageURL    string
 	UserCreatedAt   time.Time
@@ -97,7 +98,7 @@ func toDeckCodePostEntity(m *model.DeckCodePost) *entity.DeckCodePost {
 	return post
 }
 
-// baseQuery は投稿と投稿者・デッキ・コード・いいね数を JOIN した読み取りの土台。
+// baseQuery は投稿と投稿者・デッキ・コード・いいね数・取り込まれた人数を JOIN した読み取りの土台。
 // viewerUserId が空でなければ、閲覧者がいいね済みかを liked_by_me として同時に引く。
 // 退会したユーザ・削除したデッキ・削除したコードに紐づく投稿は結合で落ちる
 // (退会・削除時に取り下げているので通常は残らないが、二重の防御)。
@@ -126,6 +127,7 @@ func (i *DeckCodePost) baseQuery(ctx context.Context, viewerUserId string) *gorm
 			deck_code_posts.ace_spec_card_name AS ace_spec_card_name,
 			deck_code_posts.ace_spec_image_url AS ace_spec_image_url,
 			(SELECT COUNT(*) FROM deck_code_post_likes lc WHERE lc.post_id = deck_code_posts.id) AS like_count,
+			(SELECT COUNT(*) FROM deck_code_post_imports ic WHERE ic.post_id = deck_code_posts.id) AS import_count,
 			users.name AS user_name,
 			users.image_url AS user_image_url,
 			users.created_at AS user_created_at,
@@ -196,6 +198,7 @@ func (i *DeckCodePost) assemble(ctx context.Context, rows []*deckCodePostRow) ([
 			r.AceSpecCardId, r.AceSpecCardName, r.LikeCount,
 		)
 		post.AceSpecImageURL = r.AceSpecImageURL
+		post.ImportCount = r.ImportCount
 		post.User = entity.NewUser(r.UserId, r.UserCreatedAt, r.UserName, normalizeUserImageURL(r.UserImageURL))
 		post.DeckName = r.DeckName
 		post.Code = r.Code

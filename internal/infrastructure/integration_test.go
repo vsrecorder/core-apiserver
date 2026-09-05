@@ -2052,6 +2052,15 @@ func TestIntegrationDeckCodePostRepository(t *testing.T) {
 		var count int64
 		require.NoError(t, db.Model(&model.DeckCodePostImport{}).Where("post_id = ?", postId).Count(&count).Error)
 		require.Equal(t, int64(2), count)
+
+		ret, err := r.FindById(ctx, postId, viewer)
+		require.NoError(t, err)
+		require.Equal(t, 2, ret.ImportCount, "登録された数は行を数えて出す(同じ人の2回目は増えない)")
+
+		posts, err := r.Find(ctx, &repository.DeckCodePostFilter{PopularSince: now.Add(-time.Hour)}, 10, 0)
+		require.NoError(t, err)
+		require.Len(t, posts, 1)
+		require.Equal(t, 2, posts[0].ImportCount, "一覧でも同じ数が付く")
 	})
 
 	t.Run("正常系_運営の非表示は一覧から外れるが枠は占有したままになる", func(t *testing.T) {

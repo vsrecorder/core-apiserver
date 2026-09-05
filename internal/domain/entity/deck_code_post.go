@@ -32,6 +32,10 @@ type DeckCodePost struct {
 	AceSpecImageURL string
 	// LikeCount はいいね数。インフラ層が deck_code_post_likes を数えて詰める(列としては持たない)。
 	LikeCount int
+	// ImportCount は「デッキ登録」で自分のデッキとして取り込んだ人数。インフラ層が
+	// deck_code_post_imports を数えて詰める(列としては持たない)。同じ人が何度取り込んでも1と数える。
+	// AceSpecImageURL と同じく、コンストラクタの後で詰める。
+	ImportCount int
 
 	User            *User
 	DeckName        string

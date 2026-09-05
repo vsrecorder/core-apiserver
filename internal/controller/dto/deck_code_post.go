@@ -33,6 +33,7 @@ type DeckCodePostResponse struct {
 	AceSpecCardName string                     `json:"ace_spec_card_name"`
 	AceSpecImageURL string                     `json:"ace_spec_image_url"`
 	LikeCount       int                        `json:"like_count"`
+	ImportCount     int                        `json:"import_count"`
 	LikedByMe       bool                       `json:"liked_by_me"`
 	RecentLikers    []DeckCodePostUserResponse `json:"recent_likers"`
 }

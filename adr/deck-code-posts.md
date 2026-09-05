@@ -32,8 +32,10 @@
   (`ErrDeckCodePostHidden` → 403。解除は `cmd/hide-deck-code-post -unhide` で、取り下げ済みも対象)。
   非表示のまま取り下げていない間は部分一意索引が二重公開を防ぐ。
 - `deck_code_post_likes`: (post_id, user_id) で一意。取り消しは物理削除。
-- `deck_code_post_imports`: 「取り込む」の利用記録(運営の指標、画面には出さない)。(post_id, user_id) で一意にし、
+- `deck_code_post_imports`: 「デッキ登録」(取り込む)の利用記録。(post_id, user_id) で一意にし、
   同じ人が何度押しても1回として数える(押した回数を数えると水増しできるため)。取り下げても残す。
+  投稿カードには「N人が登録」として出す(`import_count`)。いいね数と同じく列としては持たず、
+  読み取り時に数える(退会した人の記録は物理削除されるので、その分は数から減る)。
 - 論理削除は持たず、退会時は `DeckCodePost.DeleteByUserId` で物理削除する。消すのは「本人の投稿」
   「本人のデッキに紐づく投稿(他人が本人のデッキに作ったコードで公開したものを含む)」とそれらへの
   いいね、本人が押したいいね(`cmd/check-deleted-users-data` / `cmd/purge-deleted-user-data` の specs も同じ範囲)。

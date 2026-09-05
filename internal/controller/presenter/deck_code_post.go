@@ -46,6 +46,7 @@ func newDeckCodePostResponse(post *entity.DeckCodePost) dto.DeckCodePostResponse
 		AceSpecCardName: post.AceSpecCardName,
 		AceSpecImageURL: post.AceSpecImageURL,
 		LikeCount:       post.LikeCount,
+		ImportCount:     post.ImportCount,
 		LikedByMe:       post.LikedByMe,
 		RecentLikers:    likers,
 	}

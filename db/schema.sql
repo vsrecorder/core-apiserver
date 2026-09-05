@@ -1186,7 +1186,7 @@ GRANT SELECT ON user_gyms               TO grafana;
 -- hidden_at は運営の非表示で、APIからは書き込まない(psql で入れる)。
 -- ace_spec_card_id / ace_spec_card_name / ace_spec_image_url は公開時に deckcard-api で判定した
 -- ACE SPEC。表示にも使う(一覧でカードごとに acespec API を引かない)。入っていなければ空文字。
--- いいね数は deck_code_post_likes を、取り込み数は deck_code_post_imports を数えて出す
+-- いいね数は deck_code_post_likes を、登録された数は deck_code_post_imports を数えて出す
 -- (非正規化した列は持たない。取り消し・退会時の削除・取り下げ時の一括削除で数が狂わないようにするため)。
 -- 論理削除(deleted_at)は持たない。退会時はいいねごと物理削除する。
 CREATE TABLE deck_code_posts (
@@ -1231,7 +1231,8 @@ CREATE TABLE deck_code_post_likes (
 -- 退会時に、そのユーザが押したいいねをまとめて消すために引く。
 CREATE INDEX idx_deck_code_post_likes_user_id ON deck_code_post_likes (user_id);
 
--- 投稿の「取り込む」の利用記録。運営の指標(どの投稿が取り込まれたか)で、画面には出さない。
+-- 投稿の「取り込む」(デッキ登録)の利用記録。投稿カードに「N人が登録」として出すほか、
+-- 運営の指標(どの投稿が取り込まれたか)にも使う。
 -- 同じ人が何度押しても1回として数えるため (post_id, user_id) を主キーにする
 -- (押した回数を数えると、繰り返し押すだけで指標を水増しできる)。取り下げても残す。
 CREATE TABLE deck_code_post_imports (

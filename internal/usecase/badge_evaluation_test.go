@@ -176,8 +176,30 @@ func TestBadgeEvaluation_RecomputeStreak(t *testing.T) {
 		require.Equal(t, StreakMaxFreezeCount+1, streak.LongestWeeks)
 	})
 
-	t.Run("正常系_フリーズ猶予を超えて空くとリセットされ最長記録は残る", func(t *testing.T) {
-		streak := runRecompute(t, []time.Time{monday(0), monday(1), monday(2), monday(6)})
+	t.Run("正常系_2週続けて空いてもフリーズが2つ残っていれば2つ消費して連続扱いになる", func(t *testing.T) {
+		// monday(0) → monday(2) で1つ消費(残り2)。続けて monday(3)・monday(4) を飛ばして
+		// monday(5) に記録すると、空白2週を残り2つで埋めて連続が続く(報告のあった事例)。
+		streak := runRecompute(t, []time.Time{monday(0), monday(2), monday(5)})
+
+		require.Equal(t, 3, streak.CurrentWeeks)
+		require.Equal(t, 3, streak.LongestWeeks)
+		require.Equal(t, StreakMaxFreezeCount, streak.FreezeUsedCount)
+		require.Equal(t, 0, streak.FreezeRegenProgress)
+	})
+
+	t.Run("正常系_空白週数が残りのフリーズを超えるとリセットされる", func(t *testing.T) {
+		// monday(2)・monday(4) で1つずつ消費して残り1。monday(7) までの空白2週は残り1では
+		// 埋められないので1週目に戻る。
+		streak := runRecompute(t, []time.Time{monday(0), monday(2), monday(4), monday(7)})
+
+		require.Equal(t, 1, streak.CurrentWeeks)
+		require.Equal(t, 3, streak.LongestWeeks)
+		require.Equal(t, 0, streak.FreezeUsedCount)
+	})
+
+	t.Run("正常系_フリーズ上限を超えて空くとリセットされ最長記録は残る", func(t *testing.T) {
+		// 3週連続のあと、フリーズ上限より1週多い空白 → 全て未使用でも埋められない
+		streak := runRecompute(t, []time.Time{monday(0), monday(1), monday(2), monday(2 + StreakMaxFreezeCount + 2)})
 
 		require.Equal(t, 1, streak.CurrentWeeks)
 		require.Equal(t, 3, streak.LongestWeeks)
@@ -756,5 +778,41 @@ func TestComputeStreakState(t *testing.T) {
 		_, _, freezeUsedCount, freezeRegenProgress, _ := ComputeStreakState(dates)
 		require.Equal(t, 0, freezeUsedCount)
 		require.Equal(t, 0, freezeRegenProgress)
+	})
+}
+
+func TestFreezeWeeksForGap(t *testing.T) {
+	t.Run("正常系_翌週・同じ週・過去週なら空白は無い", func(t *testing.T) {
+		require.Equal(t, 0, freezeWeeksForGap(1))
+		require.Equal(t, 0, freezeWeeksForGap(0))
+		require.Equal(t, 0, freezeWeeksForGap(-1))
+	})
+
+	t.Run("正常系_週差から1を引いた数が空白週数(=消費するフリーズ数)になる", func(t *testing.T) {
+		require.Equal(t, 1, freezeWeeksForGap(2))
+		require.Equal(t, 2, freezeWeeksForGap(3))
+		require.Equal(t, 3, freezeWeeksForGap(4))
+	})
+}
+
+func TestCanKeepStreak(t *testing.T) {
+	t.Run("正常系_翌週の記録はフリーズ満杯でも継続できる", func(t *testing.T) {
+		require.True(t, canKeepStreak(1, StreakMaxFreezeCount))
+	})
+
+	t.Run("正常系_空白週数が残りフリーズ以下なら継続できる", func(t *testing.T) {
+		// 残り2(使用済み1)で空白2週(週差3) → ちょうど埋められる
+		require.True(t, canKeepStreak(3, StreakMaxFreezeCount-2))
+		// 残り3(未使用)で空白3週(週差4) → ちょうど埋められる
+		require.True(t, canKeepStreak(1+StreakMaxFreezeCount, 0))
+	})
+
+	t.Run("正常系_空白週数が残りフリーズを超えると継続できない", func(t *testing.T) {
+		// 残り1(使用済み2)で空白2週(週差3)
+		require.False(t, canKeepStreak(3, StreakMaxFreezeCount-1))
+		// 満杯(残り0)で空白1週(週差2)
+		require.False(t, canKeepStreak(2, StreakMaxFreezeCount))
+		// 未使用でも上限+1週の空白
+		require.False(t, canKeepStreak(2+StreakMaxFreezeCount, 0))
 	})
 }

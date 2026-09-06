@@ -33,12 +33,13 @@ const notificationLinkUrlForBadge = "/users"
 // badgeAchievedNotificationTitle はバッジ獲得通知の見出し。
 const badgeAchievedNotificationTitle = "バッジを獲得しました"
 
-// streakFreezeMaxGapWeeks は、記録が途切れてもフリーズ枠で連続扱いを維持できる
-// 最大の空白週数(2週間分)。旅行・繁忙期等でのストリーク断絶による離脱を防ぐ
-// (BADGE_STREAK_PLAN.md 2-4)。
-const streakFreezeMaxGapWeeks = 2
-
 // StreakMaxFreezeCount は同時に保持できるフリーズ枠の上限回数。
+//
+// 記録の無い週(空白週)は1週につきフリーズを1つ消費して連続扱いにできる。空白が何週続いても
+// 残りのフリーズで埋め切れる間は途切れず、残りより多く空いた時点で途切れる(StreakPanel の
+// 「1週の空白ごとに1つ使い、最大N個までためられます」という案内と同じ規則)。旅行・繁忙期等での
+// ストリーク断絶による離脱を防ぐのが狙い(BADGE_STREAK_PLAN.md 2-4)。判定は canKeepStreak に
+// 集約している。
 // ストリークがリセットされると再び上限までフリーズを使えるようになる。また、フリーズを
 // 使わずに streakFreezeRegenWeeks 週連続で記録するごとに使用済み枠が1つ回復する
 // (下記 streakFreezeRegenWeeks 参照)。
@@ -49,8 +50,7 @@ const StreakMaxFreezeCount = 3
 // 1度の中断でフリーズを使い切ったユーザーが、以降ずっとフリーズ無しになってしまうのを防ぎ、
 // 継続しているほど猶予が戻る設計にする。ストリークが途切れる・フリーズを消費すると
 // 進捗(FreezeRegenProgress)は0に戻る。
-// フリーズ猶予(streakFreezeMaxGapWeeks)と同じ2週にし、1回サボっても2週まじめに続ければ
-// 枠が戻る軽めのテンポにしている。
+// 1回サボっても2週まじめに続ければ枠が戻る軽めのテンポにしている。
 const streakFreezeRegenWeeks = 2
 
 type BadgeEvaluationInterface interface {
@@ -179,6 +179,29 @@ func calendarDays(t time.Time) int {
 	return int(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix() / (24 * 60 * 60))
 }
 
+// freezeWeeksForGap は、直前の記録週から gapWeeks 週後に記録したときに、その間の空白週を
+// 埋めるために消費するフリーズの数(=空白週数)を返す。翌週(gapWeeks=1)なら空白は無い。
+// 同じ週(0)や過去週(負)も空白は無いものとして0を返す。
+func freezeWeeksForGap(gapWeeks int) int {
+	if gapWeeks <= 1 {
+		return 0
+	}
+
+	return gapWeeks - 1
+}
+
+// canKeepStreak は、最後の記録から gapWeeks 週あいた時点で記録した場合に、間の空白週を
+// 残りのフリーズ(StreakMaxFreezeCount - freezeUsedCount)で埋めて連続記録を維持できる
+// (リセットされない)かを返す。ComputeStreakState(記録日付からの再計算)・isStreakExpired
+// (参照時の途切れ判定)・isLastChanceThisWeek(nudge)の3箇所が同じ基準を使うために切り出している。
+//
+// 以前は空白の週数に関わらず「空白1週まで(記録週の差が2週以内)なら消費1つ」で、フリーズが
+// 2つ以上残っていても2週続けて空くと途切れていた。案内文(1週の空白ごとに1つ)と食い違い、
+// 残りがあるのに途切れたと見える不具合になっていたため、空白週数を残りと比べる。
+func canKeepStreak(gapWeeks int, freezeUsedCount int) bool {
+	return freezeWeeksForGap(gapWeeks) <= StreakMaxFreezeCount-freezeUsedCount
+}
+
 // advanceFreezeRegen はクリーンな週(フリーズ未使用で前週から途切れず継続した週)を
 // 1週進めた際のフリーズ回復進捗を計算し、回復後の (freezeUsedCount, regenProgress) を返す。
 // 回復間隔(streakFreezeRegenWeeks)に達し、かつ使用済み枠が残っていれば1枠回復して進捗を
@@ -263,9 +286,10 @@ func ComputeStreakState(dates []time.Time) (currentWeeks int, longestWeeks int, 
 		case diffWeeks == 1:
 			currentWeeks++
 			freezeUsedCount, freezeRegenProgress = advanceFreezeRegen(freezeUsedCount, freezeRegenProgress)
-		case diffWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount:
+		case canKeepStreak(diffWeeks, freezeUsedCount):
+			// 空白週1つにつきフリーズを1つ消費する。空白週そのものは連続週数に数えない。
 			currentWeeks++
-			freezeUsedCount++
+			freezeUsedCount += freezeWeeksForGap(diffWeeks)
 			freezeRegenProgress = 0
 		default:
 			currentWeeks = 1

@@ -135,12 +135,14 @@ func (u *StreakNudge) alreadyNudgedThisWeek(ctx context.Context, userId string, 
 }
 
 // isLastChanceThisWeek は「今週記録しなければ連続記録が途切れてしまう最後の週」かどうかを判定する。
-// updateStreak / isStreakExpired と同じ週・フリーズ猶予の基準を用いる:
+// ComputeStreakState / isStreakExpired と同じ週・フリーズの基準(canKeepStreak)を用いる:
 //   - 今はまだ連続が生きている(今週記録すれば継続できる)
-//   - かつ、今週サボって次週に記録しても、その時にはもう継続できない(フリーズ猶予を超える)
+//   - かつ、今週サボって次週に記録しても、その時にはもう継続できない(空白週数が残りフリーズを超える)
 //
-// これにより「まだフリーズ猶予が残っていて余裕がある人」を煽らず、本当に今週が瀬戸際の人だけに送る。
-// 具体的には (gap週=1 かつ フリーズ満杯) または (gap週=2 かつ フリーズ空きあり) のときだけ true。
+// これにより「まだフリーズが残っていて余裕がある人」を煽らず、本当に今週が瀬戸際の人だけに送る。
+// 具体的には、最終記録週から今週までの空白週数(gap週-1)が残りフリーズ数とちょうど等しい
+// (今週も空けると埋め切れなくなる)ときだけ true。例: フリーズ満杯(残り0)なら先週が最後の人、
+// 残り1なら2週前が最後の人、残り2なら3週前が最後の人。
 func isLastChanceThisWeek(lastRecordedWeek time.Time, freezeUsedCount int, now time.Time) bool {
 	if lastRecordedWeek.IsZero() {
 		return false
@@ -156,7 +158,7 @@ func isLastChanceThisWeek(lastRecordedWeek time.Time, freezeUsedCount int, now t
 	}
 
 	// 今週記録すれば連続を維持できるか(=今はまだ生きているか)。
-	// 維持できないなら既にフリーズ猶予を超えて途切れており、送っても手遅れ(復帰施策の領域)。
+	// 維持できないなら既に空白週が残りフリーズを超えて途切れており、送っても手遅れ(復帰施策の領域)。
 	if !canKeepStreak(gapWeeks, freezeUsedCount) {
 		return false
 	}
@@ -164,13 +166,4 @@ func isLastChanceThisWeek(lastRecordedWeek time.Time, freezeUsedCount int, now t
 	// 今週サボって次週(gapWeeks+1)に記録した場合、そのとき連続を維持できるか。
 	// 維持できる(=まだ猶予がある)なら今週は瀬戸際ではないので送らない。
 	return !canKeepStreak(gapWeeks+1, freezeUsedCount)
-}
-
-// canKeepStreak は、最後の記録から gapWeeks 週あいた時点で記録した場合に、
-// updateStreak の基準で連続記録を維持できる(リセットされない)かを返す。
-func canKeepStreak(gapWeeks int, freezeUsedCount int) bool {
-	if gapWeeks == 1 {
-		return true
-	}
-	return gapWeeks <= streakFreezeMaxGapWeeks && freezeUsedCount < StreakMaxFreezeCount
 }

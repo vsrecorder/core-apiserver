@@ -30,7 +30,7 @@ func withFixedNow(t *testing.T) {
 }
 
 func TestStreakNudge_NudgeUser(t *testing.T) {
-	t.Run("正常系_2週あいてフリーズ空きあり(今週が瀬戸際)なら通知を作成する", func(t *testing.T) {
+	t.Run("正常系_2週あいてフリーズ残り1(今週が瀬戸際)なら通知を作成する", func(t *testing.T) {
 		withFixedNow(t)
 		mockCtrl := gomock.NewController(t)
 		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
@@ -38,8 +38,9 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		pushNotifier := &stubPushNotifier{sent: 1}
 		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
-		// 最後の記録が2週前・フリーズ未使用 → 今週書けばフリーズ1枠で継続、書かなければ来週リセット
-		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
+		// 最後の記録が2週前・フリーズ残り1 → 今週書けば残り1枠で継続、書かなければ来週は
+		// 空白2週になって残り1では埋められずリセット
+		stored := entity.NewUserStreak("user-1", 3, 5, StreakMaxFreezeCount-1, 0, weeksAgoMonday(2), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 		notificationRepo.EXPECT().FindByUserId(gomock.Any(), "user-1", streakNudgeDedupScanLimit).Return(nil, nil)
 
@@ -74,10 +75,10 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 
 		// last_recorded_week は DATE カラムのため UTC の 0時 として読み出される。
 		// ローカルの月曜 0時 との瞬間差で週数を取ると 9時間分短くなって1週少なく見え、
-		// 「2週あき・フリーズ空きあり」の瀬戸際の週を取りこぼしていた。
+		// 「2週あき・フリーズ残り1」の瀬戸際の週を取りこぼしていた。
 		m := weeksAgoMonday(2)
 		utcMonday := time.Date(m.Year(), m.Month(), m.Day(), 0, 0, 0, 0, time.UTC)
-		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, utcMonday, time.Now())
+		stored := entity.NewUserStreak("user-1", 3, 5, StreakMaxFreezeCount-1, 0, utcMonday, time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 		notificationRepo.EXPECT().FindByUserId(gomock.Any(), "user-1", streakNudgeDedupScanLimit).Return(nil, nil)
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
@@ -127,6 +128,45 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		require.False(t, sent)
 	})
 
+	t.Run("対象外_2週あいてもフリーズが2つ以上残っていれば(来週も救える)送らない", func(t *testing.T) {
+		withFixedNow(t)
+		mockCtrl := gomock.NewController(t)
+		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
+		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
+
+		// 2週前が最後(空白1週)・フリーズ未使用(残り3) → 今週サボっても来週は空白2週を残り3で埋められる
+		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
+
+		sent, err := u.NudgeUser(context.Background(), "user-1", false)
+
+		require.NoError(t, err)
+		require.False(t, sent)
+	})
+
+	t.Run("正常系_3週あいてフリーズ残り2(今週が瀬戸際)なら通知を作成する", func(t *testing.T) {
+		withFixedNow(t)
+		mockCtrl := gomock.NewController(t)
+		userStreakRepo := mock_repository.NewMockUserStreakInterface(mockCtrl)
+		notificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
+		pushNotifier := &stubPushNotifier{sent: 1}
+		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
+
+		// 3週前が最後(空白2週)・使用済み1(残り2) → 今週書けば残り2で埋めて継続、
+		// 書かなければ来週は空白3週で残り2を超えリセット
+		stored := entity.NewUserStreak("user-1", 4, 4, 1, 0, weeksAgoMonday(3), time.Now())
+		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
+		notificationRepo.EXPECT().FindByUserId(gomock.Any(), "user-1", streakNudgeDedupScanLimit).Return(nil, nil)
+		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+		sent, err := u.NudgeUser(context.Background(), "user-1", false)
+
+		require.NoError(t, err)
+		require.True(t, sent)
+	})
+
 	t.Run("対象外_今週すでに記録済みなら送らない", func(t *testing.T) {
 		withFixedNow(t)
 		mockCtrl := gomock.NewController(t)
@@ -152,8 +192,8 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		pushNotifier := &stubPushNotifier{sent: 1}
 		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
-		// 3週前が最後・フリーズ未使用 → フリーズ猶予(2週)を超えて既に途切れている
-		stored := entity.NewUserStreak("user-1", 5, 5, 0, 0, weeksAgoMonday(3), time.Now())
+		// 3週前が最後(空白2週)・残り1 → 空白を埋め切れず既に途切れている
+		stored := entity.NewUserStreak("user-1", 5, 5, StreakMaxFreezeCount-1, 0, weeksAgoMonday(3), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 
 		sent, err := u.NudgeUser(context.Background(), "user-1", false)
@@ -170,7 +210,7 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		pushNotifier := &stubPushNotifier{sent: 1}
 		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
-		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
+		stored := entity.NewUserStreak("user-1", 3, 5, StreakMaxFreezeCount-1, 0, weeksAgoMonday(2), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 
 		// 今週の月曜以降に作られた nudge(同一見出し)が既に存在する
@@ -196,7 +236,7 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		pushNotifier := &stubPushNotifier{sent: 1}
 		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
-		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
+		stored := entity.NewUserStreak("user-1", 3, 5, StreakMaxFreezeCount-1, 0, weeksAgoMonday(2), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 
 		// 先週作られた nudge と、今週の別見出しの通知 → どちらも今週のnudge抑止には効かない
@@ -227,7 +267,7 @@ func TestStreakNudge_NudgeUser(t *testing.T) {
 		pushNotifier := &stubPushNotifier{sent: 1}
 		u := NewStreakNudge(userStreakRepo, notificationRepo, pushNotifier)
 
-		stored := entity.NewUserStreak("user-1", 3, 5, 0, 0, weeksAgoMonday(2), time.Now())
+		stored := entity.NewUserStreak("user-1", 3, 5, StreakMaxFreezeCount-1, 0, weeksAgoMonday(2), time.Now())
 		userStreakRepo.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(stored, nil)
 		notificationRepo.EXPECT().FindByUserId(gomock.Any(), "user-1", streakNudgeDedupScanLimit).Return(nil, nil)
 		// Save は呼ばれない

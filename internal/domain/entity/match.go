@@ -109,3 +109,40 @@ func NewMatch(
 		PokemonSprites:       pokemonSprites,
 	}
 }
+
+// MatchSummary は1つの記録(record)に紐づく対戦の集計。
+//
+// 記録一覧のカードが必要としているのは勝敗数とチーム戦/BO3の有無だけで、
+// 対戦一覧そのものではない。記録ごとに対戦一覧を取得すると1ページ(10件)で
+// 10往復になるため、この形に落として1回でまとめて返せるようにしている。
+type MatchSummary struct {
+	RecordId string
+	Total    int
+	Wins     int
+	// Losses は Total から Wins と Draws を引いた数。引き分けは負けに数えない。
+	Losses int
+	Draws  int
+	// HasGroupMatch / HasBo3 は、その記録に該当する対戦が1件でもあるか。
+	HasGroupMatch bool
+	HasBo3        bool
+}
+
+func NewMatchSummary(
+	recordId string,
+	total int,
+	wins int,
+	losses int,
+	draws int,
+	hasGroupMatch bool,
+	hasBo3 bool,
+) *MatchSummary {
+	return &MatchSummary{
+		RecordId:      recordId,
+		Total:         total,
+		Wins:          wins,
+		Losses:        losses,
+		Draws:         draws,
+		HasGroupMatch: hasGroupMatch,
+		HasBo3:        hasBo3,
+	}
+}

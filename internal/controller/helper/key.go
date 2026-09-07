@@ -427,6 +427,18 @@ func GetTagUpdateRequest(ctx *gin.Context) dto.TagUpdateRequest {
 	return ret
 }
 
+// SetRecordIds / GetRecordIds は GET /matches/summary の集計対象の記録ID。
+func SetRecordIds(ctx *gin.Context, value []string) {
+	ctx.Set("record_ids", value)
+}
+
+func GetRecordIds(ctx *gin.Context) []string {
+	value, _ := ctx.Get("record_ids")
+	recordIds, _ := value.([]string)
+
+	return recordIds
+}
+
 func SetMatchCreateRequest(ctx *gin.Context, value dto.MatchCreateRequest) {
 	ctx.Set("match_create_request", value)
 }

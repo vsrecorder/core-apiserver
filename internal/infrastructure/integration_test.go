@@ -2216,3 +2216,116 @@ func TestIntegrationDeckCodePostLikeDigests(t *testing.T) {
 		require.Empty(t, digests)
 	})
 }
+
+// 記録ごとの対戦集計(GET /matches/summary)。手書きの集約SQLのため、
+// sqlmockでは db/schema.sql との整合(カラム名・COUNT(CASE WHEN ...)の解釈)も
+// 「他人の記録を除外できているか」も確かめられない。実DBで確認する。
+func TestIntegrationMatchSummaries(t *testing.T) {
+	db := setupIntegrationDB(t, "games", "matches", "records")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	const othersUid = "CeQ0Oa9g9uRThL11lj4l45VAg8p1"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	createRecord := func(recordId string, userId string) {
+		t.Helper()
+
+		require.NoError(t, db.Create(&model.Record{
+			ID: recordId, CreatedAt: now, UpdatedAt: now, UserId: userId, EventDate: now,
+		}).Error)
+	}
+	createMatch := func(matchId string, recordId string, userId string, m model.Match) {
+		t.Helper()
+
+		m.ID = matchId
+		m.CreatedAt = now
+		m.UpdatedAt = now
+		m.RecordId = recordId
+		m.UserId = userId
+
+		require.NoError(t, db.Create(&m).Error)
+	}
+
+	// 自分の記録1: BO3で3勝1敗1分け(計5戦)。チーム戦は無し。
+	createRecord("rec-sum-1", uid)
+	createMatch("mat-sum-1", "rec-sum-1", uid, model.Match{BO3Flg: true, VictoryFlg: true})
+	createMatch("mat-sum-2", "rec-sum-1", uid, model.Match{BO3Flg: true, VictoryFlg: true})
+	createMatch("mat-sum-3", "rec-sum-1", uid, model.Match{BO3Flg: true, VictoryFlg: true})
+	createMatch("mat-sum-4", "rec-sum-1", uid, model.Match{BO3Flg: true, VictoryFlg: false})
+	createMatch("mat-sum-5", "rec-sum-1", uid, model.Match{BO3Flg: true, DrawFlg: true})
+
+	// 自分の記録2: チーム戦を1件含む1勝1敗。論理削除済みの対戦は数えない。
+	createRecord("rec-sum-2", uid)
+	createMatch("mat-sum-6", "rec-sum-2", uid, model.Match{GroupMatchFlg: true, VictoryFlg: true})
+	createMatch("mat-sum-7", "rec-sum-2", uid, model.Match{VictoryFlg: false})
+	createMatch("mat-sum-8", "rec-sum-2", uid, model.Match{VictoryFlg: true})
+	require.NoError(t, db.Delete(&model.Match{}, "id = ?", "mat-sum-8").Error)
+
+	// 自分の記録3: 対戦が1件も紐づいていない
+	createRecord("rec-sum-3", uid)
+
+	// 他人の記録
+	createRecord("rec-sum-others", othersUid)
+	createMatch("mat-sum-9", "rec-sum-others", othersUid, model.Match{VictoryFlg: true})
+
+	// 論理削除済みの自分の記録
+	createRecord("rec-sum-deleted", uid)
+	createMatch("mat-sum-10", "rec-sum-deleted", uid, model.Match{VictoryFlg: true})
+	require.NoError(t, db.Delete(&model.Record{}, "id = ?", "rec-sum-deleted").Error)
+
+	ctx := context.Background()
+	r := NewMatch(db)
+
+	t.Run("正常系_勝敗数とチーム戦BO3の有無を記録ごとに集計する", func(t *testing.T) {
+		summaries, err := r.FindSummariesByRecordIds(ctx, uid, []string{"rec-sum-1", "rec-sum-2", "rec-sum-3"})
+
+		require.NoError(t, err)
+		require.Len(t, summaries, 3)
+
+		// 要求した順に並ぶ
+		require.Equal(t, "rec-sum-1", summaries[0].RecordId)
+		require.Equal(t, 5, summaries[0].Total)
+		require.Equal(t, 3, summaries[0].Wins)
+		require.Equal(t, 1, summaries[0].Losses)
+		require.Equal(t, 1, summaries[0].Draws)
+		require.False(t, summaries[0].HasGroupMatch)
+		require.True(t, summaries[0].HasBo3)
+
+		// 論理削除した mat-sum-8 は数に入らない
+		require.Equal(t, "rec-sum-2", summaries[1].RecordId)
+		require.Equal(t, 2, summaries[1].Total)
+		require.Equal(t, 1, summaries[1].Wins)
+		require.Equal(t, 1, summaries[1].Losses)
+		require.Equal(t, 0, summaries[1].Draws)
+		require.True(t, summaries[1].HasGroupMatch)
+		require.False(t, summaries[1].HasBo3)
+
+		// 対戦が無い記録も total=0 として返る(webappのフォールバックを起こさないため)
+		require.Equal(t, "rec-sum-3", summaries[2].RecordId)
+		require.Equal(t, 0, summaries[2].Total)
+		require.Equal(t, 0, summaries[2].Losses)
+	})
+
+	t.Run("正常系_他人の記録は結果から除外される", func(t *testing.T) {
+		summaries, err := r.FindSummariesByRecordIds(ctx, uid, []string{"rec-sum-1", "rec-sum-others"})
+
+		require.NoError(t, err)
+		require.Len(t, summaries, 1)
+		require.Equal(t, "rec-sum-1", summaries[0].RecordId)
+	})
+
+	t.Run("正常系_存在しない記録と論理削除済みの記録は結果から除外される", func(t *testing.T) {
+		summaries, err := r.FindSummariesByRecordIds(ctx, uid, []string{"rec-sum-notfound", "rec-sum-deleted"})
+
+		require.NoError(t, err)
+		require.Empty(t, summaries)
+	})
+
+	t.Run("正常系_記録IDが空なら空を返す", func(t *testing.T) {
+		summaries, err := r.FindSummariesByRecordIds(ctx, uid, nil)
+
+		require.NoError(t, err)
+		require.Empty(t, summaries)
+	})
+}

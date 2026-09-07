@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -506,5 +507,67 @@ func TestParseQueryWeek(t *testing.T) {
 	t.Run("異常系_形式が不正ならエラーを返す", func(t *testing.T) {
 		_, err := ParseQueryWeek(newTestContext(t, "week=2026/07/13"))
 		require.Error(t, err)
+	})
+}
+
+func TestParseQueryRecordIds(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_未指定なら空スライスを返す", func(t *testing.T) {
+		recordIds, err := ParseQueryRecordIds(newTestContext(t, ""))
+		require.NoError(t, err)
+		require.Empty(t, recordIds)
+	})
+
+	t.Run("正常系_カンマ区切りを分解して返す", func(t *testing.T) {
+		recordIds, err := ParseQueryRecordIds(newTestContext(t, "record_ids=r1,r2,r3"))
+		require.NoError(t, err)
+		require.Equal(t, []string{"r1", "r2", "r3"}, recordIds)
+	})
+
+	t.Run("正常系_前後の空白と空要素は取り除く", func(t *testing.T) {
+		recordIds, err := ParseQueryRecordIds(newTestContext(t, "record_ids=r1,%20,%20r2%20,,r3"))
+		require.NoError(t, err)
+		require.Equal(t, []string{"r1", "r2", "r3"}, recordIds)
+	})
+
+	t.Run("正常系_重複は取り除き最初の並びを保つ", func(t *testing.T) {
+		recordIds, err := ParseQueryRecordIds(newTestContext(t, "record_ids=r1,r2,r1"))
+		require.NoError(t, err)
+		require.Equal(t, []string{"r1", "r2"}, recordIds)
+	})
+
+	t.Run("正常系_上限ちょうどは受け付ける", func(t *testing.T) {
+		ids := make([]string, 0, MaxRecordIds)
+		for i := 0; i < MaxRecordIds; i++ {
+			ids = append(ids, fmt.Sprintf("r%d", i))
+		}
+
+		recordIds, err := ParseQueryRecordIds(newTestContext(t, "record_ids="+strings.Join(ids, ",")))
+		require.NoError(t, err)
+		require.Len(t, recordIds, MaxRecordIds)
+	})
+
+	t.Run("異常系_上限を超えたらエラーを返す", func(t *testing.T) {
+		ids := make([]string, 0, MaxRecordIds+1)
+		for i := 0; i <= MaxRecordIds; i++ {
+			ids = append(ids, fmt.Sprintf("r%d", i))
+		}
+
+		recordIds, err := ParseQueryRecordIds(newTestContext(t, "record_ids="+strings.Join(ids, ",")))
+		require.Error(t, err)
+		require.Nil(t, recordIds)
+	})
+
+	// 重複を除いた後の件数で判定する(実際にDBのIN句へ渡る長さが歯止めの対象のため)
+	t.Run("正常系_重複を除けば上限内なら受け付ける", func(t *testing.T) {
+		ids := make([]string, 0, MaxRecordIds+10)
+		for i := 0; i <= MaxRecordIds+9; i++ {
+			ids = append(ids, "r1")
+		}
+
+		recordIds, err := ParseQueryRecordIds(newTestContext(t, "record_ids="+strings.Join(ids, ",")))
+		require.NoError(t, err)
+		require.Equal(t, []string{"r1"}, recordIds)
 	})
 }

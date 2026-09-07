@@ -116,6 +116,14 @@ type MatchInterface interface {
 		limit int,
 	) ([]*entity.Match, error)
 
+	// FindSummariesByRecordIds は recordIds のうち userId が所有する記録について、
+	// 対戦の集計を返す。他人の記録・存在しない記録は結果から除外される。
+	FindSummariesByRecordIds(
+		ctx context.Context,
+		userId string,
+		recordIds []string,
+	) ([]*entity.MatchSummary, error)
+
 	FindLatest(
 		ctx context.Context,
 		limit int,
@@ -235,6 +243,21 @@ func (u *Match) FindByUserId(
 	}
 
 	return matches, nil
+}
+
+func (u *Match) FindSummariesByRecordIds(
+	ctx context.Context,
+	userId string,
+	recordIds []string,
+) ([]*entity.MatchSummary, error) {
+	summaries, err := u.repository.FindSummariesByRecordIds(ctx, userId, recordIds)
+
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	return summaries, nil
 }
 
 func (u *Match) FindLatest(

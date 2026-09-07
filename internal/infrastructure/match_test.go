@@ -151,14 +151,15 @@ func TestMatchInfrastructure(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 	){
-		"FindById":       test_MatchInfrastructure_FindById,
-		"FindByRecordId": test_MatchInfrastructure_FindByRecordId,
-		"FindByUserId":   test_MatchInfrastructure_FindByUserId,
-		"FindLatest":     test_MatchInfrastructure_FindLatest,
-		"Create":         test_MatchInfrastructure_Create,
-		"Update":         test_MatchInfrastructure_Update,
-		"Delete":         test_MatchInfrastructure_Delete,
-		"Reorder":        test_MatchInfrastructure_Reorder,
+		"FindById":                 test_MatchInfrastructure_FindById,
+		"FindByRecordId":           test_MatchInfrastructure_FindByRecordId,
+		"FindByUserId":             test_MatchInfrastructure_FindByUserId,
+		"FindSummariesByRecordIds": test_MatchInfrastructure_FindSummariesByRecordIds,
+		"FindLatest":               test_MatchInfrastructure_FindLatest,
+		"Create":                   test_MatchInfrastructure_Create,
+		"Update":                   test_MatchInfrastructure_Update,
+		"Delete":                   test_MatchInfrastructure_Delete,
+		"Reorder":                  test_MatchInfrastructure_Reorder,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)

@@ -51,6 +51,7 @@ func TestMatchController(t *testing.T) {
 	for scenario, fn := range map[string]func(t *testing.T){
 		"GetById":       test_MatchController_GetById,
 		"GetByRecordId": test_MatchController_GetByRecordId,
+		"GetSummaries":  test_MatchController_GetSummaries,
 		"Create":        test_MatchController_Create,
 		"Update":        test_MatchController_Update,
 		"Delete":        test_MatchController_Delete,

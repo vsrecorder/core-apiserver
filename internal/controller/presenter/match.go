@@ -238,3 +238,28 @@ func NewMatchUpdateResponse(
 		},
 	}
 }
+
+func NewMatchGetSummariesResponse(
+	summaries []*entity.MatchSummary,
+) *dto.MatchGetSummariesResponse {
+	summariesResponse := []*dto.MatchSummaryResponse{}
+
+	for _, summary := range summaries {
+		summariesResponse = append(
+			summariesResponse,
+			&dto.MatchSummaryResponse{
+				RecordId:      summary.RecordId,
+				Total:         summary.Total,
+				Wins:          summary.Wins,
+				Losses:        summary.Losses,
+				Draws:         summary.Draws,
+				HasGroupMatch: summary.HasGroupMatch,
+				HasBo3:        summary.HasBo3,
+			},
+		)
+	}
+
+	return &dto.MatchGetSummariesResponse{
+		Summaries: summariesResponse,
+	}
+}

@@ -131,6 +131,21 @@ func (mr *MockMatchInterfaceMockRecorder) FindLatest(ctx, limit any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLatest", reflect.TypeOf((*MockMatchInterface)(nil).FindLatest), ctx, limit)
 }
 
+// FindSummariesByRecordIds mocks base method.
+func (m *MockMatchInterface) FindSummariesByRecordIds(ctx context.Context, userId string, recordIds []string) ([]*entity.MatchSummary, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindSummariesByRecordIds", ctx, userId, recordIds)
+	ret0, _ := ret[0].([]*entity.MatchSummary)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindSummariesByRecordIds indicates an expected call of FindSummariesByRecordIds.
+func (mr *MockMatchInterfaceMockRecorder) FindSummariesByRecordIds(ctx, userId, recordIds any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSummariesByRecordIds", reflect.TypeOf((*MockMatchInterface)(nil).FindSummariesByRecordIds), ctx, userId, recordIds)
+}
+
 // Reorder mocks base method.
 func (m *MockMatchInterface) Reorder(ctx context.Context, recordId string, orders []*entity.MatchOrder) error {
 	m.ctrl.T.Helper()

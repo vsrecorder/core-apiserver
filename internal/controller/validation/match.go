@@ -120,3 +120,19 @@ func MatchReorderMiddleware() gin.HandlerFunc {
 		helper.SetMatchReorderRequest(ctx, req)
 	}
 }
+
+// MatchGetSummariesMiddleware は GET /matches/summary の record_ids を検証する。
+//
+// 未指定・空はエラーにせず空の集計対象として通す(記録一覧の初期表示など、
+// 対象が0件のまま呼ばれる経路があるため)。上限超過だけを400で弾く。
+func MatchGetSummariesMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		recordIds, err := helper.ParseQueryRecordIds(ctx)
+		if err != nil {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+
+		helper.SetRecordIds(ctx, recordIds)
+	}
+}

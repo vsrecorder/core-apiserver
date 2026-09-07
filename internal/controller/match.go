@@ -21,6 +21,8 @@ import (
 
 const (
 	MatchesPath = "/matches"
+	// MatchesSummaryPath は複数の記録の対戦集計をまとめて返すエンドポイント。
+	MatchesSummaryPath = "/summary"
 )
 
 type Match struct {
@@ -46,6 +48,14 @@ func (c *Match) RegisterRoute(relativePath string) {
 			"",
 			authentication.RequiredAuthenticationMiddleware(),
 			c.GetLatest,
+		)
+		// "/:id" より前に登録し、summary が記録IDとして解釈されないようにする。
+		// 認可はusecase(のリポジトリ)がuidで絞り込むため、authorizationは挟まない。
+		r.GET(
+			MatchesSummaryPath,
+			authentication.RequiredAuthenticationMiddleware(),
+			validation.MatchGetSummariesMiddleware(),
+			c.GetSummaries,
 		)
 		r.GET(
 			"/:id",
@@ -158,6 +168,32 @@ func (c *Match) GetByRecordId(ctx *gin.Context) {
 	}
 
 	res := presenter.NewMatchGetByRecordIdResponse(matches)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+// GetSummaries は record_ids で指定された記録の対戦集計をまとめて返す。
+//
+// 記録一覧は1ページぶん(10件)の記録それぞれについて勝敗数を表示するが、
+// 必要なのは集計値だけで対戦一覧そのものではない。記録ごとに
+// GET /records/:id/matches を叩くと1ページで10往復になるため、ここで1回に束ねる。
+//
+// 認可はリポジトリのクエリが records.user_id = uid で絞ることで担保する。
+// 他人の記録・存在しない記録は404や403にせず結果から除外する。エラーにすると
+// 1件でも他人のIDが混ざったページ全体が表示できなくなるうえ、記録IDの
+// 実在有無を他人へ知らせることにもなるため。webapp側は欠けた記録だけ
+// 個別に取り直す。
+func (c *Match) GetSummaries(ctx *gin.Context) {
+	uid := helper.GetUID(ctx)
+	recordIds := helper.GetRecordIds(ctx)
+
+	summaries, err := c.usecase.FindSummariesByRecordIds(ctx.Request.Context(), uid, recordIds)
+	if err != nil {
+		apierror.ErrInternalServerError.JSON(ctx, err)
+		return
+	}
+
+	res := presenter.NewMatchGetSummariesResponse(summaries)
 
 	ctx.JSON(http.StatusOK, res)
 }

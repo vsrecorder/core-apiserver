@@ -80,3 +80,22 @@ type MatchOrderItem struct {
 type MatchReorderRequest struct {
 	Matches []*MatchOrderItem `json:"matches"`
 }
+
+// MatchSummaryResponse は1つの記録に紐づく対戦の集計。
+// 記録一覧のカードが使うのは勝敗数とチーム戦/BO3の有無だけのため、
+// 対戦一覧(MatchResponse)ではなくこの形で返す。
+type MatchSummaryResponse struct {
+	RecordId      string `json:"record_id"`
+	Total         int    `json:"total"`
+	Wins          int    `json:"wins"`
+	Losses        int    `json:"losses"`
+	Draws         int    `json:"draws"`
+	HasGroupMatch bool   `json:"has_group_match"`
+	HasBo3        bool   `json:"has_bo3"`
+}
+
+// MatchGetSummariesResponse は GET /matches/summary の応答。
+// 後から件数や打ち切りの情報を足せるよう、配列を直に返さずオブジェクトで包む。
+type MatchGetSummariesResponse struct {
+	Summaries []*MatchSummaryResponse `json:"summaries"`
+}

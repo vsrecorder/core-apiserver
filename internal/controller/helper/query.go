@@ -113,3 +113,8 @@ func GetQueryKeyword(ctx *gin.Context) string {
 func GetQueryChampionsleagueScheduleId(ctx *gin.Context) string {
 	return ctx.Query("championsleague_schedule_id")
 }
+
+// GetQueryRecordIds は GET /matches/summary の集計対象の記録ID(カンマ区切り)。
+func GetQueryRecordIds(ctx *gin.Context) string {
+	return ctx.Query("record_ids")
+}

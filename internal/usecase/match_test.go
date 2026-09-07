@@ -154,12 +154,13 @@ func TestMatchUsecase(t *testing.T) {
 		mockRecordRepository *mock_repository.MockRecordInterface,
 		usecase MatchInterface,
 	){
-		"FindById":      test_MatchUsecase_FindById,
-		"FindByMatchId": test_MatchUsecase_FindByRecordId,
-		"Create":        test_MatchUsecase_Create,
-		"Update":        test_MatchUsecase_Update,
-		"Delete":        test_MatchUsecase_Delete,
-		"Reorder":       test_MatchUsecase_Reorder,
+		"FindById":                 test_MatchUsecase_FindById,
+		"FindByMatchId":            test_MatchUsecase_FindByRecordId,
+		"FindSummariesByRecordIds": test_MatchUsecase_FindSummariesByRecordIds,
+		"Create":                   test_MatchUsecase_Create,
+		"Update":                   test_MatchUsecase_Update,
+		"Delete":                   test_MatchUsecase_Delete,
+		"Reorder":                  test_MatchUsecase_Reorder,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t, mockRepository, mockRecordRepository, usecase)
@@ -191,6 +192,44 @@ func test_MatchUsecase_FindById(t *testing.T, mockRepository *mock_repository.Mo
 		mockRepository.EXPECT().FindById(context.Background(), id).Return(nil, errors.New(""))
 
 		ret, err := usecase.FindById(context.Background(), id)
+
+		require.Error(t, err)
+		require.Empty(t, ret)
+	})
+}
+
+func test_MatchUsecase_FindSummariesByRecordIds(t *testing.T, mockRepository *mock_repository.MockMatchInterface, mockRecordRepository *mock_repository.MockRecordInterface, usecase MatchInterface) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	t.Run("正常系_リポジトリの集計をそのまま返す", func(t *testing.T) {
+		recordId, err := generateId()
+		require.NoError(t, err)
+
+		summaries := []*entity.MatchSummary{
+			entity.NewMatchSummary(recordId, 5, 3, 1, 1, false, true),
+		}
+
+		mockRepository.EXPECT().
+			FindSummariesByRecordIds(context.Background(), uid, []string{recordId}).
+			Return(summaries, nil)
+
+		ret, err := usecase.FindSummariesByRecordIds(context.Background(), uid, []string{recordId})
+
+		require.NoError(t, err)
+		require.Len(t, ret, 1)
+		require.Equal(t, recordId, ret[0].RecordId)
+		require.Equal(t, 1, ret[0].Losses)
+	})
+
+	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
+		recordId, err := generateId()
+		require.NoError(t, err)
+
+		mockRepository.EXPECT().
+			FindSummariesByRecordIds(context.Background(), uid, []string{recordId}).
+			Return(nil, errors.New(""))
+
+		ret, err := usecase.FindSummariesByRecordIds(context.Background(), uid, []string{recordId})
 
 		require.Error(t, err)
 		require.Empty(t, ret)

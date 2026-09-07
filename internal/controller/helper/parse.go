@@ -28,6 +28,11 @@ const (
 	// 一致対象の shops.name / shops.address がどちらも VARCHAR(255) のため。
 	MaxKeywordLength = 255
 
+	// MaxRecordIds は GET /matches/summary で一度に集計できる記録の数。
+	// webappの記録一覧は1ページ10件のため十分な余裕があり、上限を設けないと
+	// IN句が無制限に伸びて1リクエストでDBを重く走らせられてしまう。
+	MaxRecordIds = 50
+
 	DateLayout = time.DateOnly
 )
 
@@ -465,4 +470,43 @@ func ParseQueryLimitOptional(ctx *gin.Context) (int, error) {
 	}
 
 	return limit, nil
+}
+
+// ParseQueryRecordIds は record_ids クエリ(カンマ区切り)を解析する。
+//
+// 未指定・空は空スライスを返す(集計対象が無いだけでエラーではない)。
+// 空要素と重複は取り除き、残った件数が MaxRecordIds を超える場合だけエラーを返す。
+// 重複を除いてから数えるのは、実際にDBへ渡すIN句の長さが歯止めの対象のため。
+func ParseQueryRecordIds(ctx *gin.Context) ([]string, error) {
+	query := GetQueryRecordIds(ctx)
+
+	if query == "" {
+		return []string{}, nil
+	}
+
+	rawIds := strings.Split(query, ",")
+
+	seen := make(map[string]struct{}, len(rawIds))
+	recordIds := make([]string, 0, len(rawIds))
+
+	for _, rawId := range rawIds {
+		recordId := strings.TrimSpace(rawId)
+
+		if recordId == "" {
+			continue
+		}
+
+		if _, ok := seen[recordId]; ok {
+			continue
+		}
+
+		seen[recordId] = struct{}{}
+		recordIds = append(recordIds, recordId)
+	}
+
+	if len(recordIds) > MaxRecordIds {
+		return nil, errors.New("bad query parameter")
+	}
+
+	return recordIds, nil
 }

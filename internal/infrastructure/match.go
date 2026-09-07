@@ -466,6 +466,97 @@ func (i *Match) FindByUserId(
 	return matches, nil
 }
 
+// matchSummaryResult は記録ごとの対戦集計クエリ(FindSummariesByRecordIds)の1行。
+//
+// has_group_match / has_bo3 は真偽値だが、LEFT JOIN で1件も対戦が無い行では
+// 集約結果がNULLになりboolへScanできないため、件数として受け取ってGo側で
+// 0件かどうかに落とす。
+type matchSummaryResult struct {
+	RecordId        string
+	Total           int
+	Wins            int
+	Draws           int
+	GroupMatchCount int
+	Bo3Count        int
+}
+
+func (i *Match) FindSummariesByRecordIds(
+	ctx context.Context,
+	userId string,
+	recordIds []string,
+) ([]*entity.MatchSummary, error) {
+	// 空指定は集計対象が無いだけでエラーではないため、クエリを投げずに空で返す。
+	if len(recordIds) == 0 {
+		return []*entity.MatchSummary{}, nil
+	}
+
+	var results []matchSummaryResult
+
+	// 認可はこのクエリのWHERE(records.user_id)で完結させる。呼び出し側で
+	// 記録の所有者を突き合わせる作りにすると、突き合わせ漏れがそのまま
+	// 他人の集計の漏洩になるため、他人の記録はそもそも結果に現れないようにする。
+	//
+	// matches ではなく records を起点にLEFT JOINするのは、対戦がまだ1件も
+	// 紐づいていない自分の記録も total=0 の行として返すため。ここで欠けると
+	// webappが記録ごとの取得へフォールバックし、往復を減らす目的を果たせない。
+	//
+	// 論理削除は FindByRecordId と同じく records / matches の双方で除外する
+	// (Table()+Scan() のためgormのソフトデリートは自動適用されない)。
+	tx := i.db.Table(
+		"records",
+	).Select(`
+		records.id AS record_id,
+		COUNT(matches.id) AS total,
+		COUNT(CASE WHEN matches.victory_flg THEN 1 END) AS wins,
+		COUNT(CASE WHEN matches.draw_flg THEN 1 END) AS draws,
+		COUNT(CASE WHEN matches.group_match_flg THEN 1 END) AS group_match_count,
+		COUNT(CASE WHEN matches.bo3_flg THEN 1 END) AS bo3_count`,
+	).Joins(
+		"LEFT JOIN matches ON records.id = matches.record_id AND matches.deleted_at IS NULL",
+	).Where(
+		"records.id IN ? AND records.user_id = ? AND records.deleted_at IS NULL",
+		recordIds, userId,
+	).Group(
+		"records.id",
+	).Scan(&results)
+
+	if tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, tx.Error
+	}
+
+	summaryByRecordId := make(map[string]*entity.MatchSummary, len(results))
+	for _, result := range results {
+		// 引き分けは負けに数えない(webappの集計と定義を揃える)。
+		losses := result.Total - result.Wins - result.Draws
+
+		summaryByRecordId[result.RecordId] = entity.NewMatchSummary(
+			result.RecordId,
+			result.Total,
+			result.Wins,
+			losses,
+			result.Draws,
+			result.GroupMatchCount > 0,
+			result.Bo3Count > 0,
+		)
+	}
+
+	// GROUP BY の結果順はDB任せで不定のため、要求された recordIds の順に並べ直す。
+	// 取り出した集計はmapから消し、recordIdsに重複があっても二重に返さない。
+	summaries := make([]*entity.MatchSummary, 0, len(results))
+	for _, recordId := range recordIds {
+		summary, ok := summaryByRecordId[recordId]
+		if !ok {
+			continue
+		}
+
+		summaries = append(summaries, summary)
+		delete(summaryByRecordId, recordId)
+	}
+
+	return summaries, nil
+}
+
 func (i *Match) FindLatest(
 	ctx context.Context,
 	limit int,

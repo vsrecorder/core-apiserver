@@ -63,7 +63,7 @@ func TestIntegrationFetchAceSpecCardNames(t *testing.T) {
 		 card_image_filename, publish_status, block_code, group_id, pokemon_level,
 		 pokemon_hp, pokemon_type, run_away_cost, evolution_number, great_pokemon_code,
 		 regulation, regulation_mark)
-		VALUES (?, '', ?, 0,0,0, '', 0, '', 0, 0, 0, 0, '', 0, 0, '', ?)`
+		VALUES (?, '', ?, 0,0,0, '', 0, '', 0, 0, 0, '', '', 0, 0, '', ?)`
 
 	rows := []struct {
 		id   int

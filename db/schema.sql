@@ -721,7 +721,7 @@ CREATE TABLE cards (
     group_id            SMALLINT NOT NULL,
     pokemon_level       SMALLINT NOT NULL,
     pokemon_hp          SMALLINT NOT NULL,
-    pokemon_type        SMALLINT NOT NULL,
+    pokemon_type        VARCHAR(16) NOT NULL,
     run_away_cost       VARCHAR(16) NOT NULL,
     evolution_number    SMALLINT NOT NULL,
     great_pokemon_code  SMALLINT NOT NULL,

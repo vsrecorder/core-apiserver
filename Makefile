@@ -62,6 +62,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/record.go -destination=./internal/mock/mock_repository/record.go
 	mockgen -source=./internal/domain/repository/user.go -destination=./internal/mock/mock_repository/user.go
 	mockgen -source=./internal/domain/repository/official_event.go -destination=./internal/mock/mock_repository/official_event.go
+	mockgen -source=./internal/domain/repository/official_event_environment.go -destination=./internal/mock/mock_repository/official_event_environment.go
 	mockgen -source=./internal/domain/repository/tonamel_event.go -destination=./internal/mock/mock_repository/tonamel_event.go
 	mockgen -source=./internal/domain/repository/tonamel_event_store.go -destination=./internal/mock/mock_repository/tonamel_event_store.go
 	mockgen -source=./internal/domain/repository/deck.go -destination=./internal/mock/mock_repository/deck.go

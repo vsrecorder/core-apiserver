@@ -24,23 +24,26 @@ type DeckUsageStatInterface interface {
 }
 
 type DeckUsageStat struct {
-	deckUsageStatRepo      repository.DeckUsageStatInterface
-	environmentRepo        repository.EnvironmentInterface
-	standardRegulationRepo repository.StandardRegulationInterface
-	championshipSeriesRepo repository.ChampionshipSeriesInterface
+	deckUsageStatRepo            repository.DeckUsageStatInterface
+	environmentRepo              repository.EnvironmentInterface
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface
+	standardRegulationRepo       repository.StandardRegulationInterface
+	championshipSeriesRepo       repository.ChampionshipSeriesInterface
 }
 
 func NewDeckUsageStat(
 	deckUsageStatRepo repository.DeckUsageStatInterface,
 	environmentRepo repository.EnvironmentInterface,
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface,
 	standardRegulationRepo repository.StandardRegulationInterface,
 	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 ) DeckUsageStatInterface {
 	return &DeckUsageStat{
-		deckUsageStatRepo:      deckUsageStatRepo,
-		environmentRepo:        environmentRepo,
-		standardRegulationRepo: standardRegulationRepo,
-		championshipSeriesRepo: championshipSeriesRepo,
+		deckUsageStatRepo:            deckUsageStatRepo,
+		environmentRepo:              environmentRepo,
+		officialEventEnvironmentRepo: officialEventEnvironmentRepo,
+		standardRegulationRepo:       standardRegulationRepo,
+		championshipSeriesRepo:       championshipSeriesRepo,
 	}
 }
 
@@ -60,7 +63,7 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 	// 全期間集計が指定された場合は期間条件を一切適用しない
 	// （デッキ一覧カードのように期間セレクタを持たない画面向け）。
 	if allTime {
-		return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, fromDate, toDate, regulationId)
+		return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, repository.StatPeriod{}, regulationId)
 	}
 
 	if week != "" {
@@ -87,26 +90,6 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 		}
 	}
 
-	if environmentId != "" {
-		env, err := u.environmentRepo.FindById(ctx, environmentId)
-		if err != nil {
-			logError(ctx, err)
-			return nil, err
-		}
-
-		// 環境の期間（to_dateは含む日付なので翌日0時をexclusive上限とする）
-		envFrom := time.Date(env.FromDate.Year(), env.FromDate.Month(), env.FromDate.Day(), 0, 0, 0, 0, time.Local)
-		envTo := time.Date(env.ToDate.Year(), env.ToDate.Month(), env.ToDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
-
-		// year_month/seasonと環境の両方が指定された場合は期間の交差を取る
-		if fromDate.IsZero() || envFrom.After(fromDate) {
-			fromDate = envFrom
-		}
-		if toDate.IsZero() || envTo.Before(toDate) {
-			toDate = envTo
-		}
-	}
-
 	if standardRegulationId != "" {
 		reg, err := u.standardRegulationRepo.FindById(ctx, standardRegulationId)
 		if err != nil {
@@ -127,12 +110,23 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 		}
 	}
 
-	// いずれも未指定の場合は当月
-	if fromDate.IsZero() {
-		now := time.Now().Local()
-		fromDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-		toDate = fromDate.AddDate(0, 1, 0)
+	// 環境は期間だけでは表せない(大型大会は開催日が次の環境の期間に入っていても前の環境の
+	// カードプールで行われる)ため、期間の交差と例外イベントをまとめて組み立てる。
+	// standard_regulation より後に置いているのは、例外イベントを拾い直す範囲(BaseFrom/
+	// BaseTo)を環境以外の条件だけで決める必要があるため(期間の交差自体は順序に依らない)。
+	period, err := buildStatPeriod(ctx, u.environmentRepo, u.officialEventEnvironmentRepo, environmentId, fromDate, toDate)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
 	}
 
-	return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, fromDate, toDate, regulationId)
+	// いずれも未指定の場合は当月
+	if period.From.IsZero() {
+		now := time.Now().Local()
+		period.From = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+		period.To = period.From.AddDate(0, 1, 0)
+		period.BaseFrom, period.BaseTo = period.From, period.To
+	}
+
+	return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, period, regulationId)
 }

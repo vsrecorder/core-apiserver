@@ -24,6 +24,7 @@ func NewUserStatRecent(
 type recentMatchResult struct {
 	MatchId           string
 	EventDate         time.Time
+	OfficialEventId   uint
 	DeckId            string
 	OpponentsDeckInfo string
 	VictoryFlg        bool
@@ -43,6 +44,9 @@ func (i *UserStatRecent) FindRecentMatches(
 		Select(
 			"matches.id AS match_id, "+
 				"records.event_date AS event_date, "+
+				// 開催日と実際の対戦環境がズレる公式イベント(official_event_environments)の
+				// 環境を、usecase側で引き当てるために持ち出す。
+				"records.official_event_id AS official_event_id, "+
 				// デッキは records.deck_id を正とする(matches.deck_id は記録後の
 				// デッキ変更に追随しないため使わない。deck_usage_stat と同じ方針)。
 				"records.deck_id AS deck_id, "+
@@ -99,6 +103,7 @@ func (i *UserStatRecent) FindRecentMatches(
 		matches = append(matches, entity.NewRecentMatch(
 			0,
 			r.EventDate,
+			r.OfficialEventId,
 			r.DeckId,
 			r.OpponentsDeckInfo,
 			r.VictoryFlg,

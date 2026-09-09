@@ -115,11 +115,18 @@ func (i *CityleagueResult) FindByPlayerId(
 		Joins(
 			"LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id",
 		).
+		Joins(
+			"LEFT JOIN official_event_environments AS oee ON oee.official_event_id = cityleague_results.official_event_id",
+		).
 		// 対戦環境は開催日が属する期間で引く(official_event.go の結合と同じ考え方)。
 		// official_events.date ではなく cityleague_results.event_date を基準にするのは、
 		// official_events 側の行が欠けていても環境名は出したいため。
+		//
+		// 開催日時点の最新弾がカードプールに入らない大会は、開催日から引くと環境がズレる。
+		// official_event_environments に例外登録があればそちらを優先する
+		// (adr/official-event-environment-override.md)。
 		Joins(
-			"LEFT JOIN environments ON environments.from_date <= cityleague_results.event_date AND environments.to_date >= cityleague_results.event_date",
+			"LEFT JOIN environments ON environments.id = COALESCE(oee.environment_id, (SELECT e.id FROM environments AS e WHERE e.from_date <= cityleague_results.event_date AND e.to_date >= cityleague_results.event_date))",
 		).
 		Where("cityleague_results.player_id = ?", playerId)
 

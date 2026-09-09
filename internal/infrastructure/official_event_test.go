@@ -72,9 +72,14 @@ var officialEventColumns = []string{
 // officialEventQuery は公式イベントを引くクエリにマッチする正規表現を組み立てる。
 // SELECT句・JOIN句はGoのソース上の改行やインデントをそのままSQLに含むため、
 // 検証したいWHERE以降(絞り込み条件・並び順)だけを完全一致で見る。
+//
+// official_event_environments のJOINは、大型大会のように開催日から引いた環境と実際の
+// 対戦環境がズレるイベントで例外を効かせるためのもの。落とすと環境が開催日基準に
+// 戻ってしまうため、JOINの並びに含まれていることをここで見ておく。
 func officialEventQuery(tail string) string {
 	return `(?s)SELECT.*FROM "official_events".*LEFT JOIN shops ON shops\.id = official_events\.shop_id.*` +
-		`LEFT JOIN prefectures.*LEFT JOIN environments.*LEFT JOIN standard_regulations.*` + regexp.QuoteMeta(tail)
+		`LEFT JOIN prefectures.*LEFT JOIN official_event_environments.*LEFT JOIN environments.*` +
+		`LEFT JOIN standard_regulations.*` + regexp.QuoteMeta(tail)
 }
 
 func TestOfficialEventInfrastructure(t *testing.T) {

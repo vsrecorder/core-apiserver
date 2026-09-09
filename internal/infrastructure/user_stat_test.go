@@ -8,6 +8,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
 func TestUserStatInfrastructure(t *testing.T) {
@@ -35,7 +37,7 @@ func TestUserStatInfrastructure(t *testing.T) {
 
 		expectStatQueries(mock, 10, 6, 5, 2, 1, 1)
 
-		ret, err := r.FindUserStat(context.Background(), uid, fromDate, toDate, 0)
+		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0)
 
 		require.NoError(t, err)
 		require.Equal(t, uid, ret.UserId)
@@ -56,7 +58,7 @@ func TestUserStatInfrastructure(t *testing.T) {
 
 		expectStatQueries(mock, 0, 0, 0, 0, 0, 0)
 
-		ret, err := r.FindUserStat(context.Background(), uid, fromDate, toDate, 0)
+		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, ret.TotalMatches)
@@ -70,7 +72,7 @@ func TestUserStatInfrastructure(t *testing.T) {
 
 		mock.ExpectQuery(`SELECT COUNT\(\*\) AS total_matches`).WillReturnError(sql.ErrConnDone)
 
-		ret, err := r.FindUserStat(context.Background(), uid, fromDate, toDate, 0)
+		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0)
 
 		require.Error(t, err)
 		require.Nil(t, ret)

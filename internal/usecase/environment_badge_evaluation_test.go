@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
@@ -19,6 +20,7 @@ import (
 func TestEnvironmentBadgeEvaluation_EvaluateOnMatchCreated_NotificationUsesMatchCreatedAt(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockEnvironmentRepo := mock_repository.NewMockEnvironmentInterface(mockCtrl)
+	mockOfficialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
 	mockUserEnvironmentBadgeRepo := mock_repository.NewMockUserEnvironmentBadgeInterface(mockCtrl)
 	mockNotificationRepo := mock_repository.NewMockNotificationInterface(mockCtrl)
 	mockTransactionManager := mock_repository.NewMockTransactionManager(mockCtrl)
@@ -30,6 +32,7 @@ func TestEnvironmentBadgeEvaluation_EvaluateOnMatchCreated_NotificationUsesMatch
 
 	usecase := NewEnvironmentBadgeEvaluation(
 		mockEnvironmentRepo,
+		mockOfficialEventEnvironmentRepo,
 		mockUserEnvironmentBadgeRepo,
 		mockNotificationRepo,
 		mockTransactionManager,
@@ -50,6 +53,9 @@ func TestEnvironmentBadgeEvaluation_EvaluateOnMatchCreated_NotificationUsesMatch
 		UserId:    userId,
 	}
 
+	// 環境の例外登録が無い通常のイベント。対戦日(basisTime)から環境を引く経路になる。
+	officialEventId := uint(1234567)
+	mockOfficialEventEnvironmentRepo.EXPECT().FindEnvironmentIdByOfficialEventId(context.Background(), officialEventId).Return("", apperror.ErrRecordNotFound)
 	mockEnvironmentRepo.EXPECT().FindByDate(context.Background(), basisTime).Return(env, nil)
 	mockUserEnvironmentBadgeRepo.EXPECT().FindByUserId(context.Background(), userId).Return(nil, nil)
 
@@ -69,7 +75,7 @@ func TestEnvironmentBadgeEvaluation_EvaluateOnMatchCreated_NotificationUsesMatch
 		},
 	)
 
-	ret, err := usecase.EvaluateOnMatchCreated(context.Background(), userId, match, basisTime)
+	ret, err := usecase.EvaluateOnMatchCreated(context.Background(), userId, match, officialEventId, basisTime)
 
 	require.NoError(t, err)
 	require.Equal(t, env, ret)

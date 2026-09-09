@@ -540,6 +540,38 @@ INSERT INTO environments VALUES ('s11a', '白熱のアルカナ','2022-09-02','2
 
 
 
+-- 公式イベントの環境の例外。
+--
+-- 環境(environments)は通常、公式イベントの開催日(official_events.date)が属する期間から
+-- 引く。しかし大型大会(チャンピオンズリーグ・PJCS)は、開催日時点で発売済みの最新弾が
+-- カードプールに入らないことがあり、開催日から引いた環境と実際に対戦する環境がズレる。
+-- ズレるイベントだけをここに登録し、登録が無いイベントは従来どおり開催日から引く。
+--
+-- official_events 側に列を持たせないのは、import-officialevent-bat が gorm の Save で
+-- 行を丸ごと上書きするため、次回のインポートで消えてしまうから。
+--
+-- 行数が極めて少ない(年に数件)ため、参照側は全件を1回引いて振り分ける
+-- (OfficialEventEnvironmentInterface.FindAll)。環境IDの索引は張っていない。
+CREATE TABLE official_event_environments (
+    official_event_id INT        NOT NULL PRIMARY KEY REFERENCES official_events (id),
+    environment_id    VARCHAR(8) NOT NULL REFERENCES environments (id)
+);
+
+-- チャンピオンズリーグ2027 横浜(2026-09-20〜22)。30th CELEBRATION(m6a, 2026-09-16〜)の
+-- 発売後の開催だが、カードプールはストームエメラルダ(m6)まで。
+INSERT INTO official_event_environments VALUES (1112094, 'm6'); -- ボランティアジャッジ募集
+INSERT INTO official_event_environments VALUES (1113193, 'm6'); -- マスターリーグ 1日目予選
+INSERT INTO official_event_environments VALUES (1113194, 'm6'); -- マスターリーグ 2日目予選
+INSERT INTO official_event_environments VALUES (1113198, 'm6'); -- シニアリーグ 1日目大会
+INSERT INTO official_event_environments VALUES (1113199, 'm6'); -- シニアリーグ 2日目大会
+INSERT INTO official_event_environments VALUES (1113200, 'm6'); -- シニアリーグ 1日目大会or2日目大会どちらでも可
+INSERT INTO official_event_environments VALUES (1113201, 'm6'); -- ジュニアリーグ 1日目大会
+INSERT INTO official_event_environments VALUES (1113202, 'm6'); -- ジュニアリーグ 2日目大会
+INSERT INTO official_event_environments VALUES (1113203, 'm6'); -- ジュニアリーグ 1日目大会or2日目大会どちらでも可
+
+
+
+
 CREATE TABLE championship_series (
     id          VARCHAR(11) PRIMARY KEY,
     title       VARCHAR(255) NOT NULL,
@@ -1153,6 +1185,7 @@ GRANT SELECT ON championship_series     TO grafana;
 GRANT SELECT ON standard_regulations    TO grafana;
 GRANT SELECT ON regulations             TO grafana;
 GRANT SELECT ON environments            TO grafana;
+GRANT SELECT ON official_event_environments TO grafana;
 
 GRANT SELECT ON cityleague_schedules    TO grafana;
 GRANT SELECT ON cityleague_results      TO grafana;

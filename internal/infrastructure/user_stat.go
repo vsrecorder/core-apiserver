@@ -2,7 +2,6 @@ package infrastructure
 
 import (
 	"context"
-	"time"
 
 	"gorm.io/gorm"
 
@@ -38,8 +37,7 @@ type recordStatsResult struct {
 func (i *UserStat) FindUserStat(
 	ctx context.Context,
 	userId string,
-	fromDate time.Time,
-	toDate time.Time,
+	period repository.StatPeriod,
 	regulationId uint,
 ) (*entity.UserStat, error) {
 	var matchResult matchStatsResult
@@ -54,12 +52,7 @@ func (i *UserStat) FindUserStat(
 		matchQuery = matchQuery.Where("records.regulation_id = ?", regulationId)
 	}
 
-	if !fromDate.IsZero() {
-		matchQuery = matchQuery.Where("records.event_date >= ?", fromDate)
-	}
-	if !toDate.IsZero() {
-		matchQuery = matchQuery.Where("records.event_date < ?", toDate)
-	}
+	matchQuery = applyStatPeriod(matchQuery, period)
 
 	if tx := matchQuery.Scan(&matchResult); tx.Error != nil {
 		logError(ctx, tx.Error)
@@ -82,12 +75,7 @@ func (i *UserStat) FindUserStat(
 		recordQuery = recordQuery.Where("regulation_id = ?", regulationId)
 	}
 
-	if !fromDate.IsZero() {
-		recordQuery = recordQuery.Where("event_date >= ?", fromDate)
-	}
-	if !toDate.IsZero() {
-		recordQuery = recordQuery.Where("event_date < ?", toDate)
-	}
+	recordQuery = applyStatPeriod(recordQuery, period)
 
 	if tx := recordQuery.Scan(&recordResult); tx.Error != nil {
 		logError(ctx, tx.Error)

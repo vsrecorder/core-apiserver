@@ -43,18 +43,18 @@ func (m *MockEnvironmentBadgeEvaluationInterface) EXPECT() *MockEnvironmentBadge
 }
 
 // EvaluateOnMatchCreated mocks base method.
-func (m *MockEnvironmentBadgeEvaluationInterface) EvaluateOnMatchCreated(ctx context.Context, userId string, match *entity.Match, basisTime time.Time) (*entity.Environment, error) {
+func (m *MockEnvironmentBadgeEvaluationInterface) EvaluateOnMatchCreated(ctx context.Context, userId string, match *entity.Match, officialEventId uint, basisTime time.Time) (*entity.Environment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EvaluateOnMatchCreated", ctx, userId, match, basisTime)
+	ret := m.ctrl.Call(m, "EvaluateOnMatchCreated", ctx, userId, match, officialEventId, basisTime)
 	ret0, _ := ret[0].(*entity.Environment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EvaluateOnMatchCreated indicates an expected call of EvaluateOnMatchCreated.
-func (mr *MockEnvironmentBadgeEvaluationInterfaceMockRecorder) EvaluateOnMatchCreated(ctx, userId, match, basisTime any) *gomock.Call {
+func (mr *MockEnvironmentBadgeEvaluationInterfaceMockRecorder) EvaluateOnMatchCreated(ctx, userId, match, officialEventId, basisTime any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnMatchCreated", reflect.TypeOf((*MockEnvironmentBadgeEvaluationInterface)(nil).EvaluateOnMatchCreated), ctx, userId, match, basisTime)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EvaluateOnMatchCreated", reflect.TypeOf((*MockEnvironmentBadgeEvaluationInterface)(nil).EvaluateOnMatchCreated), ctx, userId, match, officialEventId, basisTime)
 }
 
 // NotifyAchieved mocks base method.

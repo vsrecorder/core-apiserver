@@ -168,6 +168,7 @@ func (stubEnvironmentBadgeEvaluation) EvaluateOnMatchCreated(
 	ctx context.Context,
 	userId string,
 	match *entity.Match,
+	officialEventId uint,
 	basisTime time.Time,
 ) (*entity.Environment, error) {
 	return nil, nil

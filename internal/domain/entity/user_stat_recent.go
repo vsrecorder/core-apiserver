@@ -3,8 +3,11 @@ package entity
 import "time"
 
 type RecentMatch struct {
-	Sequence          int
-	EventDate         time.Time
+	Sequence  int
+	EventDate time.Time
+	// OfficialEventId は紐づく公式イベント(無ければ0)。開催日と実際の対戦環境がズレる
+	// イベントの環境を引き当てるために持つ(表示には使わない)。
+	OfficialEventId   uint
 	DeckId            string
 	OpponentsDeckInfo string
 	VictoryFlg        bool
@@ -18,6 +21,7 @@ type RecentMatch struct {
 func NewRecentMatch(
 	sequence int,
 	eventDate time.Time,
+	officialEventId uint,
 	deckId string,
 	opponentsDeckInfo string,
 	victoryFlg bool,
@@ -30,6 +34,7 @@ func NewRecentMatch(
 	return &RecentMatch{
 		Sequence:          sequence,
 		EventDate:         eventDate,
+		OfficialEventId:   officialEventId,
 		DeckId:            deckId,
 		OpponentsDeckInfo: opponentsDeckInfo,
 		VictoryFlg:        victoryFlg,

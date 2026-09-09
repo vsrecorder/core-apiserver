@@ -23,23 +23,26 @@ type UserStatInterface interface {
 }
 
 type UserStat struct {
-	userStatRepo           repository.UserStatInterface
-	environmentRepo        repository.EnvironmentInterface
-	standardRegulationRepo repository.StandardRegulationInterface
-	championshipSeriesRepo repository.ChampionshipSeriesInterface
+	userStatRepo                 repository.UserStatInterface
+	environmentRepo              repository.EnvironmentInterface
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface
+	standardRegulationRepo       repository.StandardRegulationInterface
+	championshipSeriesRepo       repository.ChampionshipSeriesInterface
 }
 
 func NewUserStat(
 	userStatRepo repository.UserStatInterface,
 	environmentRepo repository.EnvironmentInterface,
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface,
 	standardRegulationRepo repository.StandardRegulationInterface,
 	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 ) UserStatInterface {
 	return &UserStat{
-		userStatRepo:           userStatRepo,
-		environmentRepo:        environmentRepo,
-		standardRegulationRepo: standardRegulationRepo,
-		championshipSeriesRepo: championshipSeriesRepo,
+		userStatRepo:                 userStatRepo,
+		environmentRepo:              environmentRepo,
+		officialEventEnvironmentRepo: officialEventEnvironmentRepo,
+		standardRegulationRepo:       standardRegulationRepo,
+		championshipSeriesRepo:       championshipSeriesRepo,
 	}
 }
 
@@ -79,26 +82,6 @@ func (u *UserStat) GetUserStat(
 		}
 	}
 
-	if environmentId != "" {
-		env, err := u.environmentRepo.FindById(ctx, environmentId)
-		if err != nil {
-			logError(ctx, err)
-			return nil, err
-		}
-
-		// 環境の期間（to_dateは含む日付なので翌日0時をexclusive上限とする）
-		envFrom := time.Date(env.FromDate.Year(), env.FromDate.Month(), env.FromDate.Day(), 0, 0, 0, 0, time.Local)
-		envTo := time.Date(env.ToDate.Year(), env.ToDate.Month(), env.ToDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
-
-		// year_month/seasonと環境の両方が指定された場合は期間の交差を取る
-		if fromDate.IsZero() || envFrom.After(fromDate) {
-			fromDate = envFrom
-		}
-		if toDate.IsZero() || envTo.Before(toDate) {
-			toDate = envTo
-		}
-	}
-
 	if standardRegulationId != "" {
 		reg, err := u.standardRegulationRepo.FindById(ctx, standardRegulationId)
 		if err != nil {
@@ -119,12 +102,23 @@ func (u *UserStat) GetUserStat(
 		}
 	}
 
-	// いずれも未指定の場合は当月
-	if fromDate.IsZero() {
-		now := timeNow().Local()
-		fromDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-		toDate = fromDate.AddDate(0, 1, 0)
+	// 環境は期間だけでは表せない(大型大会は開催日が次の環境の期間に入っていても前の環境の
+	// カードプールで行われる)ため、期間の交差と例外イベントをまとめて組み立てる。
+	// standard_regulation より後に置いているのは、例外イベントを拾い直す範囲(BaseFrom/
+	// BaseTo)を環境以外の条件だけで決める必要があるため(期間の交差自体は順序に依らない)。
+	period, err := buildStatPeriod(ctx, u.environmentRepo, u.officialEventEnvironmentRepo, environmentId, fromDate, toDate)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
 	}
 
-	return u.userStatRepo.FindUserStat(ctx, userId, fromDate, toDate, regulationId)
+	// いずれも未指定の場合は当月
+	if period.From.IsZero() {
+		now := timeNow().Local()
+		period.From = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+		period.To = period.From.AddDate(0, 1, 0)
+		period.BaseFrom, period.BaseTo = period.From, period.To
+	}
+
+	return u.userStatRepo.FindUserStat(ctx, userId, period, regulationId)
 }

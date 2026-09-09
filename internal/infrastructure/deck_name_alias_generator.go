@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 )
 
@@ -71,15 +71,13 @@ type DeckNameAliasRejection struct {
 
 // DeckNameAliasGeneratorConfig は候補生成のしきい値と集計期間。
 type DeckNameAliasGeneratorConfig struct {
-	// SupplyFrom/SupplyTo は教師データ(名前とスプライトが両方ある記録)の集計期間 [from, to)。
+	// SupplyPeriod は教師データ(名前とスプライトが両方ある記録)の集計期間。
 	// 代表構成を安定させるため需要側より長く取る。
-	SupplyFrom time.Time
-	SupplyTo   time.Time
+	SupplyPeriod repository.StatPeriod
 
-	// DemandFrom/DemandTo は救済対象(スプライト未設定の票)の集計期間 [from, to)。
+	// DemandPeriod は救済対象(スプライト未設定の票)の集計期間。
 	// 「いま効く」エイリアスを優先するため直近に絞る。
-	DemandFrom time.Time
-	DemandTo   time.Time
+	DemandPeriod repository.StatPeriod
 
 	// MinSupport は代表構成の支持件数の下限。偶然の共起を落とす。
 	MinSupport int
@@ -149,13 +147,13 @@ func GenerateDeckNameAliasCandidates(
 	db *gorm.DB,
 	cfg DeckNameAliasGeneratorConfig,
 ) ([]*DeckNameAliasCandidate, []*DeckNameAliasRejection, error) {
-	supply, err := aggregateDeckNameSupply(ctx, db, cfg.SupplyFrom, cfg.SupplyTo)
+	supply, err := aggregateDeckNameSupply(ctx, db, cfg.SupplyPeriod)
 	if err != nil {
 		logError(ctx, err)
 		return nil, nil, err
 	}
 
-	demand, err := aggregateDeckNameDemand(ctx, db, cfg.DemandFrom, cfg.DemandTo)
+	demand, err := aggregateDeckNameDemand(ctx, db, cfg.DemandPeriod)
 	if err != nil {
 		logError(ctx, err)
 		return nil, nil, err
@@ -426,8 +424,7 @@ func ReplaceAutoDeckNameAliases(
 func aggregateDeckNameSupply(
 	ctx context.Context,
 	db *gorm.DB,
-	fromDate time.Time,
-	toDate time.Time,
+	period repository.StatPeriod,
 ) (map[string]*deckNameSupplyStat, error) {
 	stats := make(map[string]*deckNameSupplyStat)
 
@@ -457,12 +454,7 @@ func aggregateDeckNameSupply(
 		Group("matches.id, decks.name, records.user_id")
 
 	for _, query := range []*gorm.DB{opponentQuery, ownQuery} {
-		if !fromDate.IsZero() {
-			query = query.Where("records.event_date >= ?", fromDate)
-		}
-		if !toDate.IsZero() {
-			query = query.Where("records.event_date < ?", toDate)
-		}
+		query = applyStatPeriod(query, period)
 
 		var rows []deckNameSupplyRow
 		if tx := query.Scan(&rows); tx.Error != nil {
@@ -520,8 +512,7 @@ func aggregateDeckNameSupply(
 func aggregateDeckNameDemand(
 	ctx context.Context,
 	db *gorm.DB,
-	fromDate time.Time,
-	toDate time.Time,
+	period repository.StatPeriod,
 ) (map[string]int, error) {
 	demand := make(map[string]int)
 
@@ -541,12 +532,7 @@ func aggregateDeckNameDemand(
 		Group("decks.name")
 
 	for _, query := range []*gorm.DB{opponentQuery, ownQuery} {
-		if !fromDate.IsZero() {
-			query = query.Where("records.event_date >= ?", fromDate)
-		}
-		if !toDate.IsZero() {
-			query = query.Where("records.event_date < ?", toDate)
-		}
+		query = applyStatPeriod(query, period)
 
 		var rows []deckNameDemandRow
 		if tx := query.Scan(&rows); tx.Error != nil {

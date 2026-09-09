@@ -9,6 +9,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
 
@@ -16,9 +17,14 @@ func TestDeckUsageStatUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockDeckUsageStatInterface(mockCtrl)
 	mockEnvironmentRepository := mock_repository.NewMockEnvironmentInterface(mockCtrl)
+	mockOfficialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+	// 環境の例外イベント(official_event_environments)そのものの検証は
+	// environment_scope_test.go で行う。ここでは期間の組み立てだけを見たいので、
+	// 環境指定時に引かれても例外なし(nil)を返す。
+	mockOfficialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 	mockStandardRegulationRepository := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
 	mockChampionshipSeriesRepository := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
-	usecase := NewDeckUsageStat(mockRepository, mockEnvironmentRepository, mockStandardRegulationRepository, mockChampionshipSeriesRepository)
+	usecase := NewDeckUsageStat(mockRepository, mockEnvironmentRepository, mockOfficialEventEnvironmentRepo, mockStandardRegulationRepository, mockChampionshipSeriesRepository)
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -40,7 +46,7 @@ func test_DeckUsageStatUsecase_AllTime(t *testing.T, mockRepository *mock_reposi
 	want := entity.NewDeckUsageStat(userId, 0, []*entity.DeckUsage{})
 
 	mockRepository.EXPECT().
-		FindDeckUsageStat(gomock.Any(), userId, time.Time{}, time.Time{}, uint(0)).
+		FindDeckUsageStat(gomock.Any(), userId, repository.StatPeriod{}, uint(0)).
 		Return(want, nil)
 
 	// year_month/season/regulation_idを指定していても all_time=true の場合は無視され、
@@ -61,7 +67,7 @@ func test_DeckUsageStatUsecase_Week(t *testing.T, mockRepository *mock_repositor
 	toDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
 
 	mockRepository.EXPECT().
-		FindDeckUsageStat(gomock.Any(), userId, fromDate, toDate, uint(0)).
+		FindDeckUsageStat(gomock.Any(), userId, statPeriodOf(fromDate, toDate), uint(0)).
 		Return(want, nil)
 
 	// year_month も同時に指定しているが week が優先される

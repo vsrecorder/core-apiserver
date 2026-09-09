@@ -416,10 +416,13 @@ func (u *Match) Create(
 	// 環境判定も「対戦結果を入力した日時」ではなく「実際に対戦した日」(紐づくrecordの
 	// event_date)を使いたいため、親recordを取得する。取得できない場合(通常発生しない)や
 	// 公式イベントでない記録の場合は環境バッジの判定自体を行わない。
+	//
+	// 公式イベントIDも渡すのは、大型大会のように開催日から引いた環境と実際の対戦環境が
+	// ズレるイベントがあるため(ResolveEnvironmentForOfficialEvent 参照)。
 	if record, err := u.recordRepository.FindById(ctx, param.RecordId); err == nil && record.OfficialEventId != 0 {
 		basisTime := RecordBasisTime(record.EventDate, record.CreatedAt)
 
-		if _, err := u.environmentBadgeEval.EvaluateOnMatchCreated(ctx, param.UserId, match, basisTime); err != nil {
+		if _, err := u.environmentBadgeEval.EvaluateOnMatchCreated(ctx, param.UserId, match, record.OfficialEventId, basisTime); err != nil {
 			logError(ctx, err)
 		}
 	}

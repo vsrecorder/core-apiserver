@@ -1354,7 +1354,7 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	standard := entity.RegulationIdStandard
 
 	t.Run("正常系_戦績はスタンダードの対戦だけを数える", func(t *testing.T) {
-		stat, err := NewUserStat(db).FindUserStat(ctx, uid, fromDate, toDate, standard)
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, standard)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, stat.TotalRecords)
@@ -1380,7 +1380,7 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	})
 
 	t.Run("正常系_デッキ使用率はスタンダードの対戦だけを数える", func(t *testing.T) {
-		stat, err := NewDeckUsageStat(db).FindDeckUsageStat(ctx, uid, fromDate, toDate, standard)
+		stat, err := NewDeckUsageStat(db).FindDeckUsageStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, standard)
 
 		require.NoError(t, err)
 		require.Len(t, stat.Decks, 1)
@@ -1389,7 +1389,7 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	})
 
 	t.Run("正常系_相手デッキ分布はスタンダードの対戦だけを数える", func(t *testing.T) {
-		stat, err := NewOpponentDeckUsageStat(db).FindOpponentDeckUsageStat(ctx, uid, fromDate, toDate, "", standard)
+		stat, err := NewOpponentDeckUsageStat(db).FindOpponentDeckUsageStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, "", standard)
 
 		require.NoError(t, err)
 		require.Equal(t, 2, stat.TotalMatches)
@@ -1400,7 +1400,7 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	})
 
 	t.Run("正常系_未指定なら全レギュレーションを数える", func(t *testing.T) {
-		stat, err := NewUserStat(db).FindUserStat(ctx, uid, fromDate, toDate, 0)
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0)
 
 		require.NoError(t, err)
 		require.Equal(t, 2, stat.TotalRecords)
@@ -2327,5 +2327,127 @@ func TestIntegrationMatchSummaries(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Empty(t, summaries)
+	})
+}
+
+// 公式イベントの環境の例外(official_event_environments)。
+//
+// 大型大会(チャンピオンズリーグ・PJCS)は開催日時点の最新弾がカードプールに入らないことが
+// あり、開催日から引いた環境と実際の対戦環境がズレる。イベント表示のJOIN(相関サブクエリ+
+// COALESCE)も、統計の絞り込み(NOT IN / OR)も、生成SQLが実Postgresで意図どおり動くかは
+// sqlmock では確かめられないため実DBで見る。
+//
+// environments は db/schema.sql に入っている共有マスタなので TRUNCATE せず、
+// 実データの m6(ストームエメラルダ: 〜2026-09-15)と m6a(30th CELEBRATION: 2026-09-16〜)を使う。
+func TestIntegrationOfficialEventEnvironment(t *testing.T) {
+	db := setupIntegrationDB(t, "official_event_environments", "games", "matches", "records")
+
+	// official_events も共有マスタなので、このテストが使うID範囲だけを消して作り直す
+	require.NoError(t, db.Exec(`DELETE FROM official_events WHERE id BETWEEN 910000 AND 910999`).Error)
+
+	// チャンピオンズリーグ相当(例外あり)と、同じ日のジムバトル相当(例外なし)。
+	// 開催日はどちらも m6a の期間内(2026-09-20)。
+	eventDate := time.Date(2026, 9, 20, 0, 0, 0, 0, time.Local)
+	const (
+		championsLeagueEventId = uint(910001)
+		gymEventId             = uint(910002)
+	)
+
+	for _, id := range []uint{championsLeagueEventId, gymEventId} {
+		require.NoError(t, db.Exec(
+			`INSERT INTO official_events (id, title, address, date, type_id, type_name) VALUES (?, 'テスト大会', '神奈川県', ?, 1, '大型大会')`,
+			id, eventDate,
+		).Error)
+	}
+
+	require.NoError(t, db.Create(model.NewOfficialEventEnvironment(championsLeagueEventId, "m6")).Error)
+
+	ctx := context.Background()
+
+	t.Run("正常系_例外テーブルを引ける", func(t *testing.T) {
+		r := NewOfficialEventEnvironment(db)
+
+		environmentId, err := r.FindEnvironmentIdByOfficialEventId(ctx, championsLeagueEventId)
+		require.NoError(t, err)
+		require.Equal(t, "m6", environmentId)
+
+		_, err = r.FindEnvironmentIdByOfficialEventId(ctx, gymEventId)
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+
+		overrides, err := r.FindAll(ctx)
+		require.NoError(t, err)
+		require.Equal(t, map[uint]string{championsLeagueEventId: "m6"}, overrides)
+	})
+
+	t.Run("正常系_例外登録があるイベントは開催日ではなく登録された環境を返す", func(t *testing.T) {
+		event, err := NewOfficialEvent(db).FindById(ctx, championsLeagueEventId)
+
+		require.NoError(t, err)
+		require.Equal(t, "m6", event.EnvironmentId)
+		require.Equal(t, "ストームエメラルダ", event.EnvironmentTitle)
+	})
+
+	t.Run("正常系_例外登録が無いイベントは開催日が属する環境を返す", func(t *testing.T) {
+		event, err := NewOfficialEvent(db).FindById(ctx, gymEventId)
+
+		require.NoError(t, err)
+		require.Equal(t, "m6a", event.EnvironmentId)
+		require.Equal(t, "30th CELEBRATION", event.EnvironmentTitle)
+	})
+
+	// 統計の絞り込み。同じ日(m6aの期間内)の2記録が、環境の指定によって別々に振り分けられる。
+	t.Run("正常系_統計は例外イベントを登録された環境に振り分ける", func(t *testing.T) {
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		now := time.Now().Local().Truncate(time.Microsecond)
+
+		createRecordWithMatch := func(recordId string, matchId string, officialEventId uint) {
+			t.Helper()
+
+			require.NoError(t, db.Create(&model.Record{
+				ID: recordId, CreatedAt: now, UpdatedAt: now, UserId: uid,
+				OfficialEventId: officialEventId, EventDate: eventDate,
+				RegulationId: entity.RegulationIdStandard,
+			}).Error)
+			require.NoError(t, db.Create(&model.Match{
+				ID: matchId, CreatedAt: now, UpdatedAt: now, RecordId: recordId, UserId: uid,
+				VictoryFlg: true, OpponentsDeckInfo: "リザードンex",
+			}).Error)
+		}
+
+		createRecordWithMatch("rec-cl", "mat-cl", championsLeagueEventId)
+		createRecordWithMatch("rec-gym", "mat-gym", gymEventId)
+
+		m6From := time.Date(2026, 7, 31, 0, 0, 0, 0, time.Local)
+		m6To := time.Date(2026, 9, 16, 0, 0, 0, 0, time.Local)
+		m6aFrom := time.Date(2026, 9, 16, 0, 0, 0, 0, time.Local)
+		m6aTo := time.Date(2026, 11, 27, 0, 0, 0, 0, time.Local)
+
+		// m6: 期間(〜9/15)の外だが、例外登録があるCLの記録だけを拾う。
+		// 環境以外の条件を指定していないので BaseFrom/BaseTo はゼロ値(拾い直す範囲は無制限)。
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{
+			From: m6From, To: m6To,
+			IncludeOfficialEventIds: []uint{championsLeagueEventId},
+		}, entity.RegulationIdStandard)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, stat.TotalMatches)
+		require.Equal(t, 1, stat.OfficialEventCount)
+
+		// m6a: 期間内だが、m6として登録されたCLの記録は落とす
+		stat, err = NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{
+			From: m6aFrom, To: m6aTo,
+			ExcludeOfficialEventIds: []uint{championsLeagueEventId},
+		}, entity.RegulationIdStandard)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, stat.TotalMatches)
+
+		// 例外を渡さなければ、開催日だけの判定に戻って両方 m6a に入る
+		stat, err = NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{
+			From: m6aFrom, To: m6aTo,
+		}, entity.RegulationIdStandard)
+
+		require.NoError(t, err)
+		require.Equal(t, 2, stat.TotalMatches)
 	})
 }

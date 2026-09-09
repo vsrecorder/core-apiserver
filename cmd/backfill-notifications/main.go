@@ -138,6 +138,7 @@ func main() {
 	userEnvironmentBadgeRepo := infrastructure.NewUserEnvironmentBadge(db)
 	environmentBadgeEvaluation := usecase.NewEnvironmentBadgeEvaluation(
 		environmentRepo,
+		infrastructure.NewOfficialEventEnvironment(db),
 		userEnvironmentBadgeRepo,
 		notificationRepo,
 		infrastructure.NewTransactionManager(db),

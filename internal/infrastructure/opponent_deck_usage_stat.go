@@ -4,7 +4,6 @@ import (
 	"context"
 	"sort"
 	"strings"
-	"time"
 
 	"gorm.io/gorm"
 
@@ -42,8 +41,7 @@ type opponentDeckGroup struct {
 func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	ctx context.Context,
 	userId string,
-	fromDate time.Time,
-	toDate time.Time,
+	period repository.StatPeriod,
 	deckId string,
 	regulationId uint,
 ) (*entity.OpponentDeckUsageStat, error) {
@@ -64,12 +62,7 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 		query = query.Where("records.regulation_id = ?", regulationId)
 	}
 
-	if !fromDate.IsZero() {
-		query = query.Where("records.event_date >= ?", fromDate)
-	}
-	if !toDate.IsZero() {
-		query = query.Where("records.event_date < ?", toDate)
-	}
+	query = applyStatPeriod(query, period)
 	if deckId != "" {
 		// 「自分のデッキ」セレクタは records.deck_id を基準に選択肢を作っている（deck_usage_stat.go参照）。
 		// matches.deck_id はマッチ作成時点の値がコピーされたまま更新されないため、

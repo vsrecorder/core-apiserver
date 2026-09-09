@@ -81,11 +81,31 @@ func (errMatchBadgeEvaluation) EvaluateOnMatchCreated(
 	return nil, errors.New("badge evaluation failed")
 }
 
+// capturingEnvironmentBadgeEvaluation は環境バッジ判定に渡された引数を記録するスタブ。
+type capturingEnvironmentBadgeEvaluation struct {
+	officialEventId uint
+	basisTime       time.Time
+}
+
+func (s *capturingEnvironmentBadgeEvaluation) EvaluateOnMatchCreated(ctx context.Context, userId string, match *entity.Match, officialEventId uint, basisTime time.Time) (*entity.Environment, error) {
+	s.officialEventId = officialEventId
+	s.basisTime = basisTime
+	return nil, nil
+}
+
+func (s *capturingEnvironmentBadgeEvaluation) NotifyAchieved(ctx context.Context, userId string, env *entity.Environment, achievedAt time.Time, isRead bool) (string, error) {
+	return "", nil
+}
+
+func (s *capturingEnvironmentBadgeEvaluation) UpdateAchievedNotification(ctx context.Context, notificationId string, env *entity.Environment, achievedAt time.Time) error {
+	return nil
+}
+
 type orderTrackingEnvironmentBadgeEvaluation struct {
 	calls *[]string
 }
 
-func (s orderTrackingEnvironmentBadgeEvaluation) EvaluateOnMatchCreated(ctx context.Context, userId string, match *entity.Match, basisTime time.Time) (*entity.Environment, error) {
+func (s orderTrackingEnvironmentBadgeEvaluation) EvaluateOnMatchCreated(ctx context.Context, userId string, match *entity.Match, officialEventId uint, basisTime time.Time) (*entity.Environment, error) {
 	*s.calls = append(*s.calls, "environment_badge")
 	return nil, nil
 }
@@ -140,6 +160,50 @@ func TestMatchUsecase_Create_NotificationCreationOrder(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"badge", "environment_badge", "designation"}, calls)
+}
+
+// 環境バッジの判定には、対戦日だけでなく親recordの公式イベントIDも渡す必要がある。
+// 大型大会(チャンピオンズリーグ・PJCS)は開催日から引いた環境と実際の対戦環境がズレるため、
+// IDを渡し損ねると例外(official_event_environments)が効かず、開催日基準のバッジが付く。
+func TestMatchUsecase_Create_PassesOfficialEventIdToEnvironmentBadge(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
+	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
+
+	captured := capturingEnvironmentBadgeEvaluation{}
+	usecase := NewMatch(
+		mockRepository,
+		mockRecordRepository,
+		stubTagRepository{},
+		stubBadgeEvaluation{},
+		stubDesignationEvaluation{},
+		&captured,
+		stubTransactionManager{},
+	)
+
+	recordId := "01JMPK4VF04QX714CG4PHYJ88K"
+	userId := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	// チャンピオンズリーグ2027横浜 マスターリーグ1日目予選
+	officialEventId := uint(1113193)
+	eventDate := time.Date(2026, 9, 20, 0, 0, 0, 0, time.Local)
+
+	matchParam := NewMatchParam(
+		recordId, "", "", userId, "",
+		false, false, false, false, false, false, false, false, false,
+		"", "", []*GameParam{NewGameParam(true, false, 0, 0, "")}, nil,
+	)
+
+	mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
+	mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(
+		&entity.Record{ID: recordId, OfficialEventId: officialEventId, EventDate: eventDate}, nil,
+	)
+
+	_, err := usecase.Create(context.Background(), matchParam)
+
+	require.NoError(t, err)
+	require.Equal(t, officialEventId, captured.officialEventId)
+	require.Equal(t, eventDate, captured.basisTime)
 }
 
 func TestMatchUsecase(t *testing.T) {

@@ -12,14 +12,16 @@ import (
 )
 
 type EnvironmentBadgeEvaluationInterface interface {
-	// EvaluateOnMatchCreated は対戦結果作成時、対戦日(basisTime)が属する環境の初回対戦バッジを
-	// 判定する。新規獲得があればその Environment を返す(お祝いポップアップ表示用)。該当する
-	// 環境が無い、または既に獲得済みの場合は nil を返す。対戦作成自体を失敗させないため、
-	// 環境が見つからないことはエラー扱いにしない。
+	// EvaluateOnMatchCreated は対戦結果作成時、その対戦の環境の初回対戦バッジを判定する。
+	// 環境は officialEventId の例外登録を優先し、無ければ対戦日(basisTime)が属する期間から
+	// 引く(ResolveEnvironmentForOfficialEvent 参照)。新規獲得があればその Environment を
+	// 返す(お祝いポップアップ表示用)。該当する環境が無い、または既に獲得済みの場合は nil を
+	// 返す。対戦作成自体を失敗させないため、環境が見つからないことはエラー扱いにしない。
 	EvaluateOnMatchCreated(
 		ctx context.Context,
 		userId string,
 		match *entity.Match,
+		officialEventId uint,
 		basisTime time.Time,
 	) (*entity.Environment, error)
 
@@ -52,23 +54,26 @@ type EnvironmentBadgeEvaluationInterface interface {
 }
 
 type EnvironmentBadgeEvaluation struct {
-	environmentRepo          repository.EnvironmentInterface
-	userEnvironmentBadgeRepo repository.UserEnvironmentBadgeInterface
-	notificationRepo         repository.NotificationInterface
-	transactionManager       repository.TransactionManager
+	environmentRepo              repository.EnvironmentInterface
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface
+	userEnvironmentBadgeRepo     repository.UserEnvironmentBadgeInterface
+	notificationRepo             repository.NotificationInterface
+	transactionManager           repository.TransactionManager
 }
 
 func NewEnvironmentBadgeEvaluation(
 	environmentRepo repository.EnvironmentInterface,
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface,
 	userEnvironmentBadgeRepo repository.UserEnvironmentBadgeInterface,
 	notificationRepo repository.NotificationInterface,
 	transactionManager repository.TransactionManager,
 ) EnvironmentBadgeEvaluationInterface {
 	return &EnvironmentBadgeEvaluation{
-		environmentRepo:          environmentRepo,
-		userEnvironmentBadgeRepo: userEnvironmentBadgeRepo,
-		notificationRepo:         notificationRepo,
-		transactionManager:       transactionManager,
+		environmentRepo:              environmentRepo,
+		officialEventEnvironmentRepo: officialEventEnvironmentRepo,
+		userEnvironmentBadgeRepo:     userEnvironmentBadgeRepo,
+		notificationRepo:             notificationRepo,
+		transactionManager:           transactionManager,
 	}
 }
 
@@ -127,9 +132,16 @@ func (u *EnvironmentBadgeEvaluation) EvaluateOnMatchCreated(
 	ctx context.Context,
 	userId string,
 	match *entity.Match,
+	officialEventId uint,
 	basisTime time.Time,
 ) (*entity.Environment, error) {
-	env, err := u.environmentRepo.FindByDate(ctx, basisTime)
+	env, err := ResolveEnvironmentForOfficialEvent(
+		ctx,
+		u.environmentRepo,
+		u.officialEventEnvironmentRepo,
+		officialEventId,
+		basisTime,
+	)
 	if err != nil {
 		logError(ctx, err)
 		if errors.Is(err, apperror.ErrRecordNotFound) {

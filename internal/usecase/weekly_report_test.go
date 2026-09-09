@@ -81,10 +81,10 @@ func TestWeeklyReportNotifier_NotifyUser(t *testing.T) {
 		userStatRepo, deckUsageStatRepo, notificationRepo := m.userStat, m.deckUsageStat, m.notification
 
 		stat := entity.NewUserStat("user-1", 4, 2, 1, 1, 10, 6, 4, 0.6)
-		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(stat, nil)
+		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryWeeklyReport, wantLink).Return(false, nil)
 		// 使用回数が最多のデッキが相棒になる(並び順には依存しない)
-		deckUsageStatRepo.EXPECT().FindDeckUsageStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(
+		deckUsageStatRepo.EXPECT().FindDeckUsageStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(
 			entity.NewDeckUsageStat("user-1", 4, []*entity.DeckUsage{
 				{DeckId: "deck-2", Name: "ドラパルトex", Count: 3},
 				{DeckId: "deck-1", Name: " リザードンex ", Count: 7},
@@ -118,9 +118,9 @@ func TestWeeklyReportNotifier_NotifyUser(t *testing.T) {
 		userStatRepo, deckUsageStatRepo, notificationRepo, u := setup4WeeklyReportNotifier(t)
 
 		stat := entity.NewUserStat("user-1", 1, 1, 0, 0, 3, 2, 1, 0.667)
-		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(stat, nil)
+		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryWeeklyReport, wantLink).Return(false, nil)
-		deckUsageStatRepo.EXPECT().FindDeckUsageStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(
+		deckUsageStatRepo.EXPECT().FindDeckUsageStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(
 			entity.NewDeckUsageStat("user-1", 1, []*entity.DeckUsage{}), nil)
 
 		var saved *entity.Notification
@@ -145,9 +145,9 @@ func TestWeeklyReportNotifier_NotifyUser(t *testing.T) {
 		userStatRepo, deckUsageStatRepo, notificationRepo, u := setup4WeeklyReportNotifier(t)
 
 		stat := entity.NewUserStat("user-1", 3, 3, 0, 0, 10, 6, 3, 0.6)
-		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(stat, nil)
+		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryWeeklyReport, wantLink).Return(false, nil)
-		deckUsageStatRepo.EXPECT().FindDeckUsageStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(
+		deckUsageStatRepo.EXPECT().FindDeckUsageStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(
 			entity.NewDeckUsageStat("user-1", 3, []*entity.DeckUsage{{DeckId: "deck-1", Name: "サーナイトex", Count: 10}}), nil)
 
 		var saved *entity.Notification
@@ -169,9 +169,9 @@ func TestWeeklyReportNotifier_NotifyUser(t *testing.T) {
 		userStatRepo, deckUsageStatRepo, notificationRepo, u := setup4WeeklyReportNotifier(t)
 
 		stat := entity.NewUserStat("user-1", 2, 2, 0, 0, 5, 3, 2, 0.6)
-		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(stat, nil)
+		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryWeeklyReport, wantLink).Return(false, nil)
-		deckUsageStatRepo.EXPECT().FindDeckUsageStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(nil, errors.New("db down"))
+		deckUsageStatRepo.EXPECT().FindDeckUsageStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(nil, errors.New("db down"))
 
 		var saved *entity.Notification
 		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -192,7 +192,7 @@ func TestWeeklyReportNotifier_NotifyUser(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 
 		stat := entity.NewUserStat("user-1", 1, 1, 0, 0, 2, 1, 1, 0.5)
-		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(stat, nil)
+		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 		m.notification.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryWeeklyReport, wantLink).Return(false, nil)
 		// デッキ集計も保存も呼ばれない
 
@@ -207,7 +207,7 @@ func TestWeeklyReportNotifier_NotifyUser(t *testing.T) {
 		userStatRepo, _, notificationRepo, u := setup4WeeklyReportNotifier(t)
 
 		stat := entity.NewUserStat("user-1", 2, 2, 0, 0, 4, 3, 1, 0.75)
-		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(stat, nil)
+		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 		// 同じ週(同じリンク先)のレポート通知が既にあれば送信済み(直近N件ではなく全期間で見る)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryWeeklyReport, wantLink).Return(true, nil)
 
@@ -229,7 +229,7 @@ func TestWeeklyReportNotifier_NotifyUser(t *testing.T) {
 	t.Run("異常系_戦績集計のエラーはそのまま返す", func(t *testing.T) {
 		userStatRepo, _, _, u := setup4WeeklyReportNotifier(t)
 
-		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(nil, errors.New("db down"))
+		userStatRepo.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(nil, errors.New("db down"))
 
 		sent, err := u.NotifyUser(context.Background(), "user-1", weeklyReportTestWeek, false)
 
@@ -288,7 +288,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 
 	// expectEnvNewsPreconditions は「0戦・購読あり・未送信・反応あり(直近の配信なし)」までを張る
 	expectEnvNewsPreconditions := func(m *weeklyReportMocks) {
-		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(zeroStat, nil)
+		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(zeroStat, nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(live, nil)
 		m.notification.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryEnvNews, wantLink).Return(false, nil)
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(entity.NewUserStreak("user-1", 0, 3, 0, 0, time.Date(2026, 8, 10, 0, 0, 0, 0, time.Local), time.Now()), nil)
@@ -370,7 +370,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 
 	t.Run("正常系_一度も記録していない(ストリーク行なし)購読者にも環境ニュースを送る", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
-		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(nil, apperror.ErrRecordNotFound)
+		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(nil, apperror.ErrRecordNotFound)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(live, nil)
 		m.notification.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryEnvNews, wantLink).Return(false, nil)
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
@@ -388,7 +388,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 	t.Run("正常系_環境データは週ごとに1回だけ集計し複数ユーザーで使い回す", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 		for _, uid := range []string{"user-1", "user-2"} {
-			m.userStat.EXPECT().FindUserStat(gomock.Any(), uid, fromDate, toDate, uint(0)).Return(entity.NewUserStat(uid, 0, 0, 0, 0, 0, 0, 0, 0), nil)
+			m.userStat.EXPECT().FindUserStat(gomock.Any(), uid, statPeriodOf(fromDate, toDate), uint(0)).Return(entity.NewUserStat(uid, 0, 0, 0, 0, 0, 0, 0, 0), nil)
 			m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), uid).Return(live, nil)
 			m.notification.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), uid, NotificationCategoryEnvNews, wantLink).Return(false, nil)
 			m.userStreak.EXPECT().FindByUserId(gomock.Any(), uid).Return(nil, apperror.ErrRecordNotFound)
@@ -420,7 +420,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 
 	t.Run("対象外_記録ゼロで購読が無ければ何も作らない", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
-		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(zeroStat, nil)
+		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(zeroStat, nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(nil, nil)
 		// 以降は何も呼ばれない
 
@@ -432,7 +432,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 
 	t.Run("対象外_同じ週の環境ニュースが既にあれば作らない", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
-		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(zeroStat, nil)
+		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(zeroStat, nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(live, nil)
 		m.notification.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryEnvNews, wantLink).Return(true, nil)
 
@@ -467,7 +467,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 
 	t.Run("隔週ガード_直近4回未タップかつ4週以上記録なしなら奇数週は送らない", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
-		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", fromDate, toDate, uint(0)).Return(zeroStat, nil)
+		m.userStat.EXPECT().FindUserStat(gomock.Any(), "user-1", statPeriodOf(fromDate, toDate), uint(0)).Return(zeroStat, nil)
 		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(live, nil)
 		m.notification.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryEnvNews, wantLink).Return(false, nil)
 		// 最終記録は6週前

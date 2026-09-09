@@ -17,7 +17,12 @@ func TestUserStatRecentUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockUserStatRecentInterface(mockCtrl)
 	mockEnvironmentRepository := mock_repository.NewMockEnvironmentInterface(mockCtrl)
-	usecase := NewUserStatRecent(mockRepository, mockEnvironmentRepository)
+	// 環境の例外(official_event_environments)の検証は
+	// test_UserStatRecentUsecase_GetRecentMatches_EnvironmentOverride で行う。
+	// ここでは例外なし(空)を返す。
+	mockOfficialEventEnvironmentRepository := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+	mockOfficialEventEnvironmentRepository.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
+	usecase := NewUserStatRecent(mockRepository, mockEnvironmentRepository, mockOfficialEventEnvironmentRepository)
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -55,11 +60,11 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 		date4 := now.AddDate(0, 0, -1)
 
 		rawMatches := []*entity.RecentMatch{
-			entity.NewRecentMatch(0, date0, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 前情報: 勝ち
-			entity.NewRecentMatch(0, date1, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil), // 表示1戦目: 負け
-			entity.NewRecentMatch(0, date2, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 表示2戦目: 勝ち
-			entity.NewRecentMatch(0, date3, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 表示3戦目: 勝ち
-			entity.NewRecentMatch(0, date4, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil), // 表示4戦目: 負け
+			entity.NewRecentMatch(0, date0, 0, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 前情報: 勝ち
+			entity.NewRecentMatch(0, date1, 0, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil), // 表示1戦目: 負け
+			entity.NewRecentMatch(0, date2, 0, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 表示2戦目: 勝ち
+			entity.NewRecentMatch(0, date3, 0, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),  // 表示3戦目: 勝ち
+			entity.NewRecentMatch(0, date4, 0, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil), // 表示4戦目: 負け
 		}
 
 		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId, uint(0)).Return(rawMatches, nil)
@@ -103,8 +108,8 @@ func test_UserStatRecentUsecase_GetRecentMatches(
 
 		// 対戦記録が2件しかなく、fetchCount(5件)に満たない
 		rawMatches := []*entity.RecentMatch{
-			entity.NewRecentMatch(0, date1, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),
-			entity.NewRecentMatch(0, date2, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil),
+			entity.NewRecentMatch(0, date1, 0, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),
+			entity.NewRecentMatch(0, date2, 0, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil),
 		}
 
 		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId, uint(0)).Return(rawMatches, nil)
@@ -173,11 +178,11 @@ func test_UserStatRecentUsecase_GetRecentMatches_DrawExcluded(
 		// 表示4戦: 勝ち・引き分け・勝ち・負け → 2勝1敗1分。
 		// 勝率は引き分けを分母から除外して 2/(2+1)=0.666...
 		rawMatches := []*entity.RecentMatch{
-			entity.NewRecentMatch(0, date0, "deck-01", "A", true, false, 0, "", "", nil),  // 前情報: 勝ち
-			entity.NewRecentMatch(0, date1, "deck-01", "B", true, false, 0, "", "", nil),  // 表示1: 勝ち
-			entity.NewRecentMatch(0, date2, "deck-01", "C", false, true, 0, "", "", nil),  // 表示2: 引き分け
-			entity.NewRecentMatch(0, date3, "deck-01", "D", true, false, 0, "", "", nil),  // 表示3: 勝ち
-			entity.NewRecentMatch(0, date4, "deck-01", "E", false, false, 0, "", "", nil), // 表示4: 負け
+			entity.NewRecentMatch(0, date0, 0, "deck-01", "A", true, false, 0, "", "", nil),  // 前情報: 勝ち
+			entity.NewRecentMatch(0, date1, 0, "deck-01", "B", true, false, 0, "", "", nil),  // 表示1: 勝ち
+			entity.NewRecentMatch(0, date2, 0, "deck-01", "C", false, true, 0, "", "", nil),  // 表示2: 引き分け
+			entity.NewRecentMatch(0, date3, 0, "deck-01", "D", true, false, 0, "", "", nil),  // 表示3: 勝ち
+			entity.NewRecentMatch(0, date4, 0, "deck-01", "E", false, false, 0, "", "", nil), // 表示4: 負け
 		}
 
 		mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, fetchCount, deckId, uint(0)).Return(rawMatches, nil)
@@ -194,4 +199,59 @@ func test_UserStatRecentUsecase_GetRecentMatches_DrawExcluded(
 		// = 勝ち1 / (決着1) = 1.0（引き分けは分母に入らない）
 		require.InDelta(t, 1.0, ret.Matches[1].RollingWinRate, 0.0001)
 	})
+}
+
+// 直近N戦に付ける環境ラベルも、開催日と実際の対戦環境がズレる公式イベント
+// (official_event_environments)では登録された環境を使う。同じ日の対戦でも、
+// 例外登録があるイベントと無いイベントで環境が分かれる。
+func TestUserStatRecentUsecase_GetRecentMatches_EnvironmentOverride(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	mockRepository := mock_repository.NewMockUserStatRecentInterface(mockCtrl)
+	mockEnvironmentRepository := mock_repository.NewMockEnvironmentInterface(mockCtrl)
+	mockOfficialEventEnvironmentRepository := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+	usecase := NewUserStatRecent(mockRepository, mockEnvironmentRepository, mockOfficialEventEnvironmentRepository)
+
+	userId := "user-03"
+
+	// チャンピオンズリーグ2027横浜(m6として登録)と、同じ日のジムバトル(例外なし)
+	const (
+		championsLeagueEventId = uint(1113193)
+		gymEventId             = uint(1113300)
+	)
+	eventDate := time.Date(2026, 9, 20, 0, 0, 0, 0, time.Local)
+
+	m6 := entity.NewEnvironment(
+		"m6", "ストームエメラルダ",
+		time.Date(2026, 7, 31, 0, 0, 0, 0, time.Local),
+		time.Date(2026, 9, 15, 0, 0, 0, 0, time.Local),
+	)
+	m6a := entity.NewEnvironment(
+		"m6a", "30th CELEBRATION",
+		time.Date(2026, 9, 16, 0, 0, 0, 0, time.Local),
+		time.Date(2026, 11, 26, 0, 0, 0, 0, time.Local),
+	)
+
+	rawMatches := []*entity.RecentMatch{
+		entity.NewRecentMatch(0, eventDate, championsLeagueEventId, "deck-01", "対戦相手デッキA", true, false, 0, "", "", nil),
+		entity.NewRecentMatch(0, eventDate, gymEventId, "deck-01", "対戦相手デッキB", false, false, 0, "", "", nil),
+	}
+
+	mockRepository.EXPECT().FindRecentMatches(context.Background(), userId, 2, "", uint(0)).Return(rawMatches, nil)
+	// 対戦日(9/20)を含む期間の環境は m6a のみ
+	mockEnvironmentRepository.EXPECT().FindByTerm(context.Background(), eventDate, eventDate).Return([]*entity.Environment{m6a}, nil)
+	mockOfficialEventEnvironmentRepository.EXPECT().FindAll(context.Background()).Return(
+		map[uint]string{championsLeagueEventId: "m6"}, nil,
+	)
+	mockEnvironmentRepository.EXPECT().FindById(context.Background(), "m6").Return(m6, nil)
+
+	ret, err := usecase.GetRecentMatches(context.Background(), userId, 2, "", 0)
+
+	require.NoError(t, err)
+	require.Len(t, ret.Matches, 2)
+	// 例外登録があるCLは、開催日が m6a の期間内でも m6
+	require.Equal(t, "m6", ret.Matches[0].EnvironmentId)
+	require.Equal(t, "ストームエメラルダ", ret.Matches[0].EnvironmentTitle)
+	// 同じ日でも例外登録が無いジムバトルは開催日どおり m6a
+	require.Equal(t, "m6a", ret.Matches[1].EnvironmentId)
+	require.Equal(t, "30th CELEBRATION", ret.Matches[1].EnvironmentTitle)
 }

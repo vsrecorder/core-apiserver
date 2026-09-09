@@ -231,6 +231,7 @@ func main() {
 
 	environmentBadgeEvaluation := usecase.NewEnvironmentBadgeEvaluation(
 		infrastructure.NewEnvironment(db),
+		infrastructure.NewOfficialEventEnvironment(db),
 		infrastructure.NewUserEnvironmentBadge(db),
 		infrastructure.NewNotification(db),
 		infrastructure.NewTransactionManager(db),
@@ -530,6 +531,7 @@ func main() {
 		usecase.NewUserStat(
 			infrastructure.NewUserStat(db),
 			infrastructure.NewEnvironment(db),
+			infrastructure.NewOfficialEventEnvironment(db),
 			infrastructure.NewStandardRegulation(db),
 			infrastructure.NewChampionshipSeries(db),
 		),
@@ -540,6 +542,7 @@ func main() {
 		usecase.NewUserStatRecent(
 			infrastructure.NewUserStatRecent(db),
 			infrastructure.NewEnvironment(db),
+			infrastructure.NewOfficialEventEnvironment(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -548,6 +551,7 @@ func main() {
 		usecase.NewDeckUsageStat(
 			infrastructure.NewDeckUsageStat(db),
 			infrastructure.NewEnvironment(db),
+			infrastructure.NewOfficialEventEnvironment(db),
 			infrastructure.NewStandardRegulation(db),
 			infrastructure.NewChampionshipSeries(db),
 		),
@@ -565,6 +569,7 @@ func main() {
 		usecase.NewOpponentDeckUsageStat(
 			infrastructure.NewOpponentDeckUsageStat(db),
 			infrastructure.NewEnvironment(db),
+			infrastructure.NewOfficialEventEnvironment(db),
 			infrastructure.NewStandardRegulation(db),
 			infrastructure.NewChampionshipSeries(db),
 		),

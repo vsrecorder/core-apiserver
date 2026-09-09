@@ -3,9 +3,14 @@
 // 遡ってバッジを付与するための一回限りの初期投入バッチ。
 //
 // 判定基準は usecase.EnvironmentBadgeEvaluation.EvaluateOnMatchCreated と同じ:
-// 対戦の基準日時(親recordのevent_date、無ければ対戦のcreated_at。usecase.RecordBasisTime参照)
-// が属する環境(environments.from_date <= 基準日時 の中で最も新しいもの)を対戦ごとに求め、
-// ユーザー×環境の組み合わせごとに最も古い基準日時を achieved_at として付与する。
+// 対戦ごとに環境を求め(usecase.ResolveEnvironmentForOfficialEvent。official_event_environments
+// に例外登録があればその環境、無ければ基準日時が属する環境 = environments.from_date <= 基準日時
+// の中で最も新しいもの。基準日時は親recordのevent_date、無ければ対戦のcreated_at。
+// usecase.RecordBasisTime参照)、ユーザー×環境の組み合わせごとに最も古い基準日時を
+// achieved_at として付与する。
+//
+// 例外登録(official_event_environments)を後から追加・修正したときは、このバッチを再実行すると
+// 付与済みのバッジを新しい判定で付け直せる。
 //
 // achieved_at には対戦の基準日時(event_date優先)を、created_at には達成条件に使った
 // matchそのもののCreatedAtを設定する(基準日時とは別物。basisTimeは過去日を指定できて
@@ -79,6 +84,7 @@ func main() {
 	}
 
 	environmentRepo := infrastructure.NewEnvironment(db)
+	officialEventEnvironmentRepo := infrastructure.NewOfficialEventEnvironment(db)
 	userEnvironmentBadgeRepo := infrastructure.NewUserEnvironmentBadge(db)
 
 	q := db.Model(&model.User{})
@@ -100,7 +106,7 @@ func main() {
 
 	backfilled := 0
 	for _, user := range users {
-		created, err := backfillUser(context.Background(), db, environmentRepo, userEnvironmentBadgeRepo, user, *dryRun)
+		created, err := backfillUser(context.Background(), db, environmentRepo, officialEventEnvironmentRepo, userEnvironmentBadgeRepo, user, *dryRun)
 		if err != nil {
 			log.Printf("failed to backfill user=%s: %v\n", user.ID, err)
 			continue
@@ -120,9 +126,12 @@ func main() {
 }
 
 type matchBasis struct {
-	recordId       string
-	basisTime      time.Time
-	matchCreatedAt time.Time
+	recordId string
+	// officialEventId は環境の例外判定(official_event_environments)に使う。
+	// 環境バッジの対象は公式イベントに紐づく記録のみなので、必ず0以外になる。
+	officialEventId uint
+	basisTime       time.Time
+	matchCreatedAt  time.Time
 }
 
 // backfillUser は1ユーザー分の環境バッジを補完する。作成した(dry-runなら作成予定の)件数を返す。
@@ -130,6 +139,7 @@ func backfillUser(
 	ctx context.Context,
 	db *gorm.DB,
 	environmentRepo repository.EnvironmentInterface,
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface,
 	userEnvironmentBadgeRepo repository.UserEnvironmentBadgeInterface,
 	user *model.User,
 	dryRun bool,
@@ -172,9 +182,10 @@ func backfillUser(
 			continue
 		}
 		bases = append(bases, matchBasis{
-			recordId:       m.RecordId,
-			basisTime:      usecase.RecordBasisTime(record.EventDate, record.CreatedAt),
-			matchCreatedAt: m.CreatedAt,
+			recordId:        m.RecordId,
+			officialEventId: record.OfficialEventId,
+			basisTime:       usecase.RecordBasisTime(record.EventDate, record.CreatedAt),
+			matchCreatedAt:  m.CreatedAt,
 		})
 	}
 	sort.Slice(bases, func(i, j int) bool { return bases[i].basisTime.Before(bases[j].basisTime) })
@@ -195,7 +206,13 @@ func backfillUser(
 
 	created := 0
 	for _, b := range bases {
-		env, err := environmentRepo.FindByDate(ctx, b.basisTime)
+		env, err := usecase.ResolveEnvironmentForOfficialEvent(
+			ctx,
+			environmentRepo,
+			officialEventEnvironmentRepo,
+			b.officialEventId,
+			b.basisTime,
+		)
 		if err != nil {
 			if errors.Is(err, apperror.ErrRecordNotFound) {
 				continue

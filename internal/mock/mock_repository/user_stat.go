@@ -12,9 +12,9 @@ package mock_repository
 import (
 	context "context"
 	reflect "reflect"
-	time "time"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	repository "github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -43,16 +43,16 @@ func (m *MockUserStatInterface) EXPECT() *MockUserStatInterfaceMockRecorder {
 }
 
 // FindUserStat mocks base method.
-func (m *MockUserStatInterface) FindUserStat(ctx context.Context, userId string, fromDate, toDate time.Time, regulationId uint) (*entity.UserStat, error) {
+func (m *MockUserStatInterface) FindUserStat(ctx context.Context, userId string, period repository.StatPeriod, regulationId uint) (*entity.UserStat, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindUserStat", ctx, userId, fromDate, toDate, regulationId)
+	ret := m.ctrl.Call(m, "FindUserStat", ctx, userId, period, regulationId)
 	ret0, _ := ret[0].(*entity.UserStat)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindUserStat indicates an expected call of FindUserStat.
-func (mr *MockUserStatInterfaceMockRecorder) FindUserStat(ctx, userId, fromDate, toDate, regulationId any) *gomock.Call {
+func (mr *MockUserStatInterfaceMockRecorder) FindUserStat(ctx, userId, period, regulationId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserStat", reflect.TypeOf((*MockUserStatInterface)(nil).FindUserStat), ctx, userId, fromDate, toDate, regulationId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserStat", reflect.TypeOf((*MockUserStatInterface)(nil).FindUserStat), ctx, userId, period, regulationId)
 }

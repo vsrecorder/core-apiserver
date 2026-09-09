@@ -112,6 +112,7 @@ func main() {
 	ctx := context.Background()
 
 	environmentRepo := infrastructure.NewEnvironment(db)
+	officialEventEnvironmentRepo := infrastructure.NewOfficialEventEnvironment(db)
 	standardRegulationRepo := infrastructure.NewStandardRegulation(db)
 	championshipSeriesRepo := infrastructure.NewChampionshipSeries(db)
 
@@ -122,8 +123,8 @@ func main() {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	to := today.AddDate(0, 0, 1)
 
-	supplyFrom, supplyTo, err := resolvePeriod(
-		ctx, environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+	supplyPeriod, err := resolvePeriod(
+		ctx, environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 		*supplyEnvironment, *supplySeason, *supplyRegulation,
 		today.AddDate(0, 0, -7*(*supplyWeeks)), to, now,
 	)
@@ -132,8 +133,8 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
-	demandFrom, demandTo, err := resolvePeriod(
-		ctx, environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+	demandPeriod, err := resolvePeriod(
+		ctx, environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 		*demandEnvironment, *demandSeason, *demandRegulation,
 		today.AddDate(0, 0, -7*(*demandWeeks)), to, now,
 	)
@@ -143,10 +144,8 @@ func main() {
 	}
 
 	cfg := infrastructure.DeckNameAliasGeneratorConfig{
-		SupplyFrom:      supplyFrom,
-		SupplyTo:        supplyTo,
-		DemandFrom:      demandFrom,
-		DemandTo:        demandTo,
+		SupplyPeriod:    supplyPeriod,
+		DemandPeriod:    demandPeriod,
 		MinSupport:      *minSupport,
 		MinRatio:        *minRatio,
 		MinContributors: *minContributors,
@@ -155,10 +154,10 @@ func main() {
 
 	log.Printf(
 		"教師データ %s〜%s / 救済対象 %s〜%s / しきい値: 支持%d件以上・占有率%.0f%%以上・%d人以上・%d文字以上\n",
-		cfg.SupplyFrom.Format("2006-01-02"),
-		formatInclusiveTo(cfg.SupplyTo),
-		cfg.DemandFrom.Format("2006-01-02"),
-		formatInclusiveTo(cfg.DemandTo),
+		cfg.SupplyPeriod.From.Format("2006-01-02"),
+		formatInclusiveTo(cfg.SupplyPeriod.To),
+		cfg.DemandPeriod.From.Format("2006-01-02"),
+		formatInclusiveTo(cfg.DemandPeriod.To),
 		cfg.MinSupport,
 		cfg.MinRatio*100,
 		cfg.MinContributors,
@@ -210,9 +209,13 @@ func main() {
 // resolvePeriod は environmentId/season/regulationId のいずれかが指定されていればその期間
 // (期間が複数指定された場合は交差)を、いずれも空文字なら weeksFrom〜weeksTo(週数指定による
 // 既定の期間)をそのまま返す。
+//
+// 環境を指定した場合の戻り値には、開催日と実際の対戦環境がズレる公式イベントの例外も
+// 含まれる(usecase.StatPeriodFor 参照)。
 func resolvePeriod(
 	ctx context.Context,
 	environmentRepo repository.EnvironmentInterface,
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface,
 	standardRegulationRepo repository.StandardRegulationInterface,
 	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 	environmentId string,
@@ -221,13 +224,18 @@ func resolvePeriod(
 	weeksFrom time.Time,
 	weeksTo time.Time,
 	now time.Time,
-) (time.Time, time.Time, error) {
+) (repository.StatPeriod, error) {
 	if environmentId == "" && season == "" && regulationId == "" {
-		return weeksFrom, weeksTo, nil
+		return repository.StatPeriod{
+			From:     weeksFrom,
+			To:       weeksTo,
+			BaseFrom: weeksFrom,
+			BaseTo:   weeksTo,
+		}, nil
 	}
 
-	return usecase.PeriodDateRange(
-		ctx, environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+	return usecase.StatPeriodFor(
+		ctx, environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 		environmentId, season, regulationId, now,
 	)
 }

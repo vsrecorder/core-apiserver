@@ -8,6 +8,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
 var (
@@ -67,8 +69,8 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 
 	cfg := func() DeckNameAliasGeneratorConfig {
 		c := DefaultDeckNameAliasGeneratorConfig()
-		c.SupplyFrom, c.SupplyTo = from, to
-		c.DemandFrom, c.DemandTo = from, to
+		c.SupplyPeriod = repository.StatPeriod{From: from, To: to, BaseFrom: from, BaseTo: to}
+		c.DemandPeriod = c.SupplyPeriod
 		return c
 	}
 

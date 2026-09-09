@@ -171,7 +171,8 @@ const findByPlayerIdSelect = `SELECT cityleague_results.cityleague_schedule_id A
 	`LEFT JOIN official_events ON official_events.id = cityleague_results.official_event_id ` +
 	`LEFT JOIN shops ON shops.id = official_events.shop_id ` +
 	`LEFT JOIN prefectures ON prefectures.id = shops.prefecture_id ` +
-	`LEFT JOIN environments ON environments.from_date <= cityleague_results.event_date AND environments.to_date >= cityleague_results.event_date `
+	`LEFT JOIN official_event_environments AS oee ON oee.official_event_id = cityleague_results.official_event_id ` +
+	`LEFT JOIN environments ON environments.id = COALESCE(oee.environment_id, (SELECT e.id FROM environments AS e WHERE e.from_date <= cityleague_results.event_date AND e.to_date >= cityleague_results.event_date)) `
 
 const findByPlayerIdOrder = ` ORDER BY cityleague_results.event_date DESC, cityleague_results.rank ASC, cityleague_results.official_event_id ASC`
 

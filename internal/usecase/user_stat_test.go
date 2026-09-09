@@ -10,6 +10,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
 
@@ -23,10 +24,15 @@ func setup4UserStatUsecase(t *testing.T) (
 	mockCtrl := gomock.NewController(t)
 	mockUserStatRepo := mock_repository.NewMockUserStatInterface(mockCtrl)
 	mockEnvironmentRepo := mock_repository.NewMockEnvironmentInterface(mockCtrl)
+	mockOfficialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+	// 環境の例外イベント(official_event_environments)そのものの検証は
+	// environment_scope_test.go で行う。ここでは期間の組み立てだけを見たいので、
+	// 環境指定時に引かれても例外なし(nil)を返す。
+	mockOfficialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 	mockRegulationRepo := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
 	mockSeriesRepo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
-	usecase := NewUserStat(mockUserStatRepo, mockEnvironmentRepo, mockRegulationRepo, mockSeriesRepo)
+	usecase := NewUserStat(mockUserStatRepo, mockEnvironmentRepo, mockOfficialEventEnvironmentRepo, mockRegulationRepo, mockSeriesRepo)
 
 	return mockUserStatRepo, mockEnvironmentRepo, mockRegulationRepo, mockSeriesRepo, usecase
 }
@@ -41,7 +47,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 		fromDate := time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local)
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "", "2026-06", "", "", "", 0)
 
@@ -56,7 +62,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 		fromDate := time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "2026-08-19", "", "", "", "", 0)
 
@@ -70,7 +76,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 		fromDate := time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "2026-08-17", "2026-06", "", "", "", 0)
 
@@ -96,7 +102,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 		fromDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "", "", 0)
 
@@ -119,7 +125,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 		fromDate := time.Date(2025, 7, 1, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local) // to_dateの翌日0時がexclusive上限
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "2026", "", 0)
 
@@ -142,7 +148,13 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 		fromDate := time.Date(2026, 6, 6, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local) // to_dateの翌日0時がexclusive上限
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+		// 環境以外の条件が無いので、例外イベントを拾い直す範囲(BaseFrom/BaseTo)は無制限のまま。
+		mockUserStatRepo.EXPECT().FindUserStat(
+			context.Background(),
+			userId,
+			repository.StatPeriod{From: fromDate, To: toDate},
+			uint(0),
+		).Return(stat, nil)
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "sv11", "", "", 0)
 
@@ -167,7 +179,19 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 		fromDate := time.Date(2026, 6, 6, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local)
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+		// 例外イベントを拾い直す範囲(BaseFrom/BaseTo)は環境以外の条件、つまり year_month の
+		// 1ヶ月になる(環境の期間まで広げてしまうと、他の条件との交差が壊れる)。
+		mockUserStatRepo.EXPECT().FindUserStat(
+			context.Background(),
+			userId,
+			repository.StatPeriod{
+				From:     fromDate,
+				To:       toDate,
+				BaseFrom: time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local),
+				BaseTo:   time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local),
+			},
+			uint(0),
+		).Return(stat, nil)
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "", "2026-06", "sv11", "", "", 0)
 
@@ -189,7 +213,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 		fromDate := time.Date(2026, 1, 24, 0, 0, 0, 0, time.Local)
 		toDate := time.Date(2027, 1, 23, 0, 0, 0, 0, time.Local) // to_dateの翌日0時がexclusive上限
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, fromDate, toDate, uint(0)).Return(stat, nil)
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, statPeriodOf(fromDate, toDate), uint(0)).Return(stat, nil)
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "", "", "", "", "regulation-g", 0)
 
@@ -242,7 +266,7 @@ func TestUserStatUsecase_GetUserStat(t *testing.T) {
 	t.Run("異常系_集計リポジトリのエラーをそのまま返す", func(t *testing.T) {
 		mockUserStatRepo, _, _, _, usecase := setup4UserStatUsecase(t)
 
-		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, gomock.Any(), gomock.Any(), uint(0)).Return(nil, errors.New(""))
+		mockUserStatRepo.EXPECT().FindUserStat(context.Background(), userId, gomock.Any(), uint(0)).Return(nil, errors.New(""))
 
 		ret, err := usecase.GetUserStat(context.Background(), userId, "", "2026-06", "", "", "", 0)
 

@@ -66,45 +66,34 @@ func CurrentSeasonDateRange(
 	return seasonRange(ctx, championshipSeriesRepo, "", now)
 }
 
-// PeriodDateRange は environmentId・season・regulationId の指定から対象期間を決定する、
+// StatPeriodFor は environmentId・season・regulationId の指定から統計の期間条件を決定する、
 // package外(cmd/配下のバッチ等)向けのエクスポート版。DeckUsageStat.GetDeckUsageStat 等と
 // 同じ考え方で、複数指定された場合は期間の交差(intersection)を取る。
-// いずれも空文字ならゼロ値を返す(「未指定」の意味づけは呼び出し側に委ねる)。
-func PeriodDateRange(
+// いずれも空文字ならゼロ値(期間の絞り込みなし)を返す。
+//
+// 環境は期間だけでは表せない(大型大会は開催日が次の環境の期間に入っていても前の環境の
+// カードプールで行われる)ため、戻り値は期間ではなく例外イベントを含む StatPeriod。
+// 環境を絞り込みに使う集計は、期間だけを見ずにこの StatPeriod をそのまま
+// infrastructure へ渡すこと。
+func StatPeriodFor(
 	ctx context.Context,
 	environmentRepo repository.EnvironmentInterface,
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface,
 	standardRegulationRepo repository.StandardRegulationInterface,
 	championshipSeriesRepo repository.ChampionshipSeriesInterface,
 	environmentId string,
 	season string,
 	regulationId string,
 	now time.Time,
-) (fromDate time.Time, toDate time.Time, err error) {
+) (repository.StatPeriod, error) {
+	var fromDate, toDate time.Time
+
 	if season != "" {
+		var err error
 		fromDate, toDate, err = seasonRange(ctx, championshipSeriesRepo, season, now)
 		if err != nil {
 			logError(ctx, err)
-			return time.Time{}, time.Time{}, err
-		}
-	}
-
-	if environmentId != "" {
-		env, err := environmentRepo.FindById(ctx, environmentId)
-		if err != nil {
-			logError(ctx, err)
-			return time.Time{}, time.Time{}, err
-		}
-
-		// 環境の期間(to_dateは含む日付なので翌日0時をexclusive上限とする)
-		envFrom := time.Date(env.FromDate.Year(), env.FromDate.Month(), env.FromDate.Day(), 0, 0, 0, 0, time.Local)
-		envTo := time.Date(env.ToDate.Year(), env.ToDate.Month(), env.ToDate.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 1)
-
-		// seasonと環境の両方が指定された場合は期間の交差を取る
-		if fromDate.IsZero() || envFrom.After(fromDate) {
-			fromDate = envFrom
-		}
-		if toDate.IsZero() || envTo.Before(toDate) {
-			toDate = envTo
+			return repository.StatPeriod{}, err
 		}
 	}
 
@@ -112,7 +101,7 @@ func PeriodDateRange(
 		reg, err := standardRegulationRepo.FindById(ctx, regulationId)
 		if err != nil {
 			logError(ctx, err)
-			return time.Time{}, time.Time{}, err
+			return repository.StatPeriod{}, err
 		}
 
 		// レギュレーションの期間(to_dateは含む日付なので翌日0時をexclusive上限とする)
@@ -128,7 +117,9 @@ func PeriodDateRange(
 		}
 	}
 
-	return fromDate, toDate, nil
+	// 環境は最後に適用する。例外イベントを拾い直す範囲(BaseFrom/BaseTo)を環境以外の条件
+	// だけで決める必要があるため(期間の交差自体は順序に依らない)。
+	return buildStatPeriod(ctx, environmentRepo, officialEventEnvironmentRepo, environmentId, fromDate, toDate)
 }
 
 // previousSeasonRange は season(空文字なら現在のシーズン)のひとつ前(championship_series上で

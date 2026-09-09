@@ -19,15 +19,17 @@ type UserStatRecentInterface interface {
 }
 
 type UserStatRecent struct {
-	repo            repository.UserStatRecentInterface
-	environmentRepo repository.EnvironmentInterface
+	repo                         repository.UserStatRecentInterface
+	environmentRepo              repository.EnvironmentInterface
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface
 }
 
 func NewUserStatRecent(
 	repo repository.UserStatRecentInterface,
 	environmentRepo repository.EnvironmentInterface,
+	officialEventEnvironmentRepo repository.OfficialEventEnvironmentInterface,
 ) UserStatRecentInterface {
-	return &UserStatRecent{repo, environmentRepo}
+	return &UserStatRecent{repo, environmentRepo, officialEventEnvironmentRepo}
 }
 
 func (u *UserStatRecent) GetRecentMatches(
@@ -53,6 +55,13 @@ func (u *UserStatRecent) GetRecentMatches(
 	}
 
 	environments, err := u.findEnvironmentsForMatches(ctx, rawMatches)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	// 開催日と実際の対戦環境がズレる公式イベントの環境。該当が無ければ空。
+	overrides, err := u.findEnvironmentOverrides(ctx, rawMatches)
 	if err != nil {
 		logError(ctx, err)
 		return nil, err
@@ -108,8 +117,15 @@ func (u *UserStatRecent) GetRecentMatches(
 
 		sequence := idx - displayStart + 1
 
+		// 例外登録があるイベントの対戦は開催日から引かない(ResolveEnvironmentForOfficialEvent
+		// と同じ判定)。無ければ従来どおり対戦日が属する環境。
+		env, ok := overrides[m.OfficialEventId]
+		if !ok {
+			env = findEnvironmentForDate(environments, m.EventDate)
+		}
+
 		var environmentId, environmentTitle string
-		if env := findEnvironmentForDate(environments, m.EventDate); env != nil {
+		if env != nil {
 			environmentId = env.ID
 			environmentTitle = env.Title
 		}
@@ -117,6 +133,7 @@ func (u *UserStatRecent) GetRecentMatches(
 		matches = append(matches, entity.NewRecentMatch(
 			sequence,
 			m.EventDate,
+			m.OfficialEventId,
 			m.DeckId,
 			m.OpponentsDeckInfo,
 			m.VictoryFlg,
@@ -158,6 +175,53 @@ func (u *UserStatRecent) findEnvironmentsForMatches(
 	}
 
 	return u.environmentRepo.FindByTerm(ctx, minDate, maxDate)
+}
+
+// findEnvironmentOverrides は、対戦のうち環境の例外が登録されている公式イベントについて、
+// 公式イベントIDから環境への対応を返す。該当が無ければ空のmapを返す。
+//
+// 例外テーブルは極小(年に数件)なので全件を1回で引き、対戦側に該当があるものだけ環境を
+// 引き当てる。環境の問い合わせは環境IDごとに1回で済ませる。
+func (u *UserStatRecent) findEnvironmentOverrides(
+	ctx context.Context,
+	matches []*entity.RecentMatch,
+) (map[uint]*entity.Environment, error) {
+	overrides := map[uint]*entity.Environment{}
+
+	if len(matches) == 0 {
+		return overrides, nil
+	}
+
+	environmentIdByEventId, err := u.officialEventEnvironmentRepo.FindAll(ctx)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+	if len(environmentIdByEventId) == 0 {
+		return overrides, nil
+	}
+
+	envById := make(map[string]*entity.Environment)
+	for _, m := range matches {
+		environmentId, ok := environmentIdByEventId[m.OfficialEventId]
+		if !ok {
+			continue
+		}
+
+		env, cached := envById[environmentId]
+		if !cached {
+			env, err = u.environmentRepo.FindById(ctx, environmentId)
+			if err != nil {
+				logError(ctx, err)
+				return nil, err
+			}
+			envById[environmentId] = env
+		}
+
+		overrides[m.OfficialEventId] = env
+	}
+
+	return overrides, nil
 }
 
 // findEnvironmentForDate は指定日を含む環境を返す。

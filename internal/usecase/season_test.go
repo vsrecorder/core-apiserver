@@ -182,29 +182,37 @@ func TestPreviousSeasonRange(t *testing.T) {
 	})
 }
 
-func TestPeriodDateRange(t *testing.T) {
+func TestStatPeriodFor(t *testing.T) {
 	now := time.Date(2026, 1, 10, 0, 0, 0, 0, time.Local)
 
 	t.Run("正常系_いずれも未指定ならゼロ値を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		environmentRepo := mock_repository.NewMockEnvironmentInterface(mockCtrl)
 		standardRegulationRepo := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
+		// 例外イベント(official_event_environments)自体の検証は environment_scope_test.go で行う。
+		// ここでは期間の組み立てだけを見たいので、環境指定時に引かれても例外なし(nil)を返す。
+		officialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+		officialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 		championshipSeriesRepo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
-		fromDate, toDate, err := PeriodDateRange(
-			t.Context(), environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		period, err := StatPeriodFor(
+			t.Context(), environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 			"", "", "", now,
 		)
 
 		require.NoError(t, err)
-		require.True(t, fromDate.IsZero())
-		require.True(t, toDate.IsZero())
+		require.True(t, period.From.IsZero())
+		require.True(t, period.To.IsZero())
 	})
 
 	t.Run("正常系_environmentIdのみ指定でその環境の期間を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		environmentRepo := mock_repository.NewMockEnvironmentInterface(mockCtrl)
 		standardRegulationRepo := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
+		// 例外イベント(official_event_environments)自体の検証は environment_scope_test.go で行う。
+		// ここでは期間の組み立てだけを見たいので、環境指定時に引かれても例外なし(nil)を返す。
+		officialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+		officialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 		championshipSeriesRepo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
 		env := entity.NewEnvironment(
@@ -214,20 +222,24 @@ func TestPeriodDateRange(t *testing.T) {
 		)
 		environmentRepo.EXPECT().FindById(gomock.Any(), "sv9a").Return(env, nil)
 
-		fromDate, toDate, err := PeriodDateRange(
-			t.Context(), environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		period, err := StatPeriodFor(
+			t.Context(), environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 			"sv9a", "", "", now,
 		)
 
 		require.NoError(t, err)
-		require.Equal(t, time.Date(2025, 3, 14, 0, 0, 0, 0, time.Local), fromDate)
-		require.Equal(t, time.Date(2025, 4, 18, 0, 0, 0, 0, time.Local), toDate)
+		require.Equal(t, time.Date(2025, 3, 14, 0, 0, 0, 0, time.Local), period.From)
+		require.Equal(t, time.Date(2025, 4, 18, 0, 0, 0, 0, time.Local), period.To)
 	})
 
 	t.Run("正常系_season指定時はseasonRangeの期間を返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		environmentRepo := mock_repository.NewMockEnvironmentInterface(mockCtrl)
 		standardRegulationRepo := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
+		// 例外イベント(official_event_environments)自体の検証は environment_scope_test.go で行う。
+		// ここでは期間の組み立てだけを見たいので、環境指定時に引かれても例外なし(nil)を返す。
+		officialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+		officialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 		championshipSeriesRepo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
 		cs := entity.NewChampionshipSeries(
@@ -237,20 +249,24 @@ func TestPeriodDateRange(t *testing.T) {
 		)
 		championshipSeriesRepo.EXPECT().FindById(gomock.Any(), "series_2024").Return(cs, nil)
 
-		fromDate, toDate, err := PeriodDateRange(
-			t.Context(), environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		period, err := StatPeriodFor(
+			t.Context(), environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 			"", "2024", "", now,
 		)
 
 		require.NoError(t, err)
-		require.Equal(t, time.Date(2023, 9, 1, 0, 0, 0, 0, time.Local), fromDate)
-		require.Equal(t, time.Date(2024, 9, 1, 0, 0, 0, 0, time.Local), toDate)
+		require.Equal(t, time.Date(2023, 9, 1, 0, 0, 0, 0, time.Local), period.From)
+		require.Equal(t, time.Date(2024, 9, 1, 0, 0, 0, 0, time.Local), period.To)
 	})
 
 	t.Run("正常系_season+regulationは期間の交差を取る", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		environmentRepo := mock_repository.NewMockEnvironmentInterface(mockCtrl)
 		standardRegulationRepo := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
+		// 例外イベント(official_event_environments)自体の検証は environment_scope_test.go で行う。
+		// ここでは期間の組み立てだけを見たいので、環境指定時に引かれても例外なし(nil)を返す。
+		officialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+		officialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 		championshipSeriesRepo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
 		cs := entity.NewChampionshipSeries(
@@ -267,27 +283,31 @@ func TestPeriodDateRange(t *testing.T) {
 		)
 		standardRegulationRepo.EXPECT().FindById(gomock.Any(), "GHI").Return(reg, nil)
 
-		fromDate, toDate, err := PeriodDateRange(
-			t.Context(), environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		period, err := StatPeriodFor(
+			t.Context(), environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 			"", "2026", "GHI", now,
 		)
 
 		require.NoError(t, err)
 		// season(2025-09-01〜2026-09-01)とregulation(2025-01-24〜2025-12-19)の交差
-		require.Equal(t, time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), fromDate)
-		require.Equal(t, time.Date(2025, 12, 19, 0, 0, 0, 0, time.Local), toDate)
+		require.Equal(t, time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), period.From)
+		require.Equal(t, time.Date(2025, 12, 19, 0, 0, 0, 0, time.Local), period.To)
 	})
 
 	t.Run("異常系_environmentIdが見つからなければエラーを返す", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		environmentRepo := mock_repository.NewMockEnvironmentInterface(mockCtrl)
 		standardRegulationRepo := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
+		// 例外イベント(official_event_environments)自体の検証は environment_scope_test.go で行う。
+		// ここでは期間の組み立てだけを見たいので、環境指定時に引かれても例外なし(nil)を返す。
+		officialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+		officialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 		championshipSeriesRepo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
 		environmentRepo.EXPECT().FindById(gomock.Any(), "unknown").Return(nil, apperror.ErrRecordNotFound)
 
-		_, _, err := PeriodDateRange(
-			t.Context(), environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		_, err := StatPeriodFor(
+			t.Context(), environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 			"unknown", "", "", now,
 		)
 
@@ -298,12 +318,16 @@ func TestPeriodDateRange(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		environmentRepo := mock_repository.NewMockEnvironmentInterface(mockCtrl)
 		standardRegulationRepo := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
+		// 例外イベント(official_event_environments)自体の検証は environment_scope_test.go で行う。
+		// ここでは期間の組み立てだけを見たいので、環境指定時に引かれても例外なし(nil)を返す。
+		officialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+		officialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 		championshipSeriesRepo := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
 
 		standardRegulationRepo.EXPECT().FindById(gomock.Any(), "unknown").Return(nil, apperror.ErrRecordNotFound)
 
-		_, _, err := PeriodDateRange(
-			t.Context(), environmentRepo, standardRegulationRepo, championshipSeriesRepo,
+		_, err := StatPeriodFor(
+			t.Context(), environmentRepo, officialEventEnvironmentRepo, standardRegulationRepo, championshipSeriesRepo,
 			"", "", "unknown", now,
 		)
 

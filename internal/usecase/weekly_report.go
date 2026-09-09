@@ -115,7 +115,7 @@ func (u *WeeklyReportNotifier) NotifyUser(ctx context.Context, userId string, we
 	weekKey := fromDate.Format(weekDateLayout)
 
 	// 全レギュレーション合算(regulationId=0)。webapp のバトルレポートも絞らずに出す
-	stat, err := u.userStatRepo.FindUserStat(ctx, userId, fromDate, toDate, 0)
+	stat, err := u.userStatRepo.FindUserStat(ctx, userId, statPeriodOf(fromDate, toDate), 0)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
 		logError(ctx, err)
 		return false, err
@@ -294,7 +294,7 @@ func (u *WeeklyReportNotifier) alreadyNotified(ctx context.Context, userId strin
 // topDeckName はその週に最も多く使ったデッキ(相棒デッキ)の名前を返す。
 // 集計に失敗しても通知本体は出したいので、失敗時は警告だけ残して空文字を返す。
 func (u *WeeklyReportNotifier) topDeckName(ctx context.Context, userId string, fromDate, toDate time.Time) string {
-	stat, err := u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, fromDate, toDate, 0)
+	stat, err := u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, statPeriodOf(fromDate, toDate), 0)
 	if err != nil {
 		logWarn(ctx, err)
 		return ""

@@ -9,6 +9,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
 
@@ -16,9 +17,14 @@ func TestOpponentDeckUsageStatUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockOpponentDeckUsageStatInterface(mockCtrl)
 	mockEnvironmentRepository := mock_repository.NewMockEnvironmentInterface(mockCtrl)
+	mockOfficialEventEnvironmentRepo := mock_repository.NewMockOfficialEventEnvironmentInterface(mockCtrl)
+	// 環境の例外イベント(official_event_environments)そのものの検証は
+	// environment_scope_test.go で行う。ここでは期間の組み立てだけを見たいので、
+	// 環境指定時に引かれても例外なし(nil)を返す。
+	mockOfficialEventEnvironmentRepo.EXPECT().FindAll(gomock.Any()).Return(nil, nil).AnyTimes()
 	mockStandardRegulationRepository := mock_repository.NewMockStandardRegulationInterface(mockCtrl)
 	mockChampionshipSeriesRepository := mock_repository.NewMockChampionshipSeriesInterface(mockCtrl)
-	usecase := NewOpponentDeckUsageStat(mockRepository, mockEnvironmentRepository, mockStandardRegulationRepository, mockChampionshipSeriesRepository)
+	usecase := NewOpponentDeckUsageStat(mockRepository, mockEnvironmentRepository, mockOfficialEventEnvironmentRepo, mockStandardRegulationRepository, mockChampionshipSeriesRepository)
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -43,7 +49,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		toDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
 
 		mockRepository.EXPECT().
-			FindOpponentDeckUsageStat(context.Background(), userId, fromDate, toDate, "", uint(0)).
+			FindOpponentDeckUsageStat(context.Background(), userId, statPeriodOf(fromDate, toDate), "", uint(0)).
 			Return(stat, nil)
 
 		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "2026-08-19", "", "", "", "", 0, "")
@@ -63,7 +69,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		stat := entity.NewOpponentDeckUsageStat(userId, 5, []*entity.OpponentDeckUsage{})
 
 		mockRepository.EXPECT().
-			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), gomock.Any(), deckId, uint(0)).
+			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), deckId, uint(0)).
 			Return(stat, nil)
 
 		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId)
@@ -83,7 +89,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		stat := entity.NewOpponentDeckUsageStat(userId, 0, []*entity.OpponentDeckUsage{})
 
 		mockRepository.EXPECT().
-			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), gomock.Any(), deckId, uint(0)).
+			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), deckId, uint(0)).
 			Return(stat, nil)
 
 		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId)
@@ -106,7 +112,7 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		stat := entity.NewOpponentDeckUsageStat(userId, 3, []*entity.OpponentDeckUsage{})
 
 		mockRepository.EXPECT().
-			FindOpponentDeckUsageStat(context.Background(), userId, time.Time{}, time.Time{}, deckId, uint(0)).
+			FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, deckId, uint(0)).
 			Return(stat, nil)
 
 		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId)

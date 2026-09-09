@@ -2,7 +2,6 @@ package infrastructure
 
 import (
 	"context"
-	"time"
 
 	"gorm.io/gorm"
 
@@ -42,8 +41,7 @@ type deckIgnoredResult struct {
 func (i *DeckUsageStat) FindDeckUsageStat(
 	ctx context.Context,
 	userId string,
-	fromDate time.Time,
-	toDate time.Time,
+	period repository.StatPeriod,
 	regulationId uint,
 ) (*entity.DeckUsageStat, error) {
 	var results []deckUsageResult
@@ -66,12 +64,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		query = query.Where("records.regulation_id = ?", regulationId)
 	}
 
-	if !fromDate.IsZero() {
-		query = query.Where("records.event_date >= ?", fromDate)
-	}
-	if !toDate.IsZero() {
-		query = query.Where("records.event_date < ?", toDate)
-	}
+	query = applyStatPeriod(query, period)
 
 	query = query.Group("records.deck_id, decks.name").Order("count DESC")
 
@@ -96,12 +89,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		ignoredQuery = ignoredQuery.Where("records.regulation_id = ?", regulationId)
 	}
 
-	if !fromDate.IsZero() {
-		ignoredQuery = ignoredQuery.Where("records.event_date >= ?", fromDate)
-	}
-	if !toDate.IsZero() {
-		ignoredQuery = ignoredQuery.Where("records.event_date < ?", toDate)
-	}
+	ignoredQuery = applyStatPeriod(ignoredQuery, period)
 
 	ignoredQuery = ignoredQuery.Group("records.deck_id, decks.name").Order("ignored_count DESC")
 
@@ -138,7 +126,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	for _, r := range results {
 		appendSpriteDeckId(r.DeckId)
 	}
-	if fromDate.IsZero() && toDate.IsZero() {
+	if period.From.IsZero() && period.To.IsZero() {
 		for _, r := range ignoredResults {
 			appendSpriteDeckId(r.DeckId)
 		}
@@ -198,7 +186,7 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	// 全期間集計(all_time)の場合のみ、集計対象外の記録しか持たないデッキも
 	// 一覧に含める。デッキ一覧カードで「集計対象外の記録がN件ある」と示すためで、
 	// count=0 のため使用率ランキング等では他の画面（期間指定）には現れない。
-	if fromDate.IsZero() && toDate.IsZero() {
+	if period.From.IsZero() && period.To.IsZero() {
 		for _, r := range ignoredResults {
 			if seen[r.DeckId] {
 				continue

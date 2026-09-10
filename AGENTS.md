@@ -98,9 +98,9 @@ authentication → authorization → validation → ハンドラ
 
 ### ログ
 
-ログは `log/slog` のJSON出力。`internal/logger.go` の `InitLogger` が
+ログは `log/slog` のJSON出力。`internal/logging/logger.go` の `InitLogger` が
 `logging.ContextHandler` でラップしたハンドラを作り、`main` が `slog.SetDefault` で
-既定のロガーとして設定する。各層は `*slog.Logger` をDIで受け取らず、この既定ロガーを
+既定のロガーとして設定する（APIサーバも `cmd` 配下のバッチも同じものを使う）。各層は `*slog.Logger` をDIで受け取らず、この既定ロガーを
 使う（コンストラクタのシグネチャを変えずに全層でログを出せるようにするため）。
 
 `request_id` / `uid` は context に載せ、`ContextHandler` が全レコードへ自動付与する。
@@ -129,11 +129,14 @@ authentication → authorization → validation → ハンドラ
   （例: `infrastructure/deck_asset.go` の `deck_code` / `request_url`）。
   その際 `request_id` / `uid` は `ContextHandler` が付けるため**重複して指定しない**。
 
-`cmd/core-apiserver` の出力はすべてJSONに揃えてある。壊さないこと:
+`cmd` 配下の全プロセス（APIサーバ・バッチ）の出力はJSONに揃えてある。壊さないこと:
 
-- `main()` は最初に `InitLogger` + `slog.SetDefault` を実行する。設定不備やDB接続失敗など
-  最も見たい起動時エラーもJSONで出すため、`godotenv.Load()` より前に置いている。
+- `main()` は最初に `logging.InitLogger` + `slog.SetDefault` を実行する。設定不備やDB接続
+  失敗など最も見たい起動時エラーもJSONで出すため、`godotenv.Load()` より前に置いている。
   `log` パッケージ（`log.Printf` など）は使わない。
+- これを呼ばないと slog の既定ハンドラ（テキスト）のままになり、そのプロセスが呼ぶ
+  usecase / infrastructure のログからも `layer` やソース位置が落ちる。バッチを追加したら
+  忘れずに入れること。
 - panicは `gin.Recovery()` ではなく `internal.RecoveryMiddleware` で捕捉する。
   gin側はスタックを独自形式のテキストで出すため、書き出し先をnilにして黙らせ、
   slogでJSONとして出し直している。応答はgin同様ボディ無しの500。
@@ -266,6 +269,13 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 - 書き込みを伴うバッチは `-dry-run`（**デフォルト `true`**）と、対象を絞る `-user-id` を持たせる。
 - 調査・確認ツールは既定で読み取り専用にし、差異検出時に終了コード1を返す `-exit-code` を持たせる。
 - `.env` を `godotenv.Load()` で読むため、作業ディレクトリに依存する。cronからは必ず `cd` させる。
+- `main()` の先頭で `logging.InitLogger` + `slog.SetDefault` を呼ぶ（「[ログ](#ログ)」参照）。
+  進捗・失敗は `slog`（stderr・JSON）へ出し、`log.Printf` は使わない。dry-run や対象は
+  メッセージを分岐させず `slog.Bool("dry_run", ...)` のように属性で出す（grepの条件を増やさないため）。
+- **人が目で読む一覧・表**（`list-deleted-users` の退会ユーザ一覧、`generate-deck-name-aliases`
+  の候補一覧、`check-deleted-users-data` / `purge-deleted-user-data` のレポートと確認プロンプト）
+  だけは `fmt.Printf` で標準出力へ出す。JSONに混ぜると桁が揃わず目視で比較できなくなるため、
+  「レポートは stdout・ログは stderr」で分けている。
 
 ## 設計判断の記録
 
@@ -286,6 +296,11 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 - `r.SetTrustedProxies(nil)` とCORSのオリジン許可リストは明示指定を維持する。
 - `USERS_PLAYERS_LINKING_ENABLED=false` はプレイヤーID連携のキルスイッチ。未設定または
   `false` 以外なら有効という判定（`!= "false"`）を変えない。
+- push の 403（VAPID の資格情報が拒否された）で購読を失効させる条件を緩めない
+  （`usecase/push_notifier.go` の `isStaleCredentialRejection`）。403 は「その購読だけが古い
+  公開鍵で作られている」場合と「サーバの鍵設定を誤った」場合の両方で起きる。同じプロセスで
+  1件でも受理されている（＝鍵は正しい）ときだけ前者と断定して失効させる。無条件に失効させると
+  鍵の設定ミスで全購読が消え、全ユーザーに許諾を取り直させることになる（回復不能）。
 
 ### 退会したユーザのデータを残さない
 

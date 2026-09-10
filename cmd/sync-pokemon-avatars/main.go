@@ -15,7 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -25,7 +25,10 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "sync-pokemon-avatars"
 
 const (
 	ExitCodeOK = iota
@@ -47,8 +50,16 @@ type avatarEntry struct {
 }
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -59,17 +70,17 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	avatars, err := fetchAvatarList()
 	if err != nil {
-		log.Printf("failed to fetch avatar list: %v\n", err)
+		slog.Error("failed to fetch avatar list", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
-	log.Printf("fetched %d avatars\n", len(avatars))
+	slog.Info("fetched avatars", slog.Int("count", len(avatars)))
 
 	now := time.Now().Local()
 	models := make([]*model.PokemonAvatar, 0, len(avatars))
@@ -92,11 +103,11 @@ func main() {
 		),
 	}).CreateInBatches(models, batchSize)
 	if tx.Error != nil {
-		log.Printf("failed to save avatars: %v\n", tx.Error)
+		slog.Error("failed to save avatars", logging.Err(tx.Error))
 		os.Exit(ExitCodeNG)
 	}
 
-	log.Printf("saved %d avatars\n", tx.RowsAffected)
+	slog.Info("saved avatars", slog.Int64("count", tx.RowsAffected))
 	os.Exit(ExitCodeOK)
 }
 

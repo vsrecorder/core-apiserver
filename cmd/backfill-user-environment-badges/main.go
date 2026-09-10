@@ -40,7 +40,7 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"sort"
 	"time"
@@ -54,8 +54,11 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
+
+const appName = "backfill-user-environment-badges"
 
 const (
 	ExitCodeOK = iota
@@ -65,10 +68,18 @@ const (
 func main() {
 	dryRun := flag.Bool("dry-run", true, "true の場合、書き込みは行わず差分の確認のみ行う")
 	targetUserId := flag.String("user-id", "", "指定した場合、そのユーザーのみを対象にする(未指定なら全ユーザー)")
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -79,7 +90,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -94,21 +105,22 @@ func main() {
 
 	var users []*model.User
 	if tx := q.Order("id ASC").Find(&users); tx.Error != nil {
-		log.Printf("failed to list users: %v\n", tx.Error)
+		slog.Error("failed to list users", logging.Err(tx.Error))
 		os.Exit(ExitCodeNG)
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] checking %d users (書き込みは行いません)\n", len(users))
-	} else {
-		log.Printf("backfilling environment badges for %d users\n", len(users))
+	// dry-run はメッセージではなく属性で出す(分岐させると grep の条件が増える)
+	batchAttrs := []any{
+		slog.Int("target_users", len(users)),
+		slog.Bool("dry_run", *dryRun),
 	}
+	slog.Info("backfilling environment badges", batchAttrs...)
 
 	backfilled := 0
 	for _, user := range users {
 		created, err := backfillUser(context.Background(), db, environmentRepo, officialEventEnvironmentRepo, userEnvironmentBadgeRepo, user, *dryRun)
 		if err != nil {
-			log.Printf("failed to backfill user=%s: %v\n", user.ID, err)
+			slog.Error("failed to backfill user", slog.String("user_id", user.ID), logging.Err(err))
 			continue
 		}
 		if created > 0 {
@@ -116,11 +128,7 @@ func main() {
 		}
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] completed: %d/%d users have environment badges to backfill\n", backfilled, len(users))
-	} else {
-		log.Printf("completed: backfilled %d/%d users\n", backfilled, len(users))
-	}
+	slog.Info("completed", append(batchAttrs, slog.Int("backfilled_users", backfilled))...)
 
 	os.Exit(ExitCodeOK)
 }
@@ -226,11 +234,11 @@ func backfillUser(
 		_, hasExisting := existingByEnv[env.ID]
 
 		if dryRun {
-			action := "新規付与"
-			if hasExisting {
-				action = "上書き"
-			}
-			log.Printf("[dry-run] user=%s environment=%s %s(達成日=%s)\n", user.ID, env.ID, action, b.basisTime.Format(time.RFC3339))
+			slog.Info("environment badge to backfill",
+				slog.String("user_id", user.ID), slog.String("environment_id", env.ID),
+				// overwrite=true は既存の付与を上書きすることを表す(新規付与と区別する)
+				slog.Bool("overwrite", hasExisting),
+				slog.String("achieved_at", b.basisTime.Format(time.RFC3339)), slog.Bool("dry_run", true))
 			processed[env.ID] = true
 			created++
 			continue
@@ -244,7 +252,9 @@ func backfillUser(
 			return created, err
 		}
 
-		log.Printf("user=%s environment=%s BACKFILLED achieved_at=%s\n", user.ID, env.ID, b.basisTime.Format(time.RFC3339))
+		slog.Info("environment badge backfilled",
+			slog.String("user_id", user.ID), slog.String("environment_id", env.ID),
+			slog.String("achieved_at", b.basisTime.Format(time.RFC3339)))
 		processed[env.ID] = true
 		created++
 	}

@@ -33,7 +33,7 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -41,7 +41,10 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "hide-deck-code-post"
 
 const (
 	ExitCodeOK = iota
@@ -155,16 +158,24 @@ func main() {
 	postId := flag.String("post-id", "", "対象の投稿ID(deck_code_posts.id)")
 	userId := flag.String("user-id", "", "対象を絞るユーザID。指定した場合、そのユーザの投稿がまとめて対象になる")
 	doUnhide := flag.Bool("unhide", false, "true の場合、非表示を解除する(取り下げ済みの投稿も対象)")
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	flag.Parse()
 
 	if *postId == "" && *userId == "" {
-		log.Printf("either -post-id or -user-id is required\n")
+		slog.Error("either -post-id or -user-id is required")
 		flag.Usage()
 		os.Exit(ExitCodeNG)
 	}
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -175,18 +186,19 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	// 解除は取り下げ済みの投稿も対象にする(非表示のまま取り下げたコードの公開し直しを許すため)
 	targets, err := fetchTargets(db, *postId, *userId, *doUnhide)
 	if err != nil {
-		log.Printf("failed to query deck code posts: %v\n", err)
+		slog.Error("failed to query deck code posts", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 	if len(targets) == 0 {
-		log.Printf("no deck code post matched post-id=%q user-id=%q (withdrawn posts are excluded unless -unhide)\n", *postId, *userId)
+		slog.Error("no deck code post matched: withdrawn posts are excluded unless -unhide",
+			slog.String("post_id", *postId), slog.String("user_id", *userId))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -197,18 +209,17 @@ func main() {
 
 	apply, skip := planActions(targets, *doUnhide)
 	for _, t := range skip {
-		log.Printf("skip (already in the requested state): %s\n", describe(t))
+		slog.Info("skipping post: already in the requested state", slog.String("post", describe(t)))
 	}
 	for _, t := range apply {
-		if *dryRun {
-			log.Printf("[dry-run] would %s: %s\n", action, describe(t))
-		} else {
-			log.Printf("%s: %s\n", action, describe(t))
-		}
+		slog.Info("applying to post",
+			slog.String("action", action), slog.String("post", describe(t)), slog.Bool("dry_run", *dryRun))
 	}
 
 	if *dryRun {
-		log.Printf("[dry-run] completed: %d posts would be %s, %d skipped. no changes were made\n", len(apply), done, len(skip))
+		slog.Info("completed: no changes were made",
+			slog.String("action", action), slog.String("result_state", done),
+			slog.Int("planned", len(apply)), slog.Int("skipped", len(skip)), slog.Bool("dry_run", true))
 		os.Exit(ExitCodeOK)
 	}
 
@@ -225,10 +236,12 @@ func main() {
 		affected, err = hide(db, ids, now)
 	}
 	if err != nil {
-		log.Printf("failed to %s deck code posts: %v\n", action, err)
+		slog.Error("failed to apply to deck code posts", slog.String("action", action), logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
-	log.Printf("completed: %d posts %s (%d planned, %d skipped)\n", affected, done, len(apply), len(skip))
+	slog.Info("completed",
+		slog.String("result_state", done), slog.Int64("affected", int64(affected)),
+		slog.Int("planned", len(apply)), slog.Int("skipped", len(skip)))
 	os.Exit(ExitCodeOK)
 }

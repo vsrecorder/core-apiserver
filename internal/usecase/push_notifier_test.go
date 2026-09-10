@@ -151,7 +151,9 @@ func TestPushNotifier_Deliver(t *testing.T) {
 		require.Equal(t, 0, sent)
 	})
 
-	t.Run("正常系_401_403_400は送信側の設定ミスなので購読の失敗回数に数えない", func(t *testing.T) {
+	t.Run("正常系_400_401_413とまだ1件も受理されていないうちの403は購読の失敗回数に数えない", func(t *testing.T) {
+		// 403 は鍵設定を誤った直後にも全端末で起きる。1件も受理されていないうちに失効させると
+		// 全ユーザーの許諾を取り直すことになるため、この段階では購読に触れない
 		for _, code := range []int{400, 401, 403, 413} {
 			m, u := setup4PushNotifier(t)
 			// 閾値の直前でも失効させない
@@ -166,6 +168,58 @@ func TestPushNotifier_Deliver(t *testing.T) {
 			require.NoError(t, err, code)
 			require.Equal(t, 0, sent, code)
 		}
+	})
+
+	t.Run("正常系_他端末へ受理されている状況の403は古い鍵の購読としてexpiredで失効させる", func(t *testing.T) {
+		m, u := setup4PushNotifier(t)
+		m.expectLiveAndUnderCap([]*entity.PushSubscription{
+			newTestPushSubscription("sub-1", 0), // 受理される → 鍵・subject・ペイロードは正しい
+			newTestPushSubscription("sub-2", 0), // 403 → この購読だけが古い公開鍵で作られている
+		}, 0)
+		m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+		gomock.InOrder(
+			m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(201, nil),
+			m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(403, nil),
+		)
+		m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusSent, 201).Return(nil)
+		m.subscription.EXPECT().MarkSuccess(gomock.Any(), "sub-1", pushNotifierFixedNow).Return(nil)
+		m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusExpired, 403).Return(nil)
+		m.subscription.EXPECT().Revoke(gomock.Any(), "sub-2", pushNotifierFixedNow).Return(nil)
+		// 失敗回数には数えない(死んだ購読は数える前に失効している)
+
+		sent, err := u.Deliver(context.Background(), notification, PushCampaignWeekendReminder)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, sent)
+	})
+
+	t.Run("正常系_同じプロセスの後続の配達でも受理の実績を引き継いで403を失効させる", func(t *testing.T) {
+		// バッチは1プロセスで多数のユーザーを回す。先に別のユーザーへ届いていれば
+		// 鍵設定が正しいことは分かっているので、その後の403は購読側の問題と断定できる
+		m, u := setup4PushNotifier(t)
+
+		m.expectLiveAndUnderCap([]*entity.PushSubscription{newTestPushSubscription("sub-1", 0)}, 0)
+		m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+		m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(201, nil)
+		m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusSent, 201).Return(nil)
+		m.subscription.EXPECT().MarkSuccess(gomock.Any(), "sub-1", pushNotifierFixedNow).Return(nil)
+
+		sent, err := u.Deliver(context.Background(), notification, PushCampaignWeekendReminder)
+		require.NoError(t, err)
+		require.Equal(t, 1, sent)
+
+		// 2通目(週上限は weekly_report では数えない)
+		m.sender.EXPECT().Enabled().Return(true)
+		m.subscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").
+			Return([]*entity.PushSubscription{newTestPushSubscription("sub-2", 0)}, nil)
+		m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+		m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(403, nil)
+		m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusExpired, 403).Return(nil)
+		m.subscription.EXPECT().Revoke(gomock.Any(), "sub-2", pushNotifierFixedNow).Return(nil)
+
+		sent, err = u.Deliver(context.Background(), notification, PushCampaignWeeklyReport)
+		require.NoError(t, err)
+		require.Equal(t, 0, sent)
 	})
 
 	t.Run("正常系_配達ログが作れなかった端末には送らず次の端末へ進む", func(t *testing.T) {

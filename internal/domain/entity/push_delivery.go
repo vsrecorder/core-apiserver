@@ -14,7 +14,9 @@ const (
 	PushDeliveryStatusSent = "sent"
 	// PushDeliveryStatusFailed は受理されなかった(5xx・通信失敗など)。購読はまだ生きている。
 	PushDeliveryStatusFailed = "failed"
-	// PushDeliveryStatusExpired は購読が無効(404/410)。購読は失効させる。
+	// PushDeliveryStatusExpired は購読が無効。購読は失効させる。
+	// プッシュサービスが購読を無効と判断した 404/410 に加えて、他の端末へは受理されて
+	// いる状況での 403(その購読だけが古い VAPID 公開鍵で作られている)もここに入る。
 	PushDeliveryStatusExpired = "expired"
 )
 

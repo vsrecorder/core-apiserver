@@ -37,7 +37,7 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -46,8 +46,11 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
+
+const appName = "notify-weekly-report"
 
 const (
 	ExitCodeOK = iota
@@ -57,18 +60,27 @@ const (
 const weekDateLayout = "2006-01-02"
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が
+	// 落ちて、cron のログだけ他と違う読み方を強いられる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	dryRun := flag.Bool("dry-run", true, "true の場合、通知は作成せず対象者の確認のみ行う")
 	targetUserId := flag.String("user-id", "", "指定した場合、そのユーザーのみを対象にする(未指定なら全対象ユーザー)")
 	weekFlag := flag.String("week", "", "対象週(週内の任意日 YYYY-MM-DD)。未指定なら先週")
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	monday, err := resolveTargetMonday(*weekFlag, time.Now())
 	if err != nil {
-		log.Printf("invalid -week: %v\n", err)
+		slog.Error("invalid -week", slog.String("week", *weekFlag), logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 	week := monday.Format(weekDateLayout)
@@ -82,7 +94,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -92,7 +104,7 @@ func main() {
 		os.Getenv("VAPID_SUBJECT"),
 	)
 	if !pushSender.Enabled() {
-		log.Printf("WARN: web push is disabled (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not set). in-app notifications only\n")
+		slog.Warn("web push is disabled: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not set. in-app notifications only")
 	}
 	pushNotifier := usecase.NewPushNotifier(
 		infrastructure.NewPushSubscription(db),
@@ -120,39 +132,35 @@ func main() {
 	} else {
 		userIds, err = findCandidateUserIds(db, fromDate, toDate)
 		if err != nil {
-			log.Printf("failed to list candidate users: %v\n", err)
+			slog.Error("failed to list candidate users", logging.Err(err))
 			os.Exit(ExitCodeNG)
 		}
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] checking weekly-report/env-news targets among %d users for week=%s (通知は作成しません)\n", len(userIds), week)
-	} else {
-		log.Printf("sending weekly-report among %d users for week=%s\n", len(userIds), week)
+	// dry-run はメッセージではなく属性で出す(分岐させると grep の条件が増える)
+	batchAttrs := []any{
+		slog.String("week", week),
+		slog.Int("candidate_users", len(userIds)),
+		slog.Bool("dry_run", *dryRun),
 	}
+	slog.Info("sending weekly-report", batchAttrs...)
 
 	sent := 0
 	for _, userId := range userIds {
 		ok, err := notifier.NotifyUser(ctx, userId, week, *dryRun)
 		if err != nil {
-			log.Printf("failed to notify user=%s week=%s: %v\n", userId, week, err)
+			slog.Error("failed to notify user",
+				slog.String("user_id", userId), slog.String("week", week), logging.Err(err))
 			continue
 		}
 		if ok {
 			sent++
-			if *dryRun {
-				log.Printf("[dry-run] TARGET user=%s week=%s\n", userId, week)
-			} else {
-				log.Printf("notified user=%s week=%s\n", userId, week)
-			}
+			slog.Info("notified user",
+				slog.String("user_id", userId), slog.String("week", week), slog.Bool("dry_run", *dryRun))
 		}
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] completed: %d/%d users are weekly-report targets (week=%s)\n", sent, len(userIds), week)
-	} else {
-		log.Printf("completed: notified %d/%d users (week=%s)\n", sent, len(userIds), week)
-	}
+	slog.Info("completed", append(batchAttrs, slog.Int("notified_users", sent))...)
 
 	os.Exit(ExitCodeOK)
 }

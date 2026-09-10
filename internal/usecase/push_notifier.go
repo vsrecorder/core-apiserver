@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"sync/atomic"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
@@ -56,6 +58,14 @@ type PushNotifier struct {
 	subscriptionRepo repository.PushSubscriptionInterface
 	deliveryRepo     repository.PushDeliveryInterface
 	sender           repository.PushSenderInterface
+
+	// sentOnce は、このプロセスがプッシュサービスに1件でも受理されたかを表す。
+	// 403(VAPID の資格情報が拒否された)を「サーバの鍵設定ミス」と「その購読だけが古い
+	// 公開鍵で作られている」のどちらとして扱うかの切り分けに使う。鍵設定が誤っていれば
+	// 全端末が403になるためこのフラグは永久に立たず、購読には一切触れない。
+	// 鍵はプロセス起動時に .env から読むので、「差し替える前の成功」がここに残ることもない
+	// (バッチは実行ごとに新しいプロセス、APIサーバは再デプロイで作り直される)。
+	sentOnce atomic.Bool
 }
 
 func NewPushNotifier(
@@ -63,7 +73,11 @@ func NewPushNotifier(
 	deliveryRepo repository.PushDeliveryInterface,
 	sender repository.PushSenderInterface,
 ) PushNotifierInterface {
-	return &PushNotifier{subscriptionRepo, deliveryRepo, sender}
+	return &PushNotifier{
+		subscriptionRepo: subscriptionRepo,
+		deliveryRepo:     deliveryRepo,
+		sender:           sender,
+	}
 }
 
 func (u *PushNotifier) Deliver(
@@ -132,6 +146,21 @@ func (u *PushNotifier) Deliver(
 		})
 
 		status := pushDeliveryStatus(statusCode, sendErr)
+		// 他の端末へは受理されている状況での403は、鍵設定ではなくこの購読が古い公開鍵で
+		// 作られていることを意味する。再購読されるまで永久に成功しないため失効として扱う
+		// (失効させないと、死んだ購読へ毎日送り続けてERRORを出し続けることになる)。
+		if status == entity.PushDeliveryStatusFailed && u.isStaleCredentialRejection(statusCode) {
+			status = entity.PushDeliveryStatusExpired
+
+			slog.WarnContext(ctx, "push subscription is bound to an outdated VAPID key: revoking",
+				slog.Int("status_code", statusCode),
+				slog.String("subscription_id", subscription.ID),
+				slog.String("user_id", notification.UserId),
+				slog.String("push_service", pushServiceHost(subscription.Endpoint)),
+				slog.String("platform", subscription.Platform),
+			)
+		}
+
 		if err := u.deliveryRepo.UpdateResult(ctx, id, status, statusCode); err != nil {
 			// 結果が残らなくても送出はしているので続行する(計測が欠けるだけ)
 			logError(ctx, err)
@@ -140,22 +169,34 @@ func (u *PushNotifier) Deliver(
 		switch status {
 		case entity.PushDeliveryStatusSent:
 			sent++
+			// 受理された実績を残し、以後の403を「鍵設定ミス」ではなく
+			// 「その購読が古い」と断定できるようにする
+			u.sentOnce.Store(true)
+
 			if err := u.subscriptionRepo.MarkSuccess(ctx, subscription.ID, now); err != nil {
 				logError(ctx, err)
 			}
 
 		case entity.PushDeliveryStatusExpired:
-			// 404/410 はプッシュサービスが購読を無効と判断した合図。以後この端末には送らない
+			// 404/410(プッシュサービスが購読を無効と判断した)と、他端末へ届いている
+			// 状況での403(古い鍵で作られた購読)。以後この端末には送らない
 			if err := u.subscriptionRepo.Revoke(ctx, subscription.ID, now); err != nil {
 				logError(ctx, err)
 			}
 
 		default:
 			if !countsAsSubscriptionFailure(statusCode, sendErr) {
-				// 400/401/403/413 などは購読ではなく送信側(VAPID 鍵・subject・ペイロード)の問題。
-				// 購読の失敗回数に数えると数週間で全購読が失効し、許諾を取り直すことになる。
+				// 400/401/413 と、まだ1件も受理されていない状況での403は、購読ではなく
+				// 送信側(VAPID 鍵・subject・ペイロード)の問題。購読の失敗回数に数えると
+				// 数週間で全購読が失効し、許諾を取り直すことになる。
 				// 購読には触れず、調査が必要なエラーとして残す
-				logError(ctx, fmt.Errorf("push service rejected the request (status %d): check VAPID keys / subject / payload", statusCode))
+				slog.ErrorContext(ctx, "push service rejected the request: check VAPID keys / subject / payload",
+					slog.Int("status_code", statusCode),
+					slog.String("subscription_id", subscription.ID),
+					slog.String("user_id", notification.UserId),
+					slog.String("push_service", pushServiceHost(subscription.Endpoint)),
+					slog.String("platform", subscription.Platform),
+				)
 				continue
 			}
 
@@ -201,9 +242,31 @@ func pushDeliveryStatus(statusCode int, sendErr error) string {
 	}
 }
 
+// isStaleCredentialRejection は 403 を「その購読が古い VAPID 公開鍵で作られている」と
+// 断定してよいかを返す。同じプロセスで既に他の端末へ受理されていれば、鍵・subject・
+// ペイロードは正しいと分かるため、拒否の原因はその購読側にしかない。
+//
+// 逆にまだ1件も受理されていないうちは、鍵設定を誤った直後である可能性が残る。そこで
+// 失効させると全ユーザーに許諾を取り直させることになるため、断定せず購読を守る。
+func (u *PushNotifier) isStaleCredentialRejection(statusCode int) bool {
+	return statusCode == http.StatusForbidden && u.sentOnce.Load()
+}
+
+// pushServiceHost は endpoint からホスト名だけを取り出す。
+// endpoint はそれ自体がその端末へ push を送れてしまう秘密情報なので、ログには残さない。
+func pushServiceHost(endpoint string) string {
+	parsed, err := url.Parse(endpoint)
+	if err != nil || parsed.Host == "" {
+		return "(unknown)"
+	}
+
+	return parsed.Host
+}
+
 // countsAsSubscriptionFailure は、その失敗を「端末(購読)側の問題」として失敗回数に数えるかを返す。
 // 通信失敗・5xx・429(プッシュサービス側の一時的な不調)は数え、連続すれば購読を失効させる。
-// それ以外の 4xx(400/401/403/413 など)は送信側の設定ミスなので数えない。
+// それ以外の 4xx(400/401/413 など)は送信側の設定ミスなので数えない。403 は失効として
+// 扱うか設定ミスとして扱うかが呼び出し側で決まるため、ここでは数えない側に倒す。
 func countsAsSubscriptionFailure(statusCode int, sendErr error) bool {
 	if sendErr != nil {
 		return true

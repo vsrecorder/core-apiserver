@@ -55,7 +55,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"sort"
 	"time"
@@ -69,8 +69,11 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
+
+const appName = "backfill-notifications"
 
 const (
 	ExitCodeOK = iota
@@ -92,12 +95,20 @@ func generateId() (string, error) {
 }
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	dryRun := flag.Bool("dry-run", true, "true の場合、書き込みは行わず差分の確認のみ行う")
 	targetUserId := flag.String("user-id", "", "指定した場合、そのユーザーのみを対象にする(未指定なら全対象ユーザー)")
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -108,7 +119,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -152,14 +163,14 @@ func main() {
 	// どのシーズンの実績かを明記するためのラベル(例:"2026")。
 	seasonLabel, err := usecase.CurrentSeasonLabel(ctx, championshipSeriesRepo, now)
 	if err != nil {
-		log.Printf("failed to resolve current season label: %v\n", err)
+		slog.Error("failed to resolve current season label", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	// 実際の達成日を遡って求めるための、現在のシーズンの期間。
 	seasonFromDate, seasonToDate, err := usecase.CurrentSeasonDateRange(ctx, championshipSeriesRepo, now)
 	if err != nil {
-		log.Printf("failed to resolve current season date range: %v\n", err)
+		slog.Error("failed to resolve current season date range", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -169,7 +180,7 @@ func main() {
 	} else {
 		userIds, err = findTargetUserIds(db)
 		if err != nil {
-			log.Printf("failed to list users: %v\n", err)
+			slog.Error("failed to list users", logging.Err(err))
 			os.Exit(ExitCodeNG)
 		}
 	}
@@ -182,18 +193,19 @@ func main() {
 	beforeFilter := len(userIds)
 	userIds, err = filterValidUserIds(db, userIds)
 	if err != nil {
-		log.Printf("failed to filter valid users: %v\n", err)
+		slog.Error("failed to filter valid users", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 	if skipped := beforeFilter - len(userIds); skipped > 0 {
-		log.Printf("skipped %d withdrawn/non-existent users\n", skipped)
+		slog.Info("skipped withdrawn or non-existent users", slog.Int("count", skipped))
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] checking notification history for %d users (書き込みは行いません)\n", len(userIds))
-	} else {
-		log.Printf("backfilling notification history for %d users\n", len(userIds))
+	// dry-run はメッセージではなく属性で出す(分岐させると grep の条件が増える)
+	batchAttrs := []any{
+		slog.Int("target_users", len(userIds)),
+		slog.Bool("dry_run", *dryRun),
 	}
+	slog.Info("backfilling notification history", batchAttrs...)
 
 	backfilled := 0
 	for _, userId := range userIds {
@@ -203,24 +215,17 @@ func main() {
 			userId, seasonLabel, seasonFromDate, seasonToDate, now, *dryRun,
 		)
 		if err != nil {
-			log.Printf("failed to backfill user=%s: %v\n", userId, err)
+			slog.Error("failed to backfill user", slog.String("user_id", userId), logging.Err(err))
 			continue
 		}
 		if created > 0 {
 			backfilled++
-			if *dryRun {
-				log.Printf("[dry-run] user=%s: %d件の通知を作成予定\n", userId, created)
-			} else {
-				log.Printf("user=%s: %d件の通知を作成しました\n", userId, created)
-			}
+			slog.Info("created notifications for user",
+				slog.String("user_id", userId), slog.Int("created", created), slog.Bool("dry_run", *dryRun))
 		}
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] completed: %d/%d users have notifications to backfill\n", backfilled, len(userIds))
-	} else {
-		log.Printf("completed: backfilled %d/%d users\n", backfilled, len(userIds))
-	}
+	slog.Info("completed", append(batchAttrs, slog.Int("backfilled_users", backfilled))...)
 
 	os.Exit(ExitCodeOK)
 }
@@ -448,7 +453,8 @@ func backfillUser(
 	// 未達成分は次回以降の実行で「はじめの一歩」が揃った時点でまとめて補完される。
 	if !onboardingComplete {
 		if dryRun {
-			log.Printf("[dry-run] user=%s: オンボーディングバッジが未達成のため称号・ランク通知をスキップ\n", userId)
+			slog.Info("skipping designation and rank notifications: onboarding badges are not complete",
+				slog.String("user_id", userId), slog.Bool("dry_run", true))
 		}
 	} else {
 		designationCreated, err := backfillDesignationHistory(
@@ -684,10 +690,11 @@ func upsertDesignationNotification(
 	}
 
 	if dryRun {
-		log.Printf(
-			"[dry-run] user=%s: 通知の日時を補正予定 body=%s created_at=%s -> %s\n",
-			userId, existing.Body, existing.CreatedAt.Format(time.RFC3339), achievedAt.Format(time.RFC3339),
-		)
+		slog.Info("notification timestamp to fix",
+			slog.String("user_id", userId), slog.String("body", existing.Body),
+			slog.String("created_at", existing.CreatedAt.Format(time.RFC3339)),
+			slog.String("achieved_at", achievedAt.Format(time.RFC3339)),
+			slog.Bool("dry_run", true))
 
 		return 0, nil
 	}
@@ -698,10 +705,10 @@ func upsertDesignationNotification(
 		return 0, err
 	}
 
-	log.Printf(
-		"user=%s: 通知の日時を補正しました body=%s created_at=%s -> %s\n",
-		userId, existing.Body, existing.CreatedAt.Format(time.RFC3339), achievedAt.Format(time.RFC3339),
-	)
+	slog.Info("notification timestamp fixed",
+		slog.String("user_id", userId), slog.String("body", existing.Body),
+		slog.String("created_at", existing.CreatedAt.Format(time.RFC3339)),
+		slog.String("achieved_at", achievedAt.Format(time.RFC3339)))
 
 	return 0, nil
 }

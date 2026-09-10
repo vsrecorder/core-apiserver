@@ -46,7 +46,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -58,7 +58,10 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "backfill-deck-code-post-acespec"
 
 const (
 	ExitCodeOK = iota
@@ -202,7 +205,7 @@ func run(
 		return ret, err
 	}
 
-	log.Printf("found %d posts without ace spec\n", len(targets))
+	slog.Info("found posts without ace spec", slog.Int("count", len(targets)))
 
 	for i, t := range targets {
 		if i > 0 {
@@ -212,47 +215,54 @@ func run(
 		card, err := deckCard.FindAceSpec(ctx, t.Code)
 		if err != nil {
 			ret.failed++
-			log.Printf("failed to look up ace spec: post=%s code=%s: %v\n", t.ID, t.Code, err)
+			slog.Error("failed to look up ace spec",
+				slog.String("post_id", t.ID), slog.String("deck_code", t.Code), logging.Err(err))
 			continue
 		}
 		if card == nil {
 			ret.noAceSpec++
-			log.Printf("no ace spec: post=%s deck=%s code=%s\n", t.ID, t.DeckName, t.Code)
+			slog.Info("no ace spec in the deck",
+				slog.String("post_id", t.ID), slog.String("deck_name", t.DeckName), slog.String("deck_code", t.Code))
 			continue
 		}
 
 		if opts.dryRun {
 			ret.updated++
-			log.Printf("[dry-run] would fill: post=%s deck=%s code=%s ace_spec=%s(%s)\n",
-				t.ID, t.DeckName, t.Code, card.CardName, card.CardId)
+			slog.Info("ace spec to fill",
+				slog.String("post_id", t.ID), slog.String("deck_name", t.DeckName),
+				slog.String("deck_code", t.Code),
+				slog.String("ace_spec_card_name", card.CardName), slog.String("ace_spec_card_id", card.CardId),
+				slog.Bool("dry_run", true))
 			continue
 		}
 
 		affected, err := saveAceSpec(db, t.ID, card.CardId, card.CardName, card.ImageURL, time.Now().Local())
 		if err != nil {
 			ret.failed++
-			log.Printf("failed to save ace spec: post=%s: %v\n", t.ID, err)
+			slog.Error("failed to save ace spec", slog.String("post_id", t.ID), logging.Err(err))
 			continue
 		}
 		if affected == 0 {
 			// 実行中に取り下げられた・他の実行が先に埋めた
-			log.Printf("skip (already filled or withdrawn): post=%s\n", t.ID)
+			slog.Info("skipping post: already filled or withdrawn", slog.String("post_id", t.ID))
 			continue
 		}
 
 		ret.updated++
-		log.Printf("filled: post=%s deck=%s code=%s ace_spec=%s(%s)\n",
-			t.ID, t.DeckName, t.Code, card.CardName, card.CardId)
+		slog.Info("ace spec filled",
+			slog.String("post_id", t.ID), slog.String("deck_name", t.DeckName),
+			slog.String("deck_code", t.Code),
+			slog.String("ace_spec_card_name", card.CardName), slog.String("ace_spec_card_id", card.CardId))
 
 		if !opts.refreshOgp {
 			continue
 		}
 		if err := refreshOgImage(ctx, ogpClient, webappBaseURL, t.ID); err != nil {
 			ret.failed++
-			log.Printf("failed to refresh ogp image: post=%s: %v\n", t.ID, err)
+			slog.Error("failed to refresh ogp image", slog.String("post_id", t.ID), logging.Err(err))
 			continue
 		}
-		log.Printf("refreshed ogp image: post=%s\n", t.ID)
+		slog.Info("refreshed ogp image", slog.String("post_id", t.ID))
 	}
 
 	return ret, nil
@@ -264,10 +274,18 @@ func main() {
 	postId := flag.String("post-id", "", "対象を絞る投稿ID")
 	limit := flag.Int("limit", 0, "1回の実行で扱う最大件数。0 なら制限しない")
 	refreshOgp := flag.Bool("refresh-ogp", true, "true の場合、埋めた投稿の個別ページを取得して OGP 画像を作り直す")
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -278,7 +296,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -291,11 +309,11 @@ func main() {
 	}
 
 	webappBaseURL := webappBaseURLFromEnv()
-	if *dryRun {
-		log.Printf("[dry-run] checking deck code posts without ace spec. no changes will be made\n")
-	} else {
-		log.Printf("filling ace spec for deck code posts (refresh-ogp=%v, webapp=%s)\n", opts.refreshOgp, webappBaseURL)
-	}
+	// dry-run はメッセージではなく属性で出す(分岐させると grep の条件が増える)
+	slog.Info("filling ace spec for deck code posts",
+		slog.Bool("refresh_ogp", opts.refreshOgp),
+		slog.String("webapp_base_url", webappBaseURL),
+		slog.Bool("dry_run", *dryRun))
 
 	ret, err := run(
 		context.Background(),
@@ -306,15 +324,15 @@ func main() {
 		opts,
 	)
 	if err != nil {
-		log.Printf("failed to backfill ace spec: %v\n", err)
+		slog.Error("failed to backfill ace spec", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
-	verb := "filled"
-	if *dryRun {
-		verb = "would be filled"
-	}
-	log.Printf("completed: %d posts %s, %d without ace spec, %d failed\n", ret.updated, verb, ret.noAceSpec, ret.failed)
+	slog.Info("completed",
+		slog.Int("filled", ret.updated),
+		slog.Int("without_ace_spec", ret.noAceSpec),
+		slog.Int("failed", ret.failed),
+		slog.Bool("dry_run", *dryRun))
 
 	if ret.failed > 0 {
 		os.Exit(ExitCodeNG)

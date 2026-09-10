@@ -14,7 +14,7 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -22,8 +22,11 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
+
+const appName = "notify-deck-code-post-likes"
 
 const (
 	ExitCodeOK = iota
@@ -31,20 +34,29 @@ const (
 )
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が
+	// 落ちて、cron のログだけ他と違う読み方を強いられる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	dryRun := flag.Bool("dry-run", true, "true の場合、通知は作成せず対象の件数を確認するだけにする")
 	dateFlag := flag.String("date", "", "対象日(YYYY-MM-DD)。未指定なら前日")
 	userId := flag.String("user-id", "", "指定した場合、その投稿者宛ての通知だけを対象にする")
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	day := time.Now().AddDate(0, 0, -1)
 	if *dateFlag != "" {
 		parsed, err := time.ParseInLocation(time.DateOnly, *dateFlag, time.Local)
 		if err != nil {
-			log.Printf("invalid -date: %v\n", err)
+			slog.Error("invalid -date", slog.String("date", *dateFlag), logging.Err(err))
 			os.Exit(ExitCodeNG)
 		}
 		day = parsed
@@ -58,7 +70,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -68,7 +80,7 @@ func main() {
 		os.Getenv("VAPID_SUBJECT"),
 	)
 	if !pushSender.Enabled() {
-		log.Printf("WARN: web push is disabled (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not set). in-app notifications only\n")
+		slog.Warn("web push is disabled: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not set. in-app notifications only")
 	}
 	pushNotifier := usecase.NewPushNotifier(
 		infrastructure.NewPushSubscription(db),
@@ -82,28 +94,24 @@ func main() {
 		pushNotifier,
 	)
 
+	// dry-run と対象は属性で出す(メッセージを分岐させると grep の条件が増える)。
+	// target_user_id が空文字なら全ユーザーが対象。
 	dayLabel := day.Format(time.DateOnly)
-	target := "all users"
-	if *userId != "" {
-		target = "user " + *userId
+	batchAttrs := []any{
+		slog.String("date", dayLabel),
+		slog.String("target_user_id", *userId),
+		slog.Bool("dry_run", *dryRun),
 	}
-	if *dryRun {
-		log.Printf("[dry-run] checking like digests for %s (%s). no notifications will be created\n", dayLabel, target)
-	} else {
-		log.Printf("notifying like digests for %s (%s)\n", dayLabel, target)
-	}
+	slog.Info("notifying like digests", batchAttrs...)
 
 	count, err := notifier.NotifyDay(context.Background(), day, *userId, *dryRun)
 	if err != nil {
-		log.Printf("failed to notify like digests for %s: %v (created=%d)\n", dayLabel, err, count)
+		slog.Error("failed to notify like digests",
+			append(batchAttrs, slog.Int("notified_posts", count), logging.Err(err))...)
 		os.Exit(ExitCodeNG)
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] completed: %d posts would be notified for %s\n", count, dayLabel)
-	} else {
-		log.Printf("completed: notified %d posts for %s\n", count, dayLabel)
-	}
+	slog.Info("completed", append(batchAttrs, slog.Int("notified_posts", count))...)
 
 	os.Exit(ExitCodeOK)
 }

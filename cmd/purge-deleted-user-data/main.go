@@ -57,7 +57,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -66,7 +66,10 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "purge-deleted-user-data"
 
 const (
 	ExitCodeOK = iota
@@ -315,19 +318,27 @@ type targetUser struct {
 }
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	targetUserId := flag.String("user-id", "", "物理削除の対象にする退会済みユーザのID(必須)")
 	dryRun := flag.Bool("dry-run", true, "true の場合、削除は行わず対象件数の確認のみ行う")
 	yes := flag.Bool("yes", false, "削除前の確認を省略する")
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	// 対象を1ユーザに限定する。未指定を「全ユーザ」と解釈すると、取り違えたときの被害が
 	// 全退会ユーザに及ぶため、必ず明示させる。
 	if *targetUserId == "" {
-		log.Printf("-user-id は必須です(物理削除の対象にする退会済みユーザのIDを指定してください)\n")
+		slog.Error("-user-id is required: specify the withdrawn user whose data is purged")
 		os.Exit(ExitCodeNG)
 	}
 
@@ -339,7 +350,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -347,31 +358,32 @@ func main() {
 	// 復旧できないため、ここで確実に弾く。
 	user, err := findDeletedUser(db, *targetUserId)
 	if err != nil {
-		log.Printf("failed to fetch user: %v\n", err)
+		slog.Error("failed to fetch user", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	if user == nil {
-		log.Printf("対象が見つかりません(user_id=%s は存在しないか、まだ退会していません)\n", *targetUserId)
+		slog.Error("no user matched: the user does not exist, or has not withdrawn yet",
+			slog.String("user_id", *targetUserId))
 		os.Exit(ExitCodeNG)
 	}
 
-	log.Printf("対象ユーザ: user_id=%s name=%s created_at=%s deleted_at=%s\n",
+	fmt.Printf("対象ユーザ: user_id=%s name=%s created_at=%s deleted_at=%s\n",
 		user.ID, displayName(user.Name), user.CreatedAt, user.DeletedAt)
 
 	if user.PurgedAt != "" {
-		log.Printf("このユーザは %s に物理削除済みです\n", user.PurgedAt)
+		fmt.Printf("このユーザは %s に物理削除済みです\n", user.PurgedAt)
 	}
 
 	counts, err := countAll(db, *targetUserId)
 	if err != nil {
-		log.Printf("failed to count target rows: %v\n", err)
+		slog.Error("failed to count target rows", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	foreignCounts, err := countForeignAll(db, *targetUserId)
 	if err != nil {
-		log.Printf("failed to count rows of other users: %v\n", err)
+		slog.Error("failed to count rows of other users", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -379,7 +391,7 @@ func main() {
 
 	// 削除するものが無く、実行済みの記録もあるなら何もしない(再実行を冪等にする)
 	if total(counts) == 0 && user.PurgedAt != "" {
-		log.Printf("物理削除するデータはありません\n")
+		fmt.Printf("物理削除するデータはありません\n")
 		os.Exit(ExitCodeOK)
 	}
 
@@ -387,40 +399,40 @@ func main() {
 		if total(counts) == 0 {
 			// 件数が0でも「完全削除を実施した」記録は残す。記録が無いままだと
 			// list-deleted-users の一覧に退会ユーザとして出続けるため。
-			log.Printf("物理削除するデータはありませんが、users.purged_at に実行日時を記録します\n")
+			fmt.Printf("物理削除するデータはありませんが、users.purged_at に実行日時を記録します\n")
 		}
 
-		log.Printf("dry-run のため実行しません(実際に削除するには -dry-run=false を指定してください)\n")
+		fmt.Printf("dry-run のため実行しません(実際に削除するには -dry-run=false を指定してください)\n")
 		os.Exit(ExitCodeOK)
 	}
 
 	// users の行は残す。usecase.User.Create の IsWithdrawn による再登録拒否を効かせ続けるため。
-	log.Printf("users の行(user_id=%s)は退会済みのまま残し、purged_at に実行日時を記録します\n", user.ID)
+	fmt.Printf("users の行(user_id=%s)は退会済みのまま残し、purged_at に実行日時を記録します\n", user.ID)
 
 	// 削除するものが無い場合は purged_at を記録するだけなので、取り返しのつかない操作にはならない
 	if total(counts) > 0 && !*yes &&
 		!confirm(fmt.Sprintf("user_id=%s のデータ %d 件を物理削除します。元に戻せません。", user.ID, total(counts))) {
-		log.Printf("削除を中止しました\n")
+		fmt.Printf("削除を中止しました\n")
 		os.Exit(ExitCodeOK)
 	}
 
 	results, err := purge(db, *targetUserId)
 	if err != nil {
-		log.Printf("failed to purge: %v\n", err)
+		slog.Error("failed to purge", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	for _, r := range results {
-		log.Printf("  %-24s %6d 件 削除しました\n", r.table, r.count)
+		fmt.Printf("  %-24s %6d 件 削除しました\n", r.table, r.count)
 	}
 
 	if total(results) == 0 {
-		log.Printf("物理削除するデータはありませんでした\n")
+		fmt.Printf("物理削除するデータはありませんでした\n")
 	} else {
-		log.Printf("合計 %d 件を物理削除しました\n", total(results))
+		fmt.Printf("合計 %d 件を物理削除しました\n", total(results))
 	}
 
-	log.Printf("users.purged_at に実行日時を記録しました(list-deleted-users の一覧には既定で表示されなくなります)\n")
+	fmt.Printf("users.purged_at に実行日時を記録しました(list-deleted-users の一覧には既定で表示されなくなります)\n")
 
 	os.Exit(ExitCodeOK)
 }
@@ -543,14 +555,14 @@ func reportCounts(counts []tableCount, foreignCounts []tableCount) {
 		return
 	}
 
-	log.Printf("物理削除の対象:\n")
+	fmt.Printf("物理削除の対象:\n")
 	for _, c := range counts {
-		log.Printf("  %-24s %6d 件  %s\n", c.table, c.count, c.note)
+		fmt.Printf("  %-24s %6d 件  %s\n", c.table, c.count, c.note)
 	}
-	log.Printf("  合計 %d 件\n", total(counts))
+	fmt.Printf("  合計 %d 件\n", total(counts))
 
 	for _, c := range foreignCounts {
-		log.Printf("警告: %s の他ユーザの行 %d 件を巻き込んで削除します(対象ユーザのデッキ・記録・対戦を参照しているため)\n",
+		fmt.Printf("警告: %s の他ユーザの行 %d 件を巻き込んで削除します(対象ユーザのデッキ・記録・対戦を参照しているため)\n",
 			c.table, c.count)
 	}
 }

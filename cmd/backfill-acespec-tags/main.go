@@ -29,7 +29,7 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+	"log/slog"
 	"math/rand"
 	"os"
 	"strings"
@@ -43,7 +43,10 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "backfill-acespec-tags"
 
 const (
 	ExitCodeOK = iota
@@ -97,7 +100,8 @@ func cleanAceSpecNames(rawNames []string) []string {
 			continue
 		}
 		if utf8.RuneCountInString(name) > maxTagNameLength {
-			log.Printf("skip (name too long > %d chars): %s\n", maxTagNameLength, name)
+			slog.Warn("skipping card name: longer than the tag name limit",
+				slog.Int("max_chars", maxTagNameLength), slog.String("card_name", name))
 			continue
 		}
 		if _, ok := seen[name]; ok {
@@ -114,10 +118,18 @@ func main() {
 	// 対象のレギュレーションマーク。既定は現行スタンダードの H のみ。
 	// レギュレーションが更新されたら -regulation-mark=I のように指定する。
 	regulationMark := flag.String("regulation-mark", "H", "対象とする cards.regulation_mark")
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -128,14 +140,14 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	// 1. cards から ACE SPEC カード名(目印付き)を card id 昇順で取得する。
 	rawNames, err := fetchAceSpecCardNames(db, *regulationMark)
 	if err != nil {
-		log.Printf("failed to query cards: %v\n", err)
+		slog.Error("failed to query cards", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -148,7 +160,7 @@ func main() {
 	tagRepo := infrastructure.NewTag(db)
 	existing, err := tagRepo.FindPresets(context.Background(), entity.TagPresetCategoryAceSpec)
 	if err != nil {
-		log.Printf("failed to list preset tags: %v\n", err)
+		slog.Error("failed to list preset tags", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 	existingByName := make(map[string]*entity.Tag, len(existing))
@@ -169,13 +181,23 @@ func main() {
 	}
 
 	if *dryRun {
-		log.Printf("[dry-run] regulation_mark=%s: ACE SPECカード名=%d件, 既存プリセット=%d件, 新規投入=%d件, 色更新=%d件 (書き込みは行いません)\n",
-			*regulationMark, len(names), len(existing), len(toCreate), len(toRecolor))
+		slog.Info("planned preset tag changes",
+			slog.String("regulation_mark", *regulationMark),
+			slog.Int("ace_spec_card_names", len(names)),
+			slog.Int("existing_presets", len(existing)),
+			slog.Int("to_create", len(toCreate)),
+			slog.Int("to_recolor", len(toRecolor)),
+			slog.Bool("dry_run", true),
+		)
 		for _, name := range toCreate {
-			log.Printf("[dry-run] would create preset tag: %s\n", name)
+			slog.Info("preset tag to create", slog.String("name", name), slog.Bool("dry_run", true))
 		}
 		for _, tag := range toRecolor {
-			log.Printf("[dry-run] would recolor preset tag: %s (%s -> %s)\n", tag.Name, tag.Color, aceSpecTagColor)
+			slog.Info("preset tag to recolor",
+				slog.String("name", tag.Name),
+				slog.String("from_color", tag.Color), slog.String("to_color", aceSpecTagColor),
+				slog.Bool("dry_run", true),
+			)
 		}
 		os.Exit(ExitCodeOK)
 	}
@@ -185,14 +207,14 @@ func main() {
 	for _, name := range toCreate {
 		id, err := generateId()
 		if err != nil {
-			log.Printf("failed to generate id for %s: %v\n", name, err)
+			slog.Error("failed to generate id", slog.String("name", name), logging.Err(err))
 			continue
 		}
 
 		// プリセットタグ: user_id='' / preset_flg=true / 群は ACE SPEC。
 		tag := entity.NewTag(id, now, now, "", name, aceSpecTagColor, true, entity.TagPresetCategoryAceSpec, "")
 		if err := tagRepo.Save(context.Background(), tag); err != nil {
-			log.Printf("failed to save preset tag %s: %v\n", name, err)
+			slog.Error("failed to save preset tag", slog.String("name", name), logging.Err(err))
 			continue
 		}
 		created++
@@ -204,13 +226,17 @@ func main() {
 		// Save は全カラムを書くため、ここで持ち回らない値は空で上書きされてしまう。
 		updated := entity.NewTag(tag.ID, tag.CreatedAt, now, "", tag.Name, aceSpecTagColor, true, entity.TagPresetCategoryAceSpec, tag.TextColor)
 		if err := tagRepo.Save(context.Background(), updated); err != nil {
-			log.Printf("failed to recolor preset tag %s: %v\n", tag.Name, err)
+			slog.Error("failed to recolor preset tag", slog.String("name", tag.Name), logging.Err(err))
 			continue
 		}
 		recolored++
 	}
 
-	log.Printf("completed: created %d, recolored %d preset tags (ACE SPEC, regulation_mark=%s, color=%s)\n",
-		created, recolored, *regulationMark, aceSpecTagColor)
+	slog.Info("completed",
+		slog.Int("created", created),
+		slog.Int("recolored", recolored),
+		slog.String("regulation_mark", *regulationMark),
+		slog.String("color", aceSpecTagColor),
+	)
 	os.Exit(ExitCodeOK)
 }

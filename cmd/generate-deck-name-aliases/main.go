@@ -30,7 +30,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -40,8 +40,11 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
+
+const appName = "generate-deck-name-aliases"
 
 const (
 	ExitCodeOK = iota
@@ -49,6 +52,13 @@ const (
 )
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	defaults := infrastructure.DefaultDeckNameAliasGeneratorConfig()
 
 	dryRun := flag.Bool("dry-run", true, "true の場合、書き込みは行わず生成される候補の確認のみ行う")
@@ -83,18 +93,21 @@ func main() {
 		{"-rejected-limit", *rejectedLimit, 0},
 	} {
 		if v.value < v.min {
-			log.Printf("%s は %d 以上で指定してください(指定値: %d)\n", v.name, v.min, v.value)
+			slog.Error("flag value is too small",
+				slog.String("flag", v.name), slog.Int("min", v.min), slog.Int("value", v.value))
 			os.Exit(ExitCodeNG)
 		}
 	}
 
 	if *minRatio <= 0 || *minRatio > 1 {
-		log.Printf("-min-ratio は 0 より大きく 1 以下の割合で指定してください(60%% なら 0.6。指定値: %v)\n", *minRatio)
+		// 60% なら 0.6 のように、0 より大きく 1 以下の割合で指定する
+		slog.Error("-min-ratio must be in (0, 1]", slog.Float64("value", *minRatio))
 		os.Exit(ExitCodeNG)
 	}
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -105,7 +118,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -129,7 +142,7 @@ func main() {
 		today.AddDate(0, 0, -7*(*supplyWeeks)), to, now,
 	)
 	if err != nil {
-		log.Printf("failed to resolve supply period: %v\n", err)
+		slog.Error("failed to resolve supply period", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -139,7 +152,7 @@ func main() {
 		today.AddDate(0, 0, -7*(*demandWeeks)), to, now,
 	)
 	if err != nil {
-		log.Printf("failed to resolve demand period: %v\n", err)
+		slog.Error("failed to resolve demand period", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -152,28 +165,30 @@ func main() {
 		MinAliasRunes:   *minAliasRunes,
 	}
 
-	log.Printf(
-		"教師データ %s〜%s / 救済対象 %s〜%s / しきい値: 支持%d件以上・占有率%.0f%%以上・%d人以上・%d文字以上\n",
-		cfg.SupplyPeriod.From.Format("2006-01-02"),
-		formatInclusiveTo(cfg.SupplyPeriod.To),
-		cfg.DemandPeriod.From.Format("2006-01-02"),
-		formatInclusiveTo(cfg.DemandPeriod.To),
-		cfg.MinSupport,
-		cfg.MinRatio*100,
-		cfg.MinContributors,
-		cfg.MinAliasRunes,
+	// 実行条件はログに残す(後からどの設定で作った辞書かを追えるようにするため)。
+	// 候補・落選の一覧そのものは人が読んで判断する表なので、ログ(JSON・stderr)ではなく
+	// 標準出力へ出す。JSONに混ぜると桁が揃わず、目視での比較ができなくなる。
+	slog.Info("generating deck name aliases",
+		slog.String("supply_from", cfg.SupplyPeriod.From.Format("2006-01-02")),
+		slog.String("supply_to", formatInclusiveTo(cfg.SupplyPeriod.To)),
+		slog.String("demand_from", cfg.DemandPeriod.From.Format("2006-01-02")),
+		slog.String("demand_to", formatInclusiveTo(cfg.DemandPeriod.To)),
+		slog.Int("min_support", cfg.MinSupport),
+		slog.Float64("min_ratio", cfg.MinRatio),
+		slog.Int("min_contributors", cfg.MinContributors),
+		slog.Int("min_alias_runes", cfg.MinAliasRunes),
 	)
 
 	candidates, rejected, err := infrastructure.GenerateDeckNameAliasCandidates(ctx, db, cfg)
 	if err != nil {
-		log.Printf("failed to generate deck name alias candidates: %v\n", err)
+		slog.Error("failed to generate deck name alias candidates", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	rescuedVotes := 0
 	for _, c := range candidates {
 		rescuedVotes += c.DemandVotes
-		log.Printf(
+		fmt.Printf(
 			"  %-24s → %-32s 救済%4d票 (支持%d/%d件 %.0f%% %d人)\n",
 			c.Alias,
 			formatSprites(c.Sprites),
@@ -185,24 +200,25 @@ func main() {
 		)
 	}
 
-	log.Printf("候補 %d 件 / 救済見込み %d 票\n", len(candidates), rescuedVotes)
+	slog.Info("generated candidates",
+		slog.Int("candidates", len(candidates)), slog.Int("rescued_votes", rescuedVotes))
 
 	if *showRejected {
 		printRejected(rejected, *rejectedLimit)
 	}
 
 	if *dryRun {
-		log.Printf("[dry-run] 書き込みは行いません(-dry-run=false で反映)\n")
+		slog.Info("skipped writing: -dry-run=false applies the candidates", slog.Bool("dry_run", true))
 		os.Exit(ExitCodeOK)
 	}
 
 	saved, err := infrastructure.ReplaceAutoDeckNameAliases(ctx, db, candidates)
 	if err != nil {
-		log.Printf("failed to replace auto deck name aliases: %v\n", err)
+		slog.Error("failed to replace auto deck name aliases", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
-	log.Printf("完了: source='auto' を %d 行で再生成しました\n", saved)
+	slog.Info("completed: regenerated aliases with source='auto'", slog.Int64("saved", int64(saved)))
 	os.Exit(ExitCodeOK)
 }
 
@@ -259,24 +275,26 @@ func formatSprites(sprites []infrastructure.DeckNameAliasSprite) string {
 
 // printRejected は候補にならなかったデッキ名を、救済見込み票の多い順に理由つきで表示する。
 // limit が 0 のときは全件表示する。
+//
+// 桁を揃えて目視で比較する表のため、ログ(JSON・stderr)ではなく標準出力へ出す。
 func printRejected(rejected []*infrastructure.DeckNameAliasRejection, limit int) {
-	log.Printf("--- 候補にならなかったデッキ名 %d 件(救済し損ねた票の多い順) ---\n", len(rejected))
+	fmt.Printf("--- 候補にならなかったデッキ名 %d 件(救済し損ねた票の多い順) ---\n", len(rejected))
 
 	for i, r := range rejected {
 		if limit > 0 && i >= limit {
-			log.Printf("  ...ほか %d 件(-rejected-limit=0 で全件表示)\n", len(rejected)-limit)
+			fmt.Printf("  ...ほか %d 件(-rejected-limit=0 で全件表示)\n", len(rejected)-limit)
 			break
 		}
 
 		// 教師データがある落選理由(支持・占有率・人数)だけ診断値を添える。
 		if r.TotalSupply > 0 {
-			log.Printf(
+			fmt.Printf(
 				"  %-24s 逃し%4d票  理由:%-14s (支持%d/%d件 %.0f%% %d人)\n",
 				r.Alias, r.DemandVotes, rejectReasonLabel(r.Reason),
 				r.Support, r.TotalSupply, r.Ratio*100, r.Contributors,
 			)
 		} else {
-			log.Printf(
+			fmt.Printf(
 				"  %-24s 逃し%4d票  理由:%s\n",
 				r.Alias, r.DemandVotes, rejectReasonLabel(r.Reason),
 			)

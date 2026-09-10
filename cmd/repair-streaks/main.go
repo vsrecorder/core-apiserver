@@ -21,7 +21,7 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -34,8 +34,11 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
+
+const appName = "repair-streaks"
 
 const (
 	ExitCodeOK = iota
@@ -45,10 +48,18 @@ const (
 func main() {
 	dryRun := flag.Bool("dry-run", true, "true の場合、書き込みは行わず差分の確認のみ行う")
 	targetUserId := flag.String("user-id", "", "指定した場合、そのユーザーのみを対象にする(未指定なら全対象ユーザー)")
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -59,7 +70,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -74,22 +85,23 @@ func main() {
 	} else {
 		userIds, err = findTargetUserIds(db)
 		if err != nil {
-			log.Printf("failed to list users: %v\n", err)
+			slog.Error("failed to list users", logging.Err(err))
 			os.Exit(ExitCodeNG)
 		}
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] checking streak consistency for %d users (書き込みは行いません)\n", len(userIds))
-	} else {
-		log.Printf("repairing streaks for %d users\n", len(userIds))
+	// dry-run はメッセージではなく属性で出す(分岐させると grep の条件が増える)
+	batchAttrs := []any{
+		slog.Int("target_users", len(userIds)),
+		slog.Bool("dry_run", *dryRun),
 	}
+	slog.Info("repairing streaks", batchAttrs...)
 
 	mismatched := 0
 	for _, userId := range userIds {
 		changed, err := repairUser(ctx, badgeStatsRepo, userStreakRepo, userId, *dryRun)
 		if err != nil {
-			log.Printf("failed to repair user=%s: %v\n", userId, err)
+			slog.Error("failed to repair user", slog.String("user_id", userId), logging.Err(err))
 			continue
 		}
 		if changed {
@@ -97,11 +109,7 @@ func main() {
 		}
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] completed: %d/%d users have mismatched user_streaks\n", mismatched, len(userIds))
-	} else {
-		log.Printf("completed: repaired %d/%d users\n", mismatched, len(userIds))
-	}
+	slog.Info("completed", append(batchAttrs, slog.Int("mismatched_users", mismatched))...)
 
 	os.Exit(ExitCodeOK)
 }
@@ -181,8 +189,15 @@ func repairUser(
 	}
 	afterState := formatStreak(currentWeeks, longestWeeks, freezeUsedCount, freezeRegenProgress, lastRecordedWeek)
 
+	mismatchAttrs := []any{
+		slog.String("user_id", userId),
+		slog.String("before", beforeState),
+		slog.String("after", afterState),
+		slog.Int("live_records", len(dates)),
+	}
+
 	if dryRun {
-		log.Printf("[dry-run] user=%s MISMATCH before=%s after=%s live_records=%d\n", userId, beforeState, afterState, len(dates))
+		slog.Info("user_streaks mismatch found", append(mismatchAttrs, slog.Bool("dry_run", true))...)
 		return true, nil
 	}
 
@@ -191,7 +206,7 @@ func repairUser(
 		return false, err
 	}
 
-	log.Printf("user=%s REPAIRED before=%s after=%s live_records=%d\n", userId, beforeState, afterState, len(dates))
+	slog.Info("user_streaks repaired", append(mismatchAttrs, slog.Bool("dry_run", false))...)
 	return true, nil
 }
 

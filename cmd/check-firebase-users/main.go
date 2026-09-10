@@ -74,7 +74,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sort"
@@ -91,7 +91,10 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/httpclient"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "check-firebase-users"
 
 const (
 	ExitCodeOK = iota
@@ -124,20 +127,28 @@ type firebaseUser struct {
 }
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。30分ごとに追記される
+	// cron のログを、APIサーバのログと同じ道具で追えるようにするため。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	verbose := flag.Bool("verbose", false, "UIDに加えてメールアドレスや作成日時などの詳細を表示する")
 	exitCode := flag.Bool("exit-code", false, "true の場合、差異が見つかったら終了コード1で終了する")
 	notifySlack := flag.Bool("notify-slack", false, "true の場合、差異が見つかったら SLACK_WEBHOOK_URL へ通知する")
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	// 通知先が無いまま突合まで走ると、差異があっても誰にも届かないまま正常終了に見えてしまう。
 	// 設定漏れは起動直後に気づけるよう、ここで打ち切る。
 	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
 	if *notifySlack && slackWebhookURL == "" {
-		log.Printf("SLACK_WEBHOOK_URL is not set: -notify-slack requires it\n")
+		slog.Error("SLACK_WEBHOOK_URL is not set: -notify-slack requires it")
 		os.Exit(ExitCodeNG)
 	}
 
@@ -145,7 +156,7 @@ func main() {
 
 	authClient, err := newFirebaseAuthClient(ctx)
 	if err != nil {
-		log.Printf("failed to create firebase client: %v\n", err)
+		slog.Error("failed to create firebase client", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -157,25 +168,29 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	firebaseUsers, err := listFirebaseUsers(ctx, authClient)
 	if err != nil {
-		log.Printf("failed to list firebase users: %v\n", err)
+		slog.Error("failed to list firebase users", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	dbUsers, err := listDBUsers(db)
 	if err != nil {
-		log.Printf("failed to list db users: %v\n", err)
+		slog.Error("failed to list db users", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
-	log.Printf("firebase: %d users, db: %d users (有効: %d, 退会済み: %d, データ物理削除済み: %d)\n",
-		len(firebaseUsers), len(dbUsers),
-		countActiveDBUsers(dbUsers), countWithdrawnDBUsers(dbUsers), countPurgedDBUsers(dbUsers))
+	slog.Info("compared firebase and db users",
+		slog.Int("firebase_users", len(firebaseUsers)),
+		slog.Int("db_users", len(dbUsers)),
+		slog.Int("db_active_users", countActiveDBUsers(dbUsers)),
+		slog.Int("db_withdrawn_users", countWithdrawnDBUsers(dbUsers)),
+		slog.Int("db_purged_users", countPurgedDBUsers(dbUsers)),
+	)
 
 	firebaseOnly, dbOnly := diff(firebaseUsers, dbUsers)
 
@@ -189,10 +204,10 @@ func main() {
 		message := buildSlackMessage(firebaseOnly, dbOnly, dbUsers, firebaseUsers)
 
 		if err := notifyToSlack(slackWebhookURL, message); err != nil {
-			log.Printf("failed to notify to slack: %v\n", err)
+			slog.Error("failed to notify to slack", logging.Err(err))
 			notifyFailed = true
 		} else {
-			log.Printf("notified the difference to slack\n")
+			slog.Info("notified the difference to slack")
 		}
 	}
 
@@ -355,7 +370,14 @@ func classifyFirebaseOnly(uid string, dbUsers map[string]*dbUser) (label string,
 	return "B:登録未完了", "DBに行なし"
 }
 
-// report は突合結果を標準出力へ出力する。
+// report は突合結果をログへ出力する。差異は障害ではないが放置するとユーザーが
+// 使えないままになるため Warn で出す(Error は突合そのものが失敗したときに取っておく)。
+//
+// firebase_only の label は次の2つで、対処が正反対になるため必ず区別する:
+//   - A:退会済み   = 退会時にFirebase側の削除が失敗して残ったもの。本人は退会済みのため、
+//     再登録を促す連絡をしてはいけない(消すべきはFirebase側のユーザー)。
+//   - B:登録未完了 = 登録がDB登録前に中断したもの。本人はログインしたつもりで
+//     サービスを使えていない。
 func report(
 	firebaseOnly []string,
 	dbOnly []string,
@@ -364,38 +386,49 @@ func report(
 	verbose bool,
 ) {
 	if len(firebaseOnly) == 0 && len(dbOnly) == 0 {
-		log.Printf("OK: Firebaseのユーザーと、DBの有効なユーザー(deleted_at IS NULL)に差異はありません\n")
+		slog.Info("no difference between firebase users and active db users")
 		return
 	}
 
 	if len(firebaseOnly) > 0 {
-		log.Printf("NG: Firebaseにのみ存在するユーザーが %d 件あります(DBに未登録、またはDB上は退会済み)\n", len(firebaseOnly))
-		log.Printf("    A:退会済み   = 退会時にFirebase側の削除が失敗して残ったもの。本人は退会済みのため、再登録を促す連絡をしてはいけない\n")
-		log.Printf("    B:登録未完了 = 登録がDB登録前に中断したもの。本人はログインしたつもりでサービスを使えていない\n")
+		slog.Warn("users exist only in firebase: not registered in db, or already withdrawn",
+			slog.Int("count", len(firebaseOnly)))
 
 		for _, uid := range firebaseOnly {
 			label, state := classifyFirebaseOnly(uid, dbUsers)
 
+			attrs := []any{
+				slog.String("uid", uid),
+				slog.String("label", label),
+				slog.String("state", state),
+			}
 			if verbose {
 				fu := firebaseUsers[uid]
-				log.Printf("  firebase_only uid=%s [%s] %s email=%s firebase_created_at=%s\n",
-					uid, label, state, fu.Email, fu.CreatedAt.Format(time.RFC3339))
-			} else {
-				log.Printf("  firebase_only uid=%s [%s] %s\n", uid, label, state)
+				attrs = append(attrs,
+					slog.String("email", fu.Email),
+					slog.String("firebase_created_at", fu.CreatedAt.Format(time.RFC3339)),
+				)
 			}
+
+			slog.Warn("firebase_only user", attrs...)
 		}
 	}
 
 	if len(dbOnly) > 0 {
-		log.Printf("NG: DBにのみ有効なユーザーとして存在するUIDが %d 件あります(Firebaseに存在しないためログインできません)\n", len(dbOnly))
+		slog.Warn("uids exist only in db as active users: they cannot sign in",
+			slog.Int("count", len(dbOnly)))
+
 		for _, id := range dbOnly {
+			attrs := []any{slog.String("uid", id)}
 			if verbose {
 				u := dbUsers[id]
-				log.Printf("  db_only uid=%s name=%s db_created_at=%s\n",
-					id, u.Name, u.CreatedAt.Format(time.RFC3339))
-			} else {
-				log.Printf("  db_only uid=%s\n", id)
+				attrs = append(attrs,
+					slog.String("name", u.Name),
+					slog.String("db_created_at", u.CreatedAt.Format(time.RFC3339)),
+				)
 			}
+
+			slog.Warn("db_only user", attrs...)
 		}
 	}
 }

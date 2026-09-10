@@ -39,7 +39,7 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+	"log/slog"
 	"math/rand"
 	"os"
 	"time"
@@ -53,8 +53,11 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
+
+const appName = "backfill-user-badges"
 
 const (
 	ExitCodeOK = iota
@@ -75,10 +78,18 @@ func generateId() (string, error) {
 func main() {
 	dryRun := flag.Bool("dry-run", true, "true の場合、書き込みは行わず差分の確認のみ行う")
 	targetUserId := flag.String("user-id", "", "指定した場合、そのユーザーのみを対象にする(未指定なら全ユーザー)")
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -89,13 +100,13 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	var onboardingDefs []*model.BadgeDefinition
 	if tx := db.Where("category = ?", badgeCategoryOnboarding).Find(&onboardingDefs); tx.Error != nil {
-		log.Printf("failed to list onboarding badge definitions: %v\n", tx.Error)
+		slog.Error("failed to list onboarding badge definitions", logging.Err(tx.Error))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -106,15 +117,17 @@ func main() {
 
 	var users []*model.User
 	if tx := q.Order("id ASC").Find(&users); tx.Error != nil {
-		log.Printf("failed to list users: %v\n", tx.Error)
+		slog.Error("failed to list users", logging.Err(tx.Error))
 		os.Exit(ExitCodeNG)
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] checking %d users against %d onboarding badge definitions (書き込みは行いません)\n", len(users), len(onboardingDefs))
-	} else {
-		log.Printf("backfilling badges for %d users against %d onboarding badge definitions\n", len(users), len(onboardingDefs))
+	// dry-run はメッセージではなく属性で出す(分岐させると grep の条件が増える)
+	batchAttrs := []any{
+		slog.Int("target_users", len(users)),
+		slog.Int("badge_definitions", len(onboardingDefs)),
+		slog.Bool("dry_run", *dryRun),
 	}
+	slog.Info("backfilling onboarding badges", batchAttrs...)
 
 	userBadgeRepo := infrastructure.NewUserBadge(db)
 
@@ -122,7 +135,7 @@ func main() {
 	for _, user := range users {
 		created, err := backfillUser(context.Background(), db, userBadgeRepo, user, onboardingDefs, *dryRun)
 		if err != nil {
-			log.Printf("failed to backfill user=%s: %v\n", user.ID, err)
+			slog.Error("failed to backfill user", slog.String("user_id", user.ID), logging.Err(err))
 			continue
 		}
 		if created > 0 {
@@ -130,11 +143,7 @@ func main() {
 		}
 	}
 
-	if *dryRun {
-		log.Printf("[dry-run] completed: %d/%d users have badges to backfill\n", backfilled, len(users))
-	} else {
-		log.Printf("completed: backfilled %d/%d users\n", backfilled, len(users))
-	}
+	slog.Info("completed", append(batchAttrs, slog.Int("backfilled_users", backfilled))...)
 
 	os.Exit(ExitCodeOK)
 }
@@ -173,7 +182,9 @@ func backfillUser(
 		}
 
 		if dryRun {
-			log.Printf("[dry-run] user=%s badge=%s 未付与(達成日=%s)\n", user.ID, def.Code, achievedAt.Format(time.RFC3339))
+			slog.Info("badge is not granted yet",
+				slog.String("user_id", user.ID), slog.String("badge_code", def.Code),
+				slog.String("achieved_at", achievedAt.Format(time.RFC3339)), slog.Bool("dry_run", true))
 			created++
 			continue
 		}
@@ -188,7 +199,9 @@ func backfillUser(
 			return created, err
 		}
 
-		log.Printf("user=%s badge=%s BACKFILLED achieved_at=%s\n", user.ID, def.Code, achievedAt.Format(time.RFC3339))
+		slog.Info("badge backfilled",
+			slog.String("user_id", user.ID), slog.String("badge_code", def.Code),
+			slog.String("achieved_at", achievedAt.Format(time.RFC3339)))
 		created++
 	}
 

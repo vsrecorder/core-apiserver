@@ -24,7 +24,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"log/slog"
 	"os"
 	"time"
@@ -33,7 +32,10 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "backfill-tonamel-events"
 
 const (
 	ExitCodeOK = iota
@@ -46,13 +48,19 @@ const fetchInterval = 300 * time.Millisecond
 func main() {
 	dryRun := flag.Bool("dry-run", true, "true の場合、書き込みは行わず対象件数の確認のみ行う")
 	force := flag.Bool("force", false, "true の場合、既に保存済みのものも取り直して上書きする")
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	db, err := postgres.NewDB(
 		os.Getenv("DB_HOSTNAME"),
@@ -62,7 +70,7 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -74,11 +82,11 @@ func main() {
 		Where("tonamel_event_id IS NOT NULL AND tonamel_event_id != '' AND deleted_at IS NULL").
 		Distinct().
 		Pluck("tonamel_event_id", &ids); tx.Error != nil {
-		log.Printf("failed to list tonamel event ids: %v\n", tx.Error)
+		slog.Error("failed to list tonamel event ids", logging.Err(tx.Error))
 		os.Exit(ExitCodeNG)
 	}
 
-	log.Printf("records から %d 件のTonamel大会IDを検出\n", len(ids))
+	slog.Info("found tonamel event ids in records", slog.Int("count", len(ids)))
 
 	// 既に保存済みのIDを除く(-force のときは除かず全件を取り直す)。
 	store := infrastructure.NewTonamelEventStore(db)
@@ -86,7 +94,7 @@ func main() {
 	if !*force {
 		existing, err := store.FindByIds(ctx, ids)
 		if err != nil {
-			log.Printf("failed to look up existing tonamel events: %v\n", err)
+			slog.Error("failed to look up existing tonamel events", logging.Err(err))
 			os.Exit(ExitCodeNG)
 		}
 
@@ -101,15 +109,17 @@ func main() {
 				targets = append(targets, id)
 			}
 		}
-		log.Printf("うち未保存は %d 件(保存済み %d 件はスキップ)\n", len(targets), len(existing))
+		slog.Info("skipping already saved events",
+			slog.Int("targets", len(targets)), slog.Int("already_saved", len(existing)))
 	}
 
 	if *dryRun {
-		log.Printf("[dry-run] %d 件を取得・保存対象とします(-dry-run=false で実行)\n", len(targets))
+		slog.Info("targets to fetch and save",
+			slog.Int("targets", len(targets)), slog.Bool("dry_run", true))
 		os.Exit(ExitCodeOK)
 	}
 
-	fetcher := infrastructure.NewTonamelEvent(logger)
+	fetcher := infrastructure.NewTonamelEvent(slog.Default())
 
 	saved, failed := 0, 0
 	for idx, id := range targets {
@@ -120,13 +130,17 @@ func main() {
 		tonamelEvent, err := fetcher.FindById(ctx, id)
 		if err != nil {
 			// 取得できない大会(削除済み・非公開など)はスキップ。次回実行で再挑戦できる。
-			log.Printf("[%d/%d] 取得失敗 id=%s: %v\n", idx+1, len(targets), id, err)
+			slog.Warn("failed to fetch tonamel event",
+				slog.Int("index", idx+1), slog.Int("total", len(targets)),
+				slog.String("tonamel_event_id", id), logging.Err(err))
 			failed++
 			continue
 		}
 
 		if err := store.Save(ctx, tonamelEvent); err != nil {
-			log.Printf("[%d/%d] 保存失敗 id=%s: %v\n", idx+1, len(targets), id, err)
+			slog.Warn("failed to save tonamel event",
+				slog.Int("index", idx+1), slog.Int("total", len(targets)),
+				slog.String("tonamel_event_id", id), logging.Err(err))
 			failed++
 			continue
 		}
@@ -134,6 +148,6 @@ func main() {
 		saved++
 	}
 
-	log.Printf("完了: 保存 %d 件 / 失敗 %d 件\n", saved, failed)
+	slog.Info("completed", slog.Int("saved", saved), slog.Int("failed", failed))
 	os.Exit(ExitCodeOK)
 }

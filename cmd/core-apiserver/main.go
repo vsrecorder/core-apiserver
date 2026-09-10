@@ -141,7 +141,7 @@ func (s *APIServer) Shutdown() error {
 func main() {
 	// ロガーは何よりも先に初期化する。起動失敗(設定不備・DB接続失敗)は最も
 	// 調べたいログなので、これらも他のログと同じJSON形式で出す必要がある。
-	logger := internal.InitLogger(internal.LogConfig{
+	logger := logging.InitLogger(logging.Config{
 		Level:   "info",
 		AppName: appName,
 	})

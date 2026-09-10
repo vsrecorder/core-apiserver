@@ -52,7 +52,8 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -62,7 +63,10 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "list-deleted-users"
 
 const (
 	ExitCodeOK = iota
@@ -110,6 +114,13 @@ type filterCondition struct {
 }
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	targetUserId := flag.String("user-id", "", "指定した場合、そのユーザーのみを対象にする(未指定なら退会ユーザ全件)")
 	since := flag.String("since", "", "退会日がこの日以降のユーザーだけを対象にする(YYYY-MM-DD。その日を含む)")
 	until := flag.String("until", "", "退会日がこの日以前のユーザーだけを対象にする(YYYY-MM-DD。その日を含む)")
@@ -117,18 +128,19 @@ func main() {
 	includePurged := flag.Bool("include-purged", false, "cmd/purge-deleted-user-data でデータを物理削除済みのユーザーも表示する")
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	cond, err := buildFilterCondition(*targetUserId, *since, *until, *includePurged, time.Local)
 	if err != nil {
-		log.Printf("invalid flag: %v\n", err)
+		slog.Error("invalid flag", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	if *limit < 0 {
-		log.Printf("invalid flag: -limit には0以上を指定してください\n")
+		slog.Error("invalid flag: -limit must be zero or greater", slog.Int("limit", *limit))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -140,19 +152,19 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	counts, err := countUsers(db)
 	if err != nil {
-		log.Printf("failed to count users: %v\n", err)
+		slog.Error("failed to count users", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	users, err := listDeletedUsers(db)
 	if err != nil {
-		log.Printf("failed to list deleted users: %v\n", err)
+		slog.Error("failed to list deleted users", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -342,20 +354,23 @@ func purgedLabel(purgedAt *time.Time) string {
 }
 
 // report は結果を標準出力へ出力する。limit が 0 より大きい場合は先頭 limit 件だけを表示する。
+//
+// これは人が目で追う一覧のため、ログ(JSON・stderr)ではなく標準出力へ出す
+// (エラーだけが stderr のJSONログに出る。一覧をリダイレクトしても混ざらない)。
 func report(counts *userCounts, cond *filterCondition, users []*deletedUser, limit int) {
-	log.Printf("users: 全 %d 件 (有効: %d, 退会済み: %d [うちデータ物理削除済み: %d])\n",
+	fmt.Printf("users: 全 %d 件 (有効: %d, 退会済み: %d [うちデータ物理削除済み: %d])\n",
 		counts.Total, counts.Active, counts.Deleted, counts.Purged)
 
 	if condition := cond.String(); condition != "" {
-		log.Printf("条件: %s\n", condition)
+		fmt.Printf("条件: %s\n", condition)
 	}
 
 	if len(users) == 0 {
-		log.Printf("対象: 0 件 (条件に合致する退会ユーザーはありません)\n")
+		fmt.Printf("対象: 0 件 (条件に合致する退会ユーザーはありません)\n")
 
 		// -user-id で指定したユーザが物理削除済みだと、理由が分からないまま0件になる
 		if !cond.IncludePurged && counts.Purged > 0 {
-			log.Printf("(データ物理削除済みの %d 件は一覧から除外しています。-include-purged で表示できます)\n", counts.Purged)
+			fmt.Printf("(データ物理削除済みの %d 件は一覧から除外しています。-include-purged で表示できます)\n", counts.Purged)
 		}
 
 		return
@@ -364,13 +379,13 @@ func report(counts *userCounts, cond *filterCondition, users []*deletedUser, lim
 	shown := users
 	if limit > 0 && limit < len(shown) {
 		shown = shown[:limit]
-		log.Printf("対象: %d 件 (退会日の新しい順に %d 件のみ表示)\n", len(users), len(shown))
+		fmt.Printf("対象: %d 件 (退会日の新しい順に %d 件のみ表示)\n", len(users), len(shown))
 	} else {
-		log.Printf("対象: %d 件\n", len(users))
+		fmt.Printf("対象: %d 件\n", len(users))
 	}
 
 	for _, u := range shown {
-		log.Printf("  uid=%s name=%s created_at=%s deleted_at=%s 利用日数=%d%s\n",
+		fmt.Printf("  uid=%s name=%s created_at=%s deleted_at=%s 利用日数=%d%s\n",
 			u.ID,
 			displayName(u.Name),
 			u.CreatedAt.Format(time.RFC3339),

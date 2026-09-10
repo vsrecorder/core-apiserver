@@ -63,7 +63,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
@@ -73,7 +73,10 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
+	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
+
+const appName = "check-deleted-users-data"
 
 const (
 	ExitCodeOK = iota
@@ -540,6 +543,13 @@ type deleteResult struct {
 }
 
 func main() {
+	// ログは cmd/core-apiserver と同じJSON形式に揃える。これを呼ばないと slog の
+	// 既定ハンドラ(テキスト)のままになり、usecase 層のログから layer やソース位置が落ちる。
+	slog.SetDefault(logging.InitLogger(logging.Config{
+		Level:   "info",
+		AppName: appName,
+	}))
+
 	verbose := flag.Bool("verbose", false, "どの退会ユーザにどれだけ残っているかの内訳を表示する")
 	userId := flag.String("user", "", "確認・削除の対象を特定の退会ユーザのIDに絞る(未指定なら退会ユーザ全件)")
 	exitCode := flag.Bool("exit-code", false, "true の場合、削除漏れが見つかったら終了コード1で終了する")
@@ -548,8 +558,9 @@ func main() {
 	yes := flag.Bool("yes", false, "-delete の実行前の確認を省略する")
 	flag.Parse()
 
+	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load .env file: %v", err)
+		slog.Warn("failed to load .env file", logging.Err(err))
 	}
 
 	db, err := postgres.NewDB(
@@ -560,35 +571,36 @@ func main() {
 		os.Getenv("DB_NAME"),
 	)
 	if err != nil {
-		log.Printf("failed to connect database: %v\n", err)
+		slog.Error("failed to connect database", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	names, err := fetchDeletedUserNames(db, *userId)
 	if err != nil {
-		log.Printf("failed to fetch deleted users: %v\n", err)
+		slog.Error("failed to fetch deleted users", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
 	if len(names) == 0 {
 		if *userId != "" {
-			log.Printf("確認対象の退会ユーザが見つかりません(user_id=%s は存在しないか、まだ退会していません)\n", *userId)
+			slog.Error("no withdrawn user matched: the user does not exist, or has not withdrawn yet",
+				slog.String("user_id", *userId))
 			os.Exit(ExitCodeNG)
 		}
 
-		log.Printf("退会したユーザ(deleted_at IS NOT NULL)が1人もいないため、確認対象がありません\n")
+		fmt.Printf("退会したユーザ(deleted_at IS NOT NULL)が1人もいないため、確認対象がありません\n")
 		os.Exit(ExitCodeOK)
 	}
 
 	if *userId != "" {
-		log.Printf("退会ユーザ user_id=%s (%s) のデータを確認します\n", *userId, displayName(names, *userId))
+		fmt.Printf("退会ユーザ user_id=%s (%s) のデータを確認します\n", *userId, displayName(names, *userId))
 	} else {
-		log.Printf("退会ユーザ %d 人のデータを確認します\n", len(names))
+		fmt.Printf("退会ユーザ %d 人のデータを確認します\n", len(names))
 	}
 
 	findings, err := collect(db, specs, *userId)
 	if err != nil {
-		log.Printf("failed to collect findings: %v\n", err)
+		slog.Error("failed to collect findings", logging.Err(err))
 		os.Exit(ExitCodeNG)
 	}
 
@@ -597,7 +609,7 @@ func main() {
 	if *deleteFlag {
 		remaining, err := runDelete(db, findings, names, *userId, *includeUnhandled, *yes, *verbose)
 		if err != nil {
-			log.Printf("failed to delete: %v\n", err)
+			slog.Error("failed to delete", logging.Err(err))
 			os.Exit(ExitCodeNG)
 		}
 
@@ -626,19 +638,19 @@ func runDelete(
 	targetFindings := filterByTables(findings, targets)
 
 	if len(targetFindings) == 0 {
-		log.Printf("削除対象のデータはありません\n")
+		fmt.Printf("削除対象のデータはありません\n")
 		return findings, nil
 	}
 
-	log.Printf("以下のデータを削除します\n")
+	fmt.Printf("以下のデータを削除します\n")
 	reportSection(targetFindings, names, verbose)
 
 	if !includeUnhandled && len(filterByCategory(findings, categoryUnhandled)) > 0 {
-		log.Printf("未対応(WARN)のデータは削除しません。あわせて削除する場合は -include-unhandled を指定してください\n")
+		fmt.Printf("未対応(WARN)のデータは削除しません。あわせて削除する場合は -include-unhandled を指定してください\n")
 	}
 
 	if !yes && !confirm("本当に削除しますか?") {
-		log.Printf("削除を中止しました\n")
+		fmt.Printf("削除を中止しました\n")
 		return findings, nil
 	}
 
@@ -649,14 +661,14 @@ func runDelete(
 
 	var total int64
 	for _, r := range results {
-		log.Printf("  %-26s %6d 件 削除しました\n", r.table, r.count)
+		fmt.Printf("  %-26s %6d 件 削除しました\n", r.table, r.count)
 		total += r.count
 	}
-	log.Printf("合計 %d 件を削除しました\n", total)
+	fmt.Printf("合計 %d 件を削除しました\n", total)
 
 	// 削除後に消えているかを確認し直す。ここで削除漏れが残る場合、本ツールの削除条件が
 	// 検出条件と食い違っているため、そのまま報告する。
-	log.Printf("削除後の状態を確認します\n")
+	fmt.Printf("削除後の状態を確認します\n")
 
 	remaining, err := collect(db, specs, userId)
 	if err != nil {
@@ -904,26 +916,26 @@ func report(findings []finding, names map[string]string, verbose bool) {
 	references := filterByCategory(findings, categoryReference)
 
 	if len(leaks) == 0 {
-		log.Printf("OK: 退会処理が削除対象としているデータは、すべて削除されています\n")
+		fmt.Printf("OK: 退会処理が削除対象としているデータは、すべて削除されています\n")
 	} else {
-		log.Printf("NG: 削除漏れ(退会処理が削除するはずのデータが残っています)\n")
+		fmt.Printf("NG: 削除漏れ(退会処理が削除するはずのデータが残っています)\n")
 		reportSection(leaks, names, verbose)
 	}
 
 	if len(unhandled) > 0 {
-		log.Printf("WARN: 未対応(退会処理が削除対象にしていないデータが残っています)\n")
-		log.Printf("      バグではなく仕様上の未対応です。消すなら退会処理(internal/usecase/user.go)の実装変更が必要です\n")
+		fmt.Printf("WARN: 未対応(退会処理が削除対象にしていないデータが残っています)\n")
+		fmt.Printf("      バグではなく仕様上の未対応です。消すなら退会処理(internal/usecase/user.go)の実装変更が必要です\n")
 		reportSection(unhandled, names, verbose)
 	}
 
 	if len(references) > 0 {
-		log.Printf("INFO: 参照(他のユーザが作成したデータから、退会したユーザが参照されています)\n")
-		log.Printf("      他人のデータのため削除しません。異常ではありません\n")
+		fmt.Printf("INFO: 参照(他のユーザが作成したデータから、退会したユーザが参照されています)\n")
+		fmt.Printf("      他人のデータのため削除しません。異常ではありません\n")
 		reportSection(references, names, verbose)
 	}
 
 	if !verbose && len(findings) > 0 {
-		log.Printf("どの退会ユーザに残っているかの内訳は -verbose で表示できます\n")
+		fmt.Printf("どの退会ユーザに残っているかの内訳は -verbose で表示できます\n")
 	}
 }
 
@@ -931,12 +943,12 @@ func report(findings []finding, names map[string]string, verbose bool) {
 // verbose の場合は、テーブルごとに退会ユーザ単位の内訳も出力する。
 func reportSection(findings []finding, names map[string]string, verbose bool) {
 	for _, s := range summarizeByTable(findings) {
-		log.Printf("  %-26s %6d 件 / 退会ユーザ %d 人 (%s)\n", s.table, s.count, s.userCount, s.note)
+		fmt.Printf("  %-26s %6d 件 / 退会ユーザ %d 人 (%s)\n", s.table, s.count, s.userCount, s.note)
 
 		if verbose {
 			for _, f := range findings {
 				if f.table == s.table {
-					log.Printf("      user_id=%s (%s) %d 件\n", f.userId, displayName(names, f.userId), f.count)
+					fmt.Printf("      user_id=%s (%s) %d 件\n", f.userId, displayName(names, f.userId), f.count)
 				}
 			}
 		}

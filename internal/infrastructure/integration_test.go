@@ -1493,6 +1493,94 @@ func TestIntegrationExcludeDefaultMatches(t *testing.T) {
 		require.Equal(t, 1, history[0].Losses)
 		require.InDelta(t, 2.0/3.0, history[0].WinRate, 1e-9)
 	})
+
+	t.Run("正常系_デッキの戦績も既定では不戦勝と不戦敗を数える", func(t *testing.T) {
+		stat, err := NewDeckUsageStat(db).FindDeckUsageStat(ctx, uid, period, 0, false)
+
+		require.NoError(t, err)
+		require.Equal(t, 5, stat.TotalRecords)
+		require.Len(t, stat.Decks, 1)
+		require.Equal(t, 5, stat.Decks[0].Count)
+		require.Equal(t, 3, stat.Decks[0].Wins)
+		require.Equal(t, 2, stat.Decks[0].Losses)
+		// 除外していないので、外した件数は数えない
+		require.Equal(t, 0, stat.Decks[0].DefaultMatchCount)
+	})
+
+	t.Run("正常系_デッキの戦績を除外すると外した件数を返す", func(t *testing.T) {
+		stat, err := NewDeckUsageStat(db).FindDeckUsageStat(ctx, uid, period, 0, true)
+
+		require.NoError(t, err)
+		require.Equal(t, 3, stat.TotalRecords)
+		require.Len(t, stat.Decks, 1)
+
+		deck := stat.Decks[0]
+		require.Equal(t, 3, deck.Count)
+		require.Equal(t, 2, deck.Wins)
+		require.Equal(t, 1, deck.Losses)
+		require.InDelta(t, 2.0/3.0, deck.WinRate, 1e-9)
+		// 不戦勝1・不戦敗1を外したことが画面から分かるように件数を返す
+		require.Equal(t, 2, deck.DefaultMatchCount)
+	})
+
+	t.Run("正常系_相手デッキの分析も除外すると不戦のぶんだけ減る", func(t *testing.T) {
+		// 相手デッキ名は不戦にも入れられる(入力画面は消すが、APIの検証では禁じていない)。
+		// 全ての対戦に同じ相手デッキ名を入れて、除外の有無で件数が変わることを見る。
+		require.NoError(t, db.Model(&model.Match{}).
+			Where("record_id = ?", "rec-default-match").
+			Update("opponents_deck_info", "リザードンex").Error)
+
+		included, err := NewOpponentDeckUsageStat(db).FindOpponentDeckUsageStat(ctx, uid, period, "", 0, false)
+		require.NoError(t, err)
+		require.Equal(t, 5, included.TotalMatches)
+
+		excluded, err := NewOpponentDeckUsageStat(db).FindOpponentDeckUsageStat(ctx, uid, period, "", 0, true)
+		require.NoError(t, err)
+		require.Equal(t, 3, excluded.TotalMatches)
+		require.Len(t, excluded.Decks, 1)
+		require.Equal(t, 3, excluded.Decks[0].Count)
+		require.Equal(t, 2, excluded.Decks[0].Wins)
+	})
+}
+
+// 不戦勝・不戦敗しか記録が無いデッキが、除外しても一覧から消えないことを確かめる。
+// 消えると画面に「まだ対戦記録がありません」と出て、記録した事実と食い違う。
+func TestIntegrationDeckUsageStatDefaultOnlyDeck(t *testing.T) {
+	db := setupIntegrationDB(t, "games", "matches", "records", "decks")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	const deckId = "deck-default-only"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	eventDate := time.Date(2026, 7, 15, 0, 0, 0, 0, time.Local)
+
+	require.NoError(t, db.Create(&model.Deck{
+		ID: deckId, CreatedAt: now, UpdatedAt: now, UserId: uid, Name: "不戦だけのデッキ",
+	}).Error)
+	require.NoError(t, db.Create(&model.Record{
+		ID: "rec-default-only", CreatedAt: now, UpdatedAt: now, UserId: uid, DeckId: deckId,
+		EventDate: eventDate, RegulationId: entity.RegulationIdStandard,
+	}).Error)
+	require.NoError(t, db.Create(&model.Match{
+		ID: "mat-default-only", CreatedAt: now, UpdatedAt: now, RecordId: "rec-default-only",
+		UserId: uid, DeckId: deckId, VictoryFlg: true, DefaultVictoryFlg: true,
+	}).Error)
+
+	ctx := context.Background()
+
+	// 全期間集計(デッキ一覧カード・デッキ詳細が使う条件)
+	stat, err := NewDeckUsageStat(db).FindDeckUsageStat(ctx, uid, repository.StatPeriod{}, 0, true)
+
+	require.NoError(t, err)
+	// 集計対象の対戦は0件なので、使用率の分母には数えない
+	require.Equal(t, 0, stat.TotalRecords)
+	require.Len(t, stat.Decks, 1)
+
+	deck := stat.Decks[0]
+	require.Equal(t, deckId, deck.DeckId)
+	require.Equal(t, "不戦だけのデッキ", deck.Name)
+	require.Equal(t, 0, deck.Count)
+	require.Equal(t, 1, deck.DefaultMatchCount)
 }
 
 func TestIntegrationUserAcquisitionRepository(t *testing.T) {

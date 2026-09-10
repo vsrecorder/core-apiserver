@@ -42,7 +42,7 @@ func TestOpponentDeckUsageStatController_GetByUserId(t *testing.T) {
 
 		deckId := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 
-		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "", "2026-07", "", "", "", uint(0), deckId).
+		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "", "2026-07", "", "", "", uint(0), deckId, false).
 			Return(&entity.OpponentDeckUsageStat{}, nil)
 
 		w := httptest.NewRecorder()
@@ -51,6 +51,32 @@ func TestOpponentDeckUsageStatController_GetByUserId(t *testing.T) {
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	// 不戦勝/不戦敗の除外はクエリで受け取り、そのまま usecase に渡す(既定は含める)
+	t.Run("正常系_exclude_default_matchesを渡すと除外指定でユースケースを呼ぶ", func(t *testing.T) {
+		c, mockUsecase, secretKey := setup4TestOpponentDeckUsageStatController(t)
+
+		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "", "", "", "", "", uint(0), "", true).
+			Return(&entity.OpponentDeckUsageStat{}, nil)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+OpponentDeckUsageStatsPath+"?exclude_default_matches=true", nil)
+		setJWTAuthHeader(t, req, uid, secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("異常系_exclude_default_matchesが真偽値でなければ400を返す", func(t *testing.T) {
+		c, _, secretKey := setup4TestOpponentDeckUsageStatController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+OpponentDeckUsageStatsPath+"?exclude_default_matches=yes", nil)
+		setJWTAuthHeader(t, req, uid, secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
@@ -77,7 +103,7 @@ func TestOpponentDeckUsageStatController_GetByUserId(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestOpponentDeckUsageStatController(t)
 
-		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "", "", "", "", "", uint(0), "").
+		mockUsecase.EXPECT().GetOpponentDeckUsageStat(gomock.Any(), uid, "", "", "", "", "", uint(0), "", false).
 			Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()

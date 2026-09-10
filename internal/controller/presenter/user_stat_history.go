@@ -11,6 +11,7 @@ func NewUserStatHistoryResponse(
 	season string,
 	deckId string,
 	regulationId uint,
+	excludeDefaultMatches bool,
 	history []*entity.UserStatMonthly,
 ) *dto.UserStatHistoryResponse {
 	items := make([]dto.UserStatHistoryItem, 0, len(history))
@@ -24,11 +25,12 @@ func NewUserStatHistoryResponse(
 		})
 	}
 	return &dto.UserStatHistoryResponse{
-		UserId:       userId,
-		Period:       period,
-		Season:       season,
-		DeckId:       deckId,
-		RegulationId: regulationId,
-		History:      items,
+		UserId:                userId,
+		Period:                period,
+		Season:                season,
+		DeckId:                deckId,
+		RegulationId:          regulationId,
+		ExcludeDefaultMatches: excludeDefaultMatches,
+		History:               items,
 	}
 }

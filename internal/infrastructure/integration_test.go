@@ -1308,7 +1308,7 @@ func TestIntegrationWeeklyDeckUsageStatRegulation(t *testing.T) {
 	require.Equal(t, 1, stat.ContributorCount)
 }
 
-// 個人の戦績分析(勝率・月次推移・直近N戦・デッキ使用率・相手デッキ分布)を
+// 個人の戦績分析(勝率・月次推移・デッキ使用率・相手デッキ分布)を
 // レギュレーションで絞り込めること。5つの集計すべてで同じ条件が効くかを実DBで確認する。
 func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	db := setupIntegrationDB(t, "games", "matches", "records", "decks")
@@ -1364,7 +1364,7 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	})
 
 	t.Run("正常系_月毎の勝率推移はスタンダードの対戦だけを数える", func(t *testing.T) {
-		history, err := NewUserStatHistory(db).FindUserStatHistory(ctx, uid, fromDate, toDate, "", standard)
+		history, err := NewUserStatHistory(db).FindUserStatHistory(ctx, uid, fromDate, toDate, "", standard, false)
 
 		require.NoError(t, err)
 		require.Len(t, history, 1)
@@ -1372,15 +1372,8 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 		require.Equal(t, 1, history[0].Wins)
 	})
 
-	t.Run("正常系_直近N戦はスタンダードの対戦だけを返す", func(t *testing.T) {
-		matches, err := NewUserStatRecent(db).FindRecentMatches(ctx, uid, 10, "", standard)
-
-		require.NoError(t, err)
-		require.Len(t, matches, 2)
-	})
-
 	t.Run("正常系_デッキ使用率はスタンダードの対戦だけを数える", func(t *testing.T) {
-		stat, err := NewDeckUsageStat(db).FindDeckUsageStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, standard)
+		stat, err := NewDeckUsageStat(db).FindDeckUsageStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, standard, false)
 
 		require.NoError(t, err)
 		require.Len(t, stat.Decks, 1)
@@ -1389,7 +1382,7 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	})
 
 	t.Run("正常系_相手デッキ分布はスタンダードの対戦だけを数える", func(t *testing.T) {
-		stat, err := NewOpponentDeckUsageStat(db).FindOpponentDeckUsageStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, "", standard)
+		stat, err := NewOpponentDeckUsageStat(db).FindOpponentDeckUsageStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, "", standard, false)
 
 		require.NoError(t, err)
 		require.Equal(t, 2, stat.TotalMatches)
@@ -1475,6 +1468,30 @@ func TestIntegrationExcludeDefaultMatches(t *testing.T) {
 
 		// 記録数は「記録した回数」なので、不戦を除外しても変わらない
 		require.Equal(t, 1, stat.TotalRecords)
+	})
+
+	t.Run("正常系_月毎の勝率推移も既定では不戦勝と不戦敗を数える", func(t *testing.T) {
+		history, err := NewUserStatHistory(db).FindUserStatHistory(ctx, uid, fromDate, toDate, "", 0, false)
+
+		require.NoError(t, err)
+		require.Len(t, history, 1)
+		require.Equal(t, "2026-07", history[0].YearMonth)
+		require.Equal(t, 5, history[0].TotalMatches)
+		require.Equal(t, 3, history[0].Wins)
+		require.Equal(t, 2, history[0].Losses)
+		require.InDelta(t, 0.6, history[0].WinRate, 1e-9)
+	})
+
+	t.Run("正常系_月毎の勝率推移も除外すると不戦のぶんだけ減る", func(t *testing.T) {
+		history, err := NewUserStatHistory(db).FindUserStatHistory(ctx, uid, fromDate, toDate, "", 0, true)
+
+		require.NoError(t, err)
+		require.Len(t, history, 1)
+		require.Equal(t, "2026-07", history[0].YearMonth)
+		require.Equal(t, 3, history[0].TotalMatches)
+		require.Equal(t, 2, history[0].Wins)
+		require.Equal(t, 1, history[0].Losses)
+		require.InDelta(t, 2.0/3.0, history[0].WinRate, 1e-9)
 	})
 }
 

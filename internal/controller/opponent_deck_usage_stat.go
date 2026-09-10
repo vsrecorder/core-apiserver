@@ -52,8 +52,9 @@ func (c *OpponentDeckUsageStat) GetByUserId(ctx *gin.Context) {
 	standardRegulationId := helper.GetStandardRegulationId(ctx)
 	regulationId := helper.GetRegulationId(ctx)
 	deckId := helper.GetDeckId(ctx)
+	excludeDefaultMatches := helper.GetExcludeDefaultMatches(ctx)
 
-	stat, err := c.usecase.GetOpponentDeckUsageStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId)
+	stat, err := c.usecase.GetOpponentDeckUsageStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, deckId, excludeDefaultMatches)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)

@@ -9,10 +9,12 @@ type UserStatHistoryItem struct {
 }
 
 type UserStatHistoryResponse struct {
-	UserId       string                `json:"user_id"`
-	Period       string                `json:"period"`
-	Season       string                `json:"season,omitempty"`
-	DeckId       string                `json:"deck_id,omitempty"`
-	RegulationId uint                  `json:"regulation_id,omitempty"`
-	History      []UserStatHistoryItem `json:"history"`
+	UserId       string `json:"user_id"`
+	Period       string `json:"period"`
+	Season       string `json:"season,omitempty"`
+	DeckId       string `json:"deck_id,omitempty"`
+	RegulationId uint   `json:"regulation_id,omitempty"`
+	// omitempty を付けない理由は UserStatResponse と同じ
+	ExcludeDefaultMatches bool                  `json:"exclude_default_matches"`
+	History               []UserStatHistoryItem `json:"history"`
 }

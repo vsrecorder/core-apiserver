@@ -16,6 +16,8 @@ type UserStatHistoryInterface interface {
 		season string,
 		deckId string,
 		regulationId uint,
+		// excludeDefaultMatches が true なら不戦勝/不戦敗を集計から外す
+		excludeDefaultMatches bool,
 	) ([]*entity.UserStatMonthly, error)
 }
 
@@ -38,6 +40,7 @@ func (u *UserStatHistory) GetUserStatHistory(
 	season string,
 	deckId string,
 	regulationId uint,
+	excludeDefaultMatches bool,
 ) ([]*entity.UserStatMonthly, error) {
 	now := time.Now().Local()
 	thisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
@@ -61,5 +64,5 @@ func (u *UserStatHistory) GetUserStatHistory(
 		}
 	}
 
-	return u.repo.FindUserStatHistory(ctx, userId, fromDate, toDate, deckId, regulationId)
+	return u.repo.FindUserStatHistory(ctx, userId, fromDate, toDate, deckId, regulationId, excludeDefaultMatches)
 }

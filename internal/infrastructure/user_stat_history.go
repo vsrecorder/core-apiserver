@@ -32,6 +32,7 @@ func (i *UserStatHistory) FindUserStatHistory(
 	toDate time.Time,
 	deckId string,
 	regulationId uint,
+	excludeDefaultMatches bool,
 ) ([]*entity.UserStatMonthly, error) {
 	var results []monthlyMatchResult
 
@@ -59,6 +60,9 @@ func (i *UserStatHistory) FindUserStatHistory(
 	if regulationId != 0 {
 		query = query.Where("records.regulation_id = ?", regulationId)
 	}
+
+	// 不戦勝/不戦敗は対戦が行われていないため、指定されたときは月ごとの集計から外す
+	query = applyExcludeDefaultMatches(query, excludeDefaultMatches)
 
 	tx := query.
 		Group("DATE_TRUNC('month', records.event_date)").

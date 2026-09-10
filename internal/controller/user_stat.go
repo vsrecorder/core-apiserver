@@ -22,16 +22,14 @@ type UserStat struct {
 	router         *gin.Engine
 	usecase        usecase.UserStatInterface
 	historyUsecase usecase.UserStatHistoryInterface
-	recentUsecase  usecase.UserStatRecentInterface
 }
 
 func NewUserStat(
 	router *gin.Engine,
 	usecase usecase.UserStatInterface,
 	historyUsecase usecase.UserStatHistoryInterface,
-	recentUsecase usecase.UserStatRecentInterface,
 ) *UserStat {
-	return &UserStat{router, usecase, historyUsecase, recentUsecase}
+	return &UserStat{router, usecase, historyUsecase}
 }
 
 func (c *UserStat) RegisterRoute(relativePath string) {
@@ -45,11 +43,6 @@ func (c *UserStat) RegisterRoute(relativePath string) {
 		"/:id"+UserStatsPath+"/history",
 		validation.UserStatHistoryGetMiddleware(),
 		c.GetHistoryByUserId,
-	)
-	r.GET(
-		"/:id"+UserStatsPath+"/recent",
-		validation.UserStatRecentGetMiddleware(),
-		c.GetRecentByUserId,
 	)
 }
 
@@ -74,7 +67,7 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 		return
 	}
 
-	res := presenter.NewUserStatResponse(stats, week, yearMonth, environmentId, season, standardRegulationId, regulationId)
+	res := presenter.NewUserStatResponse(stats, week, yearMonth, environmentId, season, standardRegulationId, regulationId, excludeDefaultMatches)
 
 	ctx.JSON(http.StatusOK, res)
 }
@@ -85,31 +78,15 @@ func (c *UserStat) GetHistoryByUserId(ctx *gin.Context) {
 	season := helper.GetSeason(ctx)
 	deckId := helper.GetDeckId(ctx)
 	regulationId := helper.GetRegulationId(ctx)
+	excludeDefaultMatches := helper.GetExcludeDefaultMatches(ctx)
 
-	history, err := c.historyUsecase.GetUserStatHistory(ctx.Request.Context(), uid, period, season, deckId, regulationId)
+	history, err := c.historyUsecase.GetUserStatHistory(ctx.Request.Context(), uid, period, season, deckId, regulationId, excludeDefaultMatches)
 	if err != nil {
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
 
-	res := presenter.NewUserStatHistoryResponse(uid, period, season, deckId, regulationId, history)
-
-	ctx.JSON(http.StatusOK, res)
-}
-
-func (c *UserStat) GetRecentByUserId(ctx *gin.Context) {
-	uid := helper.GetId(ctx)
-	count := helper.GetLimit(ctx)
-	deckId := helper.GetDeckId(ctx)
-	regulationId := helper.GetRegulationId(ctx)
-
-	stat, err := c.recentUsecase.GetRecentMatches(ctx.Request.Context(), uid, count, deckId, regulationId)
-	if err != nil {
-		apierror.ErrInternalServerError.JSON(ctx, err)
-		return
-	}
-
-	res := presenter.NewRecentMatchStatResponse(stat, deckId, regulationId)
+	res := presenter.NewUserStatHistoryResponse(uid, period, season, deckId, regulationId, excludeDefaultMatches, history)
 
 	ctx.JSON(http.StatusOK, res)
 }

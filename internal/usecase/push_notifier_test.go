@@ -121,7 +121,7 @@ func TestPushNotifier_Deliver(t *testing.T) {
 	t.Run("正常系_5xxならfailure_countを増やし閾値に達したら失効させる", func(t *testing.T) {
 		m, u := setup4PushNotifier(t)
 		m.expectLiveAndUnderCap([]*entity.PushSubscription{
-			newTestPushSubscription("sub-1", 0),                           // 1回目の失敗 → まだ生かす
+			newTestPushSubscription("sub-1", 0),                         // 1回目の失敗 → まだ生かす
 			newTestPushSubscription("sub-2", pushRevokeAfterFailures-1), // 今回で閾値 → 失効
 		}, 0)
 		m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(2)

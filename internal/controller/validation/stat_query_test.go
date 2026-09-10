@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -168,55 +167,6 @@ func TestUserStatHistoryGetMiddleware(t *testing.T) {
 		UserStatHistoryGetMiddleware()(ctx)
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
-	})
-}
-
-func TestUserStatRecentGetMiddleware(t *testing.T) {
-	t.Run("正常系_定義済みのcountはlimitとして設定する", func(t *testing.T) {
-		ctx, w := newValidationGETContext(t, "count=50")
-
-		UserStatRecentGetMiddleware()(ctx)
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, 50, helper.GetLimit(ctx))
-	})
-
-	t.Run("正常系_count未指定なら20を設定する", func(t *testing.T) {
-		ctx, w := newValidationGETContext(t, "")
-
-		UserStatRecentGetMiddleware()(ctx)
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, 20, helper.GetLimit(ctx))
-	})
-
-	t.Run("正常系_20〜100の10戦刻みはすべて受け付ける", func(t *testing.T) {
-		for count := 20; count <= 100; count += 10 {
-			ctx, w := newValidationGETContext(t, fmt.Sprintf("count=%d", count))
-
-			UserStatRecentGetMiddleware()(ctx)
-
-			require.Equal(t, http.StatusOK, w.Code, "count=%d", count)
-			require.Equal(t, count, helper.GetLimit(ctx), "count=%d", count)
-		}
-	})
-
-	t.Run("異常系_10戦刻みでないcountなら400を返す", func(t *testing.T) {
-		ctx, w := newValidationGETContext(t, "count=25")
-
-		UserStatRecentGetMiddleware()(ctx)
-
-		require.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("異常系_範囲外のcountなら400を返す", func(t *testing.T) {
-		for _, countStr := range []string{"10", "110", "0", "-20", "abc"} {
-			ctx, w := newValidationGETContext(t, "count="+countStr)
-
-			UserStatRecentGetMiddleware()(ctx)
-
-			require.Equal(t, http.StatusBadRequest, w.Code, "count=%s", countStr)
-		}
 	})
 }
 

@@ -43,16 +43,16 @@ func (m *MockOpponentDeckUsageStatInterface) EXPECT() *MockOpponentDeckUsageStat
 }
 
 // FindOpponentDeckUsageStat mocks base method.
-func (m *MockOpponentDeckUsageStatInterface) FindOpponentDeckUsageStat(ctx context.Context, userId string, period repository.StatPeriod, deckId string, regulationId uint) (*entity.OpponentDeckUsageStat, error) {
+func (m *MockOpponentDeckUsageStatInterface) FindOpponentDeckUsageStat(ctx context.Context, userId string, period repository.StatPeriod, deckId string, regulationId uint, excludeDefaultMatches bool) (*entity.OpponentDeckUsageStat, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindOpponentDeckUsageStat", ctx, userId, period, deckId, regulationId)
+	ret := m.ctrl.Call(m, "FindOpponentDeckUsageStat", ctx, userId, period, deckId, regulationId, excludeDefaultMatches)
 	ret0, _ := ret[0].(*entity.OpponentDeckUsageStat)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindOpponentDeckUsageStat indicates an expected call of FindOpponentDeckUsageStat.
-func (mr *MockOpponentDeckUsageStatInterfaceMockRecorder) FindOpponentDeckUsageStat(ctx, userId, period, deckId, regulationId any) *gomock.Call {
+func (mr *MockOpponentDeckUsageStatInterfaceMockRecorder) FindOpponentDeckUsageStat(ctx, userId, period, deckId, regulationId, excludeDefaultMatches any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOpponentDeckUsageStat", reflect.TypeOf((*MockOpponentDeckUsageStatInterface)(nil).FindOpponentDeckUsageStat), ctx, userId, period, deckId, regulationId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOpponentDeckUsageStat", reflect.TypeOf((*MockOpponentDeckUsageStatInterface)(nil).FindOpponentDeckUsageStat), ctx, userId, period, deckId, regulationId, excludeDefaultMatches)
 }

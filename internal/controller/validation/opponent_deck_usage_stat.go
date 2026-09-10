@@ -42,5 +42,13 @@ func OpponentDeckUsageStatGetMiddleware() gin.HandlerFunc {
 		helper.SetRegulationId(ctx, helper.ParseQueryRegulationId(ctx))
 
 		helper.SetDeckId(ctx, helper.GetQueryDeckId(ctx))
+
+		// 不戦勝/不戦敗を集計から外すかどうか
+		excludeDefaultMatches, err := helper.ParseQueryExcludeDefaultMatches(ctx)
+		if err != nil {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+		helper.SetExcludeDefaultMatches(ctx, excludeDefaultMatches)
 	}
 }

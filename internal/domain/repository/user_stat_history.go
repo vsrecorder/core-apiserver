@@ -8,5 +8,7 @@ import (
 )
 
 type UserStatHistoryInterface interface {
-	FindUserStatHistory(ctx context.Context, userId string, fromDate time.Time, toDate time.Time, deckId string, regulationId uint) ([]*entity.UserStatMonthly, error)
+	// excludeDefaultMatches が true なら不戦勝/不戦敗(default_victory_flg /
+	// default_defeat_flg)を月ごとの集計から外す。
+	FindUserStatHistory(ctx context.Context, userId string, fromDate time.Time, toDate time.Time, deckId string, regulationId uint, excludeDefaultMatches bool) ([]*entity.UserStatMonthly, error)
 }

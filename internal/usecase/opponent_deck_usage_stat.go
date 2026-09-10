@@ -20,6 +20,8 @@ type OpponentDeckUsageStatInterface interface {
 		standardRegulationId string,
 		regulationId uint,
 		deckId string,
+		// excludeDefaultMatches が true なら不戦勝/不戦敗を集計から外す
+		excludeDefaultMatches bool,
 	) (*entity.OpponentDeckUsageStat, error)
 }
 
@@ -57,6 +59,7 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 	standardRegulationId string,
 	regulationId uint,
 	deckId string,
+	excludeDefaultMatches bool,
 ) (*entity.OpponentDeckUsageStat, error) {
 	var fromDate, toDate time.Time
 
@@ -115,5 +118,5 @@ func (u *OpponentDeckUsageStat) GetOpponentDeckUsageStat(
 	// yearMonth/season/environmentId/standard_regulation_idのいずれも未指定の場合は、
 	// 期間をゼロ値のまま渡し「全期間」として扱う
 	// （repository側はゼロ値の場合event_dateによる絞り込みを行わない）
-	return u.opponentDeckUsageStatRepo.FindOpponentDeckUsageStat(ctx, userId, period, deckId, regulationId)
+	return u.opponentDeckUsageStatRepo.FindOpponentDeckUsageStat(ctx, userId, period, deckId, regulationId, excludeDefaultMatches)
 }

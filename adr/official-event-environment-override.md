@@ -102,12 +102,6 @@ LEFT JOIN environments ON environments.id = COALESCE(
 無ければ日付)は同じ。今はシティリーグにズレる大会は無いが、発売日当日開催などで
 同じ状況が起きたときに登録だけで対応できる。
 
-### 直近N戦の環境ラベル
-
-`usecase/user_stat_recent.go` は対戦ごとに環境ラベルを付ける。ここも例外を優先し、
-無ければ対戦日から引く。例外テーブルは極小なので全件を1回引き(`FindAll`)、
-該当する対戦があったときだけ環境を引き当てる(環境IDごとに1回)。
-
 ### OpenSearch への焼き込み(バトラボ)
 
 `import-cityleague-result-opensearch` は `cityleague_results` インデックスに
@@ -134,7 +128,6 @@ LEFT JOIN environments ON environments.id = COALESCE(
 | `cmd/backfill-user-environment-badges` | 環境バッジ(遡り) |
 | `usecase/{deck,opponent_deck}_usage_stat.go`・`user_stat.go` | 統計の環境フィルタ |
 | `usecase/season.go` の `StatPeriodFor` | バッチの環境フィルタ |
-| `usecase/user_stat_recent.go` | 直近N戦の環境ラベル |
 | `import-cityleague-result-opensearch` | OpenSearchへの焼き込み |
 
 日付から引くのが正しい(変えない):

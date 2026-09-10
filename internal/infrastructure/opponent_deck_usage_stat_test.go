@@ -38,6 +38,7 @@ func TestOpponentDeckUsageStatInfrastructure(t *testing.T) {
 		"SameDeckInfoSameSpritesAreAggregated":                   test_OpponentDeckUsageStatInfrastructure_SameDeckInfoSameSpritesAreAggregated,
 		"NoMatches":                                              test_OpponentDeckUsageStatInfrastructure_NoMatches,
 		"FilterByDeckIdUsesRecordsDeckId":                        test_OpponentDeckUsageStatInfrastructure_FilterByDeckIdUsesRecordsDeckId,
+		"ExcludesDefaultMatches":                                 test_OpponentDeckUsageStatInfrastructure_ExcludesDefaultMatches,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -67,7 +68,7 @@ func test_OpponentDeckUsageStatInfrastructure_SameDeckInfoDifferentSpritesAreTre
 		`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1,$2) ORDER BY position ASC`,
 	)).WithArgs("match-01", "match-02").WillReturnRows(spriteRows)
 
-	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, "", 0)
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, "", 0, false)
 
 	require.NoError(t, err)
 	require.Equal(t, 2, stat.TotalMatches)
@@ -101,7 +102,7 @@ func test_OpponentDeckUsageStatInfrastructure_SameDeckInfoSameSpritesAreAggregat
 		`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1,$2) ORDER BY position ASC`,
 	)).WithArgs("match-01", "match-02").WillReturnRows(spriteRows)
 
-	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, "", 0)
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, "", 0, false)
 
 	require.NoError(t, err)
 	require.Equal(t, 2, stat.TotalMatches)
@@ -126,7 +127,7 @@ func test_OpponentDeckUsageStatInfrastructure_NoMatches(t *testing.T) {
 		`SELECT matches.id AS match_id, matches.opponents_deck_info AS deck_info, matches.victory_flg AS victory_flg, matches.draw_flg AS draw_flg FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND matches.opponents_deck_info != '' ORDER BY records.event_date ASC`,
 	)).WithArgs(userId).WillReturnRows(matchRows)
 
-	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, "", 0)
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, "", 0, false)
 
 	require.NoError(t, err)
 	require.Equal(t, 0, stat.TotalMatches)
@@ -158,7 +159,36 @@ func test_OpponentDeckUsageStatInfrastructure_FilterByDeckIdUsesRecordsDeckId(t 
 		`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1) ORDER BY position ASC`,
 	)).WithArgs("match-01").WillReturnRows(spriteRows)
 
-	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, deckId, 0)
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, deckId, 0, false)
+
+	require.NoError(t, err)
+	require.Equal(t, 1, stat.TotalMatches)
+	require.Len(t, stat.Decks, 1)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// 不戦勝/不戦敗の除外を指定すると、対戦の抽出に条件が付くことを検証する。
+// 入力画面は不戦を選ぶと相手デッキ名を消すため通常は空で外れるが、それに頼らない。
+func test_OpponentDeckUsageStatInfrastructure_ExcludesDefaultMatches(t *testing.T) {
+	i, mock, err := setup4OpponentDeckUsageStatInfrastructure()
+	require.NoError(t, err)
+
+	userId := "user-01"
+
+	matchRows := sqlmock.NewRows([]string{"match_id", "deck_info", "victory_flg"}).
+		AddRow("match-01", "リザードンex", true)
+
+	mock.ExpectQuery(`SELECT matches\.id AS match_id.*FROM "matches".*matches\.default_victory_flg = false AND matches\.default_defeat_flg = false`).
+		WithArgs(userId).
+		WillReturnRows(matchRows)
+
+	mock.ExpectQuery(regexp.QuoteMeta(
+		`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1) ORDER BY position ASC`,
+	)).WithArgs("match-01").WillReturnRows(
+		sqlmock.NewRows([]string{"match_id", "position", "pokemon_sprite_id"}),
+	)
+
+	stat, err := i.FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, "", 0, true)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, stat.TotalMatches)

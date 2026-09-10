@@ -38,11 +38,19 @@ type deckIgnoredResult struct {
 	IgnoredCount int
 }
 
+// deckDefaultMatchResult は不戦勝/不戦敗として集計から外した対戦数をデッキごとに表す。
+type deckDefaultMatchResult struct {
+	DeckId            string
+	Name              string
+	DefaultMatchCount int
+}
+
 func (i *DeckUsageStat) FindDeckUsageStat(
 	ctx context.Context,
 	userId string,
 	period repository.StatPeriod,
 	regulationId uint,
+	excludeDefaultMatches bool,
 ) (*entity.DeckUsageStat, error) {
 	var results []deckUsageResult
 
@@ -63,6 +71,12 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	if regulationId != 0 {
 		query = query.Where("records.regulation_id = ?", regulationId)
 	}
+
+	// 不戦勝/不戦敗の除外は対戦(matches)の集計にだけ効かせる。下の集計対象外
+	// (ignore_stats_flg=true)の件数は記録単位の数え上げで、対戦の有無とは無関係なため触らない。
+	// 先攻/後攻(games)は不戦には行が存在しない(entity.Match の検証で禁じている)ので、
+	// ここで matches を絞れば games 側も自動的に外れる。
+	query = applyExcludeDefaultMatches(query, excludeDefaultMatches)
 
 	query = applyStatPeriod(query, period)
 
@@ -104,16 +118,55 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 		ignoredMap[r.DeckId] = r.IgnoredCount
 	}
 
+	// 除外したぶんの不戦勝/不戦敗をデッキごとに数える。上の集計と同じ条件で、
+	// 不戦だけを数え直す(除外していないときは Count に含まれているので数えない)。
+	// これが無いと、不戦しか記録が無いデッキが「対戦記録が無いデッキ」として
+	// 一覧から消え、画面に「まだ対戦記録がありません」と出てしまう。
+	var defaultResults []deckDefaultMatchResult
+	if excludeDefaultMatches {
+		defaultQuery := i.db.Table("matches").
+			Select("records.deck_id AS deck_id, COALESCE(decks.name, '') AS name, COUNT(DISTINCT matches.id) AS default_match_count").
+			Joins("JOIN records ON matches.record_id = records.id").
+			Joins("LEFT JOIN decks ON records.deck_id = decks.id").
+			Where(
+				"records.user_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND records.deck_id != ''"+
+					" AND (matches.default_victory_flg = true OR matches.default_defeat_flg = true)",
+				userId,
+			)
+
+		if regulationId != 0 {
+			defaultQuery = defaultQuery.Where("records.regulation_id = ?", regulationId)
+		}
+
+		defaultQuery = applyStatPeriod(defaultQuery, period)
+
+		defaultQuery = defaultQuery.Group("records.deck_id, decks.name").Order("default_match_count DESC")
+
+		if tx := defaultQuery.Scan(&defaultResults); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return nil, tx.Error
+		}
+	}
+
+	defaultMap := make(map[string]int, len(defaultResults))
+	for _, r := range defaultResults {
+		defaultMap[r.DeckId] = r.DefaultMatchCount
+	}
+
+	// 集計対象の対戦を持たないデッキ(集計対象外のみ・不戦のみ)を一覧に加えるのは
+	// 全期間集計のときだけ。期間を指定する画面では使用率0のデッキが並んで邪魔になる。
+	isAllTime := period.From.IsZero() && period.To.IsZero()
+
 	// 集計対象の記録があるデッキの deck_id 集合。集計対象外のみのデッキを
 	// 後段で追加する際に、重複を避けるために使う。
 	seen := make(map[string]bool, len(results))
 
 	// スプライトはデッキごとに引くとデッキ数に比例してクエリが増える(N+1)ため、
 	// 後段のループで使う分をここで1クエリにまとめて取得しておく。
-	// 集計対象外のみのデッキは全期間集計のときだけ一覧に加わるので、その場合だけ含める。
-	// 同じデッキが集計対象・集計対象外の両方に現れるため、IDは重複を除いて渡す。
-	spriteDeckIds := make([]string, 0, len(results)+len(ignoredResults))
-	spriteDeckIdSeen := make(map[string]struct{}, len(results)+len(ignoredResults))
+	// 集計対象外のみ・不戦のみのデッキは全期間集計のときだけ一覧に加わるので、その場合だけ含める。
+	// 同じデッキが複数の結果に現れるため、IDは重複を除いて渡す。
+	spriteDeckIds := make([]string, 0, len(results)+len(ignoredResults)+len(defaultResults))
+	spriteDeckIdSeen := make(map[string]struct{}, len(results)+len(ignoredResults)+len(defaultResults))
 
 	appendSpriteDeckId := func(deckId string) {
 		if _, ok := spriteDeckIdSeen[deckId]; ok {
@@ -126,8 +179,11 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 	for _, r := range results {
 		appendSpriteDeckId(r.DeckId)
 	}
-	if period.From.IsZero() && period.To.IsZero() {
+	if isAllTime {
 		for _, r := range ignoredResults {
+			appendSpriteDeckId(r.DeckId)
+		}
+		for _, r := range defaultResults {
 			appendSpriteDeckId(r.DeckId)
 		}
 	}
@@ -180,22 +236,40 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 			pokemonSprites,
 		)
 		deckUsage.IgnoredCount = ignoredMap[r.DeckId]
+		deckUsage.DefaultMatchCount = defaultMap[r.DeckId]
 		decks = append(decks, deckUsage)
 	}
 
-	// 全期間集計(all_time)の場合のみ、集計対象外の記録しか持たないデッキも
-	// 一覧に含める。デッキ一覧カードで「集計対象外の記録がN件ある」と示すためで、
+	// 全期間集計(all_time)の場合のみ、集計対象の対戦を持たないデッキ
+	// (集計対象外の記録しか無い・不戦しか無い)も一覧に含める。デッキ一覧カードで
+	// 「集計対象外の記録がN件ある」「不戦勝・不戦敗がN件ある」と示すためで、
 	// count=0 のため使用率ランキング等では他の画面（期間指定）には現れない。
-	if period.From.IsZero() && period.To.IsZero() {
+	if isAllTime {
 		for _, r := range ignoredResults {
 			if seen[r.DeckId] {
 				continue
 			}
+			seen[r.DeckId] = true
 
 			deckUsage := entity.NewDeckUsage(
 				r.DeckId, r.Name, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, spritesByDeckId[r.DeckId],
 			)
 			deckUsage.IgnoredCount = r.IgnoredCount
+			deckUsage.DefaultMatchCount = defaultMap[r.DeckId]
+			decks = append(decks, deckUsage)
+		}
+
+		for _, r := range defaultResults {
+			if seen[r.DeckId] {
+				continue
+			}
+			seen[r.DeckId] = true
+
+			deckUsage := entity.NewDeckUsage(
+				r.DeckId, r.Name, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, spritesByDeckId[r.DeckId],
+			)
+			deckUsage.IgnoredCount = ignoredMap[r.DeckId]
+			deckUsage.DefaultMatchCount = r.DefaultMatchCount
 			decks = append(decks, deckUsage)
 		}
 	}

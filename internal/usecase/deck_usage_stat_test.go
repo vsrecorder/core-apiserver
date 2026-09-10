@@ -31,8 +31,9 @@ func TestDeckUsageStatUsecase(t *testing.T) {
 		mockRepository *mock_repository.MockDeckUsageStatInterface,
 		usecase DeckUsageStatInterface,
 	){
-		"AllTime_期間条件を一切付けずにrepositoryへ委譲する": test_DeckUsageStatUsecase_AllTime,
-		"Week_週指定時はその週の期間でrepositoryへ委譲する":  test_DeckUsageStatUsecase_Week,
+		"AllTime_期間条件を一切付けずにrepositoryへ委譲する":          test_DeckUsageStatUsecase_AllTime,
+		"Week_週指定時はその週の期間でrepositoryへ委譲する":            test_DeckUsageStatUsecase_Week,
+		"ExcludeDefaultMatches_不戦の除外指定をrepositoryへ渡す": test_DeckUsageStatUsecase_ExcludeDefaultMatches,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t, mockRepository, usecase)
@@ -46,12 +47,12 @@ func test_DeckUsageStatUsecase_AllTime(t *testing.T, mockRepository *mock_reposi
 	want := entity.NewDeckUsageStat(userId, 0, []*entity.DeckUsage{})
 
 	mockRepository.EXPECT().
-		FindDeckUsageStat(gomock.Any(), userId, repository.StatPeriod{}, uint(0)).
+		FindDeckUsageStat(gomock.Any(), userId, repository.StatPeriod{}, uint(0), false).
 		Return(want, nil)
 
 	// year_month/season/regulation_idを指定していても all_time=true の場合は無視され、
 	// 期間条件なしでrepositoryが呼ばれる。
-	got, err := usecase.GetDeckUsageStat(context.Background(), userId, "", "2026-06", "", "spring", "", 0, true)
+	got, err := usecase.GetDeckUsageStat(context.Background(), userId, "", "2026-06", "", "spring", "", 0, true, false)
 
 	require.NoError(t, err)
 	require.Equal(t, want, got)
@@ -67,11 +68,27 @@ func test_DeckUsageStatUsecase_Week(t *testing.T, mockRepository *mock_repositor
 	toDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
 
 	mockRepository.EXPECT().
-		FindDeckUsageStat(gomock.Any(), userId, statPeriodOf(fromDate, toDate), uint(0)).
+		FindDeckUsageStat(gomock.Any(), userId, statPeriodOf(fromDate, toDate), uint(0), false).
 		Return(want, nil)
 
 	// year_month も同時に指定しているが week が優先される
-	got, err := usecase.GetDeckUsageStat(context.Background(), userId, "2026-08-23", "2026-06", "", "", "", 0, false)
+	got, err := usecase.GetDeckUsageStat(context.Background(), userId, "2026-08-23", "2026-06", "", "", "", 0, false, false)
+
+	require.NoError(t, err)
+	require.Equal(t, want, got)
+}
+
+// 不戦勝/不戦敗の除外指定は期間の組み立てとは無関係に、そのまま repository へ渡す。
+func test_DeckUsageStatUsecase_ExcludeDefaultMatches(t *testing.T, mockRepository *mock_repository.MockDeckUsageStatInterface, usecase DeckUsageStatInterface) {
+	userId := "user-01"
+
+	want := entity.NewDeckUsageStat(userId, 0, []*entity.DeckUsage{})
+
+	mockRepository.EXPECT().
+		FindDeckUsageStat(gomock.Any(), userId, repository.StatPeriod{}, uint(0), true).
+		Return(want, nil)
+
+	got, err := usecase.GetDeckUsageStat(context.Background(), userId, "", "", "", "", "", 0, true, true)
 
 	require.NoError(t, err)
 	require.Equal(t, want, got)

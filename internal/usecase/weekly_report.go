@@ -115,9 +115,12 @@ func (u *WeeklyReportNotifier) NotifyUser(ctx context.Context, userId string, we
 	weekKey := fromDate.Format(weekDateLayout)
 
 	// 全レギュレーション合算(regulationId=0)。webapp のバトルレポートも絞らずに出す。
-	// 不戦勝/不戦敗は含める(excludeDefaultMatches=false)。週次レポートはその週に
-	// 何をしたかを振り返るもので、利用者がホームで選んだ表示設定は持ち込まない。
-	stat, err := u.userStatRepo.FindUserStat(ctx, userId, statPeriodOf(fromDate, toDate), 0, false)
+	//
+	// 不戦勝/不戦敗は外す(excludeDefaultMatches=true)。この通知の本文は
+	// 「先週は10戦 6勝4敗(勝率60.0%)」という数字で、リンク先のふりかえり
+	// (/users/report/weeks/<月曜>)は常に不戦を外して同じ週を集計している。
+	// ここだけ含めると、通知を開いた瞬間に数字が変わる。
+	stat, err := u.userStatRepo.FindUserStat(ctx, userId, statPeriodOf(fromDate, toDate), 0, true)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
 		logError(ctx, err)
 		return false, err
@@ -296,7 +299,11 @@ func (u *WeeklyReportNotifier) alreadyNotified(ctx context.Context, userId strin
 // topDeckName はその週に最も多く使ったデッキ(相棒デッキ)の名前を返す。
 // 集計に失敗しても通知本体は出したいので、失敗時は警告だけ残して空文字を返す。
 func (u *WeeklyReportNotifier) topDeckName(ctx context.Context, userId string, fromDate, toDate time.Time) string {
-	stat, err := u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, statPeriodOf(fromDate, toDate), 0)
+	// 不戦勝/不戦敗は外す(excludeDefaultMatches=true)。本文の戦績と同じ週の集計であり、
+	// リンク先のふりかえりも除外したうえで使用数の多いデッキを出しているため、ここだけ
+	// 含めると通知の相棒デッキと画面の1位が別のデッキになりうる。
+	// 不戦しか使っていないデッキは相棒デッキになれないが、対戦していない以上それでよい。
+	stat, err := u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, statPeriodOf(fromDate, toDate), 0, true)
 	if err != nil {
 		logWarn(ctx, err)
 		return ""

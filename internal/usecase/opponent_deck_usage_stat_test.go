@@ -49,10 +49,10 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		toDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
 
 		mockRepository.EXPECT().
-			FindOpponentDeckUsageStat(context.Background(), userId, statPeriodOf(fromDate, toDate), "", uint(0)).
+			FindOpponentDeckUsageStat(context.Background(), userId, statPeriodOf(fromDate, toDate), "", uint(0), false).
 			Return(stat, nil)
 
-		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "2026-08-19", "", "", "", "", 0, "")
+		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "2026-08-19", "", "", "", "", 0, "", false)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -69,10 +69,10 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		stat := entity.NewOpponentDeckUsageStat(userId, 5, []*entity.OpponentDeckUsage{})
 
 		mockRepository.EXPECT().
-			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), deckId, uint(0)).
+			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), deckId, uint(0), false).
 			Return(stat, nil)
 
-		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId)
+		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId, false)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -89,10 +89,10 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		stat := entity.NewOpponentDeckUsageStat(userId, 0, []*entity.OpponentDeckUsage{})
 
 		mockRepository.EXPECT().
-			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), deckId, uint(0)).
+			FindOpponentDeckUsageStat(context.Background(), userId, gomock.Any(), deckId, uint(0), false).
 			Return(stat, nil)
 
-		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId)
+		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId, false)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)
@@ -112,10 +112,10 @@ func test_OpponentDeckUsageStatUsecase_GetOpponentDeckUsageStat(t *testing.T, mo
 		stat := entity.NewOpponentDeckUsageStat(userId, 3, []*entity.OpponentDeckUsage{})
 
 		mockRepository.EXPECT().
-			FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, deckId, uint(0)).
+			FindOpponentDeckUsageStat(context.Background(), userId, repository.StatPeriod{}, deckId, uint(0), false).
 			Return(stat, nil)
 
-		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId)
+		ret, err := usecase.GetOpponentDeckUsageStat(context.Background(), userId, "", yearMonth, environmentId, season, standardRegulationId, 0, deckId, false)
 
 		require.NoError(t, err)
 		require.Equal(t, stat, ret)

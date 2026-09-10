@@ -74,7 +74,6 @@ mockgen:
 	mockgen -source=./internal/domain/repository/environment.go -destination=./internal/mock/mock_repository/environment.go
 	mockgen -source=./internal/domain/repository/user_stat.go -destination=./internal/mock/mock_repository/user_stat.go
 	mockgen -source=./internal/domain/repository/user_stat_history.go -destination=./internal/mock/mock_repository/user_stat_history.go
-	mockgen -source=./internal/domain/repository/user_stat_recent.go -destination=./internal/mock/mock_repository/user_stat_recent.go
 	mockgen -source=./internal/domain/repository/opponent_deck_usage_stat.go -destination=./internal/mock/mock_repository/opponent_deck_usage_stat.go
 	mockgen -source=./internal/domain/repository/deck_usage_stat.go -destination=./internal/mock/mock_repository/deck_usage_stat.go
 	mockgen -source=./internal/domain/repository/kizuna.go -destination=./internal/mock/mock_repository/kizuna.go
@@ -121,7 +120,6 @@ mockgen:
 	mockgen -source=./internal/usecase/environment.go -destination=./internal/mock/mock_usecase/environment.go
 	mockgen -source=./internal/usecase/user_stat.go -destination=./internal/mock/mock_usecase/user_stat.go
 	mockgen -source=./internal/usecase/user_stat_history.go -destination=./internal/mock/mock_usecase/user_stat_history.go
-	mockgen -source=./internal/usecase/user_stat_recent.go -destination=./internal/mock/mock_usecase/user_stat_recent.go
 	mockgen -source=./internal/usecase/opponent_deck_usage_stat.go -destination=./internal/mock/mock_usecase/opponent_deck_usage_stat.go
 	mockgen -source=./internal/usecase/deck_usage_stat.go -destination=./internal/mock/mock_usecase/deck_usage_stat.go
 	mockgen -source=./internal/usecase/kizuna.go -destination=./internal/mock/mock_usecase/kizuna.go

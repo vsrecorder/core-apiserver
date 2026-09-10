@@ -21,8 +21,14 @@ type DeckUsage struct {
 	// IgnoredCount は集計対象外(ignore_stats_flg=true)の記録件数。
 	// 勝率などの集計には含めず、デッキ一覧に「集計対象外の記録がある」旨を
 	// 表示するためだけに用いる。コンストラクタ外でフィールドに直接設定する。
-	IgnoredCount   int
-	PokemonSprites []*PokemonSprite
+	IgnoredCount int
+	// DefaultMatchCount は不戦勝/不戦敗として集計から外した対戦数。
+	// excludeDefaultMatches を指定したときだけ数える(指定が無ければ Count に含まれる)。
+	// 不戦しか記録が無いデッキは Count が 0 になり、そのままでは「対戦記録が無いデッキ」と
+	// 見分けがつかないため、外した件数を返して画面側で理由を示せるようにする。
+	// IgnoredCount と同じくコンストラクタ外でフィールドに直接設定する。
+	DefaultMatchCount int
+	PokemonSprites    []*PokemonSprite
 }
 
 func NewDeckUsage(

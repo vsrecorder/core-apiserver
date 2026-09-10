@@ -20,6 +20,8 @@ type DeckUsageStatInterface interface {
 		standardRegulationId string,
 		regulationId uint,
 		allTime bool,
+		// excludeDefaultMatches が true なら不戦勝/不戦敗を対戦の集計から外す
+		excludeDefaultMatches bool,
 	) (*entity.DeckUsageStat, error)
 }
 
@@ -57,13 +59,14 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 	standardRegulationId string,
 	regulationId uint,
 	allTime bool,
+	excludeDefaultMatches bool,
 ) (*entity.DeckUsageStat, error) {
 	var fromDate, toDate time.Time
 
 	// 全期間集計が指定された場合は期間条件を一切適用しない
 	// （デッキ一覧カードのように期間セレクタを持たない画面向け）。
 	if allTime {
-		return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, repository.StatPeriod{}, regulationId)
+		return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, repository.StatPeriod{}, regulationId, excludeDefaultMatches)
 	}
 
 	if week != "" {
@@ -128,5 +131,5 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 		period.BaseFrom, period.BaseTo = period.From, period.To
 	}
 
-	return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, period, regulationId)
+	return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, period, regulationId, excludeDefaultMatches)
 }

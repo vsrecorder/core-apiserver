@@ -44,6 +44,7 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	period repository.StatPeriod,
 	deckId string,
 	regulationId uint,
+	excludeDefaultMatches bool,
 ) (*entity.OpponentDeckUsageStat, error) {
 	var rows []opponentMatchResult
 
@@ -61,6 +62,11 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 	if regulationId != 0 {
 		query = query.Where("records.regulation_id = ?", regulationId)
 	}
+
+	// 不戦勝/不戦敗を集計から外す。入力画面は不戦を選ぶと相手デッキ名を消すため
+	// 通常は opponents_deck_info が空で先の条件から外れるが、それに頼らずここでも外す
+	// (デッキ使用率分析・デッキ一覧の戦績と同じ扱いに揃える)。
+	query = applyExcludeDefaultMatches(query, excludeDefaultMatches)
 
 	query = applyStatPeriod(query, period)
 	if deckId != "" {

@@ -28,7 +28,7 @@ func TestUserStatHistoryInfrastructure(t *testing.T) {
 				AddRow("2026-06", 5, 0),
 			)
 
-		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "", 0)
+		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "", 0, false)
 
 		require.NoError(t, err)
 		require.Len(t, ret, 2)
@@ -54,10 +54,28 @@ func TestUserStatHistoryInfrastructure(t *testing.T) {
 			WithArgs(uid, fromDate, toDate, deckId).
 			WillReturnRows(sqlmock.NewRows(monthlyColumns))
 
-		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, deckId, 0)
+		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, deckId, 0, false)
 
 		require.NoError(t, err)
 		require.Empty(t, ret)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("正常系_不戦勝と不戦敗を除外するとクエリに条件が付く", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewUserStatHistory(db)
+
+		mock.ExpectQuery(`SELECT TO_CHAR\(DATE_TRUNC\('month', records\.event_date\), 'YYYY-MM'\) AS year_month.*matches\.default_victory_flg = false AND matches\.default_defeat_flg = false`).
+			WithArgs(uid, fromDate, toDate).
+			WillReturnRows(sqlmock.NewRows(monthlyColumns).AddRow("2026-05", 3, 2))
+
+		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "", 0, true)
+
+		require.NoError(t, err)
+		require.Len(t, ret, 1)
+		require.Equal(t, 3, ret[0].TotalMatches)
+		require.Equal(t, 2, ret[0].Wins)
+		require.Equal(t, 1, ret[0].Losses)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -67,7 +85,7 @@ func TestUserStatHistoryInfrastructure(t *testing.T) {
 
 		mock.ExpectQuery(`SELECT TO_CHAR`).WillReturnError(sql.ErrConnDone)
 
-		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "", 0)
+		ret, err := r.FindUserStatHistory(context.Background(), uid, fromDate, toDate, "", 0, false)
 
 		require.Error(t, err)
 		require.Nil(t, ret)

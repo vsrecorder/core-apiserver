@@ -52,8 +52,9 @@ func (c *DeckUsageStat) GetByUserId(ctx *gin.Context) {
 	standardRegulationId := helper.GetStandardRegulationId(ctx)
 	regulationId := helper.GetRegulationId(ctx)
 	allTime := helper.GetAllTime(ctx)
+	excludeDefaultMatches := helper.GetExcludeDefaultMatches(ctx)
 
-	stat, err := c.usecase.GetDeckUsageStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime)
+	stat, err := c.usecase.GetDeckUsageStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)

@@ -539,11 +539,6 @@ func main() {
 			infrastructure.NewUserStatHistory(db),
 			infrastructure.NewChampionshipSeries(db),
 		),
-		usecase.NewUserStatRecent(
-			infrastructure.NewUserStatRecent(db),
-			infrastructure.NewEnvironment(db),
-			infrastructure.NewOfficialEventEnvironment(db),
-		),
 	).RegisterRoute(relativePath)
 
 	controller.NewDeckUsageStat(

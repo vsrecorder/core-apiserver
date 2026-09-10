@@ -40,5 +40,13 @@ func UserStatGetMiddleware() gin.HandlerFunc {
 
 		// レギュレーション区分(スタンダード/エクストラ/殿堂)での絞り込み
 		helper.SetRegulationId(ctx, helper.ParseQueryRegulationId(ctx))
+
+		// 不戦勝/不戦敗を集計から外すかどうか
+		excludeDefaultMatches, err := helper.ParseQueryExcludeDefaultMatches(ctx)
+		if err != nil {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+		helper.SetExcludeDefaultMatches(ctx, excludeDefaultMatches)
 	}
 }

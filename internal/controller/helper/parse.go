@@ -22,6 +22,11 @@ const (
 	DefaultEventType       = ""
 	DefaultArchived        = false
 	DefaultAllTime         = false
+	// DefaultExcludeDefaultMatches は「不戦勝/不戦敗も集計に含める」を表す。
+	// 未指定を「絞り込まない」とするのは他の絞り込みパラメータ(regulation_id など)と
+	// 同じ流儀で、表示上どちらを既定にするかは呼び出し側(webapp)が決める。
+	// webapp のトレーナー情報パネルは既定で外す側にしてあり、そのため常に明示して送ってくる。
+	DefaultExcludeDefaultMatches = false
 	// DefaultRegulationId は「レギュレーションで絞り込まない」を表す。
 	DefaultRegulationId = 0
 	// MaxKeywordLength は店舗検索のキーワードの最大長。
@@ -369,6 +374,22 @@ func ParseQueryAllTime(ctx *gin.Context) (bool, error) {
 
 	if err != nil {
 		return DefaultAllTime, err
+	}
+
+	return ret, nil
+}
+
+func ParseQueryExcludeDefaultMatches(ctx *gin.Context) (bool, error) {
+	query := GetQueryExcludeDefaultMatches(ctx)
+
+	if query == "" {
+		return DefaultExcludeDefaultMatches, nil
+	}
+
+	ret, err := strconv.ParseBool(query)
+
+	if err != nil {
+		return DefaultExcludeDefaultMatches, err
 	}
 
 	return ret, nil

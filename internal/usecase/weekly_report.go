@@ -114,8 +114,10 @@ func (u *WeeklyReportNotifier) NotifyUser(ctx context.Context, userId string, we
 	}
 	weekKey := fromDate.Format(weekDateLayout)
 
-	// 全レギュレーション合算(regulationId=0)。webapp のバトルレポートも絞らずに出す
-	stat, err := u.userStatRepo.FindUserStat(ctx, userId, statPeriodOf(fromDate, toDate), 0)
+	// 全レギュレーション合算(regulationId=0)。webapp のバトルレポートも絞らずに出す。
+	// 不戦勝/不戦敗は含める(excludeDefaultMatches=false)。週次レポートはその週に
+	// 何をしたかを振り返るもので、利用者がホームで選んだ表示設定は持ち込まない。
+	stat, err := u.userStatRepo.FindUserStat(ctx, userId, statPeriodOf(fromDate, toDate), 0, false)
 	if err != nil && !errors.Is(err, apperror.ErrRecordNotFound) {
 		logError(ctx, err)
 		return false, err

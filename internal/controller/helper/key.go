@@ -227,6 +227,18 @@ func GetAllTime(ctx *gin.Context) bool {
 	return allTime
 }
 
+// 不戦勝/不戦敗を戦績の集計から外すかどうか。false は従来どおり含める。
+func SetExcludeDefaultMatches(ctx *gin.Context, value bool) {
+	ctx.Set("exclude_default_matches", value)
+}
+
+func GetExcludeDefaultMatches(ctx *gin.Context) bool {
+	value, _ := ctx.Get("exclude_default_matches")
+	excludeDefaultMatches, _ := value.(bool)
+
+	return excludeDefaultMatches
+}
+
 func SetYearMonth(ctx *gin.Context, value string) {
 	ctx.Set("year_month", value)
 }

@@ -61,8 +61,9 @@ func (c *UserStat) GetByUserId(ctx *gin.Context) {
 	season := helper.GetSeason(ctx)
 	standardRegulationId := helper.GetStandardRegulationId(ctx)
 	regulationId := helper.GetRegulationId(ctx)
+	excludeDefaultMatches := helper.GetExcludeDefaultMatches(ctx)
 
-	stats, err := c.usecase.GetUserStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId)
+	stats, err := c.usecase.GetUserStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, excludeDefaultMatches)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)

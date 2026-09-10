@@ -1354,7 +1354,7 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	standard := entity.RegulationIdStandard
 
 	t.Run("正常系_戦績はスタンダードの対戦だけを数える", func(t *testing.T) {
-		stat, err := NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, standard)
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, standard, false)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, stat.TotalRecords)
@@ -1400,7 +1400,7 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 	})
 
 	t.Run("正常系_未指定なら全レギュレーションを数える", func(t *testing.T) {
-		stat, err := NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0)
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0, false)
 
 		require.NoError(t, err)
 		require.Equal(t, 2, stat.TotalRecords)
@@ -1411,6 +1411,73 @@ func TestIntegrationStatsRegulationFilter(t *testing.T) {
 // 流入元は登録の瞬間に1度だけ書かれ、以後は上書きされない(初回タッチ)。
 // ON CONFLICT DO NOTHING が実スキーマの主キーに対して意図どおり効くかは
 // sqlmock では確かめられないため、実DBで見る。
+// 不戦勝/不戦敗(default_victory_flg / default_defeat_flg)の除外が、実DBのスキーマと
+// 噛み合っていることを確かめる。sqlmock は SQL 文字列しか見ないため、列名の取り違えや
+// 条件の掛かる先(matches か records か)の誤りはここでしか捕まらない。
+func TestIntegrationExcludeDefaultMatches(t *testing.T) {
+	db := setupIntegrationDB(t, "games", "matches", "records", "decks")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	const deckId = "deck-default-match"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	eventDate := time.Date(2026, 7, 15, 0, 0, 0, 0, time.Local)
+	fromDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.Local)
+	toDate := fromDate.AddDate(0, 1, 0)
+
+	require.NoError(t, db.Create(&model.Deck{
+		ID: deckId, CreatedAt: now, UpdatedAt: now, UserId: uid, Name: "テストデッキ",
+	}).Error)
+	require.NoError(t, db.Create(&model.Record{
+		ID: "rec-default-match", CreatedAt: now, UpdatedAt: now, UserId: uid, DeckId: deckId,
+		EventDate: eventDate, RegulationId: entity.RegulationIdStandard,
+	}).Error)
+
+	createMatch := func(matchId string, victory bool, defaultVictory bool, defaultDefeat bool) {
+		t.Helper()
+
+		require.NoError(t, db.Create(&model.Match{
+			ID: matchId, CreatedAt: now, UpdatedAt: now, RecordId: "rec-default-match", UserId: uid,
+			DeckId: deckId, VictoryFlg: victory,
+			DefaultVictoryFlg: defaultVictory, DefaultDefeatFlg: defaultDefeat,
+		}).Error)
+	}
+
+	// 通常の対戦2勝1敗に、不戦勝1・不戦敗1を混ぜる。
+	// 不戦勝は victory_flg も true、不戦敗は false になっている(実データと同じ形)。
+	createMatch("mat-win-1", true, false, false)
+	createMatch("mat-win-2", true, false, false)
+	createMatch("mat-loss-1", false, false, false)
+	createMatch("mat-default-win", true, true, false)
+	createMatch("mat-default-loss", false, false, true)
+
+	ctx := context.Background()
+	period := repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}
+
+	t.Run("正常系_既定では不戦勝と不戦敗も数える", func(t *testing.T) {
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, period, 0, false)
+
+		require.NoError(t, err)
+		require.Equal(t, 5, stat.TotalMatches)
+		require.Equal(t, 3, stat.Wins)
+		require.Equal(t, 2, stat.Losses)
+		require.InDelta(t, 0.6, stat.WinRate, 1e-9)
+	})
+
+	t.Run("正常系_除外すると試合数も勝敗も不戦のぶんだけ減る", func(t *testing.T) {
+		stat, err := NewUserStat(db).FindUserStat(ctx, uid, period, 0, true)
+
+		require.NoError(t, err)
+		require.Equal(t, 3, stat.TotalMatches)
+		require.Equal(t, 2, stat.Wins)
+		require.Equal(t, 1, stat.Losses)
+		require.InDelta(t, 2.0/3.0, stat.WinRate, 1e-9)
+
+		// 記録数は「記録した回数」なので、不戦を除外しても変わらない
+		require.Equal(t, 1, stat.TotalRecords)
+	})
+}
+
 func TestIntegrationUserAcquisitionRepository(t *testing.T) {
 	db := setupIntegrationDB(t, "user_acquisitions")
 	r := NewUserAcquisition(db)
@@ -2427,7 +2494,7 @@ func TestIntegrationOfficialEventEnvironment(t *testing.T) {
 		stat, err := NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{
 			From: m6From, To: m6To,
 			IncludeOfficialEventIds: []uint{championsLeagueEventId},
-		}, entity.RegulationIdStandard)
+		}, entity.RegulationIdStandard, false)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, stat.TotalMatches)
@@ -2437,7 +2504,7 @@ func TestIntegrationOfficialEventEnvironment(t *testing.T) {
 		stat, err = NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{
 			From: m6aFrom, To: m6aTo,
 			ExcludeOfficialEventIds: []uint{championsLeagueEventId},
-		}, entity.RegulationIdStandard)
+		}, entity.RegulationIdStandard, false)
 
 		require.NoError(t, err)
 		require.Equal(t, 1, stat.TotalMatches)
@@ -2445,7 +2512,7 @@ func TestIntegrationOfficialEventEnvironment(t *testing.T) {
 		// 例外を渡さなければ、開催日だけの判定に戻って両方 m6a に入る
 		stat, err = NewUserStat(db).FindUserStat(ctx, uid, repository.StatPeriod{
 			From: m6aFrom, To: m6aTo,
-		}, entity.RegulationIdStandard)
+		}, entity.RegulationIdStandard, false)
 
 		require.NoError(t, err)
 		require.Equal(t, 2, stat.TotalMatches)

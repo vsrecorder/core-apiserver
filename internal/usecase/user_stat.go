@@ -19,6 +19,8 @@ type UserStatInterface interface {
 		season string,
 		standardRegulationId string,
 		regulationId uint,
+		// excludeDefaultMatches が true なら不戦勝/不戦敗を対戦の集計から外す
+		excludeDefaultMatches bool,
 	) (*entity.UserStat, error)
 }
 
@@ -55,6 +57,7 @@ func (u *UserStat) GetUserStat(
 	season string,
 	standardRegulationId string,
 	regulationId uint,
+	excludeDefaultMatches bool,
 ) (*entity.UserStat, error) {
 	var fromDate, toDate time.Time
 
@@ -120,5 +123,5 @@ func (u *UserStat) GetUserStat(
 		period.BaseFrom, period.BaseTo = period.From, period.To
 	}
 
-	return u.userStatRepo.FindUserStat(ctx, userId, period, regulationId)
+	return u.userStatRepo.FindUserStat(ctx, userId, period, regulationId, excludeDefaultMatches)
 }

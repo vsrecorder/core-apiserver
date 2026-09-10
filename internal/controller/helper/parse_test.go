@@ -398,6 +398,32 @@ func TestParseQueryEventType(t *testing.T) {
 	})
 }
 
+func TestParseQueryExcludeDefaultMatches(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_未指定なら不戦勝と不戦敗を含める", func(t *testing.T) {
+		exclude, err := ParseQueryExcludeDefaultMatches(newTestContext(t, ""))
+		require.NoError(t, err)
+		require.Equal(t, DefaultExcludeDefaultMatches, exclude)
+		require.False(t, exclude)
+	})
+
+	t.Run("正常系_真偽値を解釈して返す", func(t *testing.T) {
+		exclude, err := ParseQueryExcludeDefaultMatches(newTestContext(t, "exclude_default_matches=true"))
+		require.NoError(t, err)
+		require.True(t, exclude)
+
+		exclude, err = ParseQueryExcludeDefaultMatches(newTestContext(t, "exclude_default_matches=false"))
+		require.NoError(t, err)
+		require.False(t, exclude)
+	})
+
+	t.Run("異常系_真偽値でなければエラーを返す", func(t *testing.T) {
+		_, err := ParseQueryExcludeDefaultMatches(newTestContext(t, "exclude_default_matches=abc"))
+		require.Error(t, err)
+	})
+}
+
 func TestParseQueryArchive(t *testing.T) {
 	t.Parallel()
 

@@ -37,7 +37,7 @@ func TestUserStatInfrastructure(t *testing.T) {
 
 		expectStatQueries(mock, 10, 6, 5, 2, 1, 1)
 
-		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0)
+		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0, false)
 
 		require.NoError(t, err)
 		require.Equal(t, uid, ret.UserId)
@@ -58,11 +58,38 @@ func TestUserStatInfrastructure(t *testing.T) {
 
 		expectStatQueries(mock, 0, 0, 0, 0, 0, 0)
 
-		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0)
+		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0, false)
 
 		require.NoError(t, err)
 		require.Equal(t, 0, ret.TotalMatches)
 		require.Zero(t, ret.WinRate)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 不戦勝/不戦敗は対戦が行われていないため、指定されたときだけ対戦の集計から外す。
+	// 記録数・イベント数は「記録した回数」なので、指定されても条件は変わらない。
+	t.Run("正常系_不戦勝と不戦敗を除外すると対戦の集計にだけ条件が付く", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewUserStat(db)
+
+		mock.ExpectQuery(`SELECT COUNT\(\*\) AS total_matches.*FROM "matches".*matches\.default_victory_flg = false AND matches\.default_defeat_flg = false`).
+			WithArgs(uid, fromDate, toDate).
+			WillReturnRows(sqlmock.NewRows([]string{"total_matches", "wins"}).AddRow(8, 5))
+
+		// records 側には除外条件が付かない(付いていれば正規表現が一致せず失敗する)
+		mock.ExpectQuery(`SELECT COUNT\(\*\) AS record_count.*FROM "records" WHERE \(user_id = \$1 AND deleted_at IS NULL AND ignore_stats_flg = false\) AND \(records\.event_date >= \$2 AND records\.event_date < \$3\)$`).
+			WithArgs(uid, fromDate, toDate).
+			WillReturnRows(sqlmock.NewRows(
+				[]string{"record_count", "official_event_count", "tonamel_event_count", "unofficial_event_count"},
+			).AddRow(5, 2, 1, 1))
+
+		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0, true)
+
+		require.NoError(t, err)
+		require.Equal(t, 8, ret.TotalMatches)
+		require.Equal(t, 5, ret.Wins)
+		require.Equal(t, 3, ret.Losses)
+		require.Equal(t, 5, ret.TotalRecords)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -72,7 +99,7 @@ func TestUserStatInfrastructure(t *testing.T) {
 
 		mock.ExpectQuery(`SELECT COUNT\(\*\) AS total_matches`).WillReturnError(sql.ErrConnDone)
 
-		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0)
+		ret, err := r.FindUserStat(context.Background(), uid, repository.StatPeriod{From: fromDate, To: toDate, BaseFrom: fromDate, BaseTo: toDate}, 0, false)
 
 		require.Error(t, err)
 		require.Nil(t, ret)

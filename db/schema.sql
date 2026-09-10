@@ -562,9 +562,12 @@ CREATE TABLE official_event_environments (
 INSERT INTO official_event_environments VALUES (1112094, 'm6'); -- ボランティアジャッジ募集
 INSERT INTO official_event_environments VALUES (1113193, 'm6'); -- マスターリーグ 1日目予選
 INSERT INTO official_event_environments VALUES (1113194, 'm6'); -- マスターリーグ 2日目予選
+INSERT INTO official_event_environments VALUES (1113195, 'm6'); -- マスターリーグ 本戦
+
 INSERT INTO official_event_environments VALUES (1113198, 'm6'); -- シニアリーグ 1日目大会
 INSERT INTO official_event_environments VALUES (1113199, 'm6'); -- シニアリーグ 2日目大会
 INSERT INTO official_event_environments VALUES (1113200, 'm6'); -- シニアリーグ 1日目大会or2日目大会どちらでも可
+
 INSERT INTO official_event_environments VALUES (1113201, 'm6'); -- ジュニアリーグ 1日目大会
 INSERT INTO official_event_environments VALUES (1113202, 'm6'); -- ジュニアリーグ 2日目大会
 INSERT INTO official_event_environments VALUES (1113203, 'm6'); -- ジュニアリーグ 1日目大会or2日目大会どちらでも可

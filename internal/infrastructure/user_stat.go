@@ -39,6 +39,7 @@ func (i *UserStat) FindUserStat(
 	userId string,
 	period repository.StatPeriod,
 	regulationId uint,
+	excludeDefaultMatches bool,
 ) (*entity.UserStat, error) {
 	var matchResult matchStatsResult
 
@@ -51,6 +52,10 @@ func (i *UserStat) FindUserStat(
 	if regulationId != 0 {
 		matchQuery = matchQuery.Where("records.regulation_id = ?", regulationId)
 	}
+
+	// 不戦勝/不戦敗の除外は対戦の集計にだけ効かせる。下の records の集計(記録数・
+	// イベント数)は「記録した回数」であって対戦の有無とは無関係なため、触らない。
+	matchQuery = applyExcludeDefaultMatches(matchQuery, excludeDefaultMatches)
 
 	matchQuery = applyStatPeriod(matchQuery, period)
 

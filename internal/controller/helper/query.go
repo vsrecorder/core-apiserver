@@ -73,6 +73,13 @@ func GetQueryAllTime(ctx *gin.Context) string {
 	return ctx.Query("all_time")
 }
 
+// GetQueryExcludeDefaultMatches は不戦勝/不戦敗を戦績の集計から外すかどうか。
+// 不戦勝/不戦敗は対戦そのものが行われておらず、実力を測る指標としては雑音になるため、
+// 利用者が集計に含めるかを選べるようにしている。
+func GetQueryExcludeDefaultMatches(ctx *gin.Context) string {
+	return ctx.Query("exclude_default_matches")
+}
+
 func GetQueryYearMonth(ctx *gin.Context) string {
 	return ctx.Query("year_month")
 }

@@ -63,9 +63,13 @@ func (i *OpponentDeckUsageStat) FindOpponentDeckUsageStat(
 		query = query.Where("records.regulation_id = ?", regulationId)
 	}
 
-	// 不戦勝/不戦敗を集計から外す。入力画面は不戦を選ぶと相手デッキ名を消すため
-	// 通常は opponents_deck_info が空で先の条件から外れるが、それに頼らずここでも外す
-	// (デッキ使用率分析・デッキ一覧の戦績と同じ扱いに揃える)。
+	// 不戦勝/不戦敗を集計から外す。
+	//
+	// この分析は「相手デッキが記録されている対戦」だけが対象で、入力画面は不戦を選ぶと
+	// 相手デッキ名を消すため、実際には上の opponents_deck_info != '' で既に落ちている
+	// (結果は変わらない)。それでも残しているのは、APIを直接叩けば不戦のまま相手デッキ名を
+	// 入れられるため。画面側に「不戦勝・不戦敗を除いて集計しています」と断りを出していないのは
+	// このため。母数に入りようが無いものを断ると、かえって入りうるように読めてしまう。
 	query = applyExcludeDefaultMatches(query, excludeDefaultMatches)
 
 	query = applyStatPeriod(query, period)

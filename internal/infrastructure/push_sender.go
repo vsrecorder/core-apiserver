@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 
@@ -17,6 +20,9 @@ import (
 // pushTTLSeconds はプッシュサービスが端末オフライン時にメッセージを保持する秒数。
 // 週次の想起なので1日持てば十分で、それ以上古い通知が翌日以降に突然届いても価値が無い。
 const pushTTLSeconds = 24 * 60 * 60
+
+// pushErrorBodyLimit は失敗時に読み取るレスポンス本文の上限。理由が分かれば十分なので短く切る。
+const pushErrorBodyLimit = 512
 
 var errPushSenderDisabled = errors.New("web push sender is disabled: VAPID keys are not configured")
 
@@ -105,8 +111,37 @@ func (s *WebPushSender) Send(
 		return 0, err
 	}
 	defer resp.Body.Close()
-	// レスポンス本文は使わないが、読み切らないと接続が再利用されない
+
+	// 失敗したときは本文を残す。プッシュサービスは拒否の理由を本文に入れてくるため
+	// (Apple は {"reason":"BadJwtToken"} のような JSON、FCM は短い文字列)、ここで捨てると
+	// 手掛かりが status code だけになり、鍵・subject・JWT のどれが悪いのか切り分けられない。
+	// 実際、iOS へ一通も届かない事故の調査で、403 の理由が分からず行き詰まった。
+	if resp.StatusCode >= http.StatusBadRequest {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, pushErrorBodyLimit))
+
+		slog.WarnContext(ctx, "push service rejected the notification",
+			slog.Int("status_code", resp.StatusCode),
+			slog.String("push_service", endpointHost(subscription.Endpoint)),
+			slog.String("platform", subscription.Platform),
+			slog.String("response_body", strings.TrimSpace(string(body))),
+		)
+
+		return resp.StatusCode, nil
+	}
+
+	// 成功時の本文に用は無いが、読み切らないと接続が再利用されない
 	_, _ = io.Copy(io.Discard, resp.Body)
 
 	return resp.StatusCode, nil
+}
+
+// endpointHost は endpoint からホスト名だけを取り出す。どのプッシュサービスが
+// 拒否したのかをログで見分けるために使う(endpoint 全体は購読の識別子なので出さない)。
+func endpointHost(endpoint string) string {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return ""
+	}
+
+	return u.Host
 }

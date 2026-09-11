@@ -1,10 +1,12 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdh"
 	"crypto/rand"
 	"encoding/base64"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -97,5 +99,33 @@ func TestWebPushSender(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, http.StatusGone, status)
+	})
+
+	// 拒否の理由はプッシュサービスが本文で返す。これを残さないと、403 が鍵・subject・JWT の
+	// どれによるものか切り分けられない(iOS へ一通も届かない事故の調査で実際に行き詰まった)
+	t.Run("正常系_拒否されたらレスポンス本文を理由としてログに残す", func(t *testing.T) {
+		privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+		require.NoError(t, err)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"reason":"BadJwtToken"}`))
+		}))
+		defer server.Close()
+
+		var logs bytes.Buffer
+		previous := slog.Default()
+		slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+		t.Cleanup(func() { slog.SetDefault(previous) })
+
+		s := NewWebPushSender(publicKey, privateKey, "mailto:test@example.com")
+
+		status, err := s.Send(context.Background(), newTestSubscription(t, server.URL+"/push"), &entity.PushPayload{Title: "t"})
+
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, status)
+		require.Contains(t, logs.String(), "BadJwtToken")
+		// どのプッシュサービスが拒否したのかも分かるようにする
+		require.Contains(t, logs.String(), "push_service")
 	})
 }

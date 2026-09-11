@@ -2686,11 +2686,17 @@ func TestIntegrationPushDeliveryHealth(t *testing.T) {
 		require.Equal(t, 403, ios.TopFailureStatusCode) // 403 が2件で最多
 		require.Zero(t, ios.SuccessRate())
 
+		// 期間内に成功が無ければ最後の成功はゼロ値。直した直後に「まだ配信が走っていない」
+		// ことを見分けるため、最後の配達は成功失敗によらず入る
+		require.False(t, ios.LastAttemptAt.IsZero())
+		require.True(t, ios.LastSentAt.IsZero())
+
 		android := byPlatform[entity.PushPlatformAndroid]
 		require.NotNil(t, android)
 		require.Equal(t, 3, android.Total) // 30日前の1件は入らない
 		require.Equal(t, 2, android.Sent)
 		require.Equal(t, 410, android.TopFailureStatusCode)
+		require.False(t, android.LastSentAt.IsZero())
 	})
 
 	t.Run("正常系_期間内に配達が無ければ空で返る", func(t *testing.T) {

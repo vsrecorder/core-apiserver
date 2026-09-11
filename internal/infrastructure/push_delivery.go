@@ -35,6 +35,8 @@ func (i *PushDelivery) AggregateHealthByPlatformSince(
 		Total                int
 		Sent                 int
 		TopFailureStatusCode int
+		LastAttemptAt        time.Time
+		LastSentAt           *time.Time
 	}
 
 	tx := dbFromContext(ctx, i.db).
@@ -47,8 +49,10 @@ func (i *PushDelivery) AggregateHealthByPlatformSince(
 				MODE() WITHIN GROUP (ORDER BY d.status_code)
 					FILTER (WHERE d.status <> ? AND d.status_code > 0),
 				0
-			) AS top_failure_status_code`,
-			entity.PushDeliveryStatusSent, entity.PushDeliveryStatusSent,
+			) AS top_failure_status_code,
+			MAX(d.created_at) AS last_attempt_at,
+			MAX(d.created_at) FILTER (WHERE d.status = ?) AS last_sent_at`,
+			entity.PushDeliveryStatusSent, entity.PushDeliveryStatusSent, entity.PushDeliveryStatusSent,
 		).
 		Joins("JOIN push_subscriptions AS s ON s.id = d.subscription_id").
 		Where("d.created_at >= ?", since).
@@ -62,12 +66,19 @@ func (i *PushDelivery) AggregateHealthByPlatformSince(
 
 	stats := make([]*entity.PushHealthStat, 0, len(rows))
 	for _, row := range rows {
-		stats = append(stats, &entity.PushHealthStat{
+		stat := &entity.PushHealthStat{
 			Platform:             row.Platform,
 			Total:                row.Total,
 			Sent:                 row.Sent,
 			TopFailureStatusCode: row.TopFailureStatusCode,
-		})
+			LastAttemptAt:        row.LastAttemptAt,
+		}
+		// 期間内に成功が1件も無ければ NULL が返る
+		if row.LastSentAt != nil {
+			stat.LastSentAt = *row.LastSentAt
+		}
+
+		stats = append(stats, stat)
 	}
 
 	return stats, nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +18,7 @@ func TestBuildSlackMessage(t *testing.T) {
 			{
 				Stat: &entity.PushHealthStat{
 					Platform: entity.PushPlatformIOSPWA, Total: 7, Sent: 0, TopFailureStatusCode: 403,
+					LastAttemptAt: time.Date(2026, 9, 11, 20, 0, 0, 0, time.Local),
 				},
 				Severity: usecase.PushHealthSeverityCritical,
 			},
@@ -28,6 +30,24 @@ func TestBuildSlackMessage(t *testing.T) {
 		require.Contains(t, message, "1件も届いていない")
 		require.Contains(t, message, "403")
 		require.Contains(t, message, "verify-vapid-keys")
+	})
+
+	// 直した直後は集計期間に古い失敗が残る。成功率だけでは「まだ配信が走っていない」のか
+	// 「直したのに失敗し続けている」のか区別できないため、最後の配達と成功を必ず載せる
+	t.Run("正常系_最後の配達と最後の成功を載せる", func(t *testing.T) {
+		message := buildSlackMessage(7, []*usecase.PushHealthProblem{
+			{
+				Stat: &entity.PushHealthStat{
+					Platform: entity.PushPlatformIOSPWA, Total: 20, Sent: 0, TopFailureStatusCode: 403,
+					LastAttemptAt: time.Date(2026, 9, 11, 20, 0, 0, 0, time.Local),
+				},
+				Severity: usecase.PushHealthSeverityCritical,
+			},
+		})
+
+		require.Contains(t, message, "最後の配達: 2026-09-11 20:00")
+		// 期間内に成功が無ければ「なし」
+		require.Contains(t, message, "最後の成功: なし")
 	})
 
 	t.Run("正常系_成功率が落ちただけなら全滅とは書かない", func(t *testing.T) {
@@ -73,4 +93,10 @@ func TestFormatRate(t *testing.T) {
 	require.Equal(t, "0%", formatRate(0))
 	require.Equal(t, "40%", formatRate(0.4))
 	require.Equal(t, "100%", formatRate(1))
+}
+
+func TestFormatTime(t *testing.T) {
+	require.Equal(t, "2026-09-11 20:00", formatTime(time.Date(2026, 9, 11, 20, 0, 0, 0, time.Local)))
+	// 一度も成功していない場合にゼロ値の日付を出しても読めないため
+	require.Equal(t, "なし", formatTime(time.Time{}))
 }

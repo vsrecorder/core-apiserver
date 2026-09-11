@@ -105,10 +105,13 @@ func main() {
 			slog.Int("sent", stat.Sent),
 			slog.String("success_rate", formatRate(stat.SuccessRate())),
 			slog.Int("top_failure_status_code", stat.TopFailureStatusCode),
+			slog.String("last_attempt_at", formatTime(stat.LastAttemptAt)),
+			slog.String("last_sent_at", formatTime(stat.LastSentAt)),
 		)
 		fmt.Printf(
-			"%-8s %4d/%-4d 成功 (%s) 最多の失敗=%d\n",
-			stat.Platform, stat.Sent, stat.Total, formatRate(stat.SuccessRate()), stat.TopFailureStatusCode,
+			"%-8s %4d/%-4d 成功 (%4s) 最多の失敗=%-3d 最後の配達=%s 最後の成功=%s\n",
+			stat.Platform, stat.Sent, stat.Total, formatRate(stat.SuccessRate()),
+			stat.TopFailureStatusCode, formatTime(stat.LastAttemptAt), formatTime(stat.LastSentAt),
 		)
 	}
 
@@ -129,6 +132,8 @@ func main() {
 			slog.Int("total", problem.Stat.Total),
 			slog.Int("sent", problem.Stat.Sent),
 			slog.Int("top_failure_status_code", problem.Stat.TopFailureStatusCode),
+			slog.String("last_attempt_at", formatTime(problem.Stat.LastAttemptAt)),
+			slog.String("last_sent_at", formatTime(problem.Stat.LastSentAt)),
 		)
 	}
 
@@ -149,6 +154,15 @@ func main() {
 
 func formatRate(rate float64) string {
 	return fmt.Sprintf("%.0f%%", rate*100)
+}
+
+// formatTime は日時を読みやすく整える。ゼロ値(一度も無い)は "なし" と出す。
+func formatTime(t time.Time) string {
+	if t.IsZero() {
+		return "なし"
+	}
+
+	return t.Format("2006-01-02 15:04")
 }
 
 // hintOf は失敗のステータスコードから、次に見るべき場所を示す。
@@ -194,10 +208,19 @@ func buildSlackMessage(days int, problems []*usecase.PushHealthProblem) string {
 				stat.TopFailureStatusCode, hintOf(stat.TopFailureStatusCode),
 			))
 		}
+
+		// 直した直後は集計期間に古い失敗が残るため、成功率だけでは回復を判断できない。
+		// 「最後の配達」が修正より前なら、まだ配信が走っていないだけと分かる
+		sb.WriteString(fmt.Sprintf(
+			"    最後の配達: %s / 最後の成功: %s\n",
+			formatTime(stat.LastAttemptAt), formatTime(stat.LastSentAt),
+		))
 	}
 
 	sb.WriteString("\nプッシュサービスによって VAPID の検証の厳しさが違うため、")
-	sb.WriteString("片方の platform だけ落ちることがあります。")
+	sb.WriteString("片方の platform だけ落ちることがあります。\n")
+	sb.WriteString("直した直後は、集計期間に残る古い失敗でしばらく鳴り続けます。")
+	sb.WriteString("「最後の配達」が対処より前なら、まだ配信が走っていないだけです。")
 
 	return sb.String()
 }

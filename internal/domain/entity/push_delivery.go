@@ -80,6 +80,13 @@ type PushHealthStat struct {
 	// TopFailureStatusCode は失敗のうち最も多かった HTTP ステータス。原因の当たりを付けるために持つ
 	// (403 なら VAPID、404/410 なら購読切れ)。失敗が無ければ 0。
 	TopFailureStatusCode int
+	// LastAttemptAt は最後に配達を試みた日時。
+	// 「直したのにまだ配信が走っていない」のか「直したはずなのに失敗し続けている」のかは、
+	// 成功率だけでは区別できない。修正の直後は集計期間に古い失敗が残るため、
+	// 最後の試行がいつかを見ないと判断できない。
+	LastAttemptAt time.Time
+	// LastSentAt は最後に配達が成功した日時。集計期間内に成功が無ければゼロ値。
+	LastSentAt time.Time
 }
 
 // SuccessRate は成功率(0〜1)を返す。配達が1件も無ければ 0。

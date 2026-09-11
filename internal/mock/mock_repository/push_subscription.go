@@ -56,6 +56,21 @@ func (mr *MockPushSubscriptionInterfaceMockRecorder) DeleteByUserId(ctx, uid any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockPushSubscriptionInterface)(nil).DeleteByUserId), ctx, uid)
 }
 
+// FindByEndpoint mocks base method.
+func (m *MockPushSubscriptionInterface) FindByEndpoint(ctx context.Context, endpoint string) (*entity.PushSubscription, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByEndpoint", ctx, endpoint)
+	ret0, _ := ret[0].(*entity.PushSubscription)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByEndpoint indicates an expected call of FindByEndpoint.
+func (mr *MockPushSubscriptionInterfaceMockRecorder) FindByEndpoint(ctx, endpoint any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByEndpoint", reflect.TypeOf((*MockPushSubscriptionInterface)(nil).FindByEndpoint), ctx, endpoint)
+}
+
 // FindLiveByUserId mocks base method.
 func (m *MockPushSubscriptionInterface) FindLiveByUserId(ctx context.Context, userId string) ([]*entity.PushSubscription, error) {
 	m.ctrl.T.Helper()

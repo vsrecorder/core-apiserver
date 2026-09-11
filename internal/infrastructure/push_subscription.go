@@ -105,6 +105,22 @@ func (i *PushSubscription) FindLiveByUserId(
 	return entities, nil
 }
 
+// FindByEndpoint は endpoint で購読を1件返す。endpoint には UNIQUE 制約があるため高々1件。
+// 失効済みも返すのが FindLiveByUserId との違い。
+func (i *PushSubscription) FindByEndpoint(
+	ctx context.Context,
+	endpoint string,
+) (*entity.PushSubscription, error) {
+	var m model.PushSubscription
+
+	if tx := dbFromContext(ctx, i.db).Where("endpoint = ?", endpoint).First(&m); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, wrapError(tx.Error)
+	}
+
+	return newPushSubscriptionEntity(&m), nil
+}
+
 func (i *PushSubscription) RevokeByUserIdAndEndpoint(
 	ctx context.Context,
 	userId string,

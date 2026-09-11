@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -15,6 +16,11 @@ const pushSubscriptionsPerUserLimit = 10
 
 type PushSubscriptionInterface interface {
 	// Subscribe は端末の購読を登録する。同じ endpoint なら更新(再購読・持ち主の変更)。
+	//
+	// 戻り値の wasRevoked は「その endpoint が失効済みとして残っていた」ことを表す。
+	// 配信側が 404/410 や連続失敗で失効させた購読は、同じ endpoint で登録し直しても
+	// 大抵そのまま死んでいる。端末側はこれを手掛かりに購読を作り直す
+	// (端末には購読オブジェクトが残るため、端末だけでは失効に気付けない)。
 	Subscribe(
 		ctx context.Context,
 		userId string,
@@ -22,7 +28,7 @@ type PushSubscriptionInterface interface {
 		p256dh string,
 		auth string,
 		platform string,
-	) error
+	) (wasRevoked bool, err error)
 
 	// Unsubscribe は本人の購読を解除する。既に解除済みでもエラーにしない。
 	Unsubscribe(
@@ -49,20 +55,30 @@ func (u *PushSubscription) Subscribe(
 	p256dh string,
 	auth string,
 	platform string,
-) error {
+) (bool, error) {
 	live, err := u.repository.FindLiveByUserId(ctx, userId)
 	if err != nil {
 		logError(ctx, err)
-		return err
+		return false, err
 	}
 	if len(live) >= pushSubscriptionsPerUserLimit && !hasEndpoint(live, endpoint) {
-		return apperror.ErrTooManyPushSubscriptions
+		return false, apperror.ErrTooManyPushSubscriptions
+	}
+
+	// Upsert は revoked_at を消して復活させてしまうため、失効していたかは先に見る。
+	// 見つからない(初めての購読)はここでは失敗にしない。
+	wasRevoked := false
+	if previous, err := u.repository.FindByEndpoint(ctx, endpoint); err == nil {
+		wasRevoked = !previous.RevokedAt.IsZero()
+	} else if !errors.Is(err, apperror.ErrRecordNotFound) {
+		logError(ctx, err)
+		return false, err
 	}
 
 	id, err := generateId()
 	if err != nil {
 		logError(ctx, err)
-		return err
+		return false, err
 	}
 
 	subscription := entity.NewPushSubscription(
@@ -77,10 +93,10 @@ func (u *PushSubscription) Subscribe(
 
 	if err := u.repository.Upsert(ctx, subscription); err != nil {
 		logError(ctx, err)
-		return err
+		return false, err
 	}
 
-	return nil
+	return wasRevoked, nil
 }
 
 func (u *PushSubscription) Unsubscribe(

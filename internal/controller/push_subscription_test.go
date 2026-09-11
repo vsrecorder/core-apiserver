@@ -55,34 +55,49 @@ func TestPushSubscriptionController(t *testing.T) {
 	endpoint := "https://fcm.googleapis.com/fcm/send/abc"
 
 	t.Run("Subscribe", func(t *testing.T) {
-		t.Run("正常系_購読をユースケースへ渡して204を返す", func(t *testing.T) {
+		t.Run("正常系_購読をユースケースへ渡して200とwas_revokedを返す", func(t *testing.T) {
 			c, mockUsecase, secretKey := setup4TestPushSubscriptionController(t)
 
-			mockUsecase.EXPECT().Subscribe(gomock.Any(), uid, endpoint, "p256dh-key", "auth-key", entity.PushPlatformAndroid).Return(nil)
+			mockUsecase.EXPECT().Subscribe(gomock.Any(), uid, endpoint, "p256dh-key", "auth-key", entity.PushPlatformAndroid).Return(false, nil)
 
 			body := `{"endpoint":"` + endpoint + `","keys":{"p256dh":"p256dh-key","auth":"auth-key"},"platform":"android"}`
 			w := httptest.NewRecorder()
 			c.router.ServeHTTP(w, newPushSubscriptionRequest(t, "POST", body, uid, secretKey))
 
-			require.Equal(t, http.StatusNoContent, w.Code)
+			require.Equal(t, http.StatusOK, w.Code)
+			require.JSONEq(t, `{"was_revoked":false}`, w.Body.String())
+		})
+
+		// 端末は購読オブジェクトを持ったままなので、失効していたことはサーバから伝えるしかない
+		t.Run("正常系_失効していた購読の再登録ではwas_revokedにtrueを返す", func(t *testing.T) {
+			c, mockUsecase, secretKey := setup4TestPushSubscriptionController(t)
+
+			mockUsecase.EXPECT().Subscribe(gomock.Any(), uid, endpoint, "p256dh-key", "auth-key", entity.PushPlatformAndroid).Return(true, nil)
+
+			body := `{"endpoint":"` + endpoint + `","keys":{"p256dh":"p256dh-key","auth":"auth-key"},"platform":"android"}`
+			w := httptest.NewRecorder()
+			c.router.ServeHTTP(w, newPushSubscriptionRequest(t, "POST", body, uid, secretKey))
+
+			require.Equal(t, http.StatusOK, w.Code)
+			require.JSONEq(t, `{"was_revoked":true}`, w.Body.String())
 		})
 
 		t.Run("正常系_未知のplatformは空文字に丸めて受け付ける", func(t *testing.T) {
 			c, mockUsecase, secretKey := setup4TestPushSubscriptionController(t)
 
-			mockUsecase.EXPECT().Subscribe(gomock.Any(), uid, endpoint, "p256dh-key", "auth-key", "").Return(nil)
+			mockUsecase.EXPECT().Subscribe(gomock.Any(), uid, endpoint, "p256dh-key", "auth-key", "").Return(false, nil)
 
 			body := `{"endpoint":"` + endpoint + `","keys":{"p256dh":"p256dh-key","auth":"auth-key"},"platform":"smart-fridge"}`
 			w := httptest.NewRecorder()
 			c.router.ServeHTTP(w, newPushSubscriptionRequest(t, "POST", body, uid, secretKey))
 
-			require.Equal(t, http.StatusNoContent, w.Code)
+			require.Equal(t, http.StatusOK, w.Code)
 		})
 
 		t.Run("異常系_購読数が上限ならErrTooManyPushSubscriptionsから409を返す", func(t *testing.T) {
 			c, mockUsecase, secretKey := setup4TestPushSubscriptionController(t)
 
-			mockUsecase.EXPECT().Subscribe(gomock.Any(), uid, endpoint, "p256dh-key", "auth-key", "").Return(apperror.ErrTooManyPushSubscriptions)
+			mockUsecase.EXPECT().Subscribe(gomock.Any(), uid, endpoint, "p256dh-key", "auth-key", "").Return(false, apperror.ErrTooManyPushSubscriptions)
 
 			body := `{"endpoint":"` + endpoint + `","keys":{"p256dh":"p256dh-key","auth":"auth-key"}}`
 			w := httptest.NewRecorder()

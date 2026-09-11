@@ -17,6 +17,14 @@ type PushSubscriptionInterface interface {
 		entity *entity.PushSubscription,
 	) error
 
+	// FindByEndpoint は endpoint で購読を1件返す。失効済み(revoked_at あり)も返す。
+	// 再購読が「復活」なのか「初めての登録」なのかを見分けるために使う。
+	// 見つからなければ apperror.ErrRecordNotFound を返す。
+	FindByEndpoint(
+		ctx context.Context,
+		endpoint string,
+	) (*entity.PushSubscription, error)
+
 	// FindLiveByUserId は解除・失効していない購読を作成順に返す。
 	FindLiveByUserId(
 		ctx context.Context,

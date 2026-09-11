@@ -24,6 +24,7 @@ func TestPushSubscriptionUsecase(t *testing.T) {
 		u := NewPushSubscription(repo)
 
 		repo.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		repo.EXPECT().FindByEndpoint(gomock.Any(), "https://push.example.com/1").Return(nil, apperror.ErrRecordNotFound)
 		var saved *entity.PushSubscription
 		repo.EXPECT().Upsert(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(_ context.Context, s *entity.PushSubscription) error {
@@ -32,9 +33,10 @@ func TestPushSubscriptionUsecase(t *testing.T) {
 			},
 		)
 
-		err := u.Subscribe(context.Background(), "user-1", "https://push.example.com/1", "p256dh", "auth", "unknown-platform")
+		wasRevoked, err := u.Subscribe(context.Background(), "user-1", "https://push.example.com/1", "p256dh", "auth", "unknown-platform")
 
 		require.NoError(t, err)
+		require.False(t, wasRevoked) // 初めての購読は「復活」ではない
 		require.NotEmpty(t, saved.ID)
 		require.Equal(t, now, saved.CreatedAt)
 		require.Equal(t, "user-1", saved.UserId)
@@ -48,9 +50,12 @@ func TestPushSubscriptionUsecase(t *testing.T) {
 		u := NewPushSubscription(repo)
 
 		repo.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		repo.EXPECT().FindByEndpoint(gomock.Any(), "https://push.example.com/1").Return(nil, apperror.ErrRecordNotFound)
 		repo.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(errors.New("db down"))
 
-		require.Error(t, u.Subscribe(context.Background(), "user-1", "https://push.example.com/1", "p", "a", entity.PushPlatformDesktop))
+		_, err := u.Subscribe(context.Background(), "user-1", "https://push.example.com/1", "p", "a", entity.PushPlatformDesktop)
+
+		require.Error(t, err)
 	})
 
 	t.Run("Subscribe_異常系_生きている購読が上限に達していれば新しいendpointは受け付けない", func(t *testing.T) {
@@ -65,7 +70,7 @@ func TestPushSubscriptionUsecase(t *testing.T) {
 		repo.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(live, nil)
 		// Upsert は呼ばれない
 
-		err := u.Subscribe(context.Background(), "user-1", "https://push.example.com/new", "p", "a", entity.PushPlatformDesktop)
+		_, err := u.Subscribe(context.Background(), "user-1", "https://push.example.com/new", "p", "a", entity.PushPlatformDesktop)
 
 		require.ErrorIs(t, err, apperror.ErrTooManyPushSubscriptions)
 	})
@@ -81,9 +86,52 @@ func TestPushSubscriptionUsecase(t *testing.T) {
 			live = append(live, entity.NewPushSubscription("s", now, "user-1", "https://push.example.com/"+string(rune('a'+i)), "p", "a", ""))
 		}
 		repo.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(live, nil)
+		repo.EXPECT().FindByEndpoint(gomock.Any(), "https://push.example.com/a").Return(live[0], nil)
 		repo.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(nil)
 
-		require.NoError(t, u.Subscribe(context.Background(), "user-1", "https://push.example.com/a", "p", "a", entity.PushPlatformDesktop))
+		_, err := u.Subscribe(context.Background(), "user-1", "https://push.example.com/a", "p", "a", entity.PushPlatformDesktop)
+
+		require.NoError(t, err)
+	})
+
+	// Upsert は revoked_at を消して購読を復活させてしまうため、失効していた事実は
+	// ここで返さないと端末へ伝わらない。端末には購読オブジェクトが残っていて、
+	// 端末側だけでは「サーバから失効させられた」ことに気付けない
+	t.Run("Subscribe_正常系_失効していたendpointの再購読ではwasRevokedがtrueになる", func(t *testing.T) {
+		overrideTimeNow(t, now)
+		mockCtrl := gomock.NewController(t)
+		repo := mock_repository.NewMockPushSubscriptionInterface(mockCtrl)
+		u := NewPushSubscription(repo)
+
+		revoked := entity.NewPushSubscription("s", now, "user-1", "https://push.example.com/1", "p", "a", "")
+		revoked.RevokedAt = now
+
+		repo.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		repo.EXPECT().FindByEndpoint(gomock.Any(), "https://push.example.com/1").Return(revoked, nil)
+		repo.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(nil)
+
+		wasRevoked, err := u.Subscribe(context.Background(), "user-1", "https://push.example.com/1", "p", "a", entity.PushPlatformDesktop)
+
+		require.NoError(t, err)
+		require.True(t, wasRevoked)
+	})
+
+	t.Run("Subscribe_正常系_生きているendpointの再購読ではwasRevokedはfalse", func(t *testing.T) {
+		overrideTimeNow(t, now)
+		mockCtrl := gomock.NewController(t)
+		repo := mock_repository.NewMockPushSubscriptionInterface(mockCtrl)
+		u := NewPushSubscription(repo)
+
+		alive := entity.NewPushSubscription("s", now, "user-1", "https://push.example.com/1", "p", "a", "")
+
+		repo.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(nil, nil)
+		repo.EXPECT().FindByEndpoint(gomock.Any(), "https://push.example.com/1").Return(alive, nil)
+		repo.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(nil)
+
+		wasRevoked, err := u.Subscribe(context.Background(), "user-1", "https://push.example.com/1", "p", "a", entity.PushPlatformDesktop)
+
+		require.NoError(t, err)
+		require.False(t, wasRevoked)
 	})
 
 	t.Run("Unsubscribe_正常系_本人のendpointを現在時刻で解除する", func(t *testing.T) {

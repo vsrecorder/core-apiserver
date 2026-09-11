@@ -46,14 +46,15 @@ func main() {
 		AppName: appName,
 	}))
 
-	targetUserId := flag.String("user-id", "", "送信先のユーザーID(必須)")
+	targetUserId := flag.String("user-id", "", "送信先のユーザーID(生きている購読すべてに送る)")
+	targetEndpoint := flag.String("endpoint", "", "送信先の endpoint(失効済みの購読にも送る。-user-id と排他)")
 	title := flag.String("title", "テスト送信", "通知のタイトル")
 	body := flag.String("body", "プッシュ通知の到達確認です", "通知の本文")
 	flag.Parse()
 
 	// 全ユーザーへ一斉にテスト通知を投げてしまわないよう、対象の指定を必須にする。
-	if *targetUserId == "" {
-		slog.Error("-user-id is required")
+	if (*targetUserId == "") == (*targetEndpoint == "") {
+		slog.Error("-user-id か -endpoint のどちらか一方を指定する")
 		os.Exit(ExitCodeNG)
 	}
 
@@ -86,18 +87,42 @@ func main() {
 
 	ctx := context.Background()
 
-	subscriptions, err := infrastructure.NewPushSubscription(db).FindLiveByUserId(ctx, *targetUserId)
-	if err != nil {
-		slog.Error("failed to find live subscriptions", slog.String("user_id", *targetUserId), logging.Err(err))
-		os.Exit(ExitCodeNG)
+	repository := infrastructure.NewPushSubscription(db)
+
+	var subscriptions []*entity.PushSubscription
+
+	if *targetEndpoint != "" {
+		// endpoint 指定は失効済みの購読にも送る。配信側が失効させた購読が本当に
+		// 死んでいるのか、それともサーバ側の不具合で失効させただけなのかは、
+		// 実際に送ってみないと分からない(失効を解除する前に確かめられるようにする)。
+		subscription, err := repository.FindByEndpoint(ctx, *targetEndpoint)
+		if err != nil {
+			slog.Error("failed to find the subscription", logging.Err(err))
+			os.Exit(ExitCodeNG)
+		}
+
+		subscriptions = []*entity.PushSubscription{subscription}
+	} else {
+		subscriptions, err = repository.FindLiveByUserId(ctx, *targetUserId)
+		if err != nil {
+			slog.Error("failed to find live subscriptions", slog.String("user_id", *targetUserId), logging.Err(err))
+			os.Exit(ExitCodeNG)
+		}
 	}
+
 	if len(subscriptions) == 0 {
 		slog.Warn("no live subscription", slog.String("user_id", *targetUserId))
 		os.Exit(ExitCodeOK)
 	}
 
+	// endpoint 指定では -user-id が空なので、購読の持ち主をログに出す
+	userId := *targetUserId
+	if userId == "" {
+		userId = subscriptions[0].UserId
+	}
+
 	slog.Info("sending test push",
-		slog.String("user_id", *targetUserId),
+		slog.String("user_id", userId),
 		slog.Int("subscriptions", len(subscriptions)),
 	)
 
@@ -125,11 +150,16 @@ func main() {
 			failed++
 		}
 
-		fmt.Printf("subscription=%s platform=%-8s status=%d\n", subscription.ID, subscription.Platform, status)
+		revoked := ""
+		if !subscription.RevokedAt.IsZero() {
+			revoked = " (revoked)"
+		}
+
+		fmt.Printf("subscription=%s platform=%-8s status=%d%s\n", subscription.ID, subscription.Platform, status, revoked)
 	}
 
 	slog.Info("completed",
-		slog.String("user_id", *targetUserId),
+		slog.String("user_id", userId),
 		slog.Int("subscriptions", len(subscriptions)),
 		slog.Int("failed", failed),
 	)

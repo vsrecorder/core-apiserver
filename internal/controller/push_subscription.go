@@ -8,6 +8,7 @@ import (
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
+	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
@@ -51,7 +52,8 @@ func (c *PushSubscription) Subscribe(ctx *gin.Context) {
 	uid := helper.GetUID(ctx)
 	req := helper.GetPushSubscriptionCreateRequest(ctx)
 
-	if err := c.usecase.Subscribe(ctx.Request.Context(), uid, req.Endpoint, req.Keys.P256dh, req.Keys.Auth, req.Platform); err != nil {
+	wasRevoked, err := c.usecase.Subscribe(ctx.Request.Context(), uid, req.Endpoint, req.Keys.P256dh, req.Keys.Auth, req.Platform)
+	if err != nil {
 		if errors.Is(err, apperror.ErrTooManyPushSubscriptions) {
 			apierror.ErrTooManyPushSubscriptions.JSON(ctx, err)
 			return
@@ -61,8 +63,9 @@ func (c *PushSubscription) Subscribe(ctx *gin.Context) {
 		return
 	}
 
-	// 返す情報はない(購読IDはクライアントに不要。端末側は endpoint で自分を識別する)
-	ctx.Status(http.StatusNoContent)
+	// 購読IDは返さない(端末側は endpoint で自分を識別する)。
+	// 失効していたかだけを返し、端末が購読を作り直せるようにする
+	ctx.JSON(http.StatusOK, dto.PushSubscriptionCreateResponse{WasRevoked: wasRevoked})
 }
 
 func (c *PushSubscription) Unsubscribe(ctx *gin.Context) {

@@ -41,11 +41,12 @@ func (m *MockPushSubscriptionInterface) EXPECT() *MockPushSubscriptionInterfaceM
 }
 
 // Subscribe mocks base method.
-func (m *MockPushSubscriptionInterface) Subscribe(ctx context.Context, userId, endpoint, p256dh, auth, platform string) error {
+func (m *MockPushSubscriptionInterface) Subscribe(ctx context.Context, userId, endpoint, p256dh, auth, platform string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Subscribe", ctx, userId, endpoint, p256dh, auth, platform)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Subscribe indicates an expected call of Subscribe.

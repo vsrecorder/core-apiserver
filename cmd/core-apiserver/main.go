@@ -57,9 +57,16 @@ const (
  * が終わらず、コンテナ自体は正常なのにデプロイが止まってしまう。
  */
 func runHealthCheck() int {
+	return runHealthCheckAt(listenPort)
+}
+
+// runHealthCheckAt は指定したポートの /health を叩く。
+// ポートを引数にしているのは、テストが実際に待ち受けているサービスと衝突しないよう
+// 空きポートを指せるようにするため(固定ポートだと、同じ機械で本体が動いているだけで落ちる)。
+func runHealthCheckAt(port string) int {
 	client := &http.Client{Timeout: 3 * time.Second}
 
-	res, err := client.Get("http://127.0.0.1:" + listenPort + healthPath)
+	res, err := client.Get("http://127.0.0.1:" + port + healthPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "health check failed:", err)
 		return ExitCodeNG

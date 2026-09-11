@@ -2623,3 +2623,80 @@ func TestIntegrationOfficialEventEnvironment(t *testing.T) {
 		require.Equal(t, 2, stat.TotalMatches)
 	})
 }
+
+// push の配達状況の集計を実DBで確かめる。
+//
+// FILTER 句と MODE() WITHIN GROUP は PostgreSQL 固有の構文で、sqlmock ではSQL文字列の
+// 一致しか見られず、実際に評価できるかは分からない。集計を間違えると
+// 「iOS だけ全滅している」を見逃すことになるため、実DBで確かめる。
+func TestIntegrationPushDeliveryHealth(t *testing.T) {
+	db := setupIntegrationDB(t, "push_deliveries", "push_subscriptions")
+	r := NewPushDelivery(db)
+	subscriptionRepository := NewPushSubscription(db)
+
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	// platform ごとに購読を作る。ios は全滅、android は一部失敗という状況を作る
+	newSubscription := func(t *testing.T, id string, endpoint string, platform string) {
+		t.Helper()
+
+		require.NoError(t, subscriptionRepository.Upsert(
+			context.Background(),
+			entity.NewPushSubscription(id, now, uid, endpoint, "p256dh", "auth", platform),
+		))
+	}
+
+	newDelivery := func(t *testing.T, id string, subscriptionId string, status string, statusCode int, createdAt time.Time) {
+		t.Helper()
+
+		require.NoError(t, r.Save(
+			context.Background(),
+			entity.NewPushDelivery(id, createdAt, uid, subscriptionId, "notification-1", "weekly_report", status, statusCode),
+		))
+	}
+
+	newSubscription(t, "01HD7Y3K8D6FDHMHTZ2GT41S01", "https://web.push.apple.com/ios-1", entity.PushPlatformIOSPWA)
+	newSubscription(t, "01HD7Y3K8D6FDHMHTZ2GT41S02", "https://fcm.googleapis.com/fcm/send/android-1", entity.PushPlatformAndroid)
+
+	// ios: 3件すべて 403 で失敗
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D01", "01HD7Y3K8D6FDHMHTZ2GT41S01", entity.PushDeliveryStatusFailed, 403, now)
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D02", "01HD7Y3K8D6FDHMHTZ2GT41S01", entity.PushDeliveryStatusFailed, 403, now)
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D03", "01HD7Y3K8D6FDHMHTZ2GT41S01", entity.PushDeliveryStatusExpired, 410, now)
+	// android: 3件中2件成功
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D04", "01HD7Y3K8D6FDHMHTZ2GT41S02", entity.PushDeliveryStatusSent, 201, now)
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D05", "01HD7Y3K8D6FDHMHTZ2GT41S02", entity.PushDeliveryStatusSent, 201, now)
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D06", "01HD7Y3K8D6FDHMHTZ2GT41S02", entity.PushDeliveryStatusFailed, 410, now)
+	// 期間外。集計に混ざってはいけない
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D07", "01HD7Y3K8D6FDHMHTZ2GT41S02", entity.PushDeliveryStatusSent, 201, now.AddDate(0, 0, -30))
+
+	t.Run("正常系_platform別に成功数と最多の失敗コードを集計する", func(t *testing.T) {
+		stats, err := r.AggregateHealthByPlatformSince(context.Background(), now.AddDate(0, 0, -7))
+		require.NoError(t, err)
+
+		byPlatform := map[string]*entity.PushHealthStat{}
+		for _, stat := range stats {
+			byPlatform[stat.Platform] = stat
+		}
+
+		ios := byPlatform[entity.PushPlatformIOSPWA]
+		require.NotNil(t, ios)
+		require.Equal(t, 3, ios.Total)
+		require.Equal(t, 0, ios.Sent)
+		require.Equal(t, 403, ios.TopFailureStatusCode) // 403 が2件で最多
+		require.Zero(t, ios.SuccessRate())
+
+		android := byPlatform[entity.PushPlatformAndroid]
+		require.NotNil(t, android)
+		require.Equal(t, 3, android.Total) // 30日前の1件は入らない
+		require.Equal(t, 2, android.Sent)
+		require.Equal(t, 410, android.TopFailureStatusCode)
+	})
+
+	t.Run("正常系_期間内に配達が無ければ空で返る", func(t *testing.T) {
+		stats, err := r.AggregateHealthByPlatformSince(context.Background(), now.AddDate(0, 0, 1))
+
+		require.NoError(t, err)
+		require.Empty(t, stats)
+	})
+}

@@ -8,6 +8,13 @@ import (
 )
 
 type PushDeliveryInterface interface {
+	// AggregateHealthByPlatformSince は since 以降の配達結果を platform 別に集計する。
+	// 配達が1件も無い platform は返らない。
+	AggregateHealthByPlatformSince(
+		ctx context.Context,
+		since time.Time,
+	) ([]*entity.PushHealthStat, error)
+
 	Save(
 		ctx context.Context,
 		entity *entity.PushDelivery,

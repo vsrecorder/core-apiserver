@@ -73,9 +73,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -88,10 +86,10 @@ import (
 	"google.golang.org/api/option"
 	"gorm.io/gorm"
 
-	"github.com/vsrecorder/core-apiserver/internal/httpclient"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 	"github.com/vsrecorder/core-apiserver/internal/logging"
+	"github.com/vsrecorder/core-apiserver/internal/slack"
 )
 
 const appName = "check-firebase-users"
@@ -203,7 +201,7 @@ func main() {
 	if *notifySlack && hasDiff {
 		message := buildSlackMessage(firebaseOnly, dbOnly, dbUsers, firebaseUsers)
 
-		if err := notifyToSlack(slackWebhookURL, message); err != nil {
+		if err := slack.Notify(slackWebhookURL, message); err != nil {
 			slog.Error("failed to notify to slack", logging.Err(err))
 			notifyFailed = true
 		} else {
@@ -526,30 +524,4 @@ func countPurgedDBUsers(dbUsers map[string]*dbUser) int {
 	}
 
 	return count
-}
-
-// notifyToSlack は incoming webhook へメッセージを投稿する。
-// タイムアウトの無い http.DefaultClient を使うと、Slackが応答しないときにバッチが
-// 終わらず次回起動と重なるため、必ず internal/httpclient を経由する。
-func notifyToSlack(webhookURL string, message string) error {
-	payload, err := json.Marshal(struct {
-		Text string `json:"text"`
-	}{Text: message})
-	if err != nil {
-		return err
-	}
-
-	resp, err := httpclient.PostJSON(webhookURL, payload)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// Slackは失敗理由を "invalid_payload" のようにボディへ入れて返すため、原因調査用に読み取る
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("slack webhook returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
-
-	return nil
 }

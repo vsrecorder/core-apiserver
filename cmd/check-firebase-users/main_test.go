@@ -1,11 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -135,58 +131,6 @@ func TestBuildSlackMessage(t *testing.T) {
 		assert.Contains(t, message, "`uid_19`")
 		assert.NotContains(t, message, "`uid_20`")
 		assert.Contains(t, message, "...他 3 件")
-	})
-}
-
-func TestNotifyToSlack(t *testing.T) {
-	t.Run("正常系_JSONのtextとして送信される", func(t *testing.T) {
-		var (
-			gotContentType string
-			gotBody        []byte
-		)
-
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			gotContentType = r.Header.Get("Content-Type")
-			gotBody, _ = io.ReadAll(r.Body)
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("ok"))
-		}))
-		defer server.Close()
-
-		err := notifyToSlack(server.URL, "差異があります")
-
-		assert.NoError(t, err)
-		assert.Equal(t, "application/json", gotContentType)
-
-		var payload struct {
-			Text string `json:"text"`
-		}
-		assert.NoError(t, json.Unmarshal(gotBody, &payload))
-		assert.Equal(t, "差異があります", payload.Text)
-	})
-
-	t.Run("異常系_200以外はボディを添えてエラーを返す", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("invalid_payload"))
-		}))
-		defer server.Close()
-
-		err := notifyToSlack(server.URL, "差異があります")
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "400")
-		assert.Contains(t, err.Error(), "invalid_payload")
-	})
-
-	t.Run("異常系_送信先へ到達できなければエラーを返す", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-		url := server.URL
-		server.Close()
-
-		err := notifyToSlack(url, "差異があります")
-
-		assert.Error(t, err)
 	})
 }
 

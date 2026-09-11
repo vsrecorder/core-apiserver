@@ -42,6 +42,21 @@ func (m *MockPushDeliveryInterface) EXPECT() *MockPushDeliveryInterfaceMockRecor
 	return m.recorder
 }
 
+// AggregateHealthByPlatformSince mocks base method.
+func (m *MockPushDeliveryInterface) AggregateHealthByPlatformSince(ctx context.Context, since time.Time) ([]*entity.PushHealthStat, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AggregateHealthByPlatformSince", ctx, since)
+	ret0, _ := ret[0].([]*entity.PushHealthStat)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AggregateHealthByPlatformSince indicates an expected call of AggregateHealthByPlatformSince.
+func (mr *MockPushDeliveryInterfaceMockRecorder) AggregateHealthByPlatformSince(ctx, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AggregateHealthByPlatformSince", reflect.TypeOf((*MockPushDeliveryInterface)(nil).AggregateHealthByPlatformSince), ctx, since)
+}
+
 // CountNotificationsByUserIdAndCampaignsSince mocks base method.
 func (m *MockPushDeliveryInterface) CountNotificationsByUserIdAndCampaignsSince(ctx context.Context, userId string, campaigns []string, since time.Time) (int, error) {
 	m.ctrl.T.Helper()

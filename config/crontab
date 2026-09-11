@@ -102,3 +102,22 @@ CRON_TZ=Asia/Tokyo
 # flock -n は Firebase の全件取得が30分に収まらなかったときの多重起動を防ぐ。
 # 30分ごと — FirebaseとDBのユーザー突合(差異があればSlackへ通知)
 */30 * * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-check-firebase-users.lock /home/ubuntu/vsrecorder/core-apiserver/bin/check-firebase-users -notify-slack >> /var/log/vsrecorder/check-firebase-users.log 2>&1
+
+# ── push が届いているかの点検(cmd/check-push-health)──
+# 毎日 22:00 JST。直近7日の push_deliveries を platform 別に集計し、成功が1件も無い
+# platform があれば Slack へ通知する。読み取り専用で、送信も購読の更新も行わない。
+#
+# push の失敗は静かに起きる。配信バッチは送出に失敗しても通知は残す設計(D2)なので
+# バッチのログは正常に見え、アプリ内通知も普通に増える。さらにプッシュサービスごとに
+# VAPID の検証の厳しさが違い、Apple は JWT を厳密に見るのに対して FCM のレガシー endpoint は
+# 署名を検証せずに 201 を返す。そのため設定を1つ間違えると「Android は成功しているのに
+# iOS だけ一通も届かない」という壊れ方をする。実際に VAPID の subject が二重の mailto: に
+# なっていた時期、iOS への配信が11日間全滅していたのに気付けなかった。
+# 全体の成功率では Android の成功に薄まって見えるため、platform 別に見る必要がある。
+#
+# 21:00 のいいね通知の後に置いて、その日の配信結果まで含めて点検する。
+# 直近7日を見るので、1日動かなくても取りこぼさない。
+# 通知先の webhook URL は .env の SLACK_WEBHOOK_URL から読む(check-firebase-users と同じ)。
+# 異常が続いている間は毎日再通知される。
+# 毎日 22:00 — push の配達状況を点検(全滅している platform があればSlackへ通知)
+0 22 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-check-push-health.lock /home/ubuntu/vsrecorder/core-apiserver/bin/check-push-health -notify-slack >> /var/log/vsrecorder/check-push-health.log 2>&1

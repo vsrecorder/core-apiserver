@@ -22,6 +22,57 @@ func NewPushDelivery(
 	return &PushDelivery{db}
 }
 
+// AggregateHealthByPlatformSince は since 以降の配達結果を platform 別に集計する。
+//
+// status='sent' を成功として数え、失敗のうち最も多いステータスコードも返す。
+// platform は push_subscriptions 側にしか無いので join する。
+func (i *PushDelivery) AggregateHealthByPlatformSince(
+	ctx context.Context,
+	since time.Time,
+) ([]*entity.PushHealthStat, error) {
+	var rows []struct {
+		Platform             string
+		Total                int
+		Sent                 int
+		TopFailureStatusCode int
+	}
+
+	tx := dbFromContext(ctx, i.db).
+		Table("push_deliveries AS d").
+		Select(`
+			s.platform AS platform,
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE d.status = ?) AS sent,
+			COALESCE(
+				MODE() WITHIN GROUP (ORDER BY d.status_code)
+					FILTER (WHERE d.status <> ? AND d.status_code > 0),
+				0
+			) AS top_failure_status_code`,
+			entity.PushDeliveryStatusSent, entity.PushDeliveryStatusSent,
+		).
+		Joins("JOIN push_subscriptions AS s ON s.id = d.subscription_id").
+		Where("d.created_at >= ?", since).
+		Group("s.platform").
+		Order("s.platform").
+		Scan(&rows)
+	if tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, wrapError(tx.Error)
+	}
+
+	stats := make([]*entity.PushHealthStat, 0, len(rows))
+	for _, row := range rows {
+		stats = append(stats, &entity.PushHealthStat{
+			Platform:             row.Platform,
+			Total:                row.Total,
+			Sent:                 row.Sent,
+			TopFailureStatusCode: row.TopFailureStatusCode,
+		})
+	}
+
+	return stats, nil
+}
+
 func newPushDeliveryEntity(m *model.PushDelivery) *entity.PushDelivery {
 	e := entity.NewPushDelivery(
 		m.ID,

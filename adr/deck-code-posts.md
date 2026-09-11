@@ -101,7 +101,7 @@ webapp がティアから導出する。
 ## いいねの通知
 
 いいねのたびに通知すると人気の投稿ほど連打になるため、`cmd/notify-deck-code-post-likes` が
-毎朝(config/crontab、08:00 JST)前日分を投稿ごとに1通にまとめて投稿者へ通知する(カテゴリ `like`、
+毎日(config/crontab、21:00 JST)前日分を投稿ごとに1通にまとめて投稿者へ通知する(カテゴリ `like`、
 アプリ内通知 + push)。文面は「◯◯さんほかN人が「デッキ名」にいいねしました」の定型で、
 投稿者自身のいいねは数えない。同じ投稿・同じ日の二重送信は `link_url`(`/shared_decks/{id}?d=YYYY-MM-DD`)を
 キーに `ExistsByUserIdAndCategoryAndLinkUrl` で防ぐ。`-user-id` で投稿者を絞れる(既定は dry-run)。

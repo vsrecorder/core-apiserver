@@ -86,7 +86,7 @@ func TestDeckCodePostAutoLiker(t *testing.T) {
 
 		count, err := autoLiker.LikeUnliked(context.Background(), "", time.Time{}, 200, false)
 
-		require.ErrorIs(t, err, ErrAutoLikerUserIdEmpty)
+		require.ErrorIs(t, err, errAutoLikerUserIdEmpty)
 		require.Equal(t, 0, count)
 	})
 

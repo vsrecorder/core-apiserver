@@ -9,9 +9,11 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
-// ErrAutoLikerUserIdEmpty はいいねを押す公式アカウントが指定されていない場合に返す。
+// errAutoLikerUserIdEmpty はいいねを押す公式アカウントが指定されていない場合に返す。
 // 誰のいいねか決まらないまま書き込むことを防ぐ(バッチの設定漏れの検知を兼ねる)。
-var ErrAutoLikerUserIdEmpty = errors.New("auto liker user id is empty")
+// 呼び出し元(cmd/auto-like-deck-code-posts)も起動時に同じ検査をするため、層をまたぐ
+// センチネル(domain/apperror)にはせず、二重の防御としてこのパッケージに閉じておく。
+var errAutoLikerUserIdEmpty = errors.New("auto liker user id is empty")
 
 // DeckCodePostAutoLikerInterface は、みんなの公開デッキへ投稿されたデッキに運営の公式
 // アカウントで自動的にいいねを付ける。
@@ -59,8 +61,8 @@ func (u *DeckCodePostAutoLiker) LikeUnliked(
 ) (int, error) {
 	// 主体が決まらないまま書き込まないよう、対象を引く前に止める。
 	if u.likerUserId == "" {
-		logError(ctx, ErrAutoLikerUserIdEmpty)
-		return 0, ErrAutoLikerUserIdEmpty
+		logError(ctx, errAutoLikerUserIdEmpty)
+		return 0, errAutoLikerUserIdEmpty
 	}
 
 	posts, err := u.postRepo.FindActiveNotLikedBy(ctx, u.likerUserId, ownerUserId, publishedFrom, limit)

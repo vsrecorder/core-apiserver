@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+
+	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 )
 
 const (
@@ -50,17 +52,32 @@ func main() {
 	ok := true
 
 	// --- subject ---
-	// RFC 8292 §2.1: sub は連絡先を表す mailto: か https: の URI。
-	// Apple はこれを満たさない JWT を 403 で拒否する。
+	// 見るべきは .env の字面ではなく、実際に JWT の sub へ載る値。
+	// webpush-go は "https:" で始まらない subject に "mailto:" を前置するため、
+	// 設定をそのまま渡すと "mailto:mailto:..." になりうる(Apple は 403 BadJwtToken)。
+	// WebPushSender は NormalizeVAPIDSubject でこれを吸収するので、そこを通した結果を出す。
+	normalized := infrastructure.NormalizeVAPIDSubject(subject)
+	sub := normalized
+	if !strings.HasPrefix(sub, "https:") {
+		sub = "mailto:" + sub
+	}
+
 	fmt.Printf("VAPID_SUBJECT   : %q\n", subject)
+	fmt.Printf("JWT の sub      : %q\n", sub)
 	switch {
 	case subject == "":
 		fmt.Println("  NG: 未設定。web push そのものが無効になる")
 		ok = false
-	case strings.HasPrefix(subject, "mailto:"), strings.HasPrefix(subject, "https://"):
-		fmt.Println("  OK: mailto: / https: で始まっている")
+	case normalized == "":
+		fmt.Println("  NG: mailto: だけで連絡先が無い")
+		ok = false
+	case strings.HasPrefix(sub, "mailto:mailto:"):
+		fmt.Println("  NG: sub が二重の mailto: になっている(Apple は 403 BadJwtToken を返す)")
+		ok = false
+	case strings.HasPrefix(sub, "https:"), strings.Contains(normalized, "@"):
+		fmt.Println("  OK: RFC 8292 の sub として妥当")
 	default:
-		fmt.Println("  NG: mailto: か https:// で始まる必要がある(Apple は 403 を返す)")
+		fmt.Println("  NG: メールアドレスか https:// の URL である必要がある")
 		ok = false
 	}
 

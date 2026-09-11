@@ -47,9 +47,34 @@ func NewWebPushSender(
 	return &WebPushSender{
 		publicKey:  publicKey,
 		privateKey: privateKey,
-		subject:    subject,
+		subject:    NormalizeVAPIDSubject(subject),
 		client:     &http.Client{Timeout: httpclient.Timeout},
 	}
+}
+
+// NormalizeVAPIDSubject は webpush-go へ渡す subject を整える。
+// 設定の検証(cmd/verify-vapid-keys)からも使うため公開している。
+//
+// webpush-go は "https:" で始まらない subject に無条件で "mailto:" を前置する
+// (vapid.go の「Unless subscriber is an HTTPS URL, assume an e-mail address」)。
+// そのため .env に RFC 8292 どおり "mailto:foo@example.com" と書くと、JWT の sub が
+// "mailto:mailto:foo@example.com" になる。
+//
+// これは Apple(web.push.apple.com)だけが 403 {"reason":"BadJwtToken"} で弾き、
+// FCM は sub を検証しないので 201 を返す。結果「Android は成功しているのに iOS だけ
+// 一通も届かない」という切り分けの難しい壊れ方をする。実際にそれで止まった。
+//
+// 設定側を "mailto:" 無しに直すだけでは、次に誰かが RFC どおりに書いた時点でまた壊れる。
+// ライブラリの前置に合わせてここで剥がす。
+func NormalizeVAPIDSubject(subject string) string {
+	subject = strings.TrimSpace(subject)
+
+	// https: の URL は webpush-go もそのまま使うので触らない
+	if strings.HasPrefix(subject, "https:") {
+		return subject
+	}
+
+	return strings.TrimPrefix(subject, "mailto:")
 }
 
 func (s *WebPushSender) Enabled() bool {

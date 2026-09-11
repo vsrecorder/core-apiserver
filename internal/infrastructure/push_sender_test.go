@@ -6,9 +6,11 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -128,4 +130,68 @@ func TestWebPushSender(t *testing.T) {
 		// どのプッシュサービスが拒否したのかも分かるようにする
 		require.Contains(t, logs.String(), "push_service")
 	})
+
+	// webpush-go は "https:" で始まらない subject に "mailto:" を前置する。
+	// .env に RFC 8292 どおり "mailto:..." と書くと sub が "mailto:mailto:..." になり、
+	// Apple だけが 403 BadJwtToken で弾く(FCM は sub を見ないので 201 を返す)
+	t.Run("正常系_subjectのmailto:が二重にならない", func(t *testing.T) {
+		for _, tc := range []struct {
+			name    string
+			subject string
+			want    string
+		}{
+			{"mailto:付き", "mailto:contact@example.com", "mailto:contact@example.com"},
+			{"mailto:無し", "contact@example.com", "mailto:contact@example.com"},
+			{"httpsのURL", "https://example.com/contact", "https://example.com/contact"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+				require.NoError(t, err)
+
+				var authorization string
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					authorization = r.Header.Get("Authorization")
+					w.WriteHeader(http.StatusCreated)
+				}))
+				defer server.Close()
+
+				s := NewWebPushSender(publicKey, privateKey, tc.subject)
+
+				_, err = s.Send(context.Background(), newTestSubscription(t, server.URL+"/push"), &entity.PushPayload{Title: "t"})
+				require.NoError(t, err)
+
+				require.Equal(t, tc.want, vapidSubjectOf(t, authorization))
+			})
+		}
+	})
+}
+
+// vapidSubjectOf は Authorization ヘッダ("vapid t=<JWT>, k=<公開鍵>")から JWT を取り出し、
+// sub クレームを返す。プッシュサービスが実際に検証するのはこの値。
+func vapidSubjectOf(t *testing.T, authorization string) string {
+	t.Helper()
+
+	require.NotEmpty(t, authorization)
+
+	var token string
+	for _, part := range strings.Split(strings.TrimPrefix(authorization, "vapid "), ",") {
+		part = strings.TrimSpace(part)
+		if after, ok := strings.CutPrefix(part, "t="); ok {
+			token = after
+		}
+	}
+	require.NotEmpty(t, token, "Authorization に t=<JWT> が無い: %s", authorization)
+
+	segments := strings.Split(token, ".")
+	require.Len(t, segments, 3, "JWT の形式が不正: %s", token)
+
+	payload, err := base64.RawURLEncoding.DecodeString(segments[1])
+	require.NoError(t, err)
+
+	var claims struct {
+		Sub string `json:"sub"`
+	}
+	require.NoError(t, json.Unmarshal(payload, &claims))
+
+	return claims.Sub
 }

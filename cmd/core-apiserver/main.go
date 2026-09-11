@@ -33,7 +33,46 @@ const (
 const (
 	relativePath = "/api/v1beta"
 	appName      = "core-apiserver"
+
+	// listenPort は HTTP を受けるポート。docker-compose.yml の ports と揃えること。
+	listenPort = "8914"
+
+	// healthPath は死活確認の経路。認証もDBアクセスも無い。
+	healthPath = "/health"
+
+	// healthCheckArg が渡された場合はサーバを起動せず、動いているプロセスへ
+	// 死活確認だけを行って終了する(docker の healthcheck から使う)。
+	healthCheckArg = "--health"
 )
+
+/*
+ * runHealthCheck は自分自身の /health を叩き、応答できていれば 0 を返す。
+ *
+ * このイメージは distroless(gcr.io/distroless/static)で、shell も curl も wget も
+ * 入っていない。そのため docker の healthcheck に書ける実行ファイルは、実質この
+ * バイナリ自身しかない。CMD ["/core-apiserver", "--health"] の形で使う。
+ *
+ * DB は見ない。ここで判定したいのは「プロセスが起きて HTTP を受けられる」ことで、
+ * DB の不調まで unhealthy に含めると、DB 復旧を待つあいだ `docker compose up --wait`
+ * が終わらず、コンテナ自体は正常なのにデプロイが止まってしまう。
+ */
+func runHealthCheck() int {
+	client := &http.Client{Timeout: 3 * time.Second}
+
+	res, err := client.Get("http://127.0.0.1:" + listenPort + healthPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "health check failed:", err)
+		return ExitCodeNG
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		fmt.Fprintln(os.Stderr, "health check failed: status", res.StatusCode)
+		return ExitCodeNG
+	}
+
+	return ExitCodeOK
+}
 
 // jwtSecretMinLength はVSRECORDER_JWT_SECRETに要求する最小文字数。
 // HS256の鍵として妥当な強度(256bit相当)を下回る値を弾く。
@@ -139,6 +178,11 @@ func (s *APIServer) Shutdown() error {
 }
 
 func main() {
+	// 死活確認だけを行うモード。サーバも DB 接続も要らないので最初に処理する。
+	if len(os.Args) > 1 && os.Args[1] == healthCheckArg {
+		os.Exit(runHealthCheck())
+	}
+
 	// ロガーは何よりも先に初期化する。起動失敗(設定不備・DB接続失敗)は最も
 	// 調べたいログなので、これらも他のログと同じJSON形式で出す必要がある。
 	logger := logging.InitLogger(logging.Config{
@@ -210,6 +254,18 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           1 * time.Hour,
 	}))
+
+	/*
+	 * 死活確認。docker の healthcheck(--health)と、デプロイ後の待ち合わせから叩かれる。
+	 *
+	 * 認証もDBアクセスも持たせない。「応答できるか」だけを見る経路で、
+	 * DB の状態まで混ぜると停止判定の意味が変わってしまう(runHealthCheck のコメント参照)。
+	 *
+	 * nginx は /api/v1beta 配下だけをこのサーバへ流すため、この経路は外部に露出しない。
+	 */
+	r.GET(healthPath, func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "health")
+	})
 
 	badgeEvaluation := usecase.NewBadgeEvaluation(
 		infrastructure.NewBadgeDefinition(db),
@@ -604,7 +660,7 @@ func main() {
 		)
 		defer stop()
 
-		server := NewAPIServer(":8914", r, db)
+		server := NewAPIServer(":"+listenPort, r, db)
 
 		if err := server.Start(ctx); err != nil {
 			slog.ErrorContext(ctx, "server error", logging.Err(err))

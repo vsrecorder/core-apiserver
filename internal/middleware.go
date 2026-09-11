@@ -50,8 +50,20 @@ func RequestIDMiddleware() gin.HandlerFunc {
 	}
 }
 
+// healthPath は死活確認の経路(cmd/core-apiserver の healthPath と同じ値)。
+// docker の healthcheck が定期的に叩くため、アクセスログには残さない。
+const healthPath = "/health"
+
 func AccessLogMiddleware(logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 死活確認は30秒ごとに来る。通したままだと1日で数千行になり、
+		// 調べたいログが埋もれる(応答できない状態は healthcheck の結果として
+		// docker 側に残るので、ここで記録しなくても追える)。
+		if c.Request.URL.Path == healthPath {
+			c.Next()
+			return
+		}
+
 		startedAt := time.Now()
 
 		// request_id と uid は ContextHandler が context から自動付与するため、

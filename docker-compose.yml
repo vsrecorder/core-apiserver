@@ -23,6 +23,26 @@ services:
     mem_limit: 128m
     memswap_limit: 128m
     mem_reservation: 32m
+    #
+    # 応答できる状態になったかの判定。
+    #
+    # これが無いと `docker compose up --wait` は「コンテナが起動した」だけで完了し、
+    # HTTP を受けられる前にデプロイが終わったことになる(webapp で同じ問題があり、
+    # デプロイ直後の初回表示が 11.7 秒かかっていた)。
+    #
+    # このイメージは distroless で shell も curl も wget も無いため、test に書けるのは
+    # バイナリ自身だけ。--health を渡すと、サーバは起動せず自分の /health を叩いて
+    # 終了コードだけを返す(cmd/core-apiserver/main.go の runHealthCheck)。
+    #
+    # 判定は DB を含まない。DB の不調で unhealthy にすると、コンテナは正常なのに
+    # `--wait` が終わらずデプロイが止まる。
+    #
+    healthcheck:
+      test: ["CMD", "/core-apiserver", "--health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     ports:
       - 8914:8914
     environment:

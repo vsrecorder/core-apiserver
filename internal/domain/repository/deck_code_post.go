@@ -173,12 +173,28 @@ type DeckCodePostInterface interface {
 		offset int,
 	) ([]*entity.DeckCodePostLiker, error)
 
+	// FindActiveNotLikedBy は likerUserId がまだいいねしていない、閲覧者向けに公開中の投稿を
+	// 公開日時の新しい順で返す(公式アカウントの自動いいね用)。likerUserId 自身の投稿は返さない。
+	// publishedFrom がゼロ値でなければ、その日時以降に公開された投稿だけに絞る。
+	// ownerUserId が空でなければ、その投稿者の投稿だけに絞る。
+	// 付随情報(投稿者・デッキ名・いいねした人)は詰めない(いいねを付けるのに要らないため)。
+	FindActiveNotLikedBy(
+		ctx context.Context,
+		likerUserId string,
+		ownerUserId string,
+		publishedFrom time.Time,
+		limit int,
+	) ([]*entity.DeckCodePost, error)
+
 	// FindLikeDigests は from <= created_at < to に付いたいいねを、閲覧者向けに公開中の投稿ごとに
 	// まとめて返す(日次のまとめ通知用)。投稿者自身が押したいいねは数えない。
+	// excludeLikerUserId(空なら除外しない)が押したいいねも数えない。運営の公式アカウントが
+	// 自動で押すいいね(cmd/auto-like-deck-code-posts)は「いいねが届きました」の通知に出さない。
 	FindLikeDigests(
 		ctx context.Context,
 		from time.Time,
 		to time.Time,
+		excludeLikerUserId string,
 	) ([]*entity.DeckCodePostLikeDigest, error)
 
 	// DeleteByUserId は退会時に、そのユーザの投稿と、そのユーザのデッキに紐づく投稿(他人が

@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -601,13 +602,65 @@ func (i *DeckCodePost) FindLikers(
 	return ret, nil
 }
 
+// FindActiveNotLikedBy は likerUserId がまだいいねしていない公開中の投稿を、公開日時の
+// 新しい順で返す(公式アカウントの自動いいね用)。
+//
+// 付随情報(投稿者・デッキ名・いいねした人)を詰めないのは、いいねを付けるのに投稿IDしか
+// 要らないため。baseQuery は users / decks / deck_codes の結合といいね数の集計まで行うので、
+// 10分ごとに回すバッチでは使わない。未いいねの判定を NOT EXISTS で書くのは、
+// 索引 idx_deck_code_post_likes_user_id の効く形にして走査を投稿数に留めるため。
+func (i *DeckCodePost) FindActiveNotLikedBy(
+	ctx context.Context,
+	likerUserId string,
+	ownerUserId string,
+	publishedFrom time.Time,
+	limit int,
+) ([]*entity.DeckCodePost, error) {
+	q := dbFromContext(ctx, i.db).WithContext(ctx).
+		Model(&model.DeckCodePost{}).
+		Where(deckCodePostVisibleCondition).
+		// 公式アカウント自身の投稿には押さない(自作自演になる)
+		Where("deck_code_posts.user_id <> ?", likerUserId).
+		Where(
+			"NOT EXISTS (SELECT 1 FROM deck_code_post_likes l WHERE l.post_id = deck_code_posts.id AND l.user_id = ?)",
+			likerUserId,
+		)
+
+	if ownerUserId != "" {
+		q = q.Where("deck_code_posts.user_id = ?", ownerUserId)
+	}
+	if !publishedFrom.IsZero() {
+		q = q.Where("deck_code_posts.published_at >= ?", publishedFrom)
+	}
+	// limit が 0 以下のときに Limit を渡すと GORM は制限なしとして扱うため、正のときだけ付ける。
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+
+	var ms []*model.DeckCodePost
+	if tx := q.Order("deck_code_posts.published_at DESC").Find(&ms); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, tx.Error
+	}
+
+	ret := make([]*entity.DeckCodePost, 0, len(ms))
+	for _, m := range ms {
+		ret = append(ret, toDeckCodePostEntity(m))
+	}
+
+	return ret, nil
+}
+
 // FindLikeDigests は期間内のいいねを閲覧者向けに公開中の投稿ごとにまとめる(日次のまとめ通知用)。
 // 「最後にいいねした人」は同じ期間・投稿のいいねを created_at の新しい順で1件引く。
-// 投稿者自身のいいねは通知の対象にしないため除く。
+// 投稿者自身のいいねは通知の対象にしないため除く。excludeLikerUserId(公式アカウント)の
+// いいねも同じ理由で除く。自動で押しているため、通知すると「公式がいいねしました」が
+// 投稿者全員へ毎日届き、人が押したいいねの知らせが埋もれてしまう。
 func (i *DeckCodePost) FindLikeDigests(
 	ctx context.Context,
 	from time.Time,
 	to time.Time,
+	excludeLikerUserId string,
 ) ([]*entity.DeckCodePostLikeDigest, error) {
 	var rows []*struct {
 		PostId          string
@@ -617,7 +670,21 @@ func (i *DeckCodePost) FindLikeDigests(
 		LatestLikerName string
 	}
 
-	if tx := dbFromContext(ctx, i.db).WithContext(ctx).Raw(`
+	// 除外するユーザが無いときは条件そのものを足さない。「最後にいいねした人」のサブクエリと
+	// 件数の集計でテーブル別名が違うため、同じ条件を2つ組み立てる(引数はSQLでの出現順)。
+	latestExcludeCondition, countExcludeCondition := "", ""
+	args := []any{from, to}
+	if excludeLikerUserId != "" {
+		latestExcludeCondition = "AND l2.user_id <> ?"
+		args = append(args, excludeLikerUserId)
+	}
+	args = append(args, from, to)
+	if excludeLikerUserId != "" {
+		countExcludeCondition = "AND l.user_id <> ?"
+		args = append(args, excludeLikerUserId)
+	}
+
+	query := fmt.Sprintf(`
 		SELECT
 			p.id AS post_id,
 			p.user_id AS owner_user_id,
@@ -627,17 +694,19 @@ func (i *DeckCodePost) FindLikeDigests(
 				SELECT u.name
 				FROM deck_code_post_likes l2
 				JOIN users u ON u.id = l2.user_id AND u.deleted_at IS NULL
-				WHERE l2.post_id = p.id AND l2.user_id <> p.user_id AND l2.created_at >= ? AND l2.created_at < ?
+				WHERE l2.post_id = p.id AND l2.user_id <> p.user_id AND l2.created_at >= ? AND l2.created_at < ? %s
 				ORDER BY l2.created_at DESC
 				LIMIT 1
 			), '') AS latest_liker_name
 		FROM deck_code_post_likes l
 		JOIN deck_code_posts p ON p.id = l.post_id AND p.unpublished_at IS NULL AND p.hidden_at IS NULL
 		JOIN decks d ON d.id = p.deck_id AND d.deleted_at IS NULL
-		WHERE l.created_at >= ? AND l.created_at < ? AND l.user_id <> p.user_id
+		WHERE l.created_at >= ? AND l.created_at < ? AND l.user_id <> p.user_id %s
 		GROUP BY p.id, p.user_id, d.name
 		ORDER BY p.id
-	`, from, to, from, to).Scan(&rows); tx.Error != nil {
+	`, latestExcludeCondition, countExcludeCondition)
+
+	if tx := dbFromContext(ctx, i.db).WithContext(ctx).Raw(query, args...).Scan(&rows); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}

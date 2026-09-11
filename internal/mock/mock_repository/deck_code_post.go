@@ -117,6 +117,21 @@ func (mr *MockDeckCodePostInterfaceMockRecorder) FindActiveByDeckId(ctx, deckId 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindActiveByDeckId", reflect.TypeOf((*MockDeckCodePostInterface)(nil).FindActiveByDeckId), ctx, deckId)
 }
 
+// FindActiveNotLikedBy mocks base method.
+func (m *MockDeckCodePostInterface) FindActiveNotLikedBy(ctx context.Context, likerUserId, ownerUserId string, publishedFrom time.Time, limit int) ([]*entity.DeckCodePost, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindActiveNotLikedBy", ctx, likerUserId, ownerUserId, publishedFrom, limit)
+	ret0, _ := ret[0].([]*entity.DeckCodePost)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindActiveNotLikedBy indicates an expected call of FindActiveNotLikedBy.
+func (mr *MockDeckCodePostInterfaceMockRecorder) FindActiveNotLikedBy(ctx, likerUserId, ownerUserId, publishedFrom, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindActiveNotLikedBy", reflect.TypeOf((*MockDeckCodePostInterface)(nil).FindActiveNotLikedBy), ctx, likerUserId, ownerUserId, publishedFrom, limit)
+}
+
 // FindById mocks base method.
 func (m *MockDeckCodePostInterface) FindById(ctx context.Context, id, viewerUserId string) (*entity.DeckCodePost, error) {
 	m.ctrl.T.Helper()
@@ -163,18 +178,18 @@ func (mr *MockDeckCodePostInterfaceMockRecorder) FindLatestByDeckCodeId(ctx, dec
 }
 
 // FindLikeDigests mocks base method.
-func (m *MockDeckCodePostInterface) FindLikeDigests(ctx context.Context, from, to time.Time) ([]*entity.DeckCodePostLikeDigest, error) {
+func (m *MockDeckCodePostInterface) FindLikeDigests(ctx context.Context, from, to time.Time, excludeLikerUserId string) ([]*entity.DeckCodePostLikeDigest, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindLikeDigests", ctx, from, to)
+	ret := m.ctrl.Call(m, "FindLikeDigests", ctx, from, to, excludeLikerUserId)
 	ret0, _ := ret[0].([]*entity.DeckCodePostLikeDigest)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindLikeDigests indicates an expected call of FindLikeDigests.
-func (mr *MockDeckCodePostInterfaceMockRecorder) FindLikeDigests(ctx, from, to any) *gomock.Call {
+func (mr *MockDeckCodePostInterfaceMockRecorder) FindLikeDigests(ctx, from, to, excludeLikerUserId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLikeDigests", reflect.TypeOf((*MockDeckCodePostInterface)(nil).FindLikeDigests), ctx, from, to)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLikeDigests", reflect.TypeOf((*MockDeckCodePostInterface)(nil).FindLikeDigests), ctx, from, to, excludeLikerUserId)
 }
 
 // FindLikers mocks base method.

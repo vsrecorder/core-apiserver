@@ -25,6 +25,7 @@ const (
 //
 // いいねのたびに通知すると、人気の投稿ほど通知が連打になるため日次でまとめる。
 // 文面は定型で、いいねした人が書いた文章は含まれない(ユーザ間のメッセージにならないようにする)。
+// 運営の公式アカウントが自動で押したいいねは数にも文面にも出さない(excludeLikerUserId)。
 type DeckCodePostLikeNotifierInterface interface {
 	// NotifyDay は day(暦日、ローカル時刻)に付いたいいねをまとめて通知し、作成した通知数を返す。
 	// userId を指定すると、その投稿者宛ての通知だけを対象にする(空なら全員)。
@@ -36,14 +37,19 @@ type DeckCodePostLikeNotifier struct {
 	postRepo         repository.DeckCodePostInterface
 	notificationRepo repository.NotificationInterface
 	pushNotifier     PushNotifierInterface
+	// excludeLikerUserId は通知に出さないいいねの押し主(運営の公式アカウント)。空なら除外しない。
+	// 公式のいいねは cmd/auto-like-deck-code-posts が全投稿へ自動で付けるため、通知すると
+	// 毎日同じ文面が投稿者全員に届き、人が押したいいねの知らせが埋もれる。
+	excludeLikerUserId string
 }
 
 func NewDeckCodePostLikeNotifier(
 	postRepo repository.DeckCodePostInterface,
 	notificationRepo repository.NotificationInterface,
 	pushNotifier PushNotifierInterface,
+	excludeLikerUserId string,
 ) DeckCodePostLikeNotifierInterface {
-	return &DeckCodePostLikeNotifier{postRepo, notificationRepo, pushNotifier}
+	return &DeckCodePostLikeNotifier{postRepo, notificationRepo, pushNotifier, excludeLikerUserId}
 }
 
 // deckCodePostLikeNotificationLinkUrl は通知のリンク先。
@@ -74,7 +80,7 @@ func dayRange(day time.Time) (time.Time, time.Time) {
 func (u *DeckCodePostLikeNotifier) NotifyDay(ctx context.Context, day time.Time, userId string, dryRun bool) (int, error) {
 	from, to := dayRange(day)
 
-	digests, err := u.postRepo.FindLikeDigests(ctx, from, to)
+	digests, err := u.postRepo.FindLikeDigests(ctx, from, to, u.excludeLikerUserId)
 	if err != nil {
 		logError(ctx, err)
 		return 0, err

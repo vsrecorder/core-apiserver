@@ -23,20 +23,20 @@ func TestDeckCodePostLikeNotifier(t *testing.T) {
 		{PostId: "post-2", OwnerUserId: "owner-2", DeckName: "メガサーナイト", LikeCount: 1, LatestLikerName: "さくら"},
 	}
 
-	setup := func(t *testing.T) (*mock_repository.MockDeckCodePostInterface, *mock_repository.MockNotificationInterface, *stubPushNotifier, DeckCodePostLikeNotifierInterface) {
+	setup := func(t *testing.T, excludeLikerUserId string) (*mock_repository.MockDeckCodePostInterface, *mock_repository.MockNotificationInterface, *stubPushNotifier, DeckCodePostLikeNotifierInterface) {
 		t.Helper()
 		ctrl := gomock.NewController(t)
 		postRepo := mock_repository.NewMockDeckCodePostInterface(ctrl)
 		notificationRepo := mock_repository.NewMockNotificationInterface(ctrl)
 		push := &stubPushNotifier{}
-		return postRepo, notificationRepo, push, NewDeckCodePostLikeNotifier(postRepo, notificationRepo, push)
+		return postRepo, notificationRepo, push, NewDeckCodePostLikeNotifier(postRepo, notificationRepo, push, excludeLikerUserId)
 	}
 
 	t.Run("正常系_投稿ごとに1通の定型文を作り push も送る", func(t *testing.T) {
 		overrideTimeNow(t, now)
-		postRepo, notificationRepo, push, notifier := setup(t)
+		postRepo, notificationRepo, push, notifier := setup(t, "")
 
-		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to).Return(digests, nil)
+		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to, "").Return(digests, nil)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "owner-1", NotificationCategoryLike, "/shared_decks/post-1?d=2026-09-03").Return(false, nil)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "owner-2", NotificationCategoryLike, "/shared_decks/post-2?d=2026-09-03").Return(false, nil)
 
@@ -66,9 +66,9 @@ func TestDeckCodePostLikeNotifier(t *testing.T) {
 
 	t.Run("正常系_同じ投稿・同じ日の通知は二重に作らない", func(t *testing.T) {
 		overrideTimeNow(t, now)
-		postRepo, notificationRepo, push, notifier := setup(t)
+		postRepo, notificationRepo, push, notifier := setup(t, "")
 
-		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to).Return(digests[:1], nil)
+		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to, "").Return(digests[:1], nil)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "owner-1", NotificationCategoryLike, "/shared_decks/post-1?d=2026-09-03").Return(true, nil)
 
 		count, err := notifier.NotifyDay(context.Background(), day, "", false)
@@ -79,9 +79,9 @@ func TestDeckCodePostLikeNotifier(t *testing.T) {
 	})
 
 	t.Run("正常系_dry-runでは件数だけ返して通知を作らない", func(t *testing.T) {
-		postRepo, notificationRepo, push, notifier := setup(t)
+		postRepo, notificationRepo, push, notifier := setup(t, "")
 
-		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to).Return(digests, nil)
+		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to, "").Return(digests, nil)
 		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), gomock.Any(), NotificationCategoryLike, gomock.Any()).Return(false, nil).Times(2)
 
 		count, err := notifier.NotifyDay(context.Background(), day, "", true)
@@ -91,10 +91,26 @@ func TestDeckCodePostLikeNotifier(t *testing.T) {
 		require.Empty(t, push.calls)
 	})
 
-	t.Run("正常系_いいねが無い日は何もしない", func(t *testing.T) {
-		postRepo, _, push, notifier := setup(t)
+	t.Run("正常系_公式アカウントのいいねは数えないようリポジトリへ渡す", func(t *testing.T) {
+		overrideTimeNow(t, now)
+		const officialUserId = "lgH4owuYpwNtQJVhTNrKMNjG2jM2"
+		postRepo, notificationRepo, push, notifier := setup(t, officialUserId)
 
-		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to).Return([]*entity.DeckCodePostLikeDigest{}, nil)
+		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to, officialUserId).Return(digests[:1], nil)
+		notificationRepo.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "owner-1", NotificationCategoryLike, "/shared_decks/post-1?d=2026-09-03").Return(false, nil)
+		notificationRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+		count, err := notifier.NotifyDay(context.Background(), day, "", false)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, count)
+		require.Len(t, push.calls, 1)
+	})
+
+	t.Run("正常系_いいねが無い日は何もしない", func(t *testing.T) {
+		postRepo, _, push, notifier := setup(t, "")
+
+		postRepo.EXPECT().FindLikeDigests(gomock.Any(), from, to, "").Return([]*entity.DeckCodePostLikeDigest{}, nil)
 
 		count, err := notifier.NotifyDay(context.Background(), day, "", false)
 

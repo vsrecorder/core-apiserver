@@ -81,6 +81,27 @@ CRON_TZ=Asia/Tokyo
 # 毎日 21:00 JST — みんなの公開デッキ いいねのまとめ通知
 0 21 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-deck-code-post-likes.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-deck-code-post-likes -dry-run=false >> /var/log/vsrecorder/deck-code-post-likes.log 2>&1
 
+# ── みんなの公開デッキ 公式アカウントの自動いいね（cmd/auto-like-deck-code-posts）──
+# 10分ごと。みんなの公開デッキへ投稿されたデッキに、運営の公式アカウント(.env の
+# OFFICIAL_USER_ID)でいいねを付ける。公開しても反応が無いと投稿は続かないため、運営が
+# 最初の1つを必ず付ける。
+#
+# 対象は「公開中(取り下げ・運営の非表示でない)で、公式アカウントがまだいいねしていない投稿」。
+# 公式アカウント自身の投稿には付けない。未いいねの投稿だけを対象にし、書き込みも
+# ON CONFLICT DO NOTHING なので、多重起動・再実行しても二重には付かない。1回の実行で付ける
+# 上限は既定200件(-limit)で、超えた分は次の実行が拾う。
+#
+# ここで付けたいいねは投稿者へのまとめ通知には出ない(21:00 の notify-deck-code-post-likes が
+# 同じ OFFICIAL_USER_ID を集計から除く)。自動で全投稿に付くため、通知すると毎日同じ文面が
+# 投稿者全員へ届き、人が押したいいねの知らせが埋もれるため。
+#
+# OFFICIAL_USER_ID が未設定なら何もせず終了コード1で終わる(設定漏れに気付けるようにしてある)。
+# 初回に過去の投稿へまとめて付けるときは、cron を待たず手で1回実行する
+# (例: bin/auto-like-deck-code-posts -limit=1000 -dry-run=false)。
+# 検証時は -dry-run=true にすると対象をログ出力するだけでいいねは付かない。
+# 10分ごと — みんなの公開デッキへ公式アカウントで自動いいね
+*/10 * * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-auto-like-deck-code-posts.lock /home/ubuntu/vsrecorder/core-apiserver/bin/auto-like-deck-code-posts -dry-run=false >> /var/log/vsrecorder/auto-like-deck-code-posts.log 2>&1
+
 # ── FirebaseとDBのユーザー突合(cmd/check-firebase-users)──
 # 30分ごと。Firebase Authentication のユーザーと、DBの有効なユーザー(deleted_at IS NULL)を
 # 突合し、差異があれば Slack へ通知する。読み取り専用で、FirebaseにもDBにも書き込まない。

@@ -2361,7 +2361,7 @@ func TestIntegrationDeckCodePostLikeDigests(t *testing.T) {
 		// 投稿者自身のいいねは数えない
 		require.NoError(t, r.Like(ctx, postId, author, now.Add(-5*time.Minute)))
 
-		digests, err := r.FindLikeDigests(ctx, from, to)
+		digests, err := r.FindLikeDigests(ctx, from, to, "")
 
 		require.NoError(t, err)
 		require.Len(t, digests, 1)
@@ -2373,19 +2373,145 @@ func TestIntegrationDeckCodePostLikeDigests(t *testing.T) {
 	})
 
 	t.Run("正常系_期間外のいいねは数えない", func(t *testing.T) {
-		digests, err := r.FindLikeDigests(ctx, now.Add(time.Minute), to)
+		digests, err := r.FindLikeDigests(ctx, now.Add(time.Minute), to, "")
 
 		require.NoError(t, err)
 		require.Empty(t, digests)
 	})
 
+	t.Run("正常系_公式アカウントのいいねは数えない", func(t *testing.T) {
+		// 公式アカウント(cmd/auto-like-deck-code-posts)は全投稿へ自動でいいねを付けるため、
+		// まとめ通知の集計からは外す。最後に押したのが公式でも、名前には人を出す。
+		official := "official-uid-00000000000000002"
+		require.NoError(t, db.Create(model.NewUser(official, now, "バトレコ公式", "")).Error)
+		require.NoError(t, r.Like(ctx, postId, official, now.Add(-time.Minute)))
+
+		digests, err := r.FindLikeDigests(ctx, from, to, official)
+
+		require.NoError(t, err)
+		require.Len(t, digests, 1)
+		require.Equal(t, 2, digests[0].LikeCount)
+		require.Equal(t, "タイチ", digests[0].LatestLikerName)
+
+		// 除外を指定しなければ公式のいいねも数に入る(除外が効いていることの裏取り)
+		digests, err = r.FindLikeDigests(ctx, from, to, "")
+
+		require.NoError(t, err)
+		require.Len(t, digests, 1)
+		require.Equal(t, 3, digests[0].LikeCount)
+		require.Equal(t, "バトレコ公式", digests[0].LatestLikerName)
+	})
+
 	t.Run("正常系_取り下げた投稿は対象にしない", func(t *testing.T) {
 		require.NoError(t, r.Unpublish(ctx, postId, now))
 
-		digests, err := r.FindLikeDigests(ctx, from, to)
+		digests, err := r.FindLikeDigests(ctx, from, to, "")
 
 		require.NoError(t, err)
 		require.Empty(t, digests)
+	})
+}
+
+// 自動いいね(cmd/auto-like-deck-code-posts)が対象を引くクエリ。「公開中・公式が未いいね・
+// 公式自身の投稿ではない」の3条件を NOT EXISTS と部分索引の条件で表しているため、
+// sqlmock では schema.sql との整合も絞り込みの結果も確かめられない。実DBで見る。
+func TestIntegrationDeckCodePostFindActiveNotLikedBy(t *testing.T) {
+	db := setupIntegrationDB(t,
+		"deck_code_post_likes", "deck_code_posts",
+		"deck_pokemon_sprites", "pokemon_sprites", "deck_codes", "decks", "users",
+	)
+	r := NewDeckCodePost(db)
+	ctx := context.Background()
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	official := "official-uid-00000000000000003"
+	author := "author-uid-000000000000000003"
+	authorDeckId := "01HD7Y3K8D6FDHMHTZ2GT41TD3"
+	officialDeckId := "01HD7Y3K8D6FDHMHTZ2GT41TD4"
+
+	require.NoError(t, db.Create(model.NewUser(official, now, "バトレコ公式", "")).Error)
+	require.NoError(t, db.Create(model.NewUser(author, now, "投稿者", "")).Error)
+	require.NoError(t, db.Create(model.NewDeck(authorDeckId, now, sql.NullTime{}, author, "メガサーナイト", true)).Error)
+	require.NoError(t, db.Create(model.NewDeck(officialDeckId, now, sql.NullTime{}, official, "公式のデッキ", true)).Error)
+
+	// 投稿は1コードにつき1件しか公開できないため、投稿ごとにコードを分ける。
+	savePost := func(t *testing.T, postId string, codeId string, userId string, deckId string, publishedAt time.Time, unpublishedAt time.Time, hiddenAt time.Time) {
+		t.Helper()
+
+		require.NoError(t, db.Create(model.NewDeckCode(codeId, now, userId, deckId, "gLnLnn-BGH9q3-9LnQLg", true, "")).Error)
+		require.NoError(t, r.Save(ctx, entity.NewDeckCodePost(
+			postId, now, now, userId, deckId, codeId, publishedAt, unpublishedAt, hiddenAt, "", "", 0,
+		)))
+	}
+
+	const (
+		postNew         = "01HD7Y3K8D6FDHMHTZ2GT41TA1"
+		postOld         = "01HD7Y3K8D6FDHMHTZ2GT41TA2"
+		postLiked       = "01HD7Y3K8D6FDHMHTZ2GT41TA3"
+		postOwn         = "01HD7Y3K8D6FDHMHTZ2GT41TA4"
+		postHidden      = "01HD7Y3K8D6FDHMHTZ2GT41TA5"
+		postUnpublished = "01HD7Y3K8D6FDHMHTZ2GT41TA6"
+	)
+
+	savePost(t, postNew, "01HD7Y3K8D6FDHMHTZ2GT41TB1", author, authorDeckId, now.Add(-10*time.Minute), time.Time{}, time.Time{})
+	savePost(t, postOld, "01HD7Y3K8D6FDHMHTZ2GT41TB2", author, authorDeckId, now.Add(-3*time.Hour), time.Time{}, time.Time{})
+	savePost(t, postLiked, "01HD7Y3K8D6FDHMHTZ2GT41TB3", author, authorDeckId, now.Add(-90*time.Minute), time.Time{}, time.Time{})
+	savePost(t, postOwn, "01HD7Y3K8D6FDHMHTZ2GT41TB4", official, officialDeckId, now.Add(-30*time.Minute), time.Time{}, time.Time{})
+	savePost(t, postHidden, "01HD7Y3K8D6FDHMHTZ2GT41TB5", author, authorDeckId, now.Add(-20*time.Minute), time.Time{}, now)
+	savePost(t, postUnpublished, "01HD7Y3K8D6FDHMHTZ2GT41TB6", author, authorDeckId, now.Add(-40*time.Minute), now, time.Time{})
+
+	require.NoError(t, r.Like(ctx, postLiked, official, now.Add(-time.Hour)))
+
+	ids := func(posts []*entity.DeckCodePost) []string {
+		ret := make([]string, 0, len(posts))
+		for _, p := range posts {
+			ret = append(ret, p.ID)
+		}
+
+		return ret
+	}
+
+	t.Run("正常系_公式が未いいねの公開中の投稿だけを新しい順で返す", func(t *testing.T) {
+		posts, err := r.FindActiveNotLikedBy(ctx, official, "", time.Time{}, 10)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{postNew, postOld}, ids(posts),
+			"いいね済み・公式自身の投稿・非表示・取り下げ済みは対象にしない")
+	})
+
+	t.Run("正常系_公開日の下限で絞る", func(t *testing.T) {
+		posts, err := r.FindActiveNotLikedBy(ctx, official, "", now.Add(-time.Hour), 10)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{postNew}, ids(posts))
+	})
+
+	t.Run("正常系_投稿者で絞る", func(t *testing.T) {
+		posts, err := r.FindActiveNotLikedBy(ctx, official, author, time.Time{}, 10)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{postNew, postOld}, ids(posts))
+
+		posts, err = r.FindActiveNotLikedBy(ctx, official, "other-uid-0000000000000000003", time.Time{}, 10)
+
+		require.NoError(t, err)
+		require.Empty(t, posts)
+	})
+
+	t.Run("正常系_limitで1回に押す件数を抑える", func(t *testing.T) {
+		posts, err := r.FindActiveNotLikedBy(ctx, official, "", time.Time{}, 1)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{postNew}, ids(posts))
+	})
+
+	t.Run("正常系_いいねを付けた投稿は次から対象にならない", func(t *testing.T) {
+		require.NoError(t, r.Like(ctx, postNew, official, now))
+
+		posts, err := r.FindActiveNotLikedBy(ctx, official, "", time.Time{}, 10)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{postOld}, ids(posts))
 	})
 }
 

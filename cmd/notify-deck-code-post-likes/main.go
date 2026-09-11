@@ -2,7 +2,9 @@
 // 投稿ごとに1通にまとめて投稿者へ通知する日次バッチ(config/crontab から毎朝実行)。
 //
 // 通知の対象は「前日(ローカル時刻の暦日)に付いた、投稿者以外のいいね」がある公開中の投稿。
-// 取り下げ済み・運営が非表示にした投稿は対象にしない。通知のリンク先に対象日を含めて
+// 取り下げ済み・運営が非表示にした投稿は対象にしない。.env の OFFICIAL_USER_ID(運営の公式
+// アカウント)が押したいいねも数えない。cmd/auto-like-deck-code-posts が全投稿へ自動で
+// 付けるものなので、通知すると毎日同じ文面が投稿者全員へ届いてしまうため。通知のリンク先に対象日を含めて
 // 重複判定に使うため、同じ投稿・同じ日の通知は二重に作らず、再実行しても安全。
 //
 //	go run ./cmd/notify-deck-code-post-likes                                  # 前日分の対象を確認するだけ(dry-run)
@@ -88,10 +90,16 @@ func main() {
 		pushSender,
 	)
 
+	// 運営の公式アカウント(cmd/auto-like-deck-code-posts)が自動で押したいいねは通知しない。
+	// 全投稿に付くため、通知すると毎日同じ文面が投稿者全員へ届き、人が押したいいねの
+	// 知らせが埋もれる。未設定なら除外せず、これまで通り全てのいいねを数える。
+	officialUserId := os.Getenv("OFFICIAL_USER_ID")
+
 	notifier := usecase.NewDeckCodePostLikeNotifier(
 		infrastructure.NewDeckCodePost(db),
 		infrastructure.NewNotification(db),
 		pushNotifier,
+		officialUserId,
 	)
 
 	// dry-run と対象は属性で出す(メッセージを分岐させると grep の条件が増える)。
@@ -100,6 +108,7 @@ func main() {
 	batchAttrs := []any{
 		slog.String("date", dayLabel),
 		slog.String("target_user_id", *userId),
+		slog.String("excluded_liker_user_id", officialUserId),
 		slog.Bool("dry_run", *dryRun),
 	}
 	slog.Info("notifying like digests", batchAttrs...)

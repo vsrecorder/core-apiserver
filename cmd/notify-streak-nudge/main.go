@@ -11,6 +11,11 @@
 // B-1(Web Push)導入後は、アプリ内通知を作った上で購読端末へ push も送る(配達手段の追加であり
 // 判定は変えない)。.env の VAPID_* が未設定なら push は送らずアプリ内通知だけになる。
 //
+// B-1 の効果測定のため、想起系 push は PUSH_HOLDOUT_RATIO(既定 0 = 実験しない)で
+// 購読者の一部へあえて送らないことができる。0.5 なら購読者の約半分がその週は
+// アプリ内通知だけになり、同じ「許諾を出した人」同士で push の効果を比較できる
+// (engagement-weekly-2026-09-14.md §5.1)。
+//
 // 想定運用: OSのcronから毎週日曜夜に起動する(crontab例は B5_STREAK_NUDGE_PLAN.md 参照)。
 //
 // 使い方:
@@ -85,10 +90,16 @@ func main() {
 	if !pushSender.Enabled() {
 		slog.Warn("web push is disabled: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not set. in-app notifications only")
 	}
+	holdoutRatio := usecase.ParseHoldoutRatio(os.Getenv("PUSH_HOLDOUT_RATIO"))
+	if holdoutRatio > 0 {
+		slog.Info("push holdout experiment is enabled", slog.Float64("holdout_ratio", holdoutRatio))
+	}
+
 	pushNotifier := usecase.NewPushNotifier(
 		infrastructure.NewPushSubscription(db),
 		infrastructure.NewPushDelivery(db),
 		pushSender,
+		usecase.WithHoldoutRatio(holdoutRatio),
 	)
 
 	streakNudge := usecase.NewStreakNudge(

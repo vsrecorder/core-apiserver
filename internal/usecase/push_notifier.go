@@ -3,10 +3,13 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync/atomic"
+	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
@@ -29,6 +32,10 @@ const (
 	// 「うるさい」は許諾取り消しに直結し、取り消しは回復不能なので効果より優先する。
 	pushWeeklyCap = 2
 
+	// holdoutBuckets はホールドアウトの割り付け粒度。ハッシュをこの数で割った
+	// 余りを比率と比べるため、実験の比率は 1/10000 刻みで表現できる。
+	holdoutBuckets = 10000
+
 	// pushRevokeAfterFailures は連続でこの回数失敗した購読を失効させる閾値。
 	// 死んだ端末に永久に撃ち続けないため。成功すれば failure_count は0に戻る。
 	pushRevokeAfterFailures = 5
@@ -39,6 +46,12 @@ const (
 // これにより1人あたり最大でも 月(レポート or 環境ニュース)・金(週末)・日(nudge) の3通に収まる。
 // 反応の無い人への間引き(isPushUnresponsive)は env_news と weekend_reminder が各自で行う。
 var pushCampaignsCountedForCap = []string{PushCampaignWeekendReminder, PushCampaignStreakNudge}
+
+// pushCampaignsRandomized はホールドアウト実験の対象キャンペーン。
+// ㉜「想起通知の当週記録率」が見ているのがこの2つなので、実験の範囲もここに揃える。
+// weekly_report / env_news / deck_code_post_like は「配当」であって想起ではないため
+// 対象外(止めると純粋にユーザーの不利益になる)。
+var pushCampaignsRandomized = []string{PushCampaignWeekendReminder, PushCampaignStreakNudge}
 
 type PushNotifierInterface interface {
 	// Deliver は作成済みのアプリ内通知を、そのユーザーの生きている購読すべてへ push で配達し、
@@ -54,10 +67,57 @@ type PushNotifierInterface interface {
 	) (int, error)
 }
 
+// PushNotifierOption は PushNotifier の任意設定。
+// 既定の挙動(ホールドアウトなし)を変えたい呼び出し側だけが渡す。
+type PushNotifierOption func(*PushNotifier)
+
+// WithHoldoutRatio は想起系 push のホールドアウト比率(0〜1)を設定する。
+//
+// 0 なら実験しない(全購読者へ送る)。0.5 なら購読者の約半分が、その週は
+// 想起 push を受け取らずアプリ内通知だけになる。範囲外の値は 0 に丸める
+// (設定ミスで全員に送られなくなる事故を防ぐため)。
+//
+// 割り付けは「ユーザー × その週の月曜」のハッシュで決める決定的なもので、
+// 保存も乱数も要らない。週単位にするのは、同じ週に金曜(B-2)は届いて
+// 日曜(B-5)は届かない、という混ざり方をさせないため——㉜ が週単位の指標なので、
+// 週の途中で群が変わると測っているものが壊れる。
+func WithHoldoutRatio(ratio float64) PushNotifierOption {
+	return func(n *PushNotifier) {
+		if ratio <= 0 || ratio >= 1 {
+			n.holdoutRatio = 0
+
+			return
+		}
+
+		n.holdoutRatio = ratio
+	}
+}
+
+// ParseHoldoutRatio は設定値(文字列)をホールドアウト比率に読み替える。
+//
+// 未設定・空・解釈できない値はすべて 0(実験しない)に倒す。設定ミスで
+// 通知が誰にも届かなくなるより、実験が始まらないほうが被害が小さいため。
+// 環境変数を読むのは呼び出し側(cmd)の責務で、ここは変換だけを持つ。
+func ParseHoldoutRatio(raw string) float64 {
+	if raw == "" {
+		return 0
+	}
+
+	ratio, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0
+	}
+
+	return ratio
+}
+
 type PushNotifier struct {
 	subscriptionRepo repository.PushSubscriptionInterface
 	deliveryRepo     repository.PushDeliveryInterface
 	sender           repository.PushSenderInterface
+
+	// holdoutRatio は想起系 push を「あえて送らない」購読者の比率(0 なら実験しない)。
+	holdoutRatio float64
 
 	// sentOnce は、このプロセスがプッシュサービスに1件でも受理されたかを表す。
 	// 403(VAPID の資格情報が拒否された)を「サーバの鍵設定ミス」と「その購読だけが古い
@@ -72,12 +132,19 @@ func NewPushNotifier(
 	subscriptionRepo repository.PushSubscriptionInterface,
 	deliveryRepo repository.PushDeliveryInterface,
 	sender repository.PushSenderInterface,
+	opts ...PushNotifierOption,
 ) PushNotifierInterface {
-	return &PushNotifier{
+	notifier := &PushNotifier{
 		subscriptionRepo: subscriptionRepo,
 		deliveryRepo:     deliveryRepo,
 		sender:           sender,
 	}
+
+	for _, opt := range opts {
+		opt(notifier)
+	}
+
+	return notifier
 }
 
 func (u *PushNotifier) Deliver(
@@ -116,6 +183,15 @@ func (u *PushNotifier) Deliver(
 			)
 			return 0, nil
 		}
+	}
+
+	// ここまでを通った時点で「この人には想起 push を送れる」が確定する。
+	// ホールドアウトの判定を週上限のあとに置いているのは、両群が同じ条件を
+	// 通過した集合になるようにするため(上限で弾かれた人が片側にだけ残ると比較が歪む)。
+	if u.isHoldout(notification.UserId, campaign, now) {
+		u.recordHoldout(ctx, notification, subscriptions[0].ID, campaign, now)
+
+		return 0, nil
 	}
 
 	sent := 0
@@ -273,4 +349,68 @@ func countsAsSubscriptionFailure(statusCode int, sendErr error) bool {
 	}
 
 	return statusCode >= 500 || statusCode == http.StatusTooManyRequests || statusCode == http.StatusRequestTimeout
+}
+
+// isHoldout は、このユーザーがその週のホールドアウト群(あえて push を送らない群)かを返す。
+//
+// 割り付けはユーザーIDと週(月曜)のハッシュだけで決まるので、何度実行しても同じ結果になり、
+// バッチの再実行や cron の多重起動で群が入れ替わることがない。
+// キャンペーン名をキーに含めないのは、同じ週の B-2 と B-5 で群を揃えるため(WithHoldoutRatio)。
+func (u *PushNotifier) isHoldout(userId string, campaign string, now time.Time) bool {
+	if u.holdoutRatio <= 0 || !isRandomizedCampaign(campaign) {
+		return false
+	}
+
+	h := fnv.New32a()
+	// Write は常に nil を返す(hash.Hash の契約)ため戻り値は見ない。
+	_, _ = h.Write([]byte(userId + "|" + mondayOf(now).Format(time.DateOnly)))
+
+	return float64(h.Sum32()%holdoutBuckets)/float64(holdoutBuckets) < u.holdoutRatio
+}
+
+// recordHoldout は「送れたのにあえて送らなかった」ことを配達ログに1行残す。
+//
+// 行が無いと、あとから「ホールドアウト群」と「そもそも購読していない人」を区別できず、
+// 比較の分母が作れない。端末ごとではなく人ごとに1行でよい(送出していないため)ので、
+// 代表として購読を1つだけ紐づける。
+// 記録に失敗しても通知そのものは既に作られているので、ログを残して続行する。
+func (u *PushNotifier) recordHoldout(
+	ctx context.Context,
+	notification *entity.Notification,
+	subscriptionId string,
+	campaign string,
+	now time.Time,
+) {
+	id, err := generateId()
+	if err != nil {
+		logError(ctx, err)
+
+		return
+	}
+
+	delivery := entity.NewPushDelivery(
+		id, now, notification.UserId, subscriptionId, notification.ID,
+		campaign, entity.PushDeliveryStatusHoldout, 0,
+	)
+	if err := u.deliveryRepo.Save(ctx, delivery); err != nil {
+		logError(ctx, err)
+
+		return
+	}
+
+	slog.InfoContext(ctx, "push withheld: holdout group",
+		slog.String("campaign", campaign),
+		slog.String("user_id", notification.UserId),
+	)
+}
+
+// isRandomizedCampaign はホールドアウト実験の対象キャンペーンかを返す。
+func isRandomizedCampaign(campaign string) bool {
+	for _, c := range pushCampaignsRandomized {
+		if c == campaign {
+			return true
+		}
+	}
+
+	return false
 }

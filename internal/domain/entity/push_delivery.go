@@ -14,6 +14,20 @@ const (
 	PushDeliveryStatusSent = "sent"
 	// PushDeliveryStatusFailed は受理されなかった(5xx・通信失敗など)。購読はまだ生きている。
 	PushDeliveryStatusFailed = "failed"
+	// PushDeliveryStatusHoldout は「送れたのに、実験のためあえて送らなかった」。
+	// B-1 の効果測定から自己選択バイアスを外すためのホールドアウト群
+	// (engagement-weekly-2026-09-14.md §5.1)。
+	//
+	// これまでの比較は「push 群 vs アプリ内のみ群」だったが、push 群は許諾を出した
+	// 意欲の高い層なので、差が出ても「push が効いた」のか「元から動く人だった」のか
+	// 分けられない。購読者の中で送る/送らないを週ごとに振り分ければ、両群とも
+	// 「許諾を出した人」になり、差はチャネルの効果だけになる。
+	//
+	// 行を作るのは、送らなかったことを後から観測するため。行が無いと
+	// 「ホールドアウト」と「そもそも購読していない」が区別できない。
+	// 到達・タップは定義上つかないので delivered_at / clicked_at は常に NULL。
+	PushDeliveryStatusHoldout = "holdout"
+
 	// PushDeliveryStatusExpired は購読が無効。購読は失効させる。
 	// プッシュサービスが購読を無効と判断した 404/410 に加えて、他の端末へは受理されて
 	// いる状況での 403(その購読だけが古い VAPID 公開鍵で作られている)もここに入る。

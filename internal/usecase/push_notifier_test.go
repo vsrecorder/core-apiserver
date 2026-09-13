@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -329,4 +330,153 @@ func TestPushNotifier_Deliver(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, 0, sent)
 	})
+}
+
+// setup4PushNotifierWithHoldout は、ホールドアウト比率を指定した送出器を作る。
+func setup4PushNotifierWithHoldout(t *testing.T, ratio float64) (*pushNotifierMocks, PushNotifierInterface) {
+	t.Helper()
+	overrideTimeNow(t, pushNotifierFixedNow)
+
+	mockCtrl := gomock.NewController(t)
+	m := &pushNotifierMocks{
+		subscription: mock_repository.NewMockPushSubscriptionInterface(mockCtrl),
+		delivery:     mock_repository.NewMockPushDeliveryInterface(mockCtrl),
+		sender:       mock_repository.NewMockPushSenderInterface(mockCtrl),
+	}
+
+	return m, NewPushNotifier(m.subscription, m.delivery, m.sender, WithHoldoutRatio(ratio))
+}
+
+func TestPushNotifier_Holdout(t *testing.T) {
+	notification := entity.NewNotification("n-1", pushNotifierFixedNow, "user-1", NotificationCategoryReminder, "今週末、対戦の予定は？", "本文", "/records/quick")
+
+	t.Run("比率1相当_ホールドアウト群には送らずholdoutの配達ログだけを残す", func(t *testing.T) {
+		// 0.9999 は「全ユーザーがホールドアウトに入る」ことを保証する最大の有効値
+		// (1 以上は設定ミスとして 0 に丸められるため、実験の上限はこの値になる)。
+		m, u := setup4PushNotifierWithHoldout(t, 0.9999)
+		m.expectLiveAndUnderCap([]*entity.PushSubscription{newTestPushSubscription("sub-1", 0)}, 0)
+
+		var saved *entity.PushDelivery
+		m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, d *entity.PushDelivery) error {
+			saved = d
+			return nil
+		})
+		// Send は一度も呼ばれない(EXPECT を張らないので、呼ばれたらテストが落ちる)
+
+		sent, err := u.Deliver(context.Background(), notification, PushCampaignWeekendReminder)
+
+		require.NoError(t, err)
+		require.Equal(t, 0, sent)
+		require.NotNil(t, saved)
+		require.Equal(t, entity.PushDeliveryStatusHoldout, saved.Status)
+		require.Equal(t, PushCampaignWeekendReminder, saved.Campaign)
+		require.Equal(t, "user-1", saved.UserId)
+		require.Equal(t, "sub-1", saved.SubscriptionId)
+	})
+
+	t.Run("比率0_実験しない設定なら全員へ送る", func(t *testing.T) {
+		m, u := setup4PushNotifierWithHoldout(t, 0)
+		m.expectLiveAndUnderCap([]*entity.PushSubscription{newTestPushSubscription("sub-1", 0)}, 0)
+
+		gomock.InOrder(
+			m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil),
+			m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(201, nil),
+			m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusSent, 201).Return(nil),
+			m.subscription.EXPECT().MarkSuccess(gomock.Any(), "sub-1", pushNotifierFixedNow).Return(nil),
+		)
+
+		sent, err := u.Deliver(context.Background(), notification, PushCampaignWeekendReminder)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, sent)
+	})
+
+	t.Run("対象外キャンペーン_週次レポートは実験しないので必ず送る", func(t *testing.T) {
+		m, u := setup4PushNotifierWithHoldout(t, 0.9999)
+		// weekly_report は週上限に数えないため、カウントの問い合わせ自体が起きない
+		m.sender.EXPECT().Enabled().Return(true)
+		m.subscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return([]*entity.PushSubscription{newTestPushSubscription("sub-1", 0)}, nil)
+
+		gomock.InOrder(
+			m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil),
+			m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(201, nil),
+			m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusSent, 201).Return(nil),
+			m.subscription.EXPECT().MarkSuccess(gomock.Any(), "sub-1", pushNotifierFixedNow).Return(nil),
+		)
+
+		sent, err := u.Deliver(context.Background(), notification, PushCampaignWeeklyReport)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, sent)
+	})
+}
+
+func TestPushNotifier_isHoldout(t *testing.T) {
+	overrideTimeNow(t, pushNotifierFixedNow)
+	notifier := &PushNotifier{holdoutRatio: 0.5}
+
+	t.Run("同じ週なら何度呼んでも同じ群_かつB-2とB-5で群が揃う", func(t *testing.T) {
+		first := notifier.isHoldout("user-1", PushCampaignWeekendReminder, pushNotifierFixedNow)
+
+		require.Equal(t, first, notifier.isHoldout("user-1", PushCampaignWeekendReminder, pushNotifierFixedNow))
+		// 同一週の日曜(B-5)でも月曜が同じなので群は変わらない
+		sunday := pushNotifierFixedNow.AddDate(0, 0, 2)
+		require.Equal(t, first, notifier.isHoldout("user-1", PushCampaignStreakNudge, sunday))
+	})
+
+	t.Run("比率0_誰もホールドアウトにしない", func(t *testing.T) {
+		none := &PushNotifier{holdoutRatio: 0}
+
+		for _, userId := range []string{"user-1", "user-2", "user-3"} {
+			require.False(t, none.isHoldout(userId, PushCampaignWeekendReminder, pushNotifierFixedNow))
+		}
+	})
+
+	t.Run("比率05_多数のユーザーでおおむね半分に割れる", func(t *testing.T) {
+		held := 0
+		const n = 1000
+		for i := range n {
+			if notifier.isHoldout(fmt.Sprintf("user-%d", i), PushCampaignWeekendReminder, pushNotifierFixedNow) {
+				held++
+			}
+		}
+
+		// 決定的なハッシュなので毎回同じ値になる。偏りが致命的でないことだけを見る
+		require.Greater(t, held, n*4/10)
+		require.Less(t, held, n*6/10)
+	})
+}
+
+func TestParseHoldoutRatio(t *testing.T) {
+	// 設定ミスは「実験しない(0)」に倒す。通知が誰にも届かないほうが被害が大きいため
+	for _, tt := range []struct {
+		raw  string
+		want float64
+	}{
+		{"", 0},
+		{"0", 0},
+		{"0.5", 0.5},
+		{"1", 1},
+		{"abc", 0},
+	} {
+		require.Equal(t, tt.want, ParseHoldoutRatio(tt.raw), "raw=%q", tt.raw)
+	}
+}
+
+func TestWithHoldoutRatio(t *testing.T) {
+	// 範囲外は 0 に丸める(1 以上を許すと全員が想起 push を受け取れなくなる)
+	for _, tt := range []struct {
+		ratio float64
+		want  float64
+	}{
+		{-0.1, 0},
+		{0, 0},
+		{0.5, 0.5},
+		{1, 0},
+		{1.5, 0},
+	} {
+		n := &PushNotifier{}
+		WithHoldoutRatio(tt.ratio)(n)
+		require.Equal(t, tt.want, n.holdoutRatio, "ratio=%v", tt.ratio)
+	}
 }

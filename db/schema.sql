@@ -871,7 +871,7 @@ CREATE TABLE user_streaks (
 CREATE TABLE user_daily_activities (
     user_id      VARCHAR(32) NOT NULL,
     date         DATE        NOT NULL,           -- JST基準の日付 (アプリを開いた日)
-    category     VARCHAR(32) NOT NULL,           -- 'visit' / 'review' / ...
+    category     VARCHAR(32) NOT NULL,           -- 'visit' / 'review' / 'standalone' / 'push_capable' / 'report' / 'onboarding_cta' / 'record_form' / 'deck_form'
     signal_count INT         NOT NULL DEFAULT 1, -- その日そのカテゴリで受け取ったシグナル数
     updated_at   TIMESTAMP   NOT NULL,           -- 最終シグナル時刻(JST)。通知→来訪の遅延測定に使う
     PRIMARY KEY (user_id, date, category)
@@ -1092,7 +1092,7 @@ CREATE TABLE push_deliveries (
     subscription_id VARCHAR(26) NOT NULL,
     notification_id VARCHAR(26) NOT NULL DEFAULT '',
     campaign        VARCHAR(32) NOT NULL,    -- 'streak_nudge' / 'weekly_report' / 'env_news' / 'weekend_reminder'
-    status          VARCHAR(16) NOT NULL,    -- 'pending'(送出前) / 'sent' / 'failed' / 'expired'
+    status          VARCHAR(16) NOT NULL,    -- 'pending'(送出前) / 'sent' / 'failed' / 'expired' / 'holdout'(効果測定のためあえて送らなかった)
     status_code     INT NOT NULL DEFAULT 0,  -- プッシュサービスのHTTPステータス
     delivered_at    TIMESTAMP DEFAULT NULL,  -- 端末のSWがpushを受け取った時刻
     clicked_at      TIMESTAMP DEFAULT NULL   -- 通知がタップされた時刻

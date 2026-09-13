@@ -35,17 +35,47 @@ const (
 	// シグナル。review の部分集合。週次レポート通知(P-2)の閲覧率を、通知した人のうち
 	// 何人がレポートまで辿り着いたかで測るために分けて持つ(P2_WEEKLY_REPORT_PLAN.md)。
 	UserDailyActivityCategoryReport = "report"
+
+	// 以下3つは「登録してから初回記録に辿り着くまで、どのステップで落ちたか」を測る
+	// (A系の再設計の前提・engagement-weekly-2026-09-14.md §5.6)。
+	//
+	// W0記録率は7コホート連続で50%前後から動かないのに、A-1〜A-3 はすべて実装済みで
+	// 手が尽きているように見える。これは施策が効かないのではなく、
+	// 「記録したか / しなかったか」の2値しか測っておらず、どこで落ちているかを
+	// 一度も観測していないため。GAイベント(cta_first_record_impression 等)は既に
+	// 飛んでいるが、Grafana からは読めずコホート分析にも繋げられない。
+	//
+	// 登録 → visit → onboarding_cta → record_form → records の5段で見れば、
+	// 「ホームに来ていない」「CTAを見ていない」「フォームで諦めた」のどれかに絞れる。
+
+	// UserDailyActivityCategoryOnboardingCta はその日、記録0件の空状態CTA
+	// (FirstRecordCtaCard / QuickStartModal)が表示されたシグナル。
+	// 表示条件が「記録0件」なので、初回記録後は二度と立たない。
+	UserDailyActivityCategoryOnboardingCta = "onboarding_cta"
+
+	// UserDailyActivityCategoryRecordForm はその日、記録作成フォーム
+	// (/records/quick・/records/create)を開いたシグナル。
+	// 記録経験者も日常的に立てるため、初回記録ファネルとして読むときは
+	// 「初回記録より前に立った分」だけを見ること。
+	UserDailyActivityCategoryRecordForm = "record_form"
+
+	// UserDailyActivityCategoryDeckForm はその日、デッキ登録フォームを開いたシグナル。
+	// A-2(デッキコード→記録フォーム直行)の副導線がどこまで進んだかを測る。
+	UserDailyActivityCategoryDeckForm = "deck_form"
 )
 
 // UserDailyActivityCategories は既知の計測カテゴリの集合。
 // 未知の値をそのまま書き込むと、集計時に誰も気づけない無音のゴミが溜まるため、
 // 受け入れ判定は必ずここを通す。
 var UserDailyActivityCategories = map[string]struct{}{
-	UserDailyActivityCategoryVisit:       {},
-	UserDailyActivityCategoryReview:      {},
-	UserDailyActivityCategoryStandalone:  {},
-	UserDailyActivityCategoryPushCapable: {},
-	UserDailyActivityCategoryReport:      {},
+	UserDailyActivityCategoryVisit:         {},
+	UserDailyActivityCategoryReview:        {},
+	UserDailyActivityCategoryStandalone:    {},
+	UserDailyActivityCategoryPushCapable:   {},
+	UserDailyActivityCategoryReport:        {},
+	UserDailyActivityCategoryOnboardingCta: {},
+	UserDailyActivityCategoryRecordForm:    {},
+	UserDailyActivityCategoryDeckForm:      {},
 }
 
 // IsKnownUserDailyActivityCategory は既知のカテゴリかどうかを返す。

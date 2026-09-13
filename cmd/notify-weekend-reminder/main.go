@@ -16,6 +16,11 @@
 // 想定運用: OSのcronから毎週金曜 20:00 JST に起動する(crontab例は config/crontab 参照)。
 // VAPID 鍵(.env の VAPID_*)が未設定なら push は送らず、アプリ内通知だけが作られる。
 //
+// B-1 の効果測定のため、想起系 push は PUSH_HOLDOUT_RATIO(既定 0 = 実験しない)で
+// 購読者の一部へあえて送らないことができる。0.5 なら購読者の約半分がその週は
+// アプリ内通知だけになり、同じ「許諾を出した人」同士で push の効果を比較できる
+// (engagement-weekly-2026-09-14.md §5.1)。
+//
 // 使い方:
 //
 //	# 送信せず対象者と件数だけ確認する(デフォルト)
@@ -89,6 +94,11 @@ func main() {
 		slog.Warn("web push is disabled: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT are not set. in-app notifications only")
 	}
 
+	holdoutRatio := usecase.ParseHoldoutRatio(os.Getenv("PUSH_HOLDOUT_RATIO"))
+	if holdoutRatio > 0 {
+		slog.Info("push holdout experiment is enabled", slog.Float64("holdout_ratio", holdoutRatio))
+	}
+
 	reminder := usecase.NewWeekendReminder(
 		infrastructure.NewUserStreak(db),
 		infrastructure.NewPushSubscription(db),
@@ -98,6 +108,7 @@ func main() {
 			infrastructure.NewPushSubscription(db),
 			infrastructure.NewPushDelivery(db),
 			pushSender,
+			usecase.WithHoldoutRatio(holdoutRatio),
 		),
 	)
 

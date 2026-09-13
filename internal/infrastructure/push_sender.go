@@ -39,11 +39,28 @@ type WebPushSender struct {
 // NewWebPushSender は VAPID 鍵ペアと連絡先から送出器を作る。
 // 鍵が未設定でもエラーにせず「無効な送出器」を返し、Enabled() で判定できるようにする
 // (鍵が無い環境でもバッチと API が起動できるようにするため)。
+//
+// 生成時に設定を検査し、矛盾があれば critical で残す。VAPID の設定ミスは送出するまで
+// 表に出ず、しかも Apple だけが弾くので「Android は届いているのに iOS だけ全滅」という
+// 気づけない壊れ方をする(2026-09 に実際に起きた。cmd/verify-vapid-keys を手で叩くまで
+// 誰も気づけなかった)。起動のたびに全バッチのログへ出しておけば、次は初回の実行で目に入る。
+//
+// 検査に落ちても送出は止めない。誤検知で通知が全部止まるほうが、壊れたまま送るより害が
+// 大きいため(本当に壊れていればどのみちプッシュサービスが弾く)。
 func NewWebPushSender(
 	publicKey string,
 	privateKey string,
 	subject string,
 ) repository.PushSenderInterface {
+	if report := InspectVAPIDConfig(publicKey, privateKey, subject); report.HasProblems() {
+		slog.Error("VAPID configuration is inconsistent: strict push services (Apple) will reject every notification",
+			slog.String("severity", "critical"),
+			slog.Any("problems", report.Problems),
+			slog.String("jwt_sub", report.JWTSubject),
+			slog.String("hint", "cmd/verify-vapid-keys で詳細を確認する"),
+		)
+	}
+
 	return &WebPushSender{
 		publicKey:  publicKey,
 		privateKey: privateKey,

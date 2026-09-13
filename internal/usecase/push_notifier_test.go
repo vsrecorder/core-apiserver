@@ -43,6 +43,12 @@ func newTestPushSubscription(id string, failureCount int) *entity.PushSubscripti
 	return s
 }
 
+// newTestPushSubscriptionOn はプッシュサービスを指定して購読を作る。
+// 403 の扱いはサービス単位で決まるため、Apple と FCM を混ぜたケースに使う。
+func newTestPushSubscriptionOn(id string, host string, platform string) *entity.PushSubscription {
+	return entity.NewPushSubscription(id, pushNotifierFixedNow.AddDate(0, 0, -30), "user-1", "https://"+host+"/"+id, "p256dh", "auth", platform)
+}
+
 // expectLiveAndUnderCap は「送出器が有効・購読あり・週上限未満」までの共通の期待を張る。
 func (m *pushNotifierMocks) expectLiveAndUnderCap(subs []*entity.PushSubscription, countThisWeek int) {
 	thisMonday := time.Date(2026, 8, 24, 0, 0, 0, 0, time.Local)
@@ -479,4 +485,63 @@ func TestWithHoldoutRatio(t *testing.T) {
 		WithHoldoutRatio(tt.ratio)(n)
 		require.Equal(t, tt.want, n.holdoutRatio, "ratio=%v", tt.ratio)
 	}
+}
+
+func TestPushNotifier_StaleCredentialIsPerPushService(t *testing.T) {
+	notification := entity.NewNotification("n-1", pushNotifierFixedNow, "user-1", NotificationCategoryReminder, "今週末、対戦の予定は？", "本文", "/records/quick")
+
+	/*
+	 * 2026-09-14 の回帰テスト。
+	 *
+	 * FCM のレガシー endpoint は VAPID の署名を検証せず 201 を返すが、Apple は厳密に
+	 * 検証して 403 を返す。受理の実績をプロセス全体で1つの bool に持つと、
+	 * **Android の成功が「鍵設定は正しい」の証拠として扱われ、Apple の 403 が
+	 * 「その購読だけが古い」と誤判定されて失効させられる**。
+	 * 本番で ios-pwa 0/20(403・最後の成功なし)のまま、許諾を出した iOS ユーザーの購読が
+	 * 静かに revoke されていた。受理の実績はサービス単位で持つこと。
+	 */
+	t.Run("FCMの成功をAppleの403の根拠にしない_購読を失効させず設定ミスとして扱う", func(t *testing.T) {
+		m, u := setup4PushNotifier(t)
+		m.expectLiveAndUnderCap([]*entity.PushSubscription{
+			newTestPushSubscriptionOn("sub-android", "fcm.googleapis.com", entity.PushPlatformAndroid),
+			newTestPushSubscriptionOn("sub-ios", "web.push.apple.com", entity.PushPlatformIOSPWA),
+		}, 0)
+		m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+		gomock.InOrder(
+			m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(201, nil),
+			m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(403, nil),
+		)
+		m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusSent, 201).Return(nil)
+		m.subscription.EXPECT().MarkSuccess(gomock.Any(), "sub-android", pushNotifierFixedNow).Return(nil)
+		// Apple 側は failed のまま。expired にも失敗回数にもしない
+		m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusFailed, 403).Return(nil)
+		// Revoke / IncrementFailure に EXPECT を張らないので、呼ばれたらテストが落ちる
+
+		sent, err := u.Deliver(context.Background(), notification, PushCampaignWeekendReminder)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, sent)
+	})
+
+	t.Run("同じサービスで受理されていれば403は従来どおり失効させる", func(t *testing.T) {
+		m, u := setup4PushNotifier(t)
+		m.expectLiveAndUnderCap([]*entity.PushSubscription{
+			newTestPushSubscriptionOn("sub-ios-1", "web.push.apple.com", entity.PushPlatformIOSPWA),
+			newTestPushSubscriptionOn("sub-ios-2", "web.push.apple.com", entity.PushPlatformIOSPWA),
+		}, 0)
+		m.delivery.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+		gomock.InOrder(
+			m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(201, nil),
+			m.sender.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(403, nil),
+		)
+		m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusSent, 201).Return(nil)
+		m.subscription.EXPECT().MarkSuccess(gomock.Any(), "sub-ios-1", pushNotifierFixedNow).Return(nil)
+		m.delivery.EXPECT().UpdateResult(gomock.Any(), gomock.Any(), entity.PushDeliveryStatusExpired, 403).Return(nil)
+		m.subscription.EXPECT().Revoke(gomock.Any(), "sub-ios-2", pushNotifierFixedNow).Return(nil)
+
+		sent, err := u.Deliver(context.Background(), notification, PushCampaignWeekendReminder)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, sent)
+	})
 }

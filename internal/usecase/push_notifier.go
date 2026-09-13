@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
@@ -119,13 +119,21 @@ type PushNotifier struct {
 	// holdoutRatio は想起系 push を「あえて送らない」購読者の比率(0 なら実験しない)。
 	holdoutRatio float64
 
-	// sentOnce は、このプロセスがプッシュサービスに1件でも受理されたかを表す。
+	// sentHosts は、このプロセスが**どのプッシュサービスに**1件でも受理されたかを表す
+	// (キーは endpoint のホスト名)。
+	//
 	// 403(VAPID の資格情報が拒否された)を「サーバの鍵設定ミス」と「その購読だけが古い
 	// 公開鍵で作られている」のどちらとして扱うかの切り分けに使う。鍵設定が誤っていれば
-	// 全端末が403になるためこのフラグは永久に立たず、購読には一切触れない。
-	// 鍵はプロセス起動時に .env から読むので、「差し替える前の成功」がここに残ることもない
+	// そのサービスへは全端末が403になるためフラグは永久に立たず、購読には一切触れない。
+	//
+	// ⚠️ プロセス全体で1つの bool にしてはいけない。FCM のレガシー endpoint は VAPID の
+	// 署名を検証せず 201 を返すのに対し、Apple は厳密に検証して 403 を返す。1つの bool だと
+	// **Android の成功が「鍵設定は正しい」の証拠として扱われ、Apple の 403 が
+	// 「その購読が古い」と誤判定されて失効させられる**。2026-09-14 に実際に起きた
+	// (ios-pwa 0/20・403・最後の成功なし。許諾を出した iOS ユーザーの購読が静かに消えていた)。
+	// 鍵はプロセス起動時に .env から読むので、「差し替える前の成功」が残ることはない
 	// (バッチは実行ごとに新しいプロセス、APIサーバは再デプロイで作り直される)。
-	sentOnce atomic.Bool
+	sentHosts sync.Map
 }
 
 func NewPushNotifier(
@@ -225,7 +233,7 @@ func (u *PushNotifier) Deliver(
 		// 他の端末へは受理されている状況での403は、鍵設定ではなくこの購読が古い公開鍵で
 		// 作られていることを意味する。再購読されるまで永久に成功しないため失効として扱う
 		// (失効させないと、死んだ購読へ毎日送り続けてERRORを出し続けることになる)。
-		if status == entity.PushDeliveryStatusFailed && u.isStaleCredentialRejection(statusCode) {
+		if status == entity.PushDeliveryStatusFailed && u.isStaleCredentialRejection(statusCode, subscription.Endpoint) {
 			status = entity.PushDeliveryStatusExpired
 
 			slog.WarnContext(ctx, "push subscription is bound to an outdated VAPID key: revoking",
@@ -245,9 +253,9 @@ func (u *PushNotifier) Deliver(
 		switch status {
 		case entity.PushDeliveryStatusSent:
 			sent++
-			// 受理された実績を残し、以後の403を「鍵設定ミス」ではなく
-			// 「その購読が古い」と断定できるようにする
-			u.sentOnce.Store(true)
+			// 受理された実績を**そのプッシュサービスについて**残し、以後の403を
+			// 「鍵設定ミス」ではなく「その購読が古い」と断定できるようにする
+			u.sentHosts.Store(pushServiceHost(subscription.Endpoint), true)
 
 			if err := u.subscriptionRepo.MarkSuccess(ctx, subscription.ID, now); err != nil {
 				logError(ctx, err)
@@ -319,13 +327,22 @@ func pushDeliveryStatus(statusCode int, sendErr error) string {
 }
 
 // isStaleCredentialRejection は 403 を「その購読が古い VAPID 公開鍵で作られている」と
-// 断定してよいかを返す。同じプロセスで既に他の端末へ受理されていれば、鍵・subject・
-// ペイロードは正しいと分かるため、拒否の原因はその購読側にしかない。
+// 断定してよいかを返す。**同じプッシュサービスの**他の端末へ既に受理されていれば、
+// そのサービスに対する鍵・subject・ペイロードは正しいと分かるため、拒否の原因は
+// その購読側にしかない。
 //
-// 逆にまだ1件も受理されていないうちは、鍵設定を誤った直後である可能性が残る。そこで
-// 失効させると全ユーザーに許諾を取り直させることになるため、断定せず購読を守る。
-func (u *PushNotifier) isStaleCredentialRejection(statusCode int) bool {
-	return statusCode == http.StatusForbidden && u.sentOnce.Load()
+// 逆にそのサービスへまだ1件も受理されていないうちは、鍵設定を誤った直後である可能性が
+// 残る。そこで失効させると全ユーザーに許諾を取り直させることになるため、断定せず購読を守る。
+func (u *PushNotifier) isStaleCredentialRejection(statusCode int, endpoint string) bool {
+	if statusCode != http.StatusForbidden {
+		return false
+	}
+
+	// 同じプッシュサービスで受理されているかだけを見る。別サービスの成功は根拠にならない
+	// (FCM は署名を検証しないので、鍵が壊れていても成功する)。
+	_, sent := u.sentHosts.Load(pushServiceHost(endpoint))
+
+	return sent
 }
 
 // pushServiceHost は endpoint からホスト名だけを取り出す。

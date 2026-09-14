@@ -521,6 +521,8 @@ func main() {
 		r,
 		usecase.NewPushDelivery(
 			infrastructure.NewPushDelivery(db),
+			// タップされた push のもとになったアプリ内通知を既読にするために使う
+			infrastructure.NewNotification(db),
 		),
 	).RegisterRoute(relativePath)
 

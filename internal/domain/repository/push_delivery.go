@@ -57,6 +57,14 @@ type PushDeliveryInterface interface {
 		since time.Time,
 	) (int, error)
 
+	// FindById は本人の配達ログを1件返す。他人の id や存在しない id は
+	// apperror.ErrRecordNotFound。タップされた通知を引くために使う。
+	FindById(
+		ctx context.Context,
+		id string,
+		userId string,
+	) (*entity.PushDelivery, error)
+
 	// FindRecentByUserIdAndCampaign は campaign の配達ログを新しい順に最大 limit 件返す。
 	// 反応の無いユーザーへの配信を間引く判定に使う。
 	FindRecentByUserIdAndCampaign(

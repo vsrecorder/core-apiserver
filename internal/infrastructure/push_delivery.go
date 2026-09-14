@@ -225,6 +225,26 @@ func (i *PushDelivery) CountNotificationsByUserIdAndCampaignsSince(
 	return int(count), nil
 }
 
+func (i *PushDelivery) FindById(
+	ctx context.Context,
+	id string,
+	userId string,
+) (*entity.PushDelivery, error) {
+	var m model.PushDelivery
+
+	// user_id を条件に含めるので、他人の id は「存在しない」と同じ扱いになる。
+	// 見つからない場合の gorm.ErrRecordNotFound は wrapError が apperror へ変換する
+	tx := dbFromContext(ctx, i.db).
+		Where("id = ? AND user_id = ?", id, userId).
+		First(&m)
+	if tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, wrapError(tx.Error)
+	}
+
+	return newPushDeliveryEntity(&m), nil
+}
+
 func (i *PushDelivery) FindRecentByUserIdAndCampaign(
 	ctx context.Context,
 	userId string,

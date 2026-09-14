@@ -129,6 +129,40 @@ func TestPushDeliveryInfrastructure(t *testing.T) {
 		})
 	})
 
+	t.Run("FindById", func(t *testing.T) {
+		t.Run("正常系_本人の配達ログをnotification_id付きで返す", func(t *testing.T) {
+			db, mock := setupSqlmockDB(t)
+			r := NewPushDelivery(db)
+
+			rows := sqlmock.NewRows(pushDeliveryColumns).
+				AddRow(id, createdAt, uid, "sub-1", "n-1", "weekly_report", entity.PushDeliveryStatusSent, 201, createdAt, nil)
+
+			mock.ExpectQuery(`SELECT \* FROM "push_deliveries" WHERE id = \$1 AND user_id = \$2 ORDER BY "push_deliveries"\."id" LIMIT \$3`).
+				WithArgs(id, uid, 1).
+				WillReturnRows(rows)
+
+			got, err := r.FindById(context.Background(), id, uid)
+
+			require.NoError(t, err)
+			require.Equal(t, "n-1", got.NotificationId)
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+
+		t.Run("異常系_他人のidや存在しないidはErrRecordNotFound", func(t *testing.T) {
+			db, mock := setupSqlmockDB(t)
+			r := NewPushDelivery(db)
+
+			mock.ExpectQuery(`SELECT \* FROM "push_deliveries" WHERE id = \$1 AND user_id = \$2 ORDER BY "push_deliveries"\."id" LIMIT \$3`).
+				WithArgs(id, "other-user", 1).
+				WillReturnRows(sqlmock.NewRows(pushDeliveryColumns))
+
+			_, err := r.FindById(context.Background(), id, "other-user")
+
+			require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	})
+
 	t.Run("FindRecentByUserIdAndCampaign", func(t *testing.T) {
 		t.Run("正常系_新しい順にlimit件返しclicked_atを詰め替える", func(t *testing.T) {
 			db, mock := setupSqlmockDB(t)

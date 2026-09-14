@@ -86,6 +86,21 @@ func (mr *MockPushDeliveryInterfaceMockRecorder) DeleteByUserId(ctx, uid any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserId", reflect.TypeOf((*MockPushDeliveryInterface)(nil).DeleteByUserId), ctx, uid)
 }
 
+// FindById mocks base method.
+func (m *MockPushDeliveryInterface) FindById(ctx context.Context, id, userId string) (*entity.PushDelivery, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindById", ctx, id, userId)
+	ret0, _ := ret[0].(*entity.PushDelivery)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindById indicates an expected call of FindById.
+func (mr *MockPushDeliveryInterfaceMockRecorder) FindById(ctx, id, userId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockPushDeliveryInterface)(nil).FindById), ctx, id, userId)
+}
+
 // FindRecentByUserIdAndCampaign mocks base method.
 func (m *MockPushDeliveryInterface) FindRecentByUserIdAndCampaign(ctx context.Context, userId, campaign string, limit int) ([]*entity.PushDelivery, error) {
 	m.ctrl.T.Helper()

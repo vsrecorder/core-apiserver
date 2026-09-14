@@ -56,6 +56,12 @@ type variantGroup struct {
 	count   int
 	wins    int
 	draws   int
+	// members は、この行に束ねられた「束ねる前の変種」ごとの集計。
+	// 1体目でまとめる集計（DeckUsageGroupingFirstSprite）でのみ埋まり、
+	// 組み合わせ（1体目+2体目）単位の内訳を保持する。memberOrder は出現順。
+	// 組み合わせ一致の集計では行そのものが組み合わせ単位なので nil のまま。
+	members     map[string]*variantGroup
+	memberOrder []string
 }
 
 func (g *variantGroup) winRate() float64 {
@@ -278,7 +284,20 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		// 指紋なしとして丸ごと捨ててしまわないため。
 		// 表示用の position は 1 に揃える。この集計単位では行の意味が「1体目が○○の
 		// デッキ」であり、元の枠（2枠目）のまま返すと UI が2枠目に描いてしまう。
+		//
+		// 束ねる前の組み合わせは memberKey / memberSprites に控えて、行の内訳として
+		// 別に数える（UI のアコーディオンで展開する）。1体目へ潰した時点で2体目の情報は
+		// 指紋からも表示用スプライトからも消えるため、ここで取らないと後から復元できない。
+		var memberKey string
+		var memberSprites []spritePos
 		if grouping == entity.DeckUsageGroupingFirstSprite && len(sprites) > 0 {
+			memberSprites = sprites
+			memberIds := make([]string, len(sprites))
+			for i, s := range sprites {
+				memberIds[i] = s.id
+			}
+			memberKey, _ = NormalizeFingerprint(memberIds)
+
 			sprites = []spritePos{{id: sprites[0].id, position: 1}}
 		}
 
@@ -295,19 +314,9 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 
 		g, ok := groups[key]
 		if !ok {
-			// 表示用は position ASC 順のまま ID 重複だけ排除する(gap も保持)
-			seen := make(map[string]struct{}, len(sprites))
-			ordered := make([]spritePos, 0, len(sprites))
-			for _, s := range sprites {
-				if _, dup := seen[s.id]; dup {
-					continue
-				}
-				seen[s.id] = struct{}{}
-				ordered = append(ordered, s)
-			}
 			g = &variantGroup{
 				key:     key,
-				sprites: ordered,
+				sprites: dedupeSprites(sprites),
 			}
 			groups[key] = g
 			order = append(order, key)
@@ -318,6 +327,29 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 			g.draws++
 		} else if won {
 			g.wins++
+		}
+
+		// 1体目でまとめた行では、束ねる前の組み合わせごとの数も同じ規則で数える。
+		if memberKey != "" {
+			m, ok := g.members[memberKey]
+			if !ok {
+				if g.members == nil {
+					g.members = make(map[string]*variantGroup)
+				}
+				m = &variantGroup{
+					key:     memberKey,
+					sprites: dedupeSprites(memberSprites),
+				}
+				g.members[memberKey] = m
+				g.memberOrder = append(g.memberOrder, memberKey)
+			}
+
+			m.count++
+			if draw {
+				m.draws++
+			} else if won {
+				m.wins++
+			}
 		}
 
 		contributors[userId] = struct{}{}
@@ -373,7 +405,12 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 			otherWins += g.wins
 			otherDraws += g.draws
 			// order は使用率降順・同数は勝率降順に整列済みなので、内訳もその順序を引き継ぐ。
-			otherMembers = append(otherMembers, newVariantEntity(g, totalVotes))
+			member := newVariantEntity(g, totalVotes)
+			// 「その他」の内訳には、さらにその内訳（組み合わせ単位）までは持たせない。
+			// アコーディオンの中でもう一段畳む意味が無く、前週比較(annotatePreviousWeek)も
+			// 「その他」の内訳の指紋だけを見ているため、応答が膨らむだけになる。
+			member.Members = nil
+			otherMembers = append(otherMembers, member)
 			continue
 		}
 
@@ -475,7 +512,44 @@ func newVariantEntity(g *variantGroup, totalVotes int) *entity.DeckUsageVariant 
 		pokemonSprites = append(pokemonSprites, entity.NewPokemonSpriteWithPosition(s.id, s.position))
 	}
 
-	return entity.NewDeckUsageVariant(
+	variant := entity.NewDeckUsageVariant(
 		g.key, g.count, usageRate, g.wins, losses, g.winRate(), pokemonSprites,
 	)
+
+	// 1体目でまとめた行には、束ねる前の組み合わせを内訳として持たせる。
+	// 並び順は一覧の行と同じ規則(件数の降順・同数は勝率の降順)、
+	// 使用率も行と同じ全体件数を分母にする(内訳の合計が行の使用率に一致する)。
+	if len(g.memberOrder) > 0 {
+		memberOrder := append([]string(nil), g.memberOrder...)
+		sort.SliceStable(memberOrder, func(a, b int) bool {
+			ma, mb := g.members[memberOrder[a]], g.members[memberOrder[b]]
+			if ma.count != mb.count {
+				return ma.count > mb.count
+			}
+			return ma.winRate() > mb.winRate()
+		})
+
+		members := make([]*entity.DeckUsageVariant, 0, len(memberOrder))
+		for _, key := range memberOrder {
+			members = append(members, newVariantEntity(g.members[key], totalVotes))
+		}
+		variant.Members = members
+	}
+
+	return variant
+}
+
+// dedupeSprites は表示用スプライト列から ID の重複だけを取り除く。
+// 並びは position ASC のまま保ち、枠の gap(1枠目が欠けた旧データ)も潰さない。
+func dedupeSprites(sprites []spritePos) []spritePos {
+	seen := make(map[string]struct{}, len(sprites))
+	ordered := make([]spritePos, 0, len(sprites))
+	for _, s := range sprites {
+		if _, dup := seen[s.id]; dup {
+			continue
+		}
+		seen[s.id] = struct{}{}
+		ordered = append(ordered, s)
+	}
+	return ordered
 }

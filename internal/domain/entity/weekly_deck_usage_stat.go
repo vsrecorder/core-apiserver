@@ -41,9 +41,11 @@ type DeckUsageVariant struct {
 	Losses         int
 	WinRate        float64
 	PokemonSprites []*PokemonSprite
-	// Members は「その他」枠に集約された個別変種の内訳。
-	// 「その他」以外の変種では nil。UI ではアコーディオンで展開し、少数変種も
-	// 個別に一覧表示するために使う。
+	// Members はこの行に束ねられた内訳。UI ではアコーディオンで展開して一覧表示する。
+	//   - 「その他」行: minVariantCount 未満で集約された個別変種
+	//   - 1体目でまとめた行(DeckUsageGroupingFirstSprite): 束ねる前の組み合わせ単位の変種
+	// 上記以外(組み合わせ一致で集計した通常の行)では nil。
+	// 使用率はどちらも行と同じ全体件数を分母にするため、内訳の合計が行の使用率に一致する。
 	Members []*DeckUsageVariant
 	// PreviousRank は前週の同じ指紋の順位(個別表示された変種のみ・1始まり)。
 	// 前週に個別表示されていない(圏外・「その他」集約・新登場)場合は nil。

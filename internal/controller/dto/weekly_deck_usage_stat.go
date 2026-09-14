@@ -8,7 +8,8 @@ type WeeklyDeckUsageItemResponse struct {
 	Losses         int                      `json:"losses"`
 	WinRate        float64                  `json:"win_rate"`
 	PokemonSprites []*PokemonSpriteResponse `json:"pokemon_sprites"`
-	// Members は「その他」枠に集約された個別変種の内訳。「その他」以外では空のため省略する。
+	// Members はこの行に束ねられた内訳(「その他」に集約された個別変種、または
+	// 1体目でまとめた行の組み合わせ単位の内訳)。内訳を持たない行では省略する。
 	Members []*WeeklyDeckUsageItemResponse `json:"members,omitempty"`
 	// 前週の同じ指紋の順位・使用率・勝率(UI の上昇/下降表示用)。
 	// 前週に指紋が現れていない(新登場)場合は省略される。

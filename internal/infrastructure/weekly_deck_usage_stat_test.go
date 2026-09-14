@@ -537,6 +537,101 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.Len(t, ret.Decks[0].PokemonSprites, 1)
 		require.Equal(t, "0006", ret.Decks[0].PokemonSprites[0].ID)
 		require.Equal(t, uint(1), ret.Decks[0].PokemonSprites[0].Position)
+
+		// 束ねる前の組み合わせは内訳(Members)として残り、UI のアコーディオンで
+		// 一覧表示できる。並びは件数の降順で、2体目も含めて表示できる。
+		require.Len(t, ret.Decks[0].Members, 2)
+
+		require.Equal(t, 3, ret.Decks[0].Members[0].Count)
+		require.Equal(t, 0.75, ret.Decks[0].Members[0].UsageRate)
+		require.Len(t, ret.Decks[0].Members[0].PokemonSprites, 2)
+		require.Equal(t, "0006", ret.Decks[0].Members[0].PokemonSprites[0].ID)
+		require.Equal(t, "0018", ret.Decks[0].Members[0].PokemonSprites[1].ID)
+		require.Equal(t, uint(2), ret.Decks[0].Members[0].PokemonSprites[1].Position)
+
+		require.Equal(t, 1, ret.Decks[0].Members[1].Count)
+		require.Equal(t, "0157", ret.Decks[0].Members[1].PokemonSprites[1].ID)
+
+		// 内訳の件数の合計は行の件数に一致する(取りこぼしも二重計上も無い)。
+		require.Equal(t, ret.Decks[0].Count, ret.Decks[0].Members[0].Count+ret.Decks[0].Members[1].Count)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 組み合わせ一致の集計では、行そのものが組み合わせ単位のため内訳を持たない
+	// (「その他」行だけが集約した変種の内訳を持つ)。
+	t.Run("正常系_組み合わせ一致の集計では個別表示の行は内訳を持たない", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 3; i++ {
+			rows = rows.AddRow("match-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		spriteRows := sqlmock.NewRows(matchPokemonSpriteColumns)
+		for i := 0; i < 3; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0006")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0018")
+		}
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
+
+		ret, err := r.FindWeeklyDeckUsageStat(
+			context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact,
+		)
+
+		require.NoError(t, err)
+		require.Len(t, ret.Decks, 1)
+		require.Empty(t, ret.Decks[0].Members)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 1体目でまとめた変種が「その他」へ落ちる場合、その他の内訳(集約された変種)は
+	// さらにその内訳(組み合わせ単位)を持たない。アコーディオンを二段に畳まないため。
+	t.Run("正常系_1体目でまとめる集計でその他へ集約された内訳は内訳を持たない", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// 1体目が 0006 の票が3つ(個別表示)、1体目が 0025 の票が1つ(「その他」へ集約)。
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 4; i++ {
+			rows = rows.AddRow("match-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		spriteRows := sqlmock.NewRows(matchPokemonSpriteColumns)
+		for i := 0; i < 3; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0006")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0018")
+		}
+		spriteRows = spriteRows.AddRow("match-4", 1, "0025")
+		spriteRows = spriteRows.AddRow("match-4", 2, "0157")
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
+
+		ret, err := r.FindWeeklyDeckUsageStat(
+			context.Background(), fromDate, toDate, entity.DeckUsageGroupingFirstSprite,
+		)
+
+		require.NoError(t, err)
+		require.Len(t, ret.Decks, 2)
+
+		// 個別表示された行は組み合わせの内訳を持つ。
+		require.Equal(t, "0006", ret.Decks[0].Fingerprint)
+		require.Len(t, ret.Decks[0].Members, 1)
+
+		// 「その他」の内訳は1体目でまとめた変種のまま。その中に組み合わせの内訳は入れない。
+		require.Equal(t, "", ret.Decks[1].Fingerprint)
+		require.Len(t, ret.Decks[1].Members, 1)
+		require.Equal(t, "0025", ret.Decks[1].Members[0].Fingerprint)
+		require.Empty(t, ret.Decks[1].Members[0].Members)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 

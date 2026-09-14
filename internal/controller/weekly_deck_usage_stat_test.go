@@ -35,9 +35,9 @@ func TestWeeklyDeckUsageStatController_GetWeeklyUsage(t *testing.T) {
 		c, mockUsecase := setup4TestWeeklyDeckUsageStatController(t)
 
 		weekStart := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
-		stat := entity.NewWeeklyDeckUsageStat(weekStart, 10, 3, []*entity.DeckUsageVariant{})
+		stat := entity.NewWeeklyDeckUsageStat(weekStart, entity.DeckUsageGroupingExact, 10, 3, []*entity.DeckUsageVariant{})
 
-		mockUsecase.EXPECT().GetWeeklyDeckUsageStat(gomock.Any(), "2026-07-13").Return(stat, nil)
+		mockUsecase.EXPECT().GetWeeklyDeckUsageStat(gomock.Any(), "2026-07-13", entity.DeckUsageGroupingExact).Return(stat, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", DeckMetaPath+WeeklyDeckUsagePath+"?week=2026-07-13", nil)
@@ -49,6 +49,43 @@ func TestWeeklyDeckUsageStatController_GetWeeklyUsage(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, 10, res.TotalVotes)
 		require.Equal(t, 3, res.ContributorCount)
+	})
+
+	t.Run("正常系_1体目でまとめる集計単位をユースケースへ渡す", func(t *testing.T) {
+		c, mockUsecase := setup4TestWeeklyDeckUsageStatController(t)
+
+		weekStart := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
+		stat := entity.NewWeeklyDeckUsageStat(
+			weekStart, entity.DeckUsageGroupingFirstSprite, 10, 3, []*entity.DeckUsageVariant{},
+		)
+
+		mockUsecase.EXPECT().
+			GetWeeklyDeckUsageStat(gomock.Any(), "2026-07-13", entity.DeckUsageGroupingFirstSprite).
+			Return(stat, nil)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest(
+			"GET",
+			DeckMetaPath+WeeklyDeckUsagePath+"?week=2026-07-13&grouping=first_sprite",
+			nil,
+		)
+		c.router.ServeHTTP(w, req)
+
+		var res dto.WeeklyDeckUsageStatResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, "first_sprite", res.Grouping)
+	})
+
+	t.Run("異常系_groupingが未知の値なら400を返す", func(t *testing.T) {
+		c, _ := setup4TestWeeklyDeckUsageStatController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", DeckMetaPath+WeeklyDeckUsagePath+"?grouping=first", nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("異常系_weekの形式が不正なら400を返す", func(t *testing.T) {
@@ -64,7 +101,7 @@ func TestWeeklyDeckUsageStatController_GetWeeklyUsage(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase := setup4TestWeeklyDeckUsageStatController(t)
 
-		mockUsecase.EXPECT().GetWeeklyDeckUsageStat(gomock.Any(), "").Return(nil, errors.New(""))
+		mockUsecase.EXPECT().GetWeeklyDeckUsageStat(gomock.Any(), "", entity.DeckUsageGroupingExact).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", DeckMetaPath+WeeklyDeckUsagePath, nil)

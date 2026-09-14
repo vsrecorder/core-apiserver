@@ -52,7 +52,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 
 		expectWeeklyMatchQuery(mock).WillReturnRows(sqlmock.NewRows(weeklyMatchRowColumns))
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Equal(t, fromDate, ret.WeekStart)
@@ -85,7 +85,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).WillReturnRows(spriteRows)
 		expectPrevWeekEmpty(mock)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Equal(t, 6, ret.TotalVotes)
@@ -134,7 +134,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns).AddRow(deckId, 1, "gardevoir"))
 		expectPrevWeekEmpty(mock)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Equal(t, 5, ret.TotalVotes)
@@ -158,7 +158,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
 			WillReturnRows(sqlmock.NewRows(matchPokemonSpriteColumns))
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Zero(t, ret.TotalVotes)
@@ -188,7 +188,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		)
 		expectPrevWeekEmpty(mock)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Equal(t, 5, ret.TotalVotes)
@@ -231,7 +231,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		)
 		expectPrevWeekEmpty(mock)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Equal(t, 5, ret.TotalVotes)
@@ -259,7 +259,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 			sqlmock.NewRows(pokemonSpriteColumns),
 		)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Zero(t, ret.TotalVotes)
@@ -298,7 +298,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		)
 		expectPrevWeekEmpty(mock)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Equal(t, 10, ret.TotalVotes)
@@ -321,7 +321,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows(matchPokemonSpriteColumns))
 		mock.ExpectQuery(`SELECT \* FROM "deck_name_aliases"`).WillReturnError(sql.ErrConnDone)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.Error(t, err)
 		require.Nil(t, ret)
@@ -357,7 +357,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 			WillReturnRows(spriteRows)
 		expectPrevWeekEmpty(mock)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Equal(t, 5, ret.TotalVotes)
@@ -431,7 +431,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
 			WillReturnRows(prevSprites)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Len(t, ret.Decks, 3)
@@ -483,11 +483,110 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 			WithArgs(int(entity.RegulationIdStandard), fromDate, toDate).
 			WillReturnRows(sqlmock.NewRows(weeklyMatchRowColumns))
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.NoError(t, err)
 		require.Zero(t, ret.TotalVotes)
 		require.Empty(t, ret.Decks)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 1体目でまとめる集計(DeckUsageGroupingFirstSprite)。2体目が違うだけの派生を
+	// 1行に束ね、指紋も表示も1体目のスプライトだけになる。
+	t.Run("正常系_1体目でまとめる集計は2体目が違う変種を同じデッキとして数える", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// 4マッチ(デッキ未登録)。相手は全て1体目が 0006 で、2体目だけが分かれる。
+		// 組み合わせ単位なら 0006+0018 が3票・0006+0157 が1票（後者は閾値未満で「その他」）。
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 4; i++ {
+			rows = rows.AddRow("match-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		spriteRows := sqlmock.NewRows(matchPokemonSpriteColumns)
+		for i := 0; i < 3; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0006")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0018")
+		}
+		spriteRows = spriteRows.AddRow("match-4", 1, "0006")
+		spriteRows = spriteRows.AddRow("match-4", 2, "0157")
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
+
+		ret, err := r.FindWeeklyDeckUsageStat(
+			context.Background(), fromDate, toDate, entity.DeckUsageGroupingFirstSprite,
+		)
+
+		require.NoError(t, err)
+		require.Equal(t, entity.DeckUsageGroupingFirstSprite, ret.Grouping)
+		require.Equal(t, 4, ret.TotalVotes)
+
+		// 4票がすべて「1体目が 0006」の1行にまとまる(「その他」へ落ちる変種は無い)。
+		require.Len(t, ret.Decks, 1)
+		require.Equal(t, "0006", ret.Decks[0].Fingerprint)
+		require.Equal(t, 4, ret.Decks[0].Count)
+		// 記録者が4敗 = 相手側の4勝
+		require.Equal(t, 4, ret.Decks[0].Wins)
+
+		// 表示も1体目だけ。2体目(0018/0157)は行の代表として出さない。
+		require.Len(t, ret.Decks[0].PokemonSprites, 1)
+		require.Equal(t, "0006", ret.Decks[0].PokemonSprites[0].ID)
+		require.Equal(t, uint(1), ret.Decks[0].PokemonSprites[0].Position)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 1枠目が欠けて2枠目にだけスプライトが入っている票(旧データ)も、先頭のスプライトを
+	// 1体目として扱って集計する。position==1 で抜き出すと指紋を作れず丸ごと落ちてしまう。
+	t.Run("正常系_1体目でまとめる集計は2枠目だけの票も先頭のスプライトで数える", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 3; i++ {
+			rows = rows.AddRow("match-"+string(rune('1'+i)), uid, "", true, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		spriteRows := sqlmock.NewRows(matchPokemonSpriteColumns)
+		for i := 0; i < 3; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0006")
+		}
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
+
+		ret, err := r.FindWeeklyDeckUsageStat(
+			context.Background(), fromDate, toDate, entity.DeckUsageGroupingFirstSprite,
+		)
+
+		require.NoError(t, err)
+		require.Len(t, ret.Decks, 1)
+		require.Equal(t, "0006", ret.Decks[0].Fingerprint)
+		require.Equal(t, 3, ret.Decks[0].Count)
+		// 表示スロットは1枠目へ寄せる(この集計単位では「1体目が○○」の行のため)。
+		require.Len(t, ret.Decks[0].PokemonSprites, 1)
+		require.Equal(t, uint(1), ret.Decks[0].PokemonSprites[0].Position)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 未知の集計単位でレポートごと落とさず、既定(組み合わせ一致)へ寄せる。
+	t.Run("正常系_未知の集計単位は組み合わせ一致として扱う", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		expectWeeklyMatchQuery(mock).WillReturnRows(sqlmock.NewRows(weeklyMatchRowColumns))
+
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, "unknown")
+
+		require.NoError(t, err)
+		require.Equal(t, entity.DeckUsageGroupingExact, ret.Grouping)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -497,7 +596,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 
 		expectWeeklyMatchQuery(mock).WillReturnError(sql.ErrConnDone)
 
-		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 
 		require.Error(t, err)
 		require.Nil(t, ret)

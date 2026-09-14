@@ -20,7 +20,7 @@ deck_pokemon_sprites / decks.name          ▲
 └─────────────────────────┘          └──────────────────────────┘
         │
         ▼
-GET /api/v1beta/deck_meta/weekly_usage?week=YYYY-MM-DD (公開・認証なし)
+GET /api/v1beta/deck_meta/weekly_usage?week=YYYY-MM-DD&grouping=exact|first_sprite (公開・認証なし)
 ```
 
 ---
@@ -64,11 +64,31 @@ GET /api/v1beta/deck_meta/weekly_usage?week=YYYY-MM-DD (公開・認証なし)
 
 1. **position 1/2 のスプライトのみ使う**(3体目以降は無視)。表示が2枠のため、
    見えないスプライトが指紋を分けると「見た目が同じ行」が複数並んでしまう
-2. スプライトIDの重複を排除する
-3. IDをソートしてカンマ連結 → これが指紋(**並び順に依存しない**)
-4. 指紋が空(スプライト0体)の票は集計から除外する
+2. 集計単位が `first_sprite` なら、ここで**先頭(position ASC の1体目)だけに絞る**(§1.4.1)
+3. スプライトIDの重複を排除する
+4. IDをソートしてカンマ連結 → これが指紋(**並び順に依存しない**)
+5. 指紋が空(スプライト0体)の票は集計から除外する
 
 表示用のスプライト列は position ASC 順を保ち、ID重複だけ排除する。
+
+#### 1.4.1 集計単位(grouping) — どこまでを「同じデッキ」とみなすか
+
+`grouping` クエリで切り替える(既定 `exact`)。**なぜ選べるようにしたか**は ADR
+([adr/deck-usage-grouping-by-first-sprite.md](../adr/deck-usage-grouping-by-first-sprite.md))を参照。
+
+| 値 | 同一視の条件 | 指紋 | 表示スプライト |
+|---|---|---|---|
+| `exact`(既定) | position 1/2 のスプライト集合が一致 | ID集合をソートしてカンマ連結 | 1〜2体(position ASC) |
+| `first_sprite` | **1体目のスプライトが同じ** | 1体目のID | **1体だけ**(position は 1 に揃える) |
+
+- 「1体目」は `position == 1` ではなく **position ASC で並べた先頭**。1枠目が欠けて
+  2枠目だけに登録されている票(旧データ)を、指紋を作れない票として落とさないため
+- 表示を1体に絞るのは、グループ内の誰かの2体目を代表にすると、その2体目を使っていない
+  票まで含んだ数字がその構築のものに見えるため(表示と集計の単位を一致させる)
+- 未知の値は**コントローラで 400**。infrastructure / usecase は未知・空を `exact` として
+  扱う(HTTP を経由しないバッチからの呼び出しのため)
+- レスポンスの `grouping` には**実際に集計した単位**が入る
+- `cmd/notify-weekly-report` の環境ニュースは常に `exact`(具体的な構築を名指しする文面のため)
 
 ### 1.5 「その他」への集約
 
@@ -82,8 +102,8 @@ GET /api/v1beta/deck_meta/weekly_usage?week=YYYY-MM-DD (公開・認証なし)
 
 - 並び: count 降順 → 同数は勝率降順(安定ソート)。「その他」は常に末尾
 - `usage_rate = count / total_votes`
-- webapp 側は同じ規則で再ソートし、分母を「全体 / その他を除く」で切替表示する
-  (`WeeklyDeckUsagePanel.tsx`)
+- webapp 側は同じ規則で再ソートし、分母を「全体 / その他を除く」で、まとめ方を
+  「組み合わせ別 / 1体目でまとめる」で切替表示する(`WeeklyDeckUsagePanel.tsx`)
 
 ### 1.7 前週比較(順位・使用率・勝率の変動)
 
@@ -97,6 +117,8 @@ GET /api/v1beta/deck_meta/weekly_usage?week=YYYY-MM-DD (公開・認証なし)
 - **前週に一度も現れなかった指紋だけ**が比較なし → UI では **NEW**
 - 「その他」行同士は使用率・勝率のみ比較する。現在週の内訳(Members)には付与しない
 - 前週の集計にも推測フォールバック(§1.3)・スロット1/2限定(§1.4)が同様にかかる
+- **前週も現在週と同じ集計単位(§1.4.1)で集計する。** 単位が違うと指紋が噛み合わず、
+  全行が NEW になる
 
 UI 表示(`WeeklyDeckUsagePanel.tsx`): 順位バッジの下に ▲n/▼n/−/NEW、使用率の右と
 勝率チップの隣にポイント差(+1.2pt / -0.8pt)。使用率のポイント差は表示中の基準に

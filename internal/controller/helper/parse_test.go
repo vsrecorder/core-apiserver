@@ -12,6 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 // newTestContext は指定したクエリ文字列を持つGETリクエストのgin.Contextを返す。
@@ -532,6 +534,28 @@ func TestParseQueryWeek(t *testing.T) {
 
 	t.Run("異常系_形式が不正ならエラーを返す", func(t *testing.T) {
 		_, err := ParseQueryWeek(newTestContext(t, "week=2026/07/13"))
+		require.Error(t, err)
+	})
+}
+
+func TestParseQueryDeckUsageGrouping(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_未指定なら既定の組み合わせ一致を返す", func(t *testing.T) {
+		grouping, err := ParseQueryDeckUsageGrouping(newTestContext(t, ""))
+		require.NoError(t, err)
+		require.Equal(t, entity.DeckUsageGroupingExact, grouping)
+	})
+
+	t.Run("正常系_1体目でまとめる集計単位を返す", func(t *testing.T) {
+		grouping, err := ParseQueryDeckUsageGrouping(newTestContext(t, "grouping=first_sprite"))
+		require.NoError(t, err)
+		require.Equal(t, entity.DeckUsageGroupingFirstSprite, grouping)
+	})
+
+	// 未知の値を既定へ寄せると、まとめたつもりの数字を見て環境を読み違えるため弾く。
+	t.Run("異常系_未知の集計単位ならエラーを返す", func(t *testing.T) {
+		_, err := ParseQueryDeckUsageGrouping(newTestContext(t, "grouping=first"))
 		require.Error(t, err)
 	})
 }

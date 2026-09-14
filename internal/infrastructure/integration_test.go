@@ -1299,7 +1299,7 @@ func TestIntegrationWeeklyDeckUsageStatRegulation(t *testing.T) {
 
 	r := NewWeeklyDeckUsageStat(db)
 
-	stat, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate)
+	stat, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
 	require.NoError(t, err)
 
 	// スタンダードの1マッチぶん(相手側の1票)だけが集計される。

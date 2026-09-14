@@ -43,16 +43,16 @@ func (m *MockWeeklyDeckUsageStatInterface) EXPECT() *MockWeeklyDeckUsageStatInte
 }
 
 // FindWeeklyDeckUsageStat mocks base method.
-func (m *MockWeeklyDeckUsageStatInterface) FindWeeklyDeckUsageStat(ctx context.Context, fromDate, toDate time.Time) (*entity.WeeklyDeckUsageStat, error) {
+func (m *MockWeeklyDeckUsageStatInterface) FindWeeklyDeckUsageStat(ctx context.Context, fromDate, toDate time.Time, grouping entity.DeckUsageGrouping) (*entity.WeeklyDeckUsageStat, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindWeeklyDeckUsageStat", ctx, fromDate, toDate)
+	ret := m.ctrl.Call(m, "FindWeeklyDeckUsageStat", ctx, fromDate, toDate, grouping)
 	ret0, _ := ret[0].(*entity.WeeklyDeckUsageStat)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindWeeklyDeckUsageStat indicates an expected call of FindWeeklyDeckUsageStat.
-func (mr *MockWeeklyDeckUsageStatInterfaceMockRecorder) FindWeeklyDeckUsageStat(ctx, fromDate, toDate any) *gomock.Call {
+func (mr *MockWeeklyDeckUsageStatInterfaceMockRecorder) FindWeeklyDeckUsageStat(ctx, fromDate, toDate, grouping any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindWeeklyDeckUsageStat", reflect.TypeOf((*MockWeeklyDeckUsageStatInterface)(nil).FindWeeklyDeckUsageStat), ctx, fromDate, toDate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindWeeklyDeckUsageStat", reflect.TypeOf((*MockWeeklyDeckUsageStatInterface)(nil).FindWeeklyDeckUsageStat), ctx, fromDate, toDate, grouping)
 }

@@ -2,8 +2,37 @@ package entity
 
 import "time"
 
+// DeckUsageGrouping は週次デッキ使用率の集計単位（どこまでを「同じデッキ」として束ねるか）。
+//
+// スプライト（1体目・2体目）の組み合わせが違えば別のデッキ扱いになるのが既定だが、
+// 実際の環境では「1体目が同じで2体目だけ違う」変種が多く、同じデッキの派生が
+// 別々の行として分散してしまう。1体目だけで束ねる集計も選べるようにしている。
+type DeckUsageGrouping string
+
+const (
+	// DeckUsageGroupingExact はスプライト（position 1・2）の組み合わせが一致するものだけを
+	// 同じデッキとして扱う。既定値。
+	DeckUsageGroupingExact DeckUsageGrouping = "exact"
+
+	// DeckUsageGroupingFirstSprite は1体目のスプライトが同じものを同じデッキとして扱う。
+	// 2体目が違うだけの派生（同じ軸のデッキ）を1行にまとめて環境の分布を見るための集計単位。
+	DeckUsageGroupingFirstSprite DeckUsageGrouping = "first_sprite"
+)
+
+// IsValid は集計単位として受け付ける値かどうかを返す。
+// 空文字は「未指定＝既定（exact）」として扱うため、ここでは不正とする（呼び出し側で補う）。
+func (g DeckUsageGrouping) IsValid() bool {
+	switch g {
+	case DeckUsageGroupingExact, DeckUsageGroupingFirstSprite:
+		return true
+	default:
+		return false
+	}
+}
+
 // DeckUsageVariant はプラットフォーム全体の集計における単一のデッキ変種
 // （スプライトの集合のみで正規化した指紋。デッキ名等のフリーテキストは使わず、並び順も無視する）を表す。
+// DeckUsageGroupingFirstSprite で集計した場合は、指紋が1体目のスプライトだけで決まる。
 type DeckUsageVariant struct {
 	Fingerprint    string // 正規化済みの集計キー（スプライトIDの集合のみで決まる）
 	Count          int
@@ -52,20 +81,23 @@ func NewDeckUsageVariant(
 
 // WeeklyDeckUsageStat はある週のプラットフォーム全体のデッキ使用率集計結果を表す。
 type WeeklyDeckUsageStat struct {
-	WeekStart        time.Time // 集計対象週の開始日（月曜 0時）
-	TotalVotes       int       // 集計対象となった票の総数（母集団の明示に使う）
-	ContributorCount int       // 集計に寄与したユーザー数（母集団の明示に使う）
+	WeekStart        time.Time         // 集計対象週の開始日（月曜 0時）
+	Grouping         DeckUsageGrouping // どの集計単位で束ねた結果か（応答に含めてUIの表示と一致させる）
+	TotalVotes       int               // 集計対象となった票の総数（母集団の明示に使う）
+	ContributorCount int               // 集計に寄与したユーザー数（母集団の明示に使う）
 	Decks            []*DeckUsageVariant
 }
 
 func NewWeeklyDeckUsageStat(
 	weekStart time.Time,
+	grouping DeckUsageGrouping,
 	totalVotes int,
 	contributorCount int,
 	decks []*DeckUsageVariant,
 ) *WeeklyDeckUsageStat {
 	return &WeeklyDeckUsageStat{
 		WeekStart:        weekStart,
+		Grouping:         grouping,
 		TotalVotes:       totalVotes,
 		ContributorCount: contributorCount,
 		Decks:            decks,

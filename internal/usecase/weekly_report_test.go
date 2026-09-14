@@ -260,7 +260,7 @@ func ptr(f float64) *float64 { return &f }
 // いちばん伸びた = メガレックウザ＋ホウオウ(5.1%・前週1.2% → +3.9pt)、「その他」行付き。
 func testEnvStat() *entity.WeeklyDeckUsageStat {
 	return entity.NewWeeklyDeckUsageStat(
-		time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local), 690, 42,
+		time.Date(2026, 8, 17, 0, 0, 0, 0, time.Local), entity.DeckUsageGroupingExact, 690, 42,
 		[]*entity.DeckUsageVariant{
 			variant("fp-dra", 0.061, 42, ptr(0.064), "dragapult", "dusknoir"),
 			variant("fp-ray", 0.051, 35, ptr(0.012), "rayquaza-mega", "ho-oh"),
@@ -298,7 +298,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 	t.Run("正常系_記録ゼロの購読者には環境ニュースを作ってpushする", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 		expectEnvNewsPreconditions(m)
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(testEnvStat(), nil)
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(testEnvStat(), nil)
 		m.pokemonSpriteName.EXPECT().FindNamesByIds(gomock.Any(), []string{"dragapult", "dusknoir", "rayquaza-mega", "ho-oh"}).Return(testSpriteNames, nil)
 
 		var saved *entity.Notification
@@ -326,11 +326,11 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 	t.Run("正常系_伸びたデッキが1位と同じなら前週比として1文にまとめる", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 		expectEnvNewsPreconditions(m)
-		stat := entity.NewWeeklyDeckUsageStat(fromDate, 100, 10, []*entity.DeckUsageVariant{
+		stat := entity.NewWeeklyDeckUsageStat(fromDate, entity.DeckUsageGroupingExact, 100, 10, []*entity.DeckUsageVariant{
 			variant("fp-ray", 0.10, 10, ptr(0.04), "rayquaza-mega", "ho-oh"),
 			variant("fp-dra", 0.08, 8, ptr(0.09), "dragapult", "dusknoir"),
 		})
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(stat, nil)
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(stat, nil)
 		m.pokemonSpriteName.EXPECT().FindNamesByIds(gomock.Any(), []string{"rayquaza-mega", "ho-oh", "rayquaza-mega", "ho-oh"}).Return(testSpriteNames, nil)
 
 		var saved *entity.Notification
@@ -349,10 +349,10 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 	t.Run("正常系_前週データが無ければ伸びたデッキの文を省く", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 		expectEnvNewsPreconditions(m)
-		stat := entity.NewWeeklyDeckUsageStat(fromDate, 50, 5, []*entity.DeckUsageVariant{
+		stat := entity.NewWeeklyDeckUsageStat(fromDate, entity.DeckUsageGroupingExact, 50, 5, []*entity.DeckUsageVariant{
 			variant("fp-dra", 0.12, 6, nil, "dragapult", "dusknoir"),
 		})
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(stat, nil)
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(stat, nil)
 		m.pokemonSpriteName.EXPECT().FindNamesByIds(gomock.Any(), []string{"dragapult", "dusknoir"}).Return(testSpriteNames, nil)
 
 		var saved *entity.Notification
@@ -375,7 +375,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 		m.notification.EXPECT().ExistsByUserIdAndCategoryAndLinkUrl(gomock.Any(), "user-1", NotificationCategoryEnvNews, wantLink).Return(false, nil)
 		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(nil, apperror.ErrRecordNotFound)
 		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignEnvNews, pushQuietRecentScanLimit).Return(nil, nil)
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(testEnvStat(), nil)
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(testEnvStat(), nil)
 		m.pokemonSpriteName.EXPECT().FindNamesByIds(gomock.Any(), gomock.Any()).Return(testSpriteNames, nil)
 		m.notification.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 
@@ -394,7 +394,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 			m.userStreak.EXPECT().FindByUserId(gomock.Any(), uid).Return(nil, apperror.ErrRecordNotFound)
 			m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), uid, PushCampaignEnvNews, pushQuietRecentScanLimit).Return(nil, nil)
 		}
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(testEnvStat(), nil).Times(1)
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(testEnvStat(), nil).Times(1)
 		m.pokemonSpriteName.EXPECT().FindNamesByIds(gomock.Any(), gomock.Any()).Return(testSpriteNames, nil).Times(1)
 		m.notification.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 
@@ -408,7 +408,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 	t.Run("正常系_dryRunは環境ニュースも保存しない", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 		expectEnvNewsPreconditions(m)
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(testEnvStat(), nil)
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(testEnvStat(), nil)
 		m.pokemonSpriteName.EXPECT().FindNamesByIds(gomock.Any(), gomock.Any()).Return(testSpriteNames, nil)
 
 		sent, err := u.NotifyUser(context.Background(), "user-1", weeklyReportTestWeek, true)
@@ -445,7 +445,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 	t.Run("対象外_環境データが無い週(票が0)は送らない", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 		expectEnvNewsPreconditions(m)
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(entity.NewWeeklyDeckUsageStat(fromDate, 0, 0, nil), nil)
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(entity.NewWeeklyDeckUsageStat(fromDate, entity.DeckUsageGroupingExact, 0, 0, nil), nil)
 
 		sent, err := u.NotifyUser(context.Background(), "user-1", weeklyReportTestWeek, false)
 
@@ -456,7 +456,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 	t.Run("対象外_1位のスプライト名が引けなければ送らない", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 		expectEnvNewsPreconditions(m)
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(testEnvStat(), nil)
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(testEnvStat(), nil)
 		m.pokemonSpriteName.EXPECT().FindNamesByIds(gomock.Any(), gomock.Any()).Return(map[string]string{}, nil)
 
 		sent, err := u.NotifyUser(context.Background(), "user-1", weeklyReportTestWeek, false)
@@ -488,7 +488,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 	t.Run("異常系_環境集計のエラーはそのまま返す", func(t *testing.T) {
 		m, u := setup4WeeklyReportNotifierWithPush(t)
 		expectEnvNewsPreconditions(m)
-		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate).Return(nil, errors.New("db down"))
+		m.weeklyDeckUsageStat.EXPECT().FindWeeklyDeckUsageStat(gomock.Any(), fromDate, toDate, entity.DeckUsageGroupingExact).Return(nil, errors.New("db down"))
 
 		sent, err := u.NotifyUser(context.Background(), "user-1", weeklyReportTestWeek, false)
 

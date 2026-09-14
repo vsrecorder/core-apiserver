@@ -24,6 +24,7 @@ func NewWeeklyDeckUsageStatResponse(
 		Week:             week,
 		WeekStart:        weekStart,
 		WeekEnd:          weekEnd,
+		Grouping:         string(stat.Grouping),
 		TotalVotes:       stat.TotalVotes,
 		ContributorCount: stat.ContributorCount,
 		Decks:            decks,

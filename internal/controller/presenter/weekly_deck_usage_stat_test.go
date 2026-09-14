@@ -15,7 +15,7 @@ func TestNewWeeklyDeckUsageStatResponse(t *testing.T) {
 	weekStart := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
 
 	t.Run("正常系_週の開始日と終了日をYYYY-MM-DD形式で返す", func(t *testing.T) {
-		stat := entity.NewWeeklyDeckUsageStat(weekStart, 0, 0, []*entity.DeckUsageVariant{})
+		stat := entity.NewWeeklyDeckUsageStat(weekStart, entity.DeckUsageGroupingExact, 0, 0, []*entity.DeckUsageVariant{})
 
 		res := NewWeeklyDeckUsageStatResponse(stat, "2026-07-16")
 
@@ -25,12 +25,23 @@ func TestNewWeeklyDeckUsageStatResponse(t *testing.T) {
 		require.Equal(t, "2026-07-19", res.WeekEnd)
 	})
 
+	// UI が「いま何を見ているか」を応答だけで判断できるよう、実際に集計した単位を返す。
+	t.Run("正常系_集計単位をそのまま返す", func(t *testing.T) {
+		stat := entity.NewWeeklyDeckUsageStat(
+			weekStart, entity.DeckUsageGroupingFirstSprite, 0, 0, []*entity.DeckUsageVariant{},
+		)
+
+		res := NewWeeklyDeckUsageStatResponse(stat, "2026-07-16")
+
+		require.Equal(t, "first_sprite", res.Grouping)
+	})
+
 	t.Run("正常系_変種ごとの集計値とスプライトを変換する", func(t *testing.T) {
 		variant := entity.NewDeckUsageVariant(
 			"fingerprint-1", 5, 0.5, 3, 2, 0.6,
 			[]*entity.PokemonSprite{entity.NewPokemonSprite("pikachu")},
 		)
-		stat := entity.NewWeeklyDeckUsageStat(weekStart, 10, 3, []*entity.DeckUsageVariant{variant})
+		stat := entity.NewWeeklyDeckUsageStat(weekStart, entity.DeckUsageGroupingExact, 10, 3, []*entity.DeckUsageVariant{variant})
 
 		res := NewWeeklyDeckUsageStatResponse(stat, "")
 

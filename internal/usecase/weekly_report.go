@@ -350,7 +350,10 @@ func (u *WeeklyReportNotifier) envNewsFor(ctx context.Context, weekKey string, f
 		return headline, nil
 	}
 
-	stat, err := u.weeklyDeckUsageStatRepo.FindWeeklyDeckUsageStat(ctx, fromDate, toDate)
+	// 週次レポートの環境ニュースは従来どおりスプライトの組み合わせ単位で集計する。
+	// 「○○＋××が伸びた」と具体的な構築を名指しする文面のため、1体目でまとめると
+	// 何が動いたのか分からなくなる。
+	stat, err := u.weeklyDeckUsageStatRepo.FindWeeklyDeckUsageStat(ctx, fromDate, toDate, entity.DeckUsageGroupingExact)
 	if err != nil {
 		return nil, err
 	}

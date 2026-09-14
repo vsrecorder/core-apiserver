@@ -107,6 +107,11 @@ func GetQueryWeek(ctx *gin.Context) string {
 	return ctx.Query("week")
 }
 
+// GetQueryGrouping は週次デッキ使用率の集計単位("exact" / "first_sprite")。
+func GetQueryGrouping(ctx *gin.Context) string {
+	return ctx.Query("grouping")
+}
+
 func GetQueryKeyword(ctx *gin.Context) string {
 	return ctx.Query("keyword")
 }

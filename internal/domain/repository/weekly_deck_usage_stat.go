@@ -12,5 +12,6 @@ type WeeklyDeckUsageStatInterface interface {
 		ctx context.Context,
 		fromDate time.Time,
 		toDate time.Time,
+		grouping entity.DeckUsageGrouping,
 	) (*entity.WeeklyDeckUsageStat, error)
 }

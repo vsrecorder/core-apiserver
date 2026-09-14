@@ -11,6 +11,7 @@ type WeeklyDeckUsageStatInterface interface {
 	GetWeeklyDeckUsageStat(
 		ctx context.Context,
 		week string,
+		grouping entity.DeckUsageGrouping,
 	) (*entity.WeeklyDeckUsageStat, error)
 }
 
@@ -29,6 +30,7 @@ func NewWeeklyDeckUsageStat(
 func (u *WeeklyDeckUsageStat) GetWeeklyDeckUsageStat(
 	ctx context.Context,
 	week string,
+	grouping entity.DeckUsageGrouping,
 ) (*entity.WeeklyDeckUsageStat, error) {
 	// week（週内の任意日 "YYYY-MM-DD"。未指定なら今週）から月曜始まりの週の期間を求める。
 	fromDate, toDate, err := weekRange(week, timeNow().Local())
@@ -37,5 +39,10 @@ func (u *WeeklyDeckUsageStat) GetWeeklyDeckUsageStat(
 		return nil, err
 	}
 
-	return u.weeklyDeckUsageStatRepo.FindWeeklyDeckUsageStat(ctx, fromDate, toDate)
+	// grouping 未指定は既定（スプライトの組み合わせ一致）で集計する。
+	if !grouping.IsValid() {
+		grouping = entity.DeckUsageGroupingExact
+	}
+
+	return u.weeklyDeckUsageStatRepo.FindWeeklyDeckUsageStat(ctx, fromDate, toDate, grouping)
 }

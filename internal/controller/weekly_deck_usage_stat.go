@@ -42,8 +42,9 @@ func (c *WeeklyDeckUsageStat) RegisterRoute(relativePath string) {
 
 func (c *WeeklyDeckUsageStat) GetWeeklyUsage(ctx *gin.Context) {
 	week := helper.GetWeek(ctx)
+	grouping := helper.GetDeckUsageGrouping(ctx)
 
-	stat, err := c.usecase.GetWeeklyDeckUsageStat(ctx.Request.Context(), week)
+	stat, err := c.usecase.GetWeeklyDeckUsageStat(ctx.Request.Context(), week, grouping)
 	if err != nil {
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return

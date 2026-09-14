@@ -443,6 +443,25 @@ func ParseQueryWeek(ctx *gin.Context) (string, error) {
 	return query, nil
 }
 
+// ParseQueryDeckUsageGrouping は週次デッキ使用率の集計単位を解析する。
+//
+// 未指定は既定の exact（スプライトの組み合わせ一致）として扱う。未知の値は 400 にする
+// （タイプミスを黙って既定へ寄せると、まとめたつもりの数字を見て環境を読み違えるため）。
+func ParseQueryDeckUsageGrouping(ctx *gin.Context) (entity.DeckUsageGrouping, error) {
+	query := GetQueryGrouping(ctx)
+
+	if query == "" {
+		return entity.DeckUsageGroupingExact, nil
+	}
+
+	grouping := entity.DeckUsageGrouping(query)
+	if !grouping.IsValid() {
+		return "", errors.New("bad query parameter")
+	}
+
+	return grouping, nil
+}
+
 // ParseQueryKeyword は店舗検索のキーワードを解析する。
 //
 // 前後の空白は落とし、長すぎる入力は弾く(部分一致の対象は店舗名と住所で、

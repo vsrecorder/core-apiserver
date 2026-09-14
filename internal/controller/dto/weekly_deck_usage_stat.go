@@ -20,9 +20,13 @@ type WeeklyDeckUsageItemResponse struct {
 }
 
 type WeeklyDeckUsageStatResponse struct {
-	Week             string                         `json:"week"`
-	WeekStart        string                         `json:"week_start"`
-	WeekEnd          string                         `json:"week_end"`
+	Week      string `json:"week"`
+	WeekStart string `json:"week_start"`
+	WeekEnd   string `json:"week_end"`
+	// Grouping はどの集計単位で束ねた結果か("exact" / "first_sprite")。
+	// リクエストの grouping をそのまま返すのではなく実際に集計した単位を返し、
+	// UI が「いま何を見ているか」を応答だけで判断できるようにする。
+	Grouping         string                         `json:"grouping"`
 	TotalVotes       int                            `json:"total_votes"`
 	ContributorCount int                            `json:"contributor_count"`
 	Decks            []*WeeklyDeckUsageItemResponse `json:"decks"`

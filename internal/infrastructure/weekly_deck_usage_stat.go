@@ -71,8 +71,15 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 	ctx context.Context,
 	fromDate time.Time,
 	toDate time.Time,
+	grouping entity.DeckUsageGrouping,
 ) (*entity.WeeklyDeckUsageStat, error) {
-	stat, err := i.aggregateWeek(ctx, fromDate, toDate)
+	// 未知の値・未指定は既定(組み合わせ一致)へ寄せる。ここで落とさないのは、
+	// 集計単位は表示の粒度でしかなく、不正値でレポート全体を見せない理由にはならないため。
+	if !grouping.IsValid() {
+		grouping = entity.DeckUsageGroupingExact
+	}
+
+	stat, err := i.aggregateWeek(ctx, fromDate, toDate, grouping)
 	if err != nil {
 		logError(ctx, err)
 		return nil, err
@@ -80,8 +87,9 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 
 	// 前週比較: 変種が1件でもあれば前週 [from-7d, from) を同じ規則で集計し、
 	// 指紋で突き合わせて前週の順位・使用率・勝率を付与する(UI の上昇/下降表示用)。
+	// 前週も同じ集計単位で集計する(単位が違うと指紋が噛み合わず、全行が NEW になる)。
 	if len(stat.Decks) > 0 && !fromDate.IsZero() {
-		prev, err := i.aggregateWeek(ctx, fromDate.AddDate(0, 0, -7), fromDate)
+		prev, err := i.aggregateWeek(ctx, fromDate.AddDate(0, 0, -7), fromDate, grouping)
 		if err != nil {
 			logError(ctx, err)
 			return nil, err
@@ -93,10 +101,12 @@ func (i *WeeklyDeckUsageStat) FindWeeklyDeckUsageStat(
 }
 
 // aggregateWeek は1週ぶんの使用率統計を集計する(前週比較の情報は付与しない)。
+// grouping はどこまでを「同じデッキ」として束ねるか(指紋の作り方)を決める。
 func (i *WeeklyDeckUsageStat) aggregateWeek(
 	ctx context.Context,
 	fromDate time.Time,
 	toDate time.Time,
+	grouping entity.DeckUsageGrouping,
 ) (*entity.WeeklyDeckUsageStat, error) {
 	var rows []weeklyMatchRow
 
@@ -153,7 +163,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	}
 
 	if len(rows) == 0 {
-		return entity.NewWeeklyDeckUsageStat(fromDate, 0, 0, []*entity.DeckUsageVariant{}), nil
+		return entity.NewWeeklyDeckUsageStat(fromDate, grouping, 0, 0, []*entity.DeckUsageVariant{}), nil
 	}
 
 	// スプライトを一括取得するため、マッチIDとデッキIDを集める。
@@ -262,6 +272,16 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		}
 		sprites = visible
 
+		// 1体目でまとめる集計では、指紋も表示も先頭のスプライト1体だけにする。
+		// sprites は position ASC で並んでいるため先頭が1体目。position==1 で
+		// 抜き出さないのは、1枠目が欠けて2枠目だけに登録されている票（旧データ）を
+		// 指紋なしとして丸ごと捨ててしまわないため。
+		// 表示用の position は 1 に揃える。この集計単位では行の意味が「1体目が○○の
+		// デッキ」であり、元の枠（2枠目）のまま返すと UI が2枠目に描いてしまう。
+		if grouping == entity.DeckUsageGroupingFirstSprite && len(sprites) > 0 {
+			sprites = []spritePos{{id: sprites[0].id, position: 1}}
+		}
+
 		// 指紋キーは順序非依存(ID集合)で作る。ordered は元の position ASC 順(重複排除済み)。
 		spriteIds := make([]string, len(sprites))
 		for i, s := range sprites {
@@ -326,7 +346,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	}
 
 	if totalVotes == 0 {
-		return entity.NewWeeklyDeckUsageStat(fromDate, 0, len(contributors), []*entity.DeckUsageVariant{}), nil
+		return entity.NewWeeklyDeckUsageStat(fromDate, grouping, 0, len(contributors), []*entity.DeckUsageVariant{}), nil
 	}
 
 	// 使用率（count）の降順。使用率が同じ場合は勝率の降順で順位を決める。
@@ -375,7 +395,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		decks = append(decks, other)
 	}
 
-	return entity.NewWeeklyDeckUsageStat(fromDate, totalVotes, len(contributors), decks), nil
+	return entity.NewWeeklyDeckUsageStat(fromDate, grouping, totalVotes, len(contributors), decks), nil
 }
 
 // annotatePreviousWeek は前週の統計を指紋(スプライトの組み合わせ)で突き合わせ、

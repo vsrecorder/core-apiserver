@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/logging"
 )
 
@@ -305,6 +306,17 @@ func GetWeek(ctx *gin.Context) string {
 	week, _ := value.(string)
 
 	return week
+}
+
+func SetDeckUsageGrouping(ctx *gin.Context, value entity.DeckUsageGrouping) {
+	ctx.Set("deck_usage_grouping", value)
+}
+
+func GetDeckUsageGrouping(ctx *gin.Context) entity.DeckUsageGrouping {
+	value, _ := ctx.Get("deck_usage_grouping")
+	grouping, _ := value.(entity.DeckUsageGrouping)
+
+	return grouping
 }
 
 func SetPeriod(ctx *gin.Context, value string) {

@@ -3,6 +3,8 @@ package infrastructure
 import (
 	"context"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -62,6 +64,64 @@ type variantGroup struct {
 	// 組み合わせ一致の集計では行そのものが組み合わせ単位なので nil のまま。
 	members     map[string]*variantGroup
 	memberOrder []string
+}
+
+// weeklyVote は集計対象の1票。組み合わせ(順序を無視した指紋)ごとに代表の並びを決めてから
+// 数えるため、1周目では指紋と勝敗だけを控える。表示するスプライトの並びは、2周目で
+// spriteOrderTally が選んだ代表のものへ揃える。
+type weeklyVote struct {
+	key  string
+	won  bool
+	draw bool
+}
+
+// spriteOrderTally は同じ組み合わせの中で、スプライトの並び(どちらを1体目に置いたか・
+// どの枠に入れたか)ごとの票数を数える。「1体目がリザードン・2体目がピジョット」と
+// 「1体目がピジョット・2体目がリザードン」は同じ組み合わせだが、集計では
+// 多く使われている方の並びに揃える必要があるため、その多数派をここで決める。
+type spriteOrderTally struct {
+	counts  map[string]int
+	sprites map[string][]spritePos
+	best    string
+}
+
+func newSpriteOrderTally() *spriteOrderTally {
+	return &spriteOrderTally{
+		counts:  make(map[string]int),
+		sprites: make(map[string][]spritePos),
+	}
+}
+
+// add は1票ぶんの並びを数え、代表(best)を更新する。
+func (t *spriteOrderTally) add(sprites []spritePos) {
+	key := spriteOrderKey(sprites)
+	if _, ok := t.sprites[key]; !ok {
+		t.sprites[key] = sprites
+	}
+	t.counts[key]++
+
+	// 票数が多い並びを代表にする。同数のときは並びのキーの辞書順で決める。
+	// どちらを選んでも根拠が無いため、票が届いた順(＝記録された順)に左右されない
+	// 決め方にしておく。同じ週を集計し直しても同じ結果になる。
+	if t.best == "" || t.counts[key] > t.counts[t.best] ||
+		(t.counts[key] == t.counts[t.best] && key < t.best) {
+		t.best = key
+	}
+}
+
+// canonical はこの組み合わせの代表の並びを返す(position ASC・重複排除済み)。
+func (t *spriteOrderTally) canonical() []spritePos {
+	return t.sprites[t.best]
+}
+
+// spriteOrderKey は並びまで区別するキー。ID集合で作る指紋(NormalizeFingerprint)とは違い、
+// どちらが1体目か・どの枠に入っているかで別のキーになる。
+func spriteOrderKey(sprites []spritePos) string {
+	parts := make([]string, len(sprites))
+	for i, s := range sprites {
+		parts[i] = s.id + "#" + strconv.FormatUint(uint64(s.position), 10)
+	}
+	return strings.Join(parts, ",")
 }
 
 func (g *variantGroup) winRate() float64 {
@@ -259,14 +319,18 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		}
 	}
 
-	groups := make(map[string]*variantGroup)
-	order := make([]string, 0)
+	// 同じ組み合わせ(1体目・2体目)でも、票によってどちらを1体目に置いたかは揃っていない。
+	// 並びが割れたままだと、組み合わせ一致の集計では行に出るアイコンの左右が「最初に来た票」
+	// 次第で決まり、1体目でまとめる集計では同じ構築が1体目違いで2つの行に分かれてしまう。
+	// そこで票を一度ためて、組み合わせごとに最も多く使われた並びを代表として選び、その並びへ
+	// 揃えてから数える。少数派の並びの票は多数派の行へ吸収される。
+	votes := make([]weeklyVote, 0, len(rows)*2)
+	orders := make(map[string]*spriteOrderTally)
 	contributors := make(map[string]struct{})
-	totalVotes := 0
 
-	// addVote は1票を該当する指紋グループへ加算する。
+	// collectVote は1票を控え、その票のスプライトの並びを代表の候補として数える。
 	// won はその指紋（デッキ）が勝ったかどうか。
-	addVote := func(sprites []spritePos, won bool, draw bool, userId string) {
+	collectVote := func(sprites []spritePos, won bool, draw bool, userId string) {
 		// 表示は position 1/2 の2枠に限られるため、指紋も同じ範囲で計算する。
 		// 3体目以降(position>2)を含めると、画面に現れないスプライトが指紋だけを分けて
 		// 「見た目が同じ行」が複数並んでしまう(表示と集計の単位を一致させる)。
@@ -276,34 +340,12 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 				visible = append(visible, s)
 			}
 		}
-		sprites = visible
+		visible = dedupeSprites(visible)
 
-		// 1体目でまとめる集計では、指紋も表示も先頭のスプライト1体だけにする。
-		// sprites は position ASC で並んでいるため先頭が1体目。position==1 で
-		// 抜き出さないのは、1枠目が欠けて2枠目だけに登録されている票（旧データ）を
-		// 指紋なしとして丸ごと捨ててしまわないため。
-		// 表示用の position は 1 に揃える。この集計単位では行の意味が「1体目が○○の
-		// デッキ」であり、元の枠（2枠目）のまま返すと UI が2枠目に描いてしまう。
-		//
-		// 束ねる前の組み合わせは memberKey / memberSprites に控えて、行の内訳として
-		// 別に数える（UI のアコーディオンで展開する）。1体目へ潰した時点で2体目の情報は
-		// 指紋からも表示用スプライトからも消えるため、ここで取らないと後から復元できない。
-		var memberKey string
-		var memberSprites []spritePos
-		if grouping == entity.DeckUsageGroupingFirstSprite && len(sprites) > 0 {
-			memberSprites = sprites
-			memberIds := make([]string, len(sprites))
-			for i, s := range sprites {
-				memberIds[i] = s.id
-			}
-			memberKey, _ = NormalizeFingerprint(memberIds)
-
-			sprites = []spritePos{{id: sprites[0].id, position: 1}}
-		}
-
-		// 指紋キーは順序非依存(ID集合)で作る。ordered は元の position ASC 順(重複排除済み)。
-		spriteIds := make([]string, len(sprites))
-		for i, s := range sprites {
+		// 指紋キーは順序非依存(ID集合)で作る。並びの違いはこのキーでは潰れるため、
+		// どの並びが多数派かは spriteOrderTally が別に数える。
+		spriteIds := make([]string, len(visible))
+		for i, s := range visible {
 			spriteIds[i] = s.id
 		}
 		key, _ := NormalizeFingerprint(spriteIds)
@@ -312,20 +354,82 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 			return
 		}
 
+		tally, ok := orders[key]
+		if !ok {
+			tally = newSpriteOrderTally()
+			orders[key] = tally
+		}
+		tally.add(visible)
+
+		votes = append(votes, weeklyVote{key: key, won: won, draw: draw})
+		contributors[userId] = struct{}{}
+	}
+
+	for _, r := range rows {
+		// 相手側の票: その指紋が勝った = 記録者が負けた（victory_flg=false かつ 引き分けでない）。
+		// 引き分けはどちらの勝ちでもないため won=false・draw=true とする。
+		// スプライト未設定なら対戦相手デッキ名からの推測にフォールバックする。
+		opponentSprites := spritesByMatch[r.MatchId]
+		if len(opponentSprites) == 0 && matcher != nil {
+			opponentSprites = matcher.guess(r.OpponentsDeckInfo)
+		}
+		collectVote(opponentSprites, !r.VictoryFlg && !r.DrawFlg, r.DrawFlg, r.UserId)
+
+		// 自分側の票: マッチ単位。記録者が勝てばその指紋の勝ち。
+		// スプライト未設定ならデッキ名からの推測にフォールバックする。
+		if r.DeckId != "" {
+			ownSprites := spritesByDeck[r.DeckId]
+			if len(ownSprites) == 0 && matcher != nil {
+				ownSprites = matcher.guess(deckNames[r.DeckId])
+			}
+			collectVote(ownSprites, r.VictoryFlg, r.DrawFlg, r.UserId)
+		}
+	}
+
+	groups := make(map[string]*variantGroup)
+	order := make([]string, 0)
+	totalVotes := len(votes)
+
+	for _, v := range votes {
+		// 票ごとの並びではなく、その組み合わせの代表の並びを使う。これで「1体目と2体目が逆」
+		// の票も、多数派の並びの行として数えられる。
+		sprites := orders[v.key].canonical()
+		key := v.key
+
+		// 1体目でまとめる集計では、指紋も表示も先頭のスプライト1体だけにする。
+		// 先頭は代表の並びの1体目、つまり「その組み合わせで最も多く1体目に置かれた
+		// スプライト」であって、票ごとの1体目ではない。代表の並びは position ASC を
+		// 保つため、position==1 で抜き出さない点は従来どおり(1枠目が欠けて2枠目だけに
+		// 登録されている票（旧データ）を指紋なしとして丸ごと捨ててしまわないため)。
+		// 表示用の position は 1 に揃える。この集計単位では行の意味が「1体目が○○の
+		// デッキ」であり、元の枠（2枠目）のまま返すと UI が2枠目に描いてしまう。
+		//
+		// 束ねる前の組み合わせは memberKey / memberSprites に控えて、行の内訳として
+		// 別に数える（UI のアコーディオンで展開する）。1体目へ潰した時点で2体目の情報は
+		// 指紋からも表示用スプライトからも消えるため、ここで取らないと後から復元できない。
+		var memberKey string
+		var memberSprites []spritePos
+		if grouping == entity.DeckUsageGroupingFirstSprite {
+			memberKey = key
+			memberSprites = sprites
+			sprites = []spritePos{{id: sprites[0].id, position: 1}}
+			key, _ = NormalizeFingerprint([]string{sprites[0].id})
+		}
+
 		g, ok := groups[key]
 		if !ok {
 			g = &variantGroup{
 				key:     key,
-				sprites: dedupeSprites(sprites),
+				sprites: sprites,
 			}
 			groups[key] = g
 			order = append(order, key)
 		}
 
 		g.count++
-		if draw {
+		if v.draw {
 			g.draws++
-		} else if won {
+		} else if v.won {
 			g.wins++
 		}
 
@@ -338,42 +442,18 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 				}
 				m = &variantGroup{
 					key:     memberKey,
-					sprites: dedupeSprites(memberSprites),
+					sprites: memberSprites,
 				}
 				g.members[memberKey] = m
 				g.memberOrder = append(g.memberOrder, memberKey)
 			}
 
 			m.count++
-			if draw {
+			if v.draw {
 				m.draws++
-			} else if won {
+			} else if v.won {
 				m.wins++
 			}
-		}
-
-		contributors[userId] = struct{}{}
-		totalVotes++
-	}
-
-	for _, r := range rows {
-		// 相手側の票: その指紋が勝った = 記録者が負けた（victory_flg=false かつ 引き分けでない）。
-		// 引き分けはどちらの勝ちでもないため won=false・draw=true とする。
-		// スプライト未設定なら対戦相手デッキ名からの推測にフォールバックする。
-		opponentSprites := spritesByMatch[r.MatchId]
-		if len(opponentSprites) == 0 && matcher != nil {
-			opponentSprites = matcher.guess(r.OpponentsDeckInfo)
-		}
-		addVote(opponentSprites, !r.VictoryFlg && !r.DrawFlg, r.DrawFlg, r.UserId)
-
-		// 自分側の票: マッチ単位。記録者が勝てばその指紋の勝ち。
-		// スプライト未設定ならデッキ名からの推測にフォールバックする。
-		if r.DeckId != "" {
-			ownSprites := spritesByDeck[r.DeckId]
-			if len(ownSprites) == 0 && matcher != nil {
-				ownSprites = matcher.guess(deckNames[r.DeckId])
-			}
-			addVote(ownSprites, r.VictoryFlg, r.DrawFlg, r.UserId)
 		}
 	}
 

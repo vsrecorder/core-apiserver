@@ -685,6 +685,138 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
+	// 同じ組み合わせでも、1体目と2体目を入れ替えて登録した票が混ざる。
+	// 行に出すアイコンの並びは「最初に来た票」ではなく、多数派の並びに合わせる。
+	t.Run("正常系_組み合わせが同じで並びが違う票は多数派の並びで表示する", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// 4マッチ(デッキ未登録)。先頭の1票だけ 0018 が1体目で、残り3票は 0006 が1体目。
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 4; i++ {
+			rows = rows.AddRow("match-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		spriteRows := sqlmock.NewRows(matchPokemonSpriteColumns)
+		spriteRows = spriteRows.AddRow("match-1", 1, "0018")
+		spriteRows = spriteRows.AddRow("match-1", 2, "0006")
+		for i := 1; i < 4; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0006")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0018")
+		}
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
+
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
+
+		require.NoError(t, err)
+		// 指紋は元から順序非依存なので、並びが違っても1行に集まる。
+		require.Len(t, ret.Decks, 1)
+		require.Equal(t, 4, ret.Decks[0].Count)
+
+		// 表示は多数派(3票)の並び。少数派が先に集計されても引きずられない。
+		require.Len(t, ret.Decks[0].PokemonSprites, 2)
+		require.Equal(t, "0006", ret.Decks[0].PokemonSprites[0].ID)
+		require.Equal(t, uint(1), ret.Decks[0].PokemonSprites[0].Position)
+		require.Equal(t, "0018", ret.Decks[0].PokemonSprites[1].ID)
+		require.Equal(t, uint(2), ret.Decks[0].PokemonSprites[1].Position)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 1体目でまとめる集計では、並びの違いが行そのものを割ってしまう。
+	// 少数派の並びの票も、その組み合わせで多数派の1体目の行へまとめる。
+	t.Run("正常系_1体目でまとめる集計は並びが逆の票も多数派の行へまとめる", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// 5マッチ(デッキ未登録)。0006+0018 が4票で、うち1票だけ 0018 が1体目。
+		// 残り1票は 0006+0157(0006 が1体目)。
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 5; i++ {
+			rows = rows.AddRow("match-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		spriteRows := sqlmock.NewRows(matchPokemonSpriteColumns)
+		spriteRows = spriteRows.AddRow("match-1", 1, "0018")
+		spriteRows = spriteRows.AddRow("match-1", 2, "0006")
+		for i := 1; i < 4; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0006")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0018")
+		}
+		spriteRows = spriteRows.AddRow("match-5", 1, "0006")
+		spriteRows = spriteRows.AddRow("match-5", 2, "0157")
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
+
+		ret, err := r.FindWeeklyDeckUsageStat(
+			context.Background(), fromDate, toDate, entity.DeckUsageGroupingFirstSprite,
+		)
+
+		require.NoError(t, err)
+		require.Equal(t, 5, ret.TotalVotes)
+
+		// 0018 を1体目にした票も 0006 の行に入る(0018 の行はできない)。
+		require.Len(t, ret.Decks, 1)
+		require.Equal(t, "0006", ret.Decks[0].Fingerprint)
+		require.Equal(t, 5, ret.Decks[0].Count)
+
+		// 内訳も並びを揃えた組み合わせ単位。0006+0018 は逆順の票を含めて4票。
+		require.Len(t, ret.Decks[0].Members, 2)
+		require.Equal(t, "0006,0018", ret.Decks[0].Members[0].Fingerprint)
+		require.Equal(t, 4, ret.Decks[0].Members[0].Count)
+		require.Equal(t, "0006", ret.Decks[0].Members[0].PokemonSprites[0].ID)
+		require.Equal(t, "0018", ret.Decks[0].Members[0].PokemonSprites[1].ID)
+		require.Equal(t, 1, ret.Decks[0].Members[1].Count)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 並びが半々のときに票の到着順で代表が決まると、同じ週を集計し直すたびに
+	// 表示が変わりかねない。票数が同じならスプライトIDの順で決める。
+	t.Run("正常系_並びの票数が同じときは決まった順序で代表を選ぶ", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+		// 4マッチ(デッキ未登録)。0018 が1体目の票と 0006 が1体目の票が2票ずつ。
+		rows := sqlmock.NewRows(weeklyMatchRowColumns)
+		for i := 0; i < 4; i++ {
+			rows = rows.AddRow("match-"+string(rune('1'+i)), uid, "", false, "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		spriteRows := sqlmock.NewRows(matchPokemonSpriteColumns)
+		for i := 0; i < 2; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0018")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0006")
+		}
+		for i := 2; i < 4; i++ {
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 1, "0006")
+			spriteRows = spriteRows.AddRow("match-"+string(rune('1'+i)), 2, "0018")
+		}
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(spriteRows)
+		expectPrevWeekEmpty(mock)
+
+		ret, err := r.FindWeeklyDeckUsageStat(
+			context.Background(), fromDate, toDate, entity.DeckUsageGroupingFirstSprite,
+		)
+
+		require.NoError(t, err)
+		require.Len(t, ret.Decks, 1)
+		require.Equal(t, "0006", ret.Decks[0].Fingerprint)
+		require.Equal(t, 4, ret.Decks[0].Count)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
 	t.Run("異常系_マッチ取得のエラーをそのまま返す", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 		r := NewWeeklyDeckUsageStat(db)

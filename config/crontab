@@ -142,3 +142,38 @@ CRON_TZ=Asia/Tokyo
 # 異常が続いている間は毎日再通知される。
 # 毎日 22:00 — push の配達状況を点検(全滅している platform があればSlackへ通知)
 0 22 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-check-push-health.lock /home/ubuntu/vsrecorder/core-apiserver/bin/check-push-health -notify-slack >> /var/log/vsrecorder/check-push-health.log 2>&1
+
+# ── デッキ名エイリアス辞書の自動生成（cmd/generate-deck-name-aliases）──
+# 毎週月曜 06:00 JST。デッキ名とスプライトを両方登録している記録を教師データにして、
+# スプライト未設定のために週次デッキ使用率の集計から落ちている票を救済するエイリアスを
+# deck_name_aliases へ生成する。
+#
+# source='auto' の行だけを1トランザクションで全削除→再生成する（冪等）。人が登録した
+# source='manual' は読むだけで書き換えないため、多重起動・再実行しても安全。
+# flock -n は手動実行と重なったときの多重起動を防ぐ（総入れ替えのため、同時に走ると
+# 一方の削除がもう一方の挿入を消しかねない）。
+#
+# しきい値はコードの既定値（internal/infrastructure/deck_name_alias_generator.go の
+# DefaultDeckNameAliasGeneratorConfig）を使い、cron 側には書かない。値の根拠を書いた
+# コメントと同じ場所に置き、git で変更を追えるようにするため。
+#
+# 08:00 の週次バトルレポート通知（P-2）より前に置いている。あちらの環境ニュースは同じ
+# 週次デッキ使用率から「使用率1位」「前週からいちばん伸びたデッキ」を選ぶため、先に辞書を
+# 更新しておくと最新の救済結果が反映される。実行自体は1秒かからないが、余裕を取って2時間前。
+#
+# 週1回にしているのは、辞書が変わると過去週の使用率まで変わるため（集計はリクエスト時に
+# 現在の辞書で全期間を推測し直す）。毎日回すと公開中の数字が日々動いてしまう。
+#
+# 検証時は -dry-run（既定 true）で実行すると候補一覧を出すだけでDBは変更しない。
+# 落選した名前と理由を見たいときは -show-rejected を付ける（手動登録すべき名前が分かる）。
+#
+# ■ このジョブだけ 2>&1 を使わず、出力先を2つに分ける ■
+#   このバッチは他のバッチと違い、生成した候補の一覧を「人が目で読む表」として標準出力へ
+#   出す（AGENTS.md「レポートは stdout・ログは stderr」）。2>&1 でまとめると、JSONログの
+#   ファイルに桁揃えのテキスト表が混ざり、jq や OpenSearch で読めなくなる。
+#     - stderr（JSON。実行条件・candidates・rescued_votes） → generate-deck-name-aliases.log
+#     - stdout（生成した候補の一覧）                        → …-report.log
+#   report 側は「その週に何を書き込んだか」の記録として残す。source='auto' は毎週総入れ替え
+#   されるため、後から前週の中身をDBから復元できない。時刻は同時刻の JSON ログ側にある。
+# 毎週月曜 06:00 JST — デッキ名エイリアス辞書の再生成
+0 6 * * 1 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-generate-deck-name-aliases.lock /home/ubuntu/vsrecorder/core-apiserver/bin/generate-deck-name-aliases -dry-run=false >> /var/log/vsrecorder/generate-deck-name-aliases-report.log 2>> /var/log/vsrecorder/generate-deck-name-aliases.log

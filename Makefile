@@ -54,6 +54,8 @@ run:
 # 1コマンドで全部揃うようにしている。bin/ は .gitignore 済み。
 .PHONY: build
 build:
+	git pull --ff-only
+	git fetch --prune
 	go mod tidy
 	go build -o bin/ ./cmd/...
 
@@ -159,9 +161,7 @@ image:
 	docker push       vsrecorder/core-apiserver:local
 
 .PHONY: deploy
-deploy:
-	git pull --ff-only
-	git fetch --prune
+deploy: build
 	docker compose pull
 	docker compose up -d --no-deps --wait core-apiserver
 

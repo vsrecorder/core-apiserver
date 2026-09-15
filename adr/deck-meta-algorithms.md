@@ -207,7 +207,7 @@ UI 表示(`WeeklyDeckUsagePanel.tsx`): 順位バッジの下に ▲n/▼n/−/NE
 
 ```
 1. 前処理での落選:
-   - 正規化後の文字数 < MinAliasRunes(既定4) → too_short
+   - 正規化後の文字数 < MinAliasRunes(既定2) → too_short
    - 手動辞書で既に解決できる            → manual_exists
 2. エイリアス A と教師データのプールを決める:
    a. A = D として、「D を含む供給キー」をすべて束ねたプールで評価する
@@ -217,9 +217,9 @@ UI 表示(`WeeklyDeckUsagePanel.tsx`): 順位バッジの下に ▲n/▼n/−/NE
    c. どちらも無ければ → no_supply
 3. 同じ A へ合流した需要名は救済見込み票を合算する(候補は1つ)
 4. プールの最頻指紋(best)に対して3軸のしきい値を判定(AND):
-   - best.count      < MinSupport(既定10)      → low_support
-   - best.count/total < MinRatio(既定0.6)      → low_ratio
-   - bestの実ユーザー数 < MinContributors(既定3) → few_contributors
+   - best.count      < MinSupport(既定3)       → low_support
+   - best.count/total < MinRatio(既定0.2)      → low_ratio
+   - bestの実ユーザー数 < MinContributors(既定2) → few_contributors
 5. 代表スプライト = best の最頻 layout(position 1/2 のみ、最大2体)
 ```
 
@@ -246,10 +246,10 @@ go run ./cmd/generate-deck-name-aliases -show-rejected   # 落選名も理由つ
 |---|---|---|
 | `-dry-run` | true | 書き込みせず候補一覧のみ |
 | `-supply-weeks` / `-demand-weeks` | 12 / 4 | 教師データ / 救済対象を遡る週数 |
-| `-min-support` | 10 | 代表構成の支持件数の下限 |
-| `-min-ratio` | 0.6 | 代表構成の占有率の下限(**割合**。60%なら0.6) |
-| `-min-contributors` | 3 | 代表構成の実ユーザー数の下限 |
-| `-min-alias-runes` | 4 | 生成エイリアスの最小文字数 |
+| `-min-support` | 3 | 代表構成の支持件数の下限 |
+| `-min-ratio` | 0.2 | 代表構成の占有率の下限(**割合**。20%なら0.2) |
+| `-min-contributors` | 2 | 代表構成の実ユーザー数の下限 |
+| `-min-alias-runes` | 2 | 生成エイリアスの最小文字数 |
 | `-show-rejected` / `-rejected-limit` | false / 30 | 落選名の表示 / 上限(0で全件) |
 
 しきい値の指定ミス(例: `-min-ratio=60`)は起動時に検証して弾く。

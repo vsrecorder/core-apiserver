@@ -101,6 +101,19 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		return rows
 	}
 
+	// variantSupplyRows は (デッキ名, layout) の組ごとに countEach 件の教師データを作る。
+	// 既定の -min-ratio は緩いため、占有率の下限に引っかける状況を作るには組を
+	// 何通りにも散らす必要がある(最頻の組が 20% を割るまで薄める)。
+	variantSupplyRows := func(pairs [][2]string, countEach int, users int) *sqlmock.Rows {
+		rows := sqlmock.NewRows(deckNameSupplyColumns)
+		for _, p := range pairs {
+			for i := 0; i < countEach; i++ {
+				rows = rows.AddRow(p[0], "user-"+string(rune('a'+i%users)), p[1])
+			}
+		}
+		return rows
+	}
+
 	t.Run("正常系_しきい値を満たす候補を生成する", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 
@@ -166,15 +179,16 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 	t.Run("正常系_構成が割れる名前は占有率の下限で保留する", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 
-		// 同じ「ミライドン」で 2 構成が半々(占有率 50% < 60%)。
-		// 名前は下限(4文字)以上にして、占有率より先に too_short で落ちないようにする。
-		supply := sqlmock.NewRows(deckNameSupplyColumns)
-		for i := 0; i < 10; i++ {
-			supply = supply.AddRow("ミライドン", "user-"+string(rune('a'+i%5)), "1:1008,2:0025")
-		}
-		for i := 0; i < 10; i++ {
-			supply = supply.AddRow("ミライドン", "user-"+string(rune('a'+i%5)), "1:1008,2:0145")
-		}
+		// 同じ「ミライドン」で組が 6 通りに散る(最頻の組は 4/24 = 約17% < 20%)。
+		// 名前は下限(2文字)以上にして、占有率より先に too_short で落ちないようにする。
+		supply := variantSupplyRows([][2]string{
+			{"ミライドン", "1:1008,2:0025"},
+			{"ミライドン", "1:1008,2:0145"},
+			{"ミライドン", "1:1008,2:0026"},
+			{"ミライドン", "1:0145,2:0025"},
+			{"ミライドン", "1:0145,2:0026"},
+			{"ミライドン", "1:0026,2:0025"},
+		}, 4, 4)
 
 		expectQueries(mock,
 			supply,
@@ -193,9 +207,9 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		require.Equal(t, "ミライドン", rejected[0].Alias)
 		require.Equal(t, DeckNameAliasRejectLowRatio, rejected[0].Reason)
 		require.Equal(t, 50, rejected[0].DemandVotes)
-		require.Equal(t, 10, rejected[0].Support)
-		require.Equal(t, 20, rejected[0].TotalSupply)
-		require.InDelta(t, 0.5, rejected[0].Ratio, 1e-9)
+		require.Equal(t, 4, rejected[0].Support)
+		require.Equal(t, 24, rejected[0].TotalSupply)
+		require.InDelta(t, 4.0/24.0, rejected[0].Ratio, 1e-9)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -203,10 +217,10 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 
 		expectQueries(mock,
-			// 支持は 12 件あるが 2 人しかいない(下限3人)
-			supplyRows("パオジアン", "1:0999,2:0143", 12, 2),
-			// 支持が 5 件しかない(下限10件)
-			supplyRows("ドラパルト", "1:0887", 5, 5),
+			// 支持は 12 件あるが 1 人しかいない(下限2人)
+			supplyRows("パオジアン", "1:0999,2:0143", 12, 1),
+			// 支持が 2 件しかない(下限3件)
+			supplyRows("ドラパルト", "1:0887", 2, 2),
 			sqlmock.NewRows(deckNameDemandColumns).AddRow("パオジアン", 40).AddRow("ドラパルト", 30),
 			sqlmock.NewRows(deckNameDemandColumns),
 			sqlmock.NewRows(deckNameAliasColumns),
@@ -220,10 +234,10 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		require.Len(t, rejected, 2)
 		require.Equal(t, "パオジアン", rejected[0].Alias)
 		require.Equal(t, DeckNameAliasRejectFewContributors, rejected[0].Reason)
-		require.Equal(t, 2, rejected[0].Contributors)
+		require.Equal(t, 1, rejected[0].Contributors)
 		require.Equal(t, "ドラパルト", rejected[1].Alias)
 		require.Equal(t, DeckNameAliasRejectLowSupport, rejected[1].Reason)
-		require.Equal(t, 5, rejected[1].Support)
+		require.Equal(t, 2, rejected[1].Support)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -250,10 +264,10 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 
 		expectQueries(mock,
-			// 「サナ」は3文字で下限(4文字)未満
-			supplyRows("サナ", "1:0282", 20, 5),
+			// 「サ」は正規化後1文字で下限(2文字)未満。教師データがあっても生成しない
+			supplyRows("サ", "1:0282", 20, 5),
 			sqlmock.NewRows(deckNameSupplyColumns),
-			sqlmock.NewRows(deckNameDemandColumns).AddRow("サナ", 40),
+			sqlmock.NewRows(deckNameDemandColumns).AddRow("サ", 40),
 			sqlmock.NewRows(deckNameDemandColumns),
 			sqlmock.NewRows(deckNameAliasColumns),
 		)
@@ -402,17 +416,19 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	// プールに複数の構成が混ざって割れる場合は、従来どおり占有率の下限で保留される
+	// プールに複数の構成が混ざって割れる場合は、占有率の下限で保留される
 	t.Run("正常系_プールで構成が割れる略称は占有率不足で保留する", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 
-		supply := sqlmock.NewRows(deckNameSupplyColumns)
-		for i := 0; i < 10; i++ {
-			supply = supply.AddRow("リザードンピジョット", "user-"+string(rune('a'+i%5)), "1:0006,2:0018")
-		}
-		for i := 0; i < 10; i++ {
-			supply = supply.AddRow("リザードンビーダル", "user-"+string(rune('a'+i%5)), "1:0006,2:0400")
-		}
+		// 「リザードン」を含む供給キーが 6 通りあり、2体目がすべて違う(最頻の組は約17%)
+		supply := variantSupplyRows([][2]string{
+			{"リザードンピジョット", "1:0006,2:0018"},
+			{"リザードンビーダル", "1:0006,2:0400"},
+			{"リザードンヨノワール", "1:0006,2:0477"},
+			{"リザードンマシマシラ", "1:0006,2:0982"},
+			{"リザードンネオラント", "1:0006,2:0693"},
+			{"リザードンドラパルト", "1:0006,2:0887"},
+		}, 4, 4)
 
 		expectQueries(mock,
 			supply,
@@ -429,8 +445,8 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		require.Len(t, rejected, 1)
 		require.Equal(t, "リザードン", rejected[0].Alias)
 		require.Equal(t, DeckNameAliasRejectLowRatio, rejected[0].Reason)
-		require.Equal(t, 20, rejected[0].TotalSupply)
-		require.Equal(t, 10, rejected[0].Support)
+		require.Equal(t, 24, rejected[0].TotalSupply)
+		require.Equal(t, 4, rejected[0].Support)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -452,23 +468,22 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 
 		expectQueries(mock,
 			// 「ミライドン」は教師データはあるが占有率不足で落ちる(50%)
-			func() *sqlmock.Rows {
-				rows := sqlmock.NewRows(deckNameSupplyColumns)
-				for i := 0; i < 10; i++ {
-					rows = rows.AddRow("ミライドン", "user-"+string(rune('a'+i%5)), "1:1008,2:0025")
-				}
-				for i := 0; i < 10; i++ {
-					rows = rows.AddRow("ミライドン", "user-"+string(rune('a'+i%5)), "1:1008,2:0145")
-				}
-				return rows
-			}(),
+			// 組が 6 通りに散って最頻でも約17%しかなく、占有率の下限(20%)に届かない
+			variantSupplyRows([][2]string{
+				{"ミライドン", "1:1008,2:0025"},
+				{"ミライドン", "1:1008,2:0145"},
+				{"ミライドン", "1:1008,2:0026"},
+				{"ミライドン", "1:0145,2:0025"},
+				{"ミライドン", "1:0145,2:0026"},
+				{"ミライドン", "1:0026,2:0025"},
+			}, 4, 4),
 			sqlmock.NewRows(deckNameSupplyColumns),
-			// 需要: 教師データ無し「謎のデッキ」80票 / 占有率不足「ミライドン」50票 / 短すぎ「サナ」20票 /
+			// 需要: 教師データ無し「謎のデッキ」80票 / 占有率不足「ミライドン」50票 / 短すぎ「サ」20票 /
 			//       手動解決済み「リザードン」10票
 			sqlmock.NewRows(deckNameDemandColumns).
 				AddRow("謎のデッキ", 80).
 				AddRow("ミライドン", 50).
-				AddRow("サナ", 20).
+				AddRow("サ", 20).
 				AddRow("リザードン", 10),
 			sqlmock.NewRows(deckNameDemandColumns),
 			// 手動で「リザードン」が登録済み
@@ -491,7 +506,7 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		require.Equal(t, "ミライドン", rejected[1].Alias)
 		require.Equal(t, DeckNameAliasRejectLowRatio, rejected[1].Reason)
 
-		require.Equal(t, "サナ", rejected[2].Alias)
+		require.Equal(t, "サ", rejected[2].Alias)
 		require.Equal(t, DeckNameAliasRejectTooShort, rejected[2].Reason)
 
 		require.Equal(t, "リザードン", rejected[3].Alias)

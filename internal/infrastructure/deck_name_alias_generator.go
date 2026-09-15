@@ -80,17 +80,37 @@ type DeckNameAliasGeneratorConfig struct {
 	DemandPeriod repository.StatPeriod
 
 	// MinSupport は代表構成の支持件数の下限。偶然の共起を落とす。
+	// 既定 3 は緩め。source='auto' は実行のたびに総入れ替えされ、誤りは手動エントリで
+	// 上書きできるため、取りこぼしより拾いすぎを許す側に倒している。
 	MinSupport int
 
 	// MinRatio は代表構成の占有率の下限。同名で構成が割れる名前を保留する。
+	// 既定 0.2 は緩め: 数構成に割れる程度なら最頻の組をそのまま採って票を救う。
 	MinRatio float64
 
 	// MinContributors は代表構成を使った実ユーザー数の下限。
 	// 1人の命名癖が公開統計を左右しないようにする(minVariantCount と同じ匿名化の思想)。
+	// 既定 2 は「1人だけ」を弾く最小値で、minVariantCount(3) よりは緩い。
 	MinContributors int
 
 	// MinAliasRunes は生成するエイリアスの最小文字数。
-	// 部分一致の誤爆を避けるため、手動運用の下限(minAliasRunes)より保守的にする。
+	//
+	// 手動運用の下限(minAliasRunes)と同じ 2 にしている。カタカナ2文字の略称(「サナ」
+	// 「パオ」など)が実際に使われており、上げるとこれらが占有率の判定に到達する前に
+	// too_short で落ち、手動登録しない限り永久に救済されないため。2 未満にしても
+	// 意味は無い: loadDeckNameAliasMap が読み込み時に2文字未満のエントリを捨てるため、
+	// 生成しても突合には使われない。
+	//
+	// 短いエイリアスの誤爆には、長さ以外に2段の歯止めがある。
+	//  1. pooledSupplyFor が「エイリアスを含む供給キー」をすべて束ねて評価するため、
+	//     複数のデッキにまたがる短い名前は構成が混ざって占有率が割れ、MinRatio 側で
+	//     落ちる(「ライドン」にミライドンとコライドンが混ざる等)。
+	//  2. 突合は最長一致(buildDeckNameMatcher が文字数降順)。短いエイリアスは、より長い
+	//     エイリアスも正式名も当たらなかった名前にしか効かない。
+	//
+	// 残る弱点は、この値が longestSupplyCore に渡る核フォールバックの下限も兼ねること。
+	// 核は需要名に含まれる任意の供給キーを引くぶん誤爆しやすく、2文字まで拾うようになる。
+	// 候補が荒れたときはまずここを疑うこと。
 	MinAliasRunes int
 }
 
@@ -98,10 +118,10 @@ type DeckNameAliasGeneratorConfig struct {
 // 集計期間は呼び出し側(バッチ)が実行日から決める。
 func DefaultDeckNameAliasGeneratorConfig() DeckNameAliasGeneratorConfig {
 	return DeckNameAliasGeneratorConfig{
-		MinSupport:      10,
-		MinRatio:        0.6,
-		MinContributors: 3,
-		MinAliasRunes:   4,
+		MinSupport:      3,
+		MinRatio:        0.2,
+		MinContributors: 2,
+		MinAliasRunes:   2,
 	}
 }
 

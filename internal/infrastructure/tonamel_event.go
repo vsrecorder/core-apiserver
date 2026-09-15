@@ -48,8 +48,17 @@ func (i *TonamelEvent) FindById(
 	}
 	defer res.Body.Close()
 
+	// 404 は「そのIDのイベントが無い」だけで、障害ではない。
+	//
+	// 記録作成の入力欄は打っている途中の文字列でもここを引くため、打ち間違いや入力途中で
+	// 普通に起きる(2026-09-15 の本番ログでは、1件のIDを1文字ずつ消していった20回ぶんが
+	// すべてここを通っていた)。ERROR で残すと、本当に直すべき失敗がこれに埋もれる
+	// (実際、アクセスログ調査でエラーを拾ったとき、この行が大半を占めていた)。
+	//
+	// どのIDが引かれたかは調査に使うので記録自体は残す。応答としての404は
+	// controller が WARN で記録している。
 	if res.StatusCode == http.StatusNotFound {
-		i.logger.ErrorContext(
+		i.logger.InfoContext(
 			ctx,
 			"Tonamel event not found",
 			slog.String("tonamel_id", id),

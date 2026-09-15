@@ -125,6 +125,10 @@ type MatchSummary struct {
 	// HasGroupMatch / HasBo3 は、その記録に該当する対戦が1件でもあるか。
 	HasGroupMatch bool
 	HasBo3        bool
+	// LastMatchAt はその記録に紐づく対戦のうち、いちばん新しい作成日時。
+	// 対戦が1件も無い記録では nil になる(集計がNULLを返すため)。
+	// ホームの「記録中」判定が、最後に手が動いた時刻として使う。
+	LastMatchAt *time.Time
 }
 
 func NewMatchSummary(
@@ -135,6 +139,7 @@ func NewMatchSummary(
 	draws int,
 	hasGroupMatch bool,
 	hasBo3 bool,
+	lastMatchAt *time.Time,
 ) *MatchSummary {
 	return &MatchSummary{
 		RecordId:      recordId,
@@ -144,5 +149,6 @@ func NewMatchSummary(
 		Draws:         draws,
 		HasGroupMatch: hasGroupMatch,
 		HasBo3:        hasBo3,
+		LastMatchAt:   lastMatchAt,
 	}
 }

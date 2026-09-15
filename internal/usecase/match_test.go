@@ -270,7 +270,7 @@ func test_MatchUsecase_FindSummariesByRecordIds(t *testing.T, mockRepository *mo
 		require.NoError(t, err)
 
 		summaries := []*entity.MatchSummary{
-			entity.NewMatchSummary(recordId, 5, 3, 1, 1, false, true),
+			entity.NewMatchSummary(recordId, 5, 3, 1, 1, false, true, nil),
 		}
 
 		mockRepository.EXPECT().

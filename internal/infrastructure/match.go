@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -478,6 +479,9 @@ type matchSummaryResult struct {
 	Draws           int
 	GroupMatchCount int
 	Bo3Count        int
+	// LastMatchAt は MAX(matches.created_at)。対戦が1件も無い行ではNULLになるため
+	// ポインタで受ける。
+	LastMatchAt *time.Time
 }
 
 func (i *Match) FindSummariesByRecordIds(
@@ -510,7 +514,8 @@ func (i *Match) FindSummariesByRecordIds(
 		COUNT(CASE WHEN matches.victory_flg THEN 1 END) AS wins,
 		COUNT(CASE WHEN matches.draw_flg THEN 1 END) AS draws,
 		COUNT(CASE WHEN matches.group_match_flg THEN 1 END) AS group_match_count,
-		COUNT(CASE WHEN matches.bo3_flg THEN 1 END) AS bo3_count`,
+		COUNT(CASE WHEN matches.bo3_flg THEN 1 END) AS bo3_count,
+		MAX(matches.created_at) AS last_match_at`,
 	).Joins(
 		"LEFT JOIN matches ON records.id = matches.record_id AND matches.deleted_at IS NULL",
 	).Where(
@@ -538,6 +543,7 @@ func (i *Match) FindSummariesByRecordIds(
 			result.Draws,
 			result.GroupMatchCount > 0,
 			result.Bo3Count > 0,
+			result.LastMatchAt,
 		)
 	}
 

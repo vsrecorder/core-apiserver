@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -39,6 +40,7 @@ func test_MatchController_GetSummaries(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 	recordId1 := "01HD7Y3K8D6FDHMHTZ2GT41TR1"
 	recordId2 := "01HD7Y3K8D6FDHMHTZ2GT41TR2"
+	lastMatchAt := time.Date(2026, 9, 15, 12, 5, 0, 0, time.UTC)
 
 	t.Run("正常系_指定した記録の集計をまとめて返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestMatchSummaryController(t)
@@ -47,8 +49,8 @@ func test_MatchController_GetSummaries(t *testing.T) {
 		mockUsecase.EXPECT().FindSummariesByRecordIds(
 			gomock.Any(), uid, []string{recordId1, recordId2},
 		).Return([]*entity.MatchSummary{
-			entity.NewMatchSummary(recordId1, 5, 3, 1, 1, false, true),
-			entity.NewMatchSummary(recordId2, 0, 0, 0, 0, false, false),
+			entity.NewMatchSummary(recordId1, 5, 3, 1, 1, false, true, &lastMatchAt),
+			entity.NewMatchSummary(recordId2, 0, 0, 0, 0, false, false, nil),
 		}, nil)
 
 		w := httptest.NewRecorder()
@@ -73,6 +75,10 @@ func test_MatchController_GetSummaries(t *testing.T) {
 		require.Equal(t, 1, res.Summaries[0].Draws)
 		require.False(t, res.Summaries[0].HasGroupMatch)
 		require.True(t, res.Summaries[0].HasBo3)
+		// ホームの「記録中」判定が使う。対戦0件の記録では null のまま返る
+		require.NotNil(t, res.Summaries[0].LastMatchAt)
+		require.Equal(t, lastMatchAt, res.Summaries[0].LastMatchAt.UTC())
+		require.Nil(t, res.Summaries[1].LastMatchAt)
 
 		require.Equal(t, recordId2, res.Summaries[1].RecordId)
 		require.Equal(t, 0, res.Summaries[1].Total)
@@ -88,7 +94,7 @@ func test_MatchController_GetSummaries(t *testing.T) {
 		mockUsecase.EXPECT().FindSummariesByRecordIds(
 			gomock.Any(), uid, []string{recordId1, othersRecordId},
 		).Return([]*entity.MatchSummary{
-			entity.NewMatchSummary(recordId1, 1, 1, 0, 0, false, false),
+			entity.NewMatchSummary(recordId1, 1, 1, 0, 0, false, false, nil),
 		}, nil)
 
 		w := httptest.NewRecorder()
@@ -135,7 +141,7 @@ func test_MatchController_GetSummaries(t *testing.T) {
 
 		mockUsecase.EXPECT().FindSummariesByRecordIds(gomock.Any(), uid, []string{recordId1}).
 			Return([]*entity.MatchSummary{
-				entity.NewMatchSummary(recordId1, 1, 0, 1, 0, true, false),
+				entity.NewMatchSummary(recordId1, 1, 0, 1, 0, true, false, nil),
 			}, nil)
 
 		w := httptest.NewRecorder()

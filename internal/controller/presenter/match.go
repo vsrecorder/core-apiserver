@@ -255,6 +255,7 @@ func NewMatchGetSummariesResponse(
 				Draws:         summary.Draws,
 				HasGroupMatch: summary.HasGroupMatch,
 				HasBo3:        summary.HasBo3,
+				LastMatchAt:   summary.LastMatchAt,
 			},
 		)
 	}

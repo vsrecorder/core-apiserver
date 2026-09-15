@@ -92,6 +92,8 @@ type MatchSummaryResponse struct {
 	Draws         int    `json:"draws"`
 	HasGroupMatch bool   `json:"has_group_match"`
 	HasBo3        bool   `json:"has_bo3"`
+	// LastMatchAt はこの記録の対戦のうち、いちばん新しい作成日時。対戦が0件なら null。
+	LastMatchAt *time.Time `json:"last_match_at"`
 }
 
 // MatchGetSummariesResponse は GET /matches/summary の応答。

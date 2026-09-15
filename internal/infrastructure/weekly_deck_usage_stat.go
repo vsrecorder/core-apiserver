@@ -485,12 +485,11 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 			otherWins += g.wins
 			otherDraws += g.draws
 			// order は使用率降順・同数は勝率降順に整列済みなので、内訳もその順序を引き継ぐ。
-			member := newVariantEntity(g, totalVotes)
-			// 「その他」の内訳には、さらにその内訳（組み合わせ単位）までは持たせない。
-			// アコーディオンの中でもう一段畳む意味が無く、前週比較(annotatePreviousWeek)も
-			// 「その他」の内訳の指紋だけを見ているため、応答が膨らむだけになる。
-			member.Members = nil
-			otherMembers = append(otherMembers, member)
+			// 1体目でまとめた集計では、この内訳はさらに組み合わせ単位の内訳を持つ。
+			// 「その他」に落ちた行こそ1体目しか分からないまま消えてしまうため、
+			// 何と組んだデッキだったのかを追えるようにそのまま残す
+			// (組み合わせ一致の集計では行そのものが組み合わせ単位なので元から nil)。
+			otherMembers = append(otherMembers, newVariantEntity(g, totalVotes))
 			continue
 		}
 

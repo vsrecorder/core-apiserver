@@ -113,6 +113,9 @@ GET /api/v1beta/deck_meta/weekly_usage?week=YYYY-MM-DD&grouping=exact|first_spri
 
 - 「その他」の count/wins は **total_votes に含まれる**(除外票とは別物)
 - 集約した個別変種は `Members` に元の順序のまま保持し、UI のアコーディオンで内訳表示できる
+- `first_sprite` では、その内訳がさらに組み合わせ単位の `Members` を持つ(2段)。
+  「その他」へ落ちた行は1体目しか分からないまま消えるため、何と組んだデッキだったのかを
+  追えるようにしている
 
 ### 1.6 並び順と使用率
 

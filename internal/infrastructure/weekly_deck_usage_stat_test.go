@@ -592,7 +592,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 
 	// 1体目でまとめた変種が「その他」へ落ちる場合、その他の内訳(集約された変種)は
 	// さらにその内訳(組み合わせ単位)を持たない。アコーディオンを二段に畳まないため。
-	t.Run("正常系_1体目でまとめる集計でその他へ集約された内訳は内訳を持たない", func(t *testing.T) {
+	t.Run("正常系_その他へ集約された内訳も組み合わせの内訳を持つ", func(t *testing.T) {
 		db, mock := setupSqlmockDB(t)
 		r := NewWeeklyDeckUsageStat(db)
 
@@ -627,11 +627,19 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.Equal(t, "0006", ret.Decks[0].Fingerprint)
 		require.Len(t, ret.Decks[0].Members, 1)
 
-		// 「その他」の内訳は1体目でまとめた変種のまま。その中に組み合わせの内訳は入れない。
+		// 「その他」の内訳は1体目でまとめた変種のまま。ここで消えると、その行が何と
+		// 組んだデッキだったのかを追う手段が無くなるため、組み合わせの内訳も残す。
 		require.Equal(t, "", ret.Decks[1].Fingerprint)
 		require.Len(t, ret.Decks[1].Members, 1)
 		require.Equal(t, "0025", ret.Decks[1].Members[0].Fingerprint)
-		require.Empty(t, ret.Decks[1].Members[0].Members)
+
+		require.Len(t, ret.Decks[1].Members[0].Members, 1)
+		combination := ret.Decks[1].Members[0].Members[0]
+		require.Equal(t, "0025,0157", combination.Fingerprint)
+		require.Equal(t, 1, combination.Count)
+		require.Len(t, combination.PokemonSprites, 2)
+		require.Equal(t, "0025", combination.PokemonSprites[0].ID)
+		require.Equal(t, "0157", combination.PokemonSprites[1].ID)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 

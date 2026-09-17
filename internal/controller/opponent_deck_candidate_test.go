@@ -51,7 +51,7 @@ func TestOpponentDeckCandidateController_Get(t *testing.T) {
 			}, 12),
 			entity.NewOpponentDeckCandidate("サーナイトex", nil, 7),
 		}
-		mockUsecase.EXPECT().FindOpponentDeckCandidates(gomock.Any(), 5).Return(candidates, nil)
+		mockUsecase.EXPECT().FindOpponentDeckCandidates(gomock.Any(), uid, 5).Return(candidates, nil)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", path+"?limit=5", nil)
@@ -78,8 +78,8 @@ func TestOpponentDeckCandidateController_Get(t *testing.T) {
 	t.Run("正常系_limit未指定は既定値で、上限超過は上限に丸める", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestOpponentDeckCandidateController(t)
 
-		mockUsecase.EXPECT().FindOpponentDeckCandidates(gomock.Any(), helper.DefaultLimit).Return([]*entity.OpponentDeckCandidate{}, nil)
-		mockUsecase.EXPECT().FindOpponentDeckCandidates(gomock.Any(), helper.MaxLimit).Return([]*entity.OpponentDeckCandidate{}, nil)
+		mockUsecase.EXPECT().FindOpponentDeckCandidates(gomock.Any(), uid, helper.DefaultLimit).Return([]*entity.OpponentDeckCandidate{}, nil)
+		mockUsecase.EXPECT().FindOpponentDeckCandidates(gomock.Any(), uid, helper.MaxLimit).Return([]*entity.OpponentDeckCandidate{}, nil)
 
 		for _, query := range []string{"", "?limit=100000"} {
 			w := httptest.NewRecorder()
@@ -115,7 +115,7 @@ func TestOpponentDeckCandidateController_Get(t *testing.T) {
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
 		c, mockUsecase, secretKey := setup4TestOpponentDeckCandidateController(t)
 
-		mockUsecase.EXPECT().FindOpponentDeckCandidates(gomock.Any(), helper.DefaultLimit).Return(nil, errors.New(""))
+		mockUsecase.EXPECT().FindOpponentDeckCandidates(gomock.Any(), uid, helper.DefaultLimit).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", path, nil)

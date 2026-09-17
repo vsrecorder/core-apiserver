@@ -31,17 +31,22 @@ type opponentDeckCandidateRow struct {
 /*
  * FindOpponentDeckCandidates は「相手デッキの表記 × 1体目 × 2体目」ごとに対戦結果を数える。
  *
- * webapp が自分の対戦から候補を組み立てる処理(buildDeckHistories)と同じ単位で束ねる。
- * 不戦勝・不戦敗は相手デッキが無いので除き、表記が空のものも除く。
- * 論理削除された記録・対戦結果と、集計対象外(ignore_stats_flg)の記録の対戦結果は数えない
- * (他の集計と同じ扱い)。記録の private_flg は見ない(集計値だけを返し、誰の対戦かは返さないため)。
+ * webapp が候補を組み立てるときと同じ単位で束ねる。候補の重複排除まで含めてここで行うため、
+ * Limit は「候補の数」になる(生の対戦結果を何件見るか、ではない)。対戦結果を件数で切ってから
+ * 呼び出し側で重複排除すると、組み合わせが偏っているユーザーほど候補が少なくなってしまう。
  *
+ * 数えないもの:
+ *   - 不戦勝・不戦敗(相手デッキが無い)、表記が空
+ *   - 論理削除された記録・対戦結果
+ *   - 集計対象外(ignore_stats_flg)の記録の対戦結果。「この記録で集計を歪めたくない」という
+ *     利用者の意思表示なので、戦績・デッキ使用率と同じく除く
+ *
+ * 記録の private_flg は見ない(集計値だけを返し、誰の対戦かは返さないため)。
  * 同数のときは最近使われたものを先にし、それも同じなら表記順で安定させる。
  */
 func (i *OpponentDeckCandidate) FindOpponentDeckCandidates(
 	ctx context.Context,
-	since time.Time,
-	limit int,
+	filter *repository.OpponentDeckCandidateFilter,
 ) ([]*entity.OpponentDeckCandidate, error) {
 	var rows []opponentDeckCandidateRow
 
@@ -55,10 +60,18 @@ func (i *OpponentDeckCandidate) FindOpponentDeckCandidates(
 		Joins("LEFT JOIN match_pokemon_sprites s1 ON s1.match_id = matches.id AND s1.position = 1").
 		Joins("LEFT JOIN match_pokemon_sprites s2 ON s2.match_id = matches.id AND s2.position = 2").
 		Where("matches.deleted_at IS NULL AND matches.default_victory_flg = false AND matches.default_defeat_flg = false AND matches.opponents_deck_info <> ''").
-		Where("matches.created_at >= ?", since).
+		Where("matches.created_at >= ?", filter.Since)
+
+	// 自身の履歴からの候補。matches.user_id は記録の所有者と同じ値が入る
+	// (usecase.Match が認証ユーザーから設定する)。
+	if filter.UserId != "" {
+		query = query.Where("matches.user_id = ?", filter.UserId)
+	}
+
+	query = query.
 		Group("matches.opponents_deck_info, sprite1, sprite2").
 		Order("count DESC, last_used_at DESC, opponents_deck_info ASC").
-		Limit(limit)
+		Limit(filter.Limit)
 
 	if tx := query.Scan(&rows); tx.Error != nil {
 		logError(ctx, tx.Error)

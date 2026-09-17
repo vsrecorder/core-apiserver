@@ -42,16 +42,16 @@ func (m *MockOpponentDeckCandidateInterface) EXPECT() *MockOpponentDeckCandidate
 }
 
 // FindOpponentDeckCandidates mocks base method.
-func (m *MockOpponentDeckCandidateInterface) FindOpponentDeckCandidates(ctx context.Context, limit int) ([]*entity.OpponentDeckCandidate, error) {
+func (m *MockOpponentDeckCandidateInterface) FindOpponentDeckCandidates(ctx context.Context, uid string, limit int) ([]*entity.OpponentDeckCandidate, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindOpponentDeckCandidates", ctx, limit)
+	ret := m.ctrl.Call(m, "FindOpponentDeckCandidates", ctx, uid, limit)
 	ret0, _ := ret[0].([]*entity.OpponentDeckCandidate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindOpponentDeckCandidates indicates an expected call of FindOpponentDeckCandidates.
-func (mr *MockOpponentDeckCandidateInterfaceMockRecorder) FindOpponentDeckCandidates(ctx, limit any) *gomock.Call {
+func (mr *MockOpponentDeckCandidateInterfaceMockRecorder) FindOpponentDeckCandidates(ctx, uid, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOpponentDeckCandidates", reflect.TypeOf((*MockOpponentDeckCandidateInterface)(nil).FindOpponentDeckCandidates), ctx, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOpponentDeckCandidates", reflect.TypeOf((*MockOpponentDeckCandidateInterface)(nil).FindOpponentDeckCandidates), ctx, uid, limit)
 }

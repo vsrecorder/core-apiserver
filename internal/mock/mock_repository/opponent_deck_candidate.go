@@ -12,9 +12,9 @@ package mock_repository
 import (
 	context "context"
 	reflect "reflect"
-	time "time"
 
 	entity "github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	repository "github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -43,16 +43,16 @@ func (m *MockOpponentDeckCandidateInterface) EXPECT() *MockOpponentDeckCandidate
 }
 
 // FindOpponentDeckCandidates mocks base method.
-func (m *MockOpponentDeckCandidateInterface) FindOpponentDeckCandidates(ctx context.Context, since time.Time, limit int) ([]*entity.OpponentDeckCandidate, error) {
+func (m *MockOpponentDeckCandidateInterface) FindOpponentDeckCandidates(ctx context.Context, filter *repository.OpponentDeckCandidateFilter) ([]*entity.OpponentDeckCandidate, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindOpponentDeckCandidates", ctx, since, limit)
+	ret := m.ctrl.Call(m, "FindOpponentDeckCandidates", ctx, filter)
 	ret0, _ := ret[0].([]*entity.OpponentDeckCandidate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindOpponentDeckCandidates indicates an expected call of FindOpponentDeckCandidates.
-func (mr *MockOpponentDeckCandidateInterfaceMockRecorder) FindOpponentDeckCandidates(ctx, since, limit any) *gomock.Call {
+func (mr *MockOpponentDeckCandidateInterfaceMockRecorder) FindOpponentDeckCandidates(ctx, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOpponentDeckCandidates", reflect.TypeOf((*MockOpponentDeckCandidateInterface)(nil).FindOpponentDeckCandidates), ctx, since, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOpponentDeckCandidates", reflect.TypeOf((*MockOpponentDeckCandidateInterface)(nil).FindOpponentDeckCandidates), ctx, filter)
 }

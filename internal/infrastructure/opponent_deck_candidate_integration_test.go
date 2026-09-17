@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
 )
 
@@ -72,7 +73,12 @@ func TestIntegrationOpponentDeckCandidate(t *testing.T) {
 	createMatch("m-b-deleted-record", "rec-b-deleted", userB, "消えた記録の相手", now, false)
 	createMatch("m-b-ignored-record", "rec-b-ignored", userB, "ロストバレット", now, false, "0887", "0006")
 
-	ret, err := NewOpponentDeckCandidate(db).FindOpponentDeckCandidates(context.Background(), since, 10)
+	r := NewOpponentDeckCandidate(db)
+
+	ret, err := r.FindOpponentDeckCandidates(context.Background(), &repository.OpponentDeckCandidateFilter{
+		Since: since,
+		Limit: 10,
+	})
 	require.NoError(t, err)
 
 	require.Len(t, ret, 3)
@@ -96,8 +102,22 @@ func TestIntegrationOpponentDeckCandidate(t *testing.T) {
 	require.Len(t, ret[2].PokemonSprites, 1)
 
 	// limit は件数を絞る
-	limited, err := NewOpponentDeckCandidate(db).FindOpponentDeckCandidates(context.Background(), since, 1)
+	limited, err := r.FindOpponentDeckCandidates(context.Background(), &repository.OpponentDeckCandidateFilter{
+		Since: since,
+		Limit: 1,
+	})
 	require.NoError(t, err)
 	require.Len(t, limited, 1)
 	require.Equal(t, 3, limited[0].Count)
+
+	// UserId を指定すると、そのユーザーが作った対戦だけを数える(他人の対戦は混ざらない)
+	ownOnly, err := r.FindOpponentDeckCandidates(context.Background(), &repository.OpponentDeckCandidateFilter{
+		UserId: userA,
+		Since:  since,
+		Limit:  10,
+	})
+	require.NoError(t, err)
+	require.Len(t, ownOnly, 1)
+	require.Equal(t, "ロストバレット", ownOnly[0].OpponentsDeckInfo)
+	require.Equal(t, 2, ownOnly[0].Count)
 }

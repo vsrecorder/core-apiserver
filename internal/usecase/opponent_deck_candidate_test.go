@@ -10,109 +10,194 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
+	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 )
 
 func TestOpponentDeckCandidateUsecase(t *testing.T) {
 	now := time.Date(2026, 9, 17, 12, 0, 0, 0, time.Local)
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
-	candidates := []*entity.OpponentDeckCandidate{
-		entity.NewOpponentDeckCandidate("ロストバレット", []*entity.PokemonSprite{entity.NewPokemonSpriteWithPosition("0887", 1)}, 12),
-		entity.NewOpponentDeckCandidate("サーナイトex", nil, 7),
-		entity.NewOpponentDeckCandidate("リザードンex", nil, 5),
+	// 自身の履歴の集計条件(直近6ヶ月・uid で絞る)にだけ一致するマッチャ
+	ownFilter := func(limit int) gomock.Matcher {
+		return gomock.Cond(func(f *repository.OpponentDeckCandidateFilter) bool {
+			return f.UserId == uid &&
+				f.Since.Equal(now.AddDate(0, -OwnOpponentDeckCandidateWindowMonths, 0)) &&
+				f.Limit == limit
+		})
 	}
 
-	t.Run("正常系_直近の期間を対象に集計しlimit件を返す", func(t *testing.T) {
-		overrideTimeNow(t, now)
-		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
-		// 集計の対象期間は now から OpponentDeckCandidateWindow だけ遡った時点以降。
-		// 取得件数はリクエストの limit ではなく保持する上限(100)で、そこから切り出す。
-		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), now.Add(-OpponentDeckCandidateWindow), opponentDeckCandidateCacheSize).Return(candidates, nil)
-
-		ret, err := NewOpponentDeckCandidate(repo).FindOpponentDeckCandidates(context.Background(), 2)
-
-		require.NoError(t, err)
-		require.Len(t, ret, 2)
-		require.Equal(t, "ロストバレット", ret[0].OpponentsDeckInfo)
-		require.Equal(t, "サーナイトex", ret[1].OpponentsDeckInfo)
+	// 全体候補の集計条件(直近3ヶ月・ユーザー指定なし)にだけ一致するマッチャ
+	globalFilter := gomock.Cond(func(f *repository.OpponentDeckCandidateFilter) bool {
+		return f.UserId == "" &&
+			f.Since.Equal(now.AddDate(0, -OpponentDeckCandidateWindowMonths, 0)) &&
+			f.Limit == opponentDeckCandidateCacheSize
 	})
 
-	t.Run("正常系_保持している件数を超えるlimitは全件を返す", func(t *testing.T) {
+	candidate := func(deckInfo string, spriteId string, count int) *entity.OpponentDeckCandidate {
+		sprites := []*entity.PokemonSprite{}
+		if spriteId != "" {
+			sprites = append(sprites, entity.NewPokemonSpriteWithPosition(spriteId, 1))
+		}
+
+		return entity.NewOpponentDeckCandidate(deckInfo, sprites, count)
+	}
+
+	t.Run("正常系_自身の履歴を先頭に不足分を全体候補で埋める", func(t *testing.T) {
 		overrideTimeNow(t, now)
 		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
-		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Any(), opponentDeckCandidateCacheSize).Return(candidates, nil)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), ownFilter(4)).
+			Return([]*entity.OpponentDeckCandidate{candidate("自分のデッキA", "0887", 5)}, nil)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), globalFilter).
+			Return([]*entity.OpponentDeckCandidate{
+				candidate("全体のデッキA", "0006", 30),
+				candidate("全体のデッキB", "", 20),
+				candidate("全体のデッキC", "", 10),
+			}, nil)
 
-		ret, err := NewOpponentDeckCandidate(repo).FindOpponentDeckCandidates(context.Background(), 100)
+		ret, err := NewOpponentDeckCandidate(repo).FindOpponentDeckCandidates(context.Background(), uid, 4)
+
+		require.NoError(t, err)
+		require.Len(t, ret, 4)
+		require.Equal(t, "自分のデッキA", ret[0].OpponentsDeckInfo)
+		require.Equal(t, "全体のデッキA", ret[1].OpponentsDeckInfo)
+		require.Equal(t, "全体のデッキC", ret[3].OpponentsDeckInfo)
+	})
+
+	// 同じ組み合わせが両方に出たら、自身のぶんを残す(先頭側の順位を保つ)
+	t.Run("正常系_自身の履歴と重複する全体候補は除く", func(t *testing.T) {
+		overrideTimeNow(t, now)
+		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), ownFilter(3)).
+			Return([]*entity.OpponentDeckCandidate{candidate("ロストバレット", "0887", 5)}, nil)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), globalFilter).
+			Return([]*entity.OpponentDeckCandidate{
+				candidate("ロストバレット", "0887", 99), // 自身のぶんと同じ組み合わせ
+				candidate("ロストバレット", "0006", 50), // スプライトが違うので別の候補
+				candidate("サーナイトex", "", 40),
+			}, nil)
+
+		ret, err := NewOpponentDeckCandidate(repo).FindOpponentDeckCandidates(context.Background(), uid, 3)
 
 		require.NoError(t, err)
 		require.Len(t, ret, 3)
+		require.Equal(t, 5, ret[0].Count) // 自身のぶん(99 の全体候補で置き換わらない)
+		require.Equal(t, "0006", ret[1].PokemonSprites[0].ID)
+		require.Equal(t, "サーナイトex", ret[2].OpponentsDeckInfo)
 	})
 
-	// 全ユーザーの対戦結果を GROUP BY する集計なので、フォームを開くたびには走らせない
-	t.Run("正常系_TTLのあいだは集計を繰り返さない", func(t *testing.T) {
+	// 自身の履歴だけで埋まるなら、全体の集計は行わない
+	t.Run("正常系_自身の履歴がlimitに達していれば全体候補を引かない", func(t *testing.T) {
 		overrideTimeNow(t, now)
 		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
-		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Any(), opponentDeckCandidateCacheSize).Return(candidates, nil).Times(1)
-		usecase := NewOpponentDeckCandidate(repo)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), ownFilter(2)).
+			Return([]*entity.OpponentDeckCandidate{
+				candidate("自分のデッキA", "", 5),
+				candidate("自分のデッキB", "", 3),
+			}, nil)
+		// 全体候補は EXPECT しない(引かれない)
 
-		for i := 0; i < 3; i++ {
-			ret, err := usecase.FindOpponentDeckCandidates(context.Background(), 10)
-			require.NoError(t, err)
-			require.Len(t, ret, 3)
-		}
-	})
+		ret, err := NewOpponentDeckCandidate(repo).FindOpponentDeckCandidates(context.Background(), uid, 2)
 
-	t.Run("正常系_TTLが過ぎたら集計し直す", func(t *testing.T) {
-		overrideTimeNow(t, now)
-		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
-		usecase := NewOpponentDeckCandidate(repo)
-
-		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Any(), opponentDeckCandidateCacheSize).Return(candidates, nil)
-		_, err := usecase.FindOpponentDeckCandidates(context.Background(), 10)
 		require.NoError(t, err)
+		require.Len(t, ret, 2)
+		require.Equal(t, "自分のデッキA", ret[0].OpponentsDeckInfo)
+	})
 
-		later := now.Add(opponentDeckCandidateCacheTTL + time.Second)
-		overrideTimeNow(t, later)
-		refreshed := []*entity.OpponentDeckCandidate{entity.NewOpponentDeckCandidate("新しい環境のデッキ", nil, 3)}
-		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), later.Add(-OpponentDeckCandidateWindow), opponentDeckCandidateCacheSize).Return(refreshed, nil)
+	t.Run("正常系_履歴が無いユーザーには全体候補だけを返す", func(t *testing.T) {
+		overrideTimeNow(t, now)
+		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), ownFilter(2)).Return(nil, nil)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), globalFilter).
+			Return([]*entity.OpponentDeckCandidate{candidate("全体のデッキA", "", 30)}, nil)
 
-		ret, err := usecase.FindOpponentDeckCandidates(context.Background(), 10)
+		ret, err := NewOpponentDeckCandidate(repo).FindOpponentDeckCandidates(context.Background(), uid, 2)
 
 		require.NoError(t, err)
 		require.Len(t, ret, 1)
+		require.Equal(t, "全体のデッキA", ret[0].OpponentsDeckInfo)
+	})
+
+	t.Run("正常系_limitが0以下なら空を返し集計しない", func(t *testing.T) {
+		overrideTimeNow(t, now)
+		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
+
+		ret, err := NewOpponentDeckCandidate(repo).FindOpponentDeckCandidates(context.Background(), uid, 0)
+
+		require.NoError(t, err)
+		require.Empty(t, ret)
+	})
+
+	// 全体候補は重い集計なので保持する。自身の履歴は毎回集計する
+	// (対戦を記録した直後に、その相手デッキが候補へ出るようにするため)
+	t.Run("正常系_全体候補はTTLのあいだ保持し自身の履歴は毎回集計する", func(t *testing.T) {
+		overrideTimeNow(t, now)
+		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), ownFilter(5)).
+			Return([]*entity.OpponentDeckCandidate{candidate("自分のデッキA", "", 5)}, nil).Times(3)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), globalFilter).
+			Return([]*entity.OpponentDeckCandidate{candidate("全体のデッキA", "", 30)}, nil).Times(1)
+		usecase := NewOpponentDeckCandidate(repo)
+
+		for i := 0; i < 3; i++ {
+			ret, err := usecase.FindOpponentDeckCandidates(context.Background(), uid, 5)
+			require.NoError(t, err)
+			require.Len(t, ret, 2)
+		}
+	})
+
+	t.Run("正常系_TTLが過ぎたら全体候補を集計し直す", func(t *testing.T) {
+		overrideTimeNow(t, now)
+		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
+		usecase := NewOpponentDeckCandidate(repo)
+
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Any()).Return(nil, nil)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), globalFilter).
+			Return([]*entity.OpponentDeckCandidate{candidate("古い環境のデッキ", "", 30)}, nil)
+		ret, err := usecase.FindOpponentDeckCandidates(context.Background(), uid, 5)
+		require.NoError(t, err)
+		require.Equal(t, "古い環境のデッキ", ret[0].OpponentsDeckInfo)
+
+		later := now.Add(opponentDeckCandidateCacheTTL + time.Second)
+		overrideTimeNow(t, later)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Any()).Return(nil, nil)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Cond(func(f *repository.OpponentDeckCandidateFilter) bool {
+			return f.UserId == "" && f.Since.Equal(later.AddDate(0, -OpponentDeckCandidateWindowMonths, 0))
+		})).Return([]*entity.OpponentDeckCandidate{candidate("新しい環境のデッキ", "", 30)}, nil)
+
+		ret, err = usecase.FindOpponentDeckCandidates(context.Background(), uid, 5)
+		require.NoError(t, err)
 		require.Equal(t, "新しい環境のデッキ", ret[0].OpponentsDeckInfo)
 	})
 
-	// 返した結果を呼び出し側が並び替えても、保持している結果は変わらない
-	t.Run("正常系_返す結果はコピーで保持している結果に影響しない", func(t *testing.T) {
+	t.Run("異常系_自身の履歴の集計に失敗したらエラーを返す", func(t *testing.T) {
 		overrideTimeNow(t, now)
 		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
-		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Any(), opponentDeckCandidateCacheSize).Return(candidates, nil).Times(1)
-		usecase := NewOpponentDeckCandidate(repo)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), ownFilter(5)).Return(nil, errors.New("db down"))
 
-		first, err := usecase.FindOpponentDeckCandidates(context.Background(), 3)
-		require.NoError(t, err)
-		first[0], first[2] = first[2], first[0]
+		ret, err := NewOpponentDeckCandidate(repo).FindOpponentDeckCandidates(context.Background(), uid, 5)
 
-		second, err := usecase.FindOpponentDeckCandidates(context.Background(), 3)
-		require.NoError(t, err)
-		require.Equal(t, "ロストバレット", second[0].OpponentsDeckInfo)
+		require.Error(t, err)
+		require.Nil(t, ret)
 	})
 
-	t.Run("異常系_集計の失敗はそのまま返し保持しない", func(t *testing.T) {
+	t.Run("異常系_全体候補の集計に失敗したらエラーを返し保持しない", func(t *testing.T) {
 		overrideTimeNow(t, now)
 		repo := mock_repository.NewMockOpponentDeckCandidateInterface(gomock.NewController(t))
 		usecase := NewOpponentDeckCandidate(repo)
 
-		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Any(), opponentDeckCandidateCacheSize).Return(nil, errors.New("db down"))
-		ret, err := usecase.FindOpponentDeckCandidates(context.Background(), 10)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), ownFilter(5)).Return(nil, nil)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), globalFilter).Return(nil, errors.New("db down"))
+		ret, err := usecase.FindOpponentDeckCandidates(context.Background(), uid, 5)
 		require.Error(t, err)
 		require.Nil(t, ret)
 
 		// 失敗は保持されず、次の呼び出しで集計し直す
-		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), gomock.Any(), opponentDeckCandidateCacheSize).Return(candidates, nil)
-		ret, err = usecase.FindOpponentDeckCandidates(context.Background(), 10)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), ownFilter(5)).Return(nil, nil)
+		repo.EXPECT().FindOpponentDeckCandidates(gomock.Any(), globalFilter).
+			Return([]*entity.OpponentDeckCandidate{candidate("全体のデッキA", "", 30)}, nil)
+		ret, err = usecase.FindOpponentDeckCandidates(context.Background(), uid, 5)
 		require.NoError(t, err)
-		require.Len(t, ret, 3)
+		require.Len(t, ret, 1)
 	})
 }

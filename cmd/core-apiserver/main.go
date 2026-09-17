@@ -18,6 +18,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/vsrecorder/core-apiserver/internal"
 	"github.com/vsrecorder/core-apiserver/internal/controller"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 	"github.com/vsrecorder/core-apiserver/internal/logging"
@@ -300,6 +301,10 @@ func main() {
 		infrastructure.NewTransactionManager(db),
 	)
 
+	// 認証ミドルウェアは、トークンの uid が登録済みで退会していないユーザーかを確認する。
+	// 未設定のままだと認証が必要な全ルートが 500 になる(fail closed)ので、ルート登録より前に置く。
+	authentication.SetUserVerifier(usecase.NewActiveUserVerifier(infrastructure.NewUser(db)))
+
 	controller.NewUser(
 		logger,
 		r,
@@ -327,10 +332,13 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	// 大会情報は tonamel_events テーブルを先に引き、無いときだけ tonamel.com へ取りに行く
+	// (未認証で叩ける経路なので、毎回外部サイトへ取りに行く作りにしない)。
 	controller.NewTonamelEvent(
 		r,
 		usecase.NewTonamelEvent(
 			infrastructure.NewTonamelEvent(logger),
+			infrastructure.NewTonamelEventStore(db),
 		),
 	).RegisterRoute(relativePath)
 
@@ -386,9 +394,11 @@ func main() {
 		logger,
 		r,
 		infrastructure.NewDeckCode(db),
+		infrastructure.NewDeck(db),
 		infrastructure.NewRecord(db, logger),
 		usecase.NewDeckCode(
 			infrastructure.NewDeckCode(db),
+			infrastructure.NewDeck(db),
 			infrastructure.NewDeckAsset(logger),
 			infrastructure.NewTag(db),
 			badgeEvaluation,
@@ -445,6 +455,8 @@ func main() {
 		usecase.NewRecord(
 			logger,
 			infrastructure.NewRecord(db, logger),
+			infrastructure.NewDeck(db),
+			infrastructure.NewDeckCode(db),
 			infrastructure.NewTag(db),
 			badgeEvaluation,
 			designationEvaluation,
@@ -461,6 +473,8 @@ func main() {
 		usecase.NewMatch(
 			infrastructure.NewMatch(db),
 			infrastructure.NewRecord(db, logger),
+			infrastructure.NewDeck(db),
+			infrastructure.NewDeckCode(db),
 			infrastructure.NewTag(db),
 			badgeEvaluation,
 			designationEvaluation,

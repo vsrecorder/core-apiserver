@@ -136,7 +136,7 @@ func TestDeckCodeDeleteAuthorizationMiddleware(t *testing.T) {
 		ctx, w := newDeckCodeAuthContext(t, id, uid)
 
 		mockDeckCodeRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
-		mockRecordRepository.EXPECT().FindByDeckCodeId(gomock.Any(), id, 1, 0).Return([]*entity.Record{}, nil)
+		mockRecordRepository.EXPECT().FindByDeckCodeId(gomock.Any(), uid, id, 1, 0).Return([]*entity.Record{}, nil)
 
 		DeckCodeDeleteAuthorizationMiddleware(mockDeckCodeRepository, mockRecordRepository)(ctx)
 
@@ -152,7 +152,7 @@ func TestDeckCodeDeleteAuthorizationMiddleware(t *testing.T) {
 		ctx, w := newDeckCodeAuthContext(t, id, uid)
 
 		mockDeckCodeRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
-		mockRecordRepository.EXPECT().FindByDeckCodeId(gomock.Any(), id, 1, 0).Return(
+		mockRecordRepository.EXPECT().FindByDeckCodeId(gomock.Any(), uid, id, 1, 0).Return(
 			[]*entity.Record{{ID: "01HD7Y3K8D6FDHMHTZ2GT41TR1"}}, nil,
 		)
 
@@ -170,7 +170,7 @@ func TestDeckCodeDeleteAuthorizationMiddleware(t *testing.T) {
 		ctx, w := newDeckCodeAuthContext(t, id, uid)
 
 		mockDeckCodeRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.DeckCode{ID: id, UserId: uid}, nil)
-		mockRecordRepository.EXPECT().FindByDeckCodeId(gomock.Any(), id, 1, 0).Return(nil, errors.New(""))
+		mockRecordRepository.EXPECT().FindByDeckCodeId(gomock.Any(), uid, id, 1, 0).Return(nil, errors.New(""))
 
 		DeckCodeDeleteAuthorizationMiddleware(mockDeckCodeRepository, mockRecordRepository)(ctx)
 

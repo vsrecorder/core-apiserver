@@ -12,6 +12,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
 )
@@ -81,5 +82,31 @@ func test_TonamelEventController_GetById(t *testing.T) {
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	// 同時取得数の上限に当たった(一時的な状態)ときは 503 にして、クライアントに再試行を促す。
+	t.Run("異常系_外部取得が混み合っていれば503を返す", func(t *testing.T) {
+		id := "61ozP"
+
+		mockUsecase.EXPECT().FindById(gomock.Any(), id).Return(nil, apperror.ErrExternalFetchBusy)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", TonamelEventsPath+"/"+id, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusServiceUnavailable, w.Code)
+	})
+
+	// IDはそのまま tonamel.com のURLに連結するため、形式外の値は外部サイトへ問い合わせる前に弾く。
+	t.Run("異常系_形式外のIDは400を返しユースケースを呼ばない", func(t *testing.T) {
+		id := "123456789" // 9文字(上限8文字を超える)
+
+		// FindById は EXPECT しない(バリデーションで弾かれ、呼ばれない)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", TonamelEventsPath+"/"+id, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

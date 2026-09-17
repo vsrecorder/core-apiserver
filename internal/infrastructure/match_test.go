@@ -405,7 +405,7 @@ func test_MatchInfrastructure_FindLatest(t *testing.T) {
 		})
 
 		mock.ExpectQuery(matchJoinGameQuery("matches",
-			`WHERE matches.id IN (SELECT id FROM "matches" WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT $1) ORDER BY matches.created_at DESC, games.created_at ASC`,
+			`WHERE matches.id IN (SELECT matches.id FROM "matches" JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.private_flg = false WHERE matches.deleted_at IS NULL ORDER BY matches.created_at DESC LIMIT $1) ORDER BY matches.created_at DESC, games.created_at ASC`,
 		)).WithArgs(limit).WillReturnRows(rows)
 
 		mock.ExpectQuery(regexp.QuoteMeta(

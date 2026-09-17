@@ -256,6 +256,12 @@ func (c *Deck) Create(ctx *gin.Context) {
 			return
 		}
 
+		// 存在しないスプライトID等、参照先が無い入力(外部キー違反)は 400。
+		if errors.Is(err, apperror.ErrInvalidReference) {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
@@ -286,6 +292,12 @@ func (c *Deck) Update(ctx *gin.Context) {
 
 	deck, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
+		// 存在しないスプライトID等、参照先が無い入力(外部キー違反)は 400。
+		if errors.Is(err, apperror.ErrInvalidReference) {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}

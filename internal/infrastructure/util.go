@@ -105,3 +105,19 @@ func logError(ctx context.Context, err error) {
 		logging.Err(err),
 	)
 }
+
+// wrapForeignKeyViolation は外部キー制約違反を apperror.ErrInvalidReference へ変換する。
+//
+// 入口の形式検証は通るが参照先のマスタ(pokemon_sprites 等)に存在しない値は、ここで初めて
+// 弾かれる。クライアント起因なので 500 ではなく 400 で返せるよう区別する。
+// wrapUniqueViolation と同じ理由で全リポジトリへ一律には適用せず、参照先がユーザー入力で
+// 決まる書き込み(スプライトの保存)でだけ使う。
+func wrapForeignKeyViolation(err error) error {
+	var pgErr *pgconn.PgError
+	// 23503 = foreign_key_violation
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return apperror.ErrInvalidReference
+	}
+
+	return err
+}

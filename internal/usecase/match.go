@@ -124,6 +124,9 @@ type MatchInterface interface {
 		recordIds []string,
 	) ([]*entity.MatchSummary, error)
 
+	// FindLatest はユーザーを問わず最新の対戦結果を返す。webapp が相手デッキの入力候補
+	// (自分の対戦が無い人向けのダミー候補)に使うため、公開記録の対戦に限り、
+	// メモなど本人向けの項目は落として返す(sanitizeMatchForPublicFeed)。
 	FindLatest(
 		ctx context.Context,
 		limit int,
@@ -153,8 +156,12 @@ type MatchInterface interface {
 }
 
 type Match struct {
-	repository            repository.MatchInterface
-	recordRepository      repository.RecordInterface
+	repository       repository.MatchInterface
+	recordRepository repository.RecordInterface
+	// deckRepository / deckCodeRepository は、対戦結果に紐づける deck_id / deck_code_id が
+	// 本人のものかを保存前に確かめるために使う(ownership.go)。
+	deckRepository        repository.DeckInterface
+	deckCodeRepository    repository.DeckCodeInterface
 	tag                   repository.TagInterface
 	badgeEvaluation       BadgeEvaluationInterface
 	designationEvaluation DesignationEvaluationInterface
@@ -167,13 +174,24 @@ type Match struct {
 func NewMatch(
 	repository repository.MatchInterface,
 	recordRepository repository.RecordInterface,
+	deckRepository repository.DeckInterface,
+	deckCodeRepository repository.DeckCodeInterface,
 	tag repository.TagInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	designationEvaluation DesignationEvaluationInterface,
 	environmentBadgeEval EnvironmentBadgeEvaluationInterface,
 	transactionManager repository.TransactionManager,
 ) MatchInterface {
-	return &Match{repository, recordRepository, tag, badgeEvaluation, designationEvaluation, environmentBadgeEval, transactionManager}
+	return &Match{repository, recordRepository, deckRepository, deckCodeRepository, tag, badgeEvaluation, designationEvaluation, environmentBadgeEval, transactionManager}
+}
+
+// verifyDeckReferences は対戦結果に紐づける deck_id / deck_code_id が本人のものかを確かめる。
+func (u *Match) verifyDeckReferences(ctx context.Context, param *MatchParam) error {
+	if err := verifyDeckOwnership(ctx, u.deckRepository, param.UserId, param.DeckId); err != nil {
+		return err
+	}
+
+	return verifyDeckCodeOwnership(ctx, u.deckCodeRepository, param.UserId, param.DeckCodeId)
 }
 
 // syncMatchTags は対戦結果について、userId が付与できる有効なタグ(自分のタグ or
@@ -271,7 +289,29 @@ func (u *Match) FindLatest(
 		return nil, err
 	}
 
+	for _, match := range matches {
+		sanitizeMatchForPublicFeed(match)
+	}
+
 	return matches, nil
+}
+
+// sanitizeMatchForPublicFeed は他人に見せる対戦結果から、本人向けの項目を落とす。
+//
+// 全ユーザー横断の一覧(FindLatest)が必要とするのは相手デッキの情報とスプライト、
+// 不戦勝/不戦敗のフラグだけ(webapp の buildDeckHistories)。対戦メモ・対局メモは
+// 本人の覚え書きで、記録の個別ページ同様に他人へ見せる前提の項目ではない。
+// タグ名や参照先(デッキ・デッキコード・対戦相手)も、候補の生成には要らないので返さない。
+func sanitizeMatchForPublicFeed(match *entity.Match) {
+	match.DeckId = ""
+	match.DeckCodeId = ""
+	match.OpponentsUserId = ""
+	match.Memo = ""
+	match.Tags = nil
+
+	for _, game := range match.Games {
+		game.Memo = ""
+	}
 }
 
 // validateMatchParam は対戦結果の整合性を domain 層の共通関数で検証する。
@@ -304,6 +344,24 @@ func (u *Match) Create(
 	param *MatchParam,
 ) (*entity.Match, error) {
 	if err := validateMatchParam(param); err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	// 対戦結果を紐づける記録は本人のものに限る。他人の記録に対戦結果を混ぜられると、
+	// その人の記録の対戦一覧・集計に他人の対戦が現れる。
+	// 親recordは後段の環境バッジの判定でも使うため、ここで1度だけ取得しておく。
+	// 他人の記録は「存在しない」として扱い、IDの存在を教えない(ownership.go と同じ方針)。
+	record, err := u.recordRepository.FindById(ctx, param.RecordId)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+	if record.UserId != param.UserId {
+		return nil, apperror.ErrRecordNotFound
+	}
+
+	if err := u.verifyDeckReferences(ctx, param); err != nil {
 		logError(ctx, err)
 		return nil, err
 	}
@@ -414,12 +472,12 @@ func (u *Match) Create(
 
 	// 環境バッジは公式イベント(OfficialEventId != 0)に紐づく記録のみを対象とする。
 	// 環境判定も「対戦結果を入力した日時」ではなく「実際に対戦した日」(紐づくrecordの
-	// event_date)を使いたいため、親recordを取得する。取得できない場合(通常発生しない)や
+	// event_date)を使いたいため、冒頭で取得した親recordを使う。
 	// 公式イベントでない記録の場合は環境バッジの判定自体を行わない。
 	//
 	// 公式イベントIDも渡すのは、大型大会のように開催日から引いた環境と実際の対戦環境が
 	// ズレるイベントがあるため(ResolveEnvironmentForOfficialEvent 参照)。
-	if record, err := u.recordRepository.FindById(ctx, param.RecordId); err == nil && record.OfficialEventId != 0 {
+	if record.OfficialEventId != 0 {
 		basisTime := RecordBasisTime(record.EventDate, record.CreatedAt)
 
 		if _, err := u.environmentBadgeEval.EvaluateOnMatchCreated(ctx, param.UserId, match, record.OfficialEventId, basisTime); err != nil {
@@ -453,6 +511,17 @@ func (u *Match) Update(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	// 更新で record_id を他人の記録へ付け替えられないよう、作成時と同じ検証を行う。
+	if err := verifyRecordOwnership(ctx, u.recordRepository, param.UserId, param.RecordId); err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	if err := u.verifyDeckReferences(ctx, param); err != nil {
 		logError(ctx, err)
 		return nil, err
 	}

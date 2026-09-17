@@ -19,7 +19,7 @@ func TestMatchUsecaseBO3(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
 	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewMatch(mockRepository, mockRecordRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{}, stubTransactionManager{})
+	usecase := NewMatch(mockRepository, mockRecordRepository, stubDeckRepository{owner: "bo3-user"}, stubDeckCodeRepository{owner: "bo3-user"}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{}, stubTransactionManager{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -169,6 +169,8 @@ func test_MatchUsecaseBO3_UpdateShrink(t *testing.T, mockRepository *mock_reposi
 
 		existing := existingBO3Match(t, matchId, recordId, userId, 3)
 		mockRepository.EXPECT().FindById(ctx, matchId).Return(existing, nil)
+		// 更新時の所有者検証(verifyRecordOwnership)が親recordを引く
+		mockRecordRepository.EXPECT().FindById(ctx, recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 
 		var saved *entity.Match
 		mockRepository.EXPECT().Update(ctx, gomock.Any()).DoAndReturn(
@@ -205,6 +207,8 @@ func test_MatchUsecaseBO3_UpdateGrow(t *testing.T, mockRepository *mock_reposito
 
 		existing := existingBO3Match(t, matchId, recordId, userId, 1)
 		mockRepository.EXPECT().FindById(ctx, matchId).Return(existing, nil)
+		// 更新時の所有者検証(verifyRecordOwnership)が親recordを引く
+		mockRecordRepository.EXPECT().FindById(ctx, recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 
 		var saved *entity.Match
 		mockRepository.EXPECT().Update(ctx, gomock.Any()).DoAndReturn(
@@ -249,6 +253,8 @@ func test_MatchUsecaseBO3_UpdateKeepsIdentity(t *testing.T, mockRepository *mock
 
 		existing := existingBO3Match(t, matchId, recordId, userId, 3)
 		mockRepository.EXPECT().FindById(ctx, matchId).Return(existing, nil)
+		// 更新時の所有者検証(verifyRecordOwnership)が親recordを引く
+		mockRecordRepository.EXPECT().FindById(ctx, recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 
 		var saved *entity.Match
 		mockRepository.EXPECT().Update(ctx, gomock.Any()).DoAndReturn(

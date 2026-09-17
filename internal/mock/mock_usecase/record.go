@@ -88,48 +88,48 @@ func (mr *MockRecordInterfaceMockRecorder) Find(ctx, limit, offset, eventType an
 }
 
 // FindByDeckCodeId mocks base method.
-func (m *MockRecordInterface) FindByDeckCodeId(ctx context.Context, deckCodeId string, limit, offset int) ([]*entity.Record, error) {
+func (m *MockRecordInterface) FindByDeckCodeId(ctx context.Context, uid, deckCodeId string, limit, offset int) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByDeckCodeId", ctx, deckCodeId, limit, offset)
+	ret := m.ctrl.Call(m, "FindByDeckCodeId", ctx, uid, deckCodeId, limit, offset)
 	ret0, _ := ret[0].([]*entity.Record)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindByDeckCodeId indicates an expected call of FindByDeckCodeId.
-func (mr *MockRecordInterfaceMockRecorder) FindByDeckCodeId(ctx, deckCodeId, limit, offset any) *gomock.Call {
+func (mr *MockRecordInterfaceMockRecorder) FindByDeckCodeId(ctx, uid, deckCodeId, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckCodeId", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckCodeId), ctx, deckCodeId, limit, offset)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckCodeId", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckCodeId), ctx, uid, deckCodeId, limit, offset)
 }
 
 // FindByDeckId mocks base method.
-func (m *MockRecordInterface) FindByDeckId(ctx context.Context, deckId string, limit, offset int, eventType string) ([]*entity.Record, error) {
+func (m *MockRecordInterface) FindByDeckId(ctx context.Context, uid, deckId string, limit, offset int, eventType string) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByDeckId", ctx, deckId, limit, offset, eventType)
+	ret := m.ctrl.Call(m, "FindByDeckId", ctx, uid, deckId, limit, offset, eventType)
 	ret0, _ := ret[0].([]*entity.Record)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindByDeckId indicates an expected call of FindByDeckId.
-func (mr *MockRecordInterfaceMockRecorder) FindByDeckId(ctx, deckId, limit, offset, eventType any) *gomock.Call {
+func (mr *MockRecordInterfaceMockRecorder) FindByDeckId(ctx, uid, deckId, limit, offset, eventType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckId", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckId), ctx, deckId, limit, offset, eventType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckId", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckId), ctx, uid, deckId, limit, offset, eventType)
 }
 
 // FindByDeckIdOnCursor mocks base method.
-func (m *MockRecordInterface) FindByDeckIdOnCursor(ctx context.Context, deckId string, limit int, cursorEventDate, cursorCreatedAt time.Time, eventType string) ([]*entity.Record, error) {
+func (m *MockRecordInterface) FindByDeckIdOnCursor(ctx context.Context, uid, deckId string, limit int, cursorEventDate, cursorCreatedAt time.Time, eventType string) ([]*entity.Record, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByDeckIdOnCursor", ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
+	ret := m.ctrl.Call(m, "FindByDeckIdOnCursor", ctx, uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 	ret0, _ := ret[0].([]*entity.Record)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindByDeckIdOnCursor indicates an expected call of FindByDeckIdOnCursor.
-func (mr *MockRecordInterfaceMockRecorder) FindByDeckIdOnCursor(ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType any) *gomock.Call {
+func (mr *MockRecordInterfaceMockRecorder) FindByDeckIdOnCursor(ctx, uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckIdOnCursor), ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByDeckIdOnCursor", reflect.TypeOf((*MockRecordInterface)(nil).FindByDeckIdOnCursor), ctx, uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 }
 
 // FindById mocks base method.

@@ -8,6 +8,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 func DeckGetMiddleware() gin.HandlerFunc {
@@ -56,17 +57,28 @@ func DeckCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 			return
 		}
 
-		// 長さの確認は外部APIへの問い合わせ前に行う。
+		// 長さ・文字種の確認は外部APIへの問い合わせ前に行う。
 		if exceedsLength(req.DeckCode, MaxDeckCodeLength) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}
 
 		if req.DeckCode != "" {
+			// デッキコードは公式サイトのURLとストレージのキーにそのまま使うため、文字種を限定する。
+			if !entity.IsValidDeckCodeFormat(req.DeckCode) {
+				apierror.ErrBadRequest.JSON(ctx)
+				return
+			}
+
 			// フロントエンド側でデッキコードの有効性を確認しているのでチェックは不要だが、念のためサーバ側でも確認したいが、
 			// 大量のリクエストが来ると外部APIに負荷がかかるので、現状はコメントアウトしている。
 			// もし外部APIの負荷が問題ない場合は、コメントアウトを解除してチェックを有効化する。
 			//checkDeckCode(ctx, logger, req.DeckCode)
+		}
+
+		if !validatePokemonSprites(req.PokemonSprites) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
 		}
 
 		if !validateTagIds(req.TagIds) {
@@ -87,6 +99,11 @@ func DeckUpdateMiddleware() gin.HandlerFunc {
 		}
 
 		if req.Name == "" || exceedsLength(req.Name, MaxDeckNameLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if !validatePokemonSprites(req.PokemonSprites) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

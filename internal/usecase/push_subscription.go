@@ -69,6 +69,9 @@ func (u *PushSubscription) Subscribe(
 	// 見つからない(初めての購読)はここでは失敗にしない。
 	wasRevoked := false
 	if previous, err := u.repository.FindByEndpoint(ctx, endpoint); err == nil {
+		if !canTakeOverPushSubscription(previous, userId, p256dh, auth) {
+			return false, apperror.ErrPushSubscriptionOwnedByOther
+		}
 		wasRevoked = !previous.RevokedAt.IsZero()
 	} else if !errors.Is(err, apperror.ErrRecordNotFound) {
 		logError(ctx, err)
@@ -110,6 +113,30 @@ func (u *PushSubscription) Unsubscribe(
 	}
 
 	return nil
+}
+
+/*
+ * canTakeOverPushSubscription は、既に登録されている endpoint を userId が登録し直してよいかを返す。
+ *
+ * endpoint は全体で一意で、登録し直すと持ち主(user_id)と鍵が上書きされる。持ち主の変更を
+ * 無条件に許すと、endpoint を知る第三者が自分のアカウントで登録し直すだけで、元の持ち主の
+ * その端末への通知を止められる(通知の中身は鍵が違うため読めないが、届かなくなる)。
+ *
+ * 一方で、同じ端末でのアカウント切替(A がログアウトし B がログイン)は成立させたい。
+ * webapp はログアウト時に購読を解除せず、ブラウザに残っている購読をそのまま次の
+ * アカウントで登録し直すため、このとき endpoint は同じで持ち主だけが変わる。
+ *
+ * 両者を分けるのが鍵(p256dh / auth)で、ブラウザの購読が同じなら鍵も同じになる。
+ * そこで持ち主の変更は「鍵が一致するとき」だけ許す。endpoint しか知らない第三者は鍵を
+ * 用意できないので弾かれ、同じ端末からの切替は通る。本人による登録し直しは常に許す
+ * (自分の購読を自分で更新しているだけなので、鍵が変わっていても問題ない)。
+ */
+func canTakeOverPushSubscription(previous *entity.PushSubscription, userId string, p256dh string, auth string) bool {
+	if previous.UserId == userId {
+		return true
+	}
+
+	return previous.P256dh == p256dh && previous.Auth == auth
 }
 
 func hasEndpoint(subscriptions []*entity.PushSubscription, endpoint string) bool {

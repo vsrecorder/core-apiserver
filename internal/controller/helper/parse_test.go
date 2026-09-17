@@ -67,6 +67,18 @@ func TestParseQueryLimit(t *testing.T) {
 		_, err := ParseQueryLimit(newTestContext(t, "limit=abc"))
 		require.Error(t, err)
 	})
+
+	// 上限が無いと、公開一覧に巨大な limit を渡すだけで全件をメモリに載せさせられる。
+	t.Run("正常系_上限を超える値は上限へ丸める", func(t *testing.T) {
+		limit, err := ParseQueryLimit(newTestContext(t, "limit=1000000"))
+		require.NoError(t, err)
+		require.Equal(t, MaxLimit, limit)
+
+		// ちょうど上限は丸めない
+		limit, err = ParseQueryLimit(newTestContext(t, fmt.Sprintf("limit=%d", MaxLimit)))
+		require.NoError(t, err)
+		require.Equal(t, MaxLimit, limit)
+	})
 }
 
 func TestParseQueryOffset(t *testing.T) {

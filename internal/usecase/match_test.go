@@ -123,6 +123,10 @@ func (s orderTrackingEnvironmentBadgeEvaluation) UpdateAchievedNotification(ctx 
 // 「ユーザバッジ→環境バッジ→称号/ランクアップ」(=上から称号/ランクアップ→環境バッジ→
 // ユーザバッジ)になる。この呼び出し順が崩れると通知一覧の並び順バグが再発するため、
 // 明示的に固定する。
+// matchTestUserId は対戦結果のテストで一貫して使うユーザーID。デッキ・デッキコードの
+// 所有者スタブにも同じ値を渡し、所有者検証を通す。
+const matchTestUserId = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
 func TestMatchUsecase_Create_NotificationCreationOrder(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
@@ -132,6 +136,8 @@ func TestMatchUsecase_Create_NotificationCreationOrder(t *testing.T) {
 	usecase := NewMatch(
 		mockRepository,
 		mockRecordRepository,
+		stubDeckRepository{owner: matchTestUserId},
+		stubDeckCodeRepository{owner: matchTestUserId},
 		stubTagRepository{},
 		orderTrackingBadgeEvaluation{calls: &calls},
 		orderTrackingDesignationEvaluation{calls: &calls},
@@ -154,7 +160,7 @@ func TestMatchUsecase_Create_NotificationCreationOrder(t *testing.T) {
 
 	mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
 	// OfficialEventId != 0 の記録として扱い、環境バッジ評価も呼ばれる経路を通す。
-	mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, OfficialEventId: 1}, nil)
+	mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId, OfficialEventId: 1}, nil)
 
 	_, err := usecase.Create(context.Background(), matchParam)
 
@@ -174,6 +180,8 @@ func TestMatchUsecase_Create_PassesOfficialEventIdToEnvironmentBadge(t *testing.
 	usecase := NewMatch(
 		mockRepository,
 		mockRecordRepository,
+		stubDeckRepository{owner: matchTestUserId},
+		stubDeckCodeRepository{owner: matchTestUserId},
 		stubTagRepository{},
 		stubBadgeEvaluation{},
 		stubDesignationEvaluation{},
@@ -196,7 +204,7 @@ func TestMatchUsecase_Create_PassesOfficialEventIdToEnvironmentBadge(t *testing.
 
 	mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
 	mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(
-		&entity.Record{ID: recordId, OfficialEventId: officialEventId, EventDate: eventDate}, nil,
+		&entity.Record{ID: recordId, UserId: userId, OfficialEventId: officialEventId, EventDate: eventDate}, nil,
 	)
 
 	_, err := usecase.Create(context.Background(), matchParam)
@@ -210,7 +218,7 @@ func TestMatchUsecase(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockRepository := mock_repository.NewMockMatchInterface(mockCtrl)
 	mockRecordRepository := mock_repository.NewMockRecordInterface(mockCtrl)
-	usecase := NewMatch(mockRepository, mockRecordRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{}, stubTransactionManager{})
+	usecase := NewMatch(mockRepository, mockRecordRepository, stubDeckRepository{owner: matchTestUserId}, stubDeckCodeRepository{owner: matchTestUserId}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, stubEnvironmentBadgeEvaluation{}, stubTransactionManager{})
 
 	for scenario, fn := range map[string]func(
 		t *testing.T,
@@ -364,6 +372,8 @@ func TestMatchUsecase_Create_SucceedsEvenIfBadgeEvaluationFails(t *testing.T) {
 	usecase := NewMatch(
 		mockRepository,
 		mockRecordRepository,
+		stubDeckRepository{owner: matchTestUserId},
+		stubDeckCodeRepository{owner: matchTestUserId},
 		stubTagRepository{},
 		errMatchBadgeEvaluation{},
 		stubDesignationEvaluation{},
@@ -400,7 +410,7 @@ func TestMatchUsecase_Create_SucceedsEvenIfBadgeEvaluationFails(t *testing.T) {
 	)
 
 	mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
-	mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId}, nil).AnyTimes()
+	mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil).AnyTimes()
 
 	ret, err := usecase.Create(context.Background(), param)
 
@@ -450,7 +460,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		)
 
 		mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId}, nil)
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 
 		ret, err := usecase.Create(context.Background(), matchParam)
 
@@ -531,7 +541,7 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 		)
 
 		mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(nil)
-		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId}, nil)
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 
 		ret, err := usecase.Create(context.Background(), matchParam)
 
@@ -613,6 +623,8 @@ func test_MatchUsecase_Create(t *testing.T, mockRepository *mock_repository.Mock
 			pokemonSpriteParams,
 		)
 
+		// 作成時の所有者検証が親recordを引く(保存に失敗する前に通る)
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 		mockRepository.EXPECT().Create(context.Background(), gomock.Any()).Return(errors.New(""))
 
 		ret, err := usecase.Create(context.Background(), matchParam)
@@ -674,6 +686,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(match, nil)
+		// 更新時の所有者検証(verifyRecordOwnership)が親recordを引く
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 		mockRepository.EXPECT().Update(context.Background(), gomock.Any()).Return(nil)
 
 		var gameParams []*GameParam
@@ -777,6 +791,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(match, nil)
+		// 更新時の所有者検証(verifyRecordOwnership)が親recordを引く
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 		mockRepository.EXPECT().Update(context.Background(), gomock.Any()).Return(nil)
 
 		var gameParams []*GameParam
@@ -916,6 +932,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(match, nil)
+		// 更新時の所有者検証(verifyRecordOwnership)が親recordを引く
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 		mockRepository.EXPECT().Update(context.Background(), gomock.Any()).Return(nil)
 
 		var gameParams []*GameParam
@@ -1105,6 +1123,8 @@ func test_MatchUsecase_Update(t *testing.T, mockRepository *mock_repository.Mock
 		)
 
 		mockRepository.EXPECT().FindById(context.Background(), matchId).Return(match, nil)
+		// 更新時の所有者検証(verifyRecordOwnership)が親recordを引く
+		mockRecordRepository.EXPECT().FindById(context.Background(), recordId).Return(&entity.Record{ID: recordId, UserId: userId}, nil)
 		mockRepository.EXPECT().Update(context.Background(), gomock.Any()).Return(errors.New(""))
 
 		ret, err := usecase.Update(context.Background(), matchId, matchParam)

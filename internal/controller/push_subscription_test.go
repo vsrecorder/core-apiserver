@@ -106,6 +106,18 @@ func TestPushSubscriptionController(t *testing.T) {
 			require.Equal(t, http.StatusConflict, w.Code)
 		})
 
+		t.Run("異常系_他人のendpointを別の鍵で登録するとErrPushSubscriptionOwnedByOtherから409を返す", func(t *testing.T) {
+			c, mockUsecase, secretKey := setup4TestPushSubscriptionController(t)
+
+			mockUsecase.EXPECT().Subscribe(gomock.Any(), uid, endpoint, "p256dh-key", "auth-key", "").Return(false, apperror.ErrPushSubscriptionOwnedByOther)
+
+			body := `{"endpoint":"` + endpoint + `","keys":{"p256dh":"p256dh-key","auth":"auth-key"}}`
+			w := httptest.NewRecorder()
+			c.router.ServeHTTP(w, newPushSubscriptionRequest(t, "POST", body, uid, secretKey))
+
+			require.Equal(t, http.StatusConflict, w.Code)
+		})
+
 		t.Run("異常系_https以外のendpointは400", func(t *testing.T) {
 			c, _, secretKey := setup4TestPushSubscriptionController(t)
 

@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -143,15 +144,17 @@ func (i *DeckAsset) UploadDeckResultHTML(
 		return nil
 	}
 
-	url := fmt.Sprintf(deckResultHTMLURLFormat, deckCode)
+	// デッキコードは文字種を検証済みだが、URLのパスに埋め込む値は必ずエスケープして
+	// 万一の混入でもパスが変わらないようにする(検証済みの値では変化しない)。
+	requestURL := fmt.Sprintf(deckResultHTMLURLFormat, url.PathEscape(deckCode))
 
-	resp, err := httpclient.Get(url)
+	resp, err := httpclient.Get(requestURL)
 	if err != nil {
 		i.logger.ErrorContext(
 			ctx,
 			"failed to fetch deck result HTML page",
 			slog.String("deck_code", deckCode),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.String("error_message", err.Error()),
 		)
 
@@ -167,7 +170,7 @@ func (i *DeckAsset) UploadDeckResultHTML(
 			ctx,
 			"deck result HTML page returned non-200 status",
 			slog.String("deck_code", deckCode),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.Int("status_code", resp.StatusCode),
 		)
 
@@ -180,7 +183,7 @@ func (i *DeckAsset) UploadDeckResultHTML(
 			ctx,
 			"failed to read deck result HTML page body",
 			slog.String("deck_code", deckCode),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.String("error_message", err.Error()),
 		)
 
@@ -222,15 +225,15 @@ func (i *DeckAsset) UploadDeckImage(
 		return nil
 	}
 
-	url := fmt.Sprintf(deckImageURLFormat, deckCode)
+	requestURL := fmt.Sprintf(deckImageURLFormat, url.PathEscape(deckCode))
 
-	resp, err := httpclient.Get(url)
+	resp, err := httpclient.Get(requestURL)
 	if err != nil {
 		i.logger.ErrorContext(
 			ctx,
 			"failed to fetch deck image",
 			slog.String("deck_code", deckCode),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.String("error_message", err.Error()),
 		)
 
@@ -243,7 +246,7 @@ func (i *DeckAsset) UploadDeckImage(
 			ctx,
 			"deck image returned non-200 status",
 			slog.String("deck_code", deckCode),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.Int("status_code", resp.StatusCode),
 		)
 
@@ -256,7 +259,7 @@ func (i *DeckAsset) UploadDeckImage(
 			ctx,
 			"failed to decode deck image",
 			slog.String("deck_code", deckCode),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.String("error_message", err.Error()),
 		)
 

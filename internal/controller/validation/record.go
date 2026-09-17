@@ -54,6 +54,11 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if !isValidRecordTonamelEventId(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		if !entity.IsValidRecordEventDate(req.RecordRequest.EventDate) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
@@ -96,6 +101,11 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if !isValidRecordTonamelEventId(req.RecordRequest) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		if !entity.IsValidRecordEventDate(req.RecordRequest.EventDate) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
@@ -125,6 +135,16 @@ func RecordUpdateMiddleware() gin.HandlerFunc {
 	}
 }
 
+// isValidRecordTonamelEventId は Tonamel 記録の大会IDが形式どおりかを確認する。
+// 未指定(他のイベント種別)は対象外。形式の根拠は entity.IsValidTonamelEventId を参照。
+func isValidRecordTonamelEventId(req dto.RecordRequest) bool {
+	if req.TonamelEventId == "" {
+		return true
+	}
+
+	return entity.IsValidTonamelEventId(req.TonamelEventId)
+}
+
 /*
 記録の紐づくイベントは以下の4種類のうち、ちょうど1つだけ指定されている必要がある。
 2つ以上指定されている場合も、1つも指定されていない場合も bad request とする。
@@ -151,14 +171,23 @@ func isValidRecordRegulation(req dto.RecordRequest) bool {
 	return entity.IsValidRegulationId(entity.NormalizeRegulationId(req.RegulationId))
 }
 
-// isValidRecordLength は自由入力欄が上限内に収まっているかを確認する。
+// isValidRecordLength は自由入力欄と参照先IDが上限内に収まっているかを確認する。
 // memo と tcg_meister_url はDB上TEXTで上限が無いため、ここで歯止めをかける。
+// 参照先ID(friend_id / unofficial_event_id / deck_id / deck_code_id)は列幅(VARCHAR)を
+// 超えると保存時にDBエラー(500)になるため、入口で 400 にする。
 func isValidRecordLength(req dto.RecordRequest) bool {
 	if exceedsLength(req.Memo, MaxMemoLength) {
 		return false
 	}
 
 	if exceedsLength(req.TCGMeisterURL, MaxURLLength) {
+		return false
+	}
+
+	if !isValidOptionalId(req.FriendId, MaxUserIdLength) ||
+		!isValidOptionalId(req.UnofficialEventId, MaxEntityIdLength) ||
+		!isValidOptionalId(req.DeckId, MaxEntityIdLength) ||
+		!isValidOptionalId(req.DeckCodeId, MaxEntityIdLength) {
 		return false
 	}
 

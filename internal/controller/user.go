@@ -44,9 +44,10 @@ func (c *User) RegisterRoute(relativePath string) {
 		"/:id",
 		c.GetById,
 	)
+	// 登録前の uid は users に無いため、登録済みかを確認しない認証を使う(このルートだけ)。
 	r.POST(
 		"",
-		authentication.RequiredAuthenticationMiddleware(),
+		authentication.RegistrationAuthenticationMiddleware(),
 		validation.UserCreateMiddleware(),
 		c.Create,
 	)

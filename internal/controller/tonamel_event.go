@@ -9,6 +9,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
+	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
@@ -33,6 +34,7 @@ func (c *TonamelEvent) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + TonamelEventsPath)
 	r.GET(
 		"/:id",
+		validation.TonamelEventGetByIdMiddleware(),
 		c.GetById,
 	)
 }
@@ -45,6 +47,11 @@ func (c *TonamelEvent) GetById(ctx *gin.Context) {
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)
+			return
+		}
+		// tonamel.com への同時取得数が上限に達している(一時的)。
+		if errors.Is(err, apperror.ErrExternalFetchBusy) {
+			apierror.ErrServiceUnavailable.JSON(ctx, err)
 			return
 		}
 		apierror.ErrInternalServerError.JSON(ctx, err)

@@ -44,7 +44,21 @@ const (
 
 	MaxMemoLength = 10000 // deck_codes.memo / records.memo / matches.memo / games.memo (TEXT)
 	MaxURLLength  = 2048  // records.tcg_meister_url (TEXT)
+
+	// MaxEntityIdLength はサーバ採番のID(ULID)の長さ。deck_id / deck_code_id / record_id /
+	// unofficial_event_id などの参照先IDに使う(いずれも VARCHAR(26))。
+	MaxEntityIdLength = 26
+	// MaxUserIdLength は users.id(Firebase Authentication の uid)の上限。
+	// friend_id / opponents_user_id のように他のユーザーを指す項目に使う(VARCHAR(32))。
+	MaxUserIdLength = 32
 )
+
+// isValidOptionalId は任意指定の参照先IDが列幅に収まっているかを返す(未指定は可)。
+// 超過した値は保存時にDBエラー(500)になるため、入口で 400 にする。
+// 存在・所有者の検証は usecase が行う(ownership.go)ので、ここでは長さだけを見る。
+func isValidOptionalId(id string, max int) bool {
+	return !exceedsLength(id, max)
+}
 
 // isValidImageURL は画像URLとして受け入れられる値かを確認する。
 //

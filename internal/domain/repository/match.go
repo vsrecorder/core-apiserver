@@ -32,6 +32,9 @@ type MatchInterface interface {
 		recordIds []string,
 	) ([]*entity.MatchSummary, error)
 
+	// FindLatest はユーザーを問わず最新の対戦結果を返す(相手デッキの入力候補に使う)。
+	// 非公開の記録(records.private_flg = false 以外)に属する対戦は含めない。
+	// 記録本体は非公開にできるのに、その対戦だけが横断で読めてしまうのを防ぐため。
 	FindLatest(
 		ctx context.Context,
 		limit int,

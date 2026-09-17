@@ -103,10 +103,13 @@ func DeckDeleteAuthorizationMiddleware(deckRepository repository.DeckInterface, 
 			return
 		}
 
+		// 「使用中」の判定は所有者自身の記録に限る。記録のデッキ参照は本人のデッキに
+		// 限られる(usecase が保存時に検証する)ため、他人の記録を数える必要はなく、
+		// 数えてしまうと他人が記録を紐づけるだけでデッキを削除できなくさせられる。
 		limit := 1
 		offset := 0
 		eventType := ""
-		records, err := recordRepository.FindByDeckId(ctx.Request.Context(), id, limit, offset, eventType)
+		records, err := recordRepository.FindByDeckId(ctx.Request.Context(), deck.UserId, id, limit, offset, eventType)
 		if err != nil {
 			apierror.ErrInternalServerError.JSON(ctx, err)
 			return

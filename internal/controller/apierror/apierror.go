@@ -115,6 +115,10 @@ var (
 	// ErrUnauthorized は認証されていない場合(401)。
 	ErrUnauthorized = New(http.StatusUnauthorized, errors.New("unauthorized"))
 
+	// ErrUnregisteredUser はトークンは有効だが、その uid が未登録または退会済みの場合(401)。
+	// 401 にするのは、クライアント(webapp)が通常の認証失敗と同じくサインインへ誘導すればよいため。
+	ErrUnregisteredUser = New(http.StatusUnauthorized, errors.New("user is not registered or has withdrawn"))
+
 	// ErrForbidden は権限がない場合(403)。
 	ErrForbidden = New(http.StatusForbidden, errors.New("forbidden"))
 
@@ -140,6 +144,9 @@ var (
 
 	// ErrTooManyPushSubscriptions は1ユーザーの push 購読(端末)数が上限に達している場合(409)。
 	ErrTooManyPushSubscriptions = New(http.StatusConflict, errors.New("too many push subscriptions"))
+
+	// ErrPushSubscriptionOwnedByOther は他人が登録した endpoint を別の鍵で登録し直そうとした場合(409)。
+	ErrPushSubscriptionOwnedByOther = New(http.StatusConflict, errors.New("push subscription is registered by another account"))
 
 	// ErrTooManyUserGyms は1ユーザーのMyジム登録数が上限に達している場合(409)。
 	ErrTooManyUserGyms = New(http.StatusConflict, errors.New("too many user gyms"))

@@ -114,7 +114,9 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 
 		if !cursorCreatedAt.IsZero() {
 			if deckId != "" {
-				records, err := c.usecase.FindByDeckIdOnCursor(ctx.Request.Context(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
+				// deck_id で絞る場合も本人の記録に限る。デッキIDは公開情報から誰でも知り得るため、
+				// uid を渡さないと他人の非公開記録まで返してしまう。
+				records, err := c.usecase.FindByDeckIdOnCursor(ctx.Request.Context(), uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 				if err != nil {
 					apierror.ErrInternalServerError.JSON(ctx, err)
@@ -138,7 +140,7 @@ func (c *Record) GetByUserId(ctx *gin.Context) {
 			}
 		} else {
 			if deckId != "" {
-				records, err := c.usecase.FindByDeckId(ctx.Request.Context(), deckId, limit, offset, eventType)
+				records, err := c.usecase.FindByDeckId(ctx.Request.Context(), uid, deckId, limit, offset, eventType)
 
 				if err != nil {
 					apierror.ErrInternalServerError.JSON(ctx, err)
@@ -215,6 +217,11 @@ func (c *Record) Create(ctx *gin.Context) {
 			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
+		// deck_id / deck_code_id が存在しない、または他人のもの(usecase は区別しない)。
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx, err)
+			return
+		}
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
@@ -252,6 +259,11 @@ func (c *Record) Update(ctx *gin.Context) {
 		// 記録の整合性エラーは 400。
 		if errors.Is(err, apperror.ErrInvalidRecord) {
 			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+		// deck_id / deck_code_id が存在しない、または他人のもの(usecase は区別しない)。
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx, err)
 			return
 		}
 		apierror.ErrInternalServerError.JSON(ctx, err)

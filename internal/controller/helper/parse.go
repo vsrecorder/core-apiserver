@@ -38,6 +38,14 @@ const (
 	// IN句が無制限に伸びて1リクエストでDBを重く走らせられてしまう。
 	MaxRecordIds = 50
 
+	// MaxLimit は一覧系APIの limit クエリの上限。これを超える指定は上限に丸める。
+	//
+	// 上限が無いと、未認証でも叩ける公開一覧(GET /records など)に巨大な limit を渡す
+	// だけで全件をメモリに載せさせられる。APIサーバのコンテナはメモリ上限を低く
+	// 抑えてある(docker-compose.yml の mem_limit)ため、これだけで OOM で落とせてしまう。
+	// webapp が使う最大は 100(相手デッキの入力候補の取得)なので、それを上限にする。
+	MaxLimit = 100
+
 	DateLayout = time.DateOnly
 )
 
@@ -54,6 +62,11 @@ func ParseQueryLimit(ctx *gin.Context) (int, error) {
 		return -1, err
 	} else if limit <= 0 {
 		return DefaultLimit, nil
+	}
+
+	// 超過はエラーにせず上限へ丸める(0以下を既定値へ寄せるのと同じ扱い)。
+	if limit > MaxLimit {
+		return MaxLimit, nil
 	}
 
 	return limit, nil

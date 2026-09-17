@@ -1105,7 +1105,7 @@ func test_DeckController_Delete(t *testing.T) {
 		// DeckDeleteAuthorizationMiddlewareが本人確認と、
 		// 紐づく対戦記録が無いことの確認のために参照する
 		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), id, 1, 0, "").Return([]*entity.Record{}, nil)
+		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), uid, id, 1, 0, "").Return([]*entity.Record{}, nil)
 		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(nil)
 
 		w := httptest.NewRecorder()
@@ -1130,7 +1130,7 @@ func test_DeckController_Delete(t *testing.T) {
 		c, mockDeckRepository, mockRecordRepository, _ := setup4TestDeckController(t, r)
 
 		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), id, 1, 0, "").Return(
+		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), uid, id, 1, 0, "").Return(
 			[]*entity.Record{{ID: "01HD7Y3K8D6FDHMHTZ2GT41TR1"}}, nil,
 		)
 
@@ -1180,7 +1180,7 @@ func test_DeckController_Delete(t *testing.T) {
 		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
 
 		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), id, 1, 0, "").Return([]*entity.Record{}, nil)
+		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), uid, id, 1, 0, "").Return([]*entity.Record{}, nil)
 		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(errors.New(""))
 
 		w := httptest.NewRecorder()
@@ -1205,7 +1205,7 @@ func test_DeckController_Delete(t *testing.T) {
 		c, mockDeckRepository, mockRecordRepository, mockUsecase := setup4TestDeckController(t, r)
 
 		mockDeckRepository.EXPECT().FindById(gomock.Any(), id).Return(newTestDeck(id, uid, "", false), nil)
-		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), id, 1, 0, "").Return([]*entity.Record{}, nil)
+		mockRecordRepository.EXPECT().FindByDeckId(gomock.Any(), uid, id, 1, 0, "").Return([]*entity.Record{}, nil)
 		mockUsecase.EXPECT().Delete(gomock.Any(), id).Return(apperror.ErrRecordNotFound)
 
 		w := httptest.NewRecorder()

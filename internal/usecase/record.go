@@ -114,8 +114,11 @@ type RecordInterface interface {
 		offset int,
 	) ([]*entity.Record, error)
 
+	// FindByDeckId / FindByDeckIdOnCursor / FindByDeckCodeId は uid 自身の記録に限って返す
+	// (他人のデッキIDを指定しても、その人の記録は返らない)。
 	FindByDeckId(
 		ctx context.Context,
+		uid string,
 		deckId string,
 		limit int,
 		offset int,
@@ -124,6 +127,7 @@ type RecordInterface interface {
 
 	FindByDeckIdOnCursor(
 		ctx context.Context,
+		uid string,
 		deckId string,
 		limit int,
 		cursorEventDate time.Time,
@@ -133,6 +137,7 @@ type RecordInterface interface {
 
 	FindByDeckCodeId(
 		ctx context.Context,
+		uid string,
 		deckCodeId string,
 		limit int,
 		offset int,
@@ -156,8 +161,12 @@ type RecordInterface interface {
 }
 
 type Record struct {
-	logger                *slog.Logger
-	repository            repository.RecordInterface
+	logger     *slog.Logger
+	repository repository.RecordInterface
+	// deckRepository / deckCodeRepository は、記録に紐づける deck_id / deck_code_id が
+	// 本人のものかを保存前に確かめるために使う(ownership.go)。
+	deckRepository        repository.DeckInterface
+	deckCodeRepository    repository.DeckCodeInterface
 	tag                   repository.TagInterface
 	badgeEvaluation       BadgeEvaluationInterface
 	designationEvaluation DesignationEvaluationInterface
@@ -174,6 +183,8 @@ type Record struct {
 func NewRecord(
 	logger *slog.Logger,
 	repository repository.RecordInterface,
+	deckRepository repository.DeckInterface,
+	deckCodeRepository repository.DeckCodeInterface,
 	tag repository.TagInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	designationEvaluation DesignationEvaluationInterface,
@@ -184,6 +195,8 @@ func NewRecord(
 	return &Record{
 		logger:                logger,
 		repository:            repository,
+		deckRepository:        deckRepository,
+		deckCodeRepository:    deckCodeRepository,
 		tag:                   tag,
 		badgeEvaluation:       badgeEvaluation,
 		designationEvaluation: designationEvaluation,
@@ -335,12 +348,13 @@ func (u *Record) FindByTonamelEventId(
 
 func (u *Record) FindByDeckId(
 	ctx context.Context,
+	uid string,
 	deckId string,
 	limit int,
 	offset int,
 	eventType string,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindByDeckId(ctx, deckId, limit, offset, eventType)
+	records, err := u.repository.FindByDeckId(ctx, uid, deckId, limit, offset, eventType)
 
 	if err != nil {
 		logError(ctx, err)
@@ -352,13 +366,14 @@ func (u *Record) FindByDeckId(
 
 func (u *Record) FindByDeckIdOnCursor(
 	ctx context.Context,
+	uid string,
 	deckId string,
 	limit int,
 	cursorEventDate time.Time,
 	cursorCreatedAt time.Time,
 	eventType string,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindByDeckIdOnCursor(ctx, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
+	records, err := u.repository.FindByDeckIdOnCursor(ctx, uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 	if err != nil {
 		logError(ctx, err)
@@ -370,17 +385,29 @@ func (u *Record) FindByDeckIdOnCursor(
 
 func (u *Record) FindByDeckCodeId(
 	ctx context.Context,
+	uid string,
 	deckCodeId string,
 	limit int,
 	offset int,
 ) ([]*entity.Record, error) {
-	records, err := u.repository.FindByDeckCodeId(ctx, deckCodeId, limit, offset)
+	records, err := u.repository.FindByDeckCodeId(ctx, uid, deckCodeId, limit, offset)
 	if err != nil {
 		logError(ctx, err)
 		return nil, err
 	}
 
 	return records, nil
+}
+
+// verifyDeckReferences は記録に紐づける deck_id / deck_code_id が本人のものかを確かめる。
+// 他人のデッキを参照できると、その人が「記録に使われている」としてデッキを削除できなく
+// なる(DeckDeleteAuthorizationMiddleware)など、相手側に影響が出る。
+func (u *Record) verifyDeckReferences(ctx context.Context, param *RecordParam) error {
+	if err := verifyDeckOwnership(ctx, u.deckRepository, param.userId, param.deckId); err != nil {
+		return err
+	}
+
+	return verifyDeckCodeOwnership(ctx, u.deckCodeRepository, param.userId, param.deckCodeId)
 }
 
 // normalizeAndValidateRecordParam は記録の整合性を domain 層の共通関数で検証する。
@@ -407,6 +434,11 @@ func normalizeAndValidateRecordParam(param *RecordParam) error {
 		return apperror.ErrInvalidRecord
 	}
 
+	// Tonamel の大会IDはそのまま外部サイトのURLとDB(VARCHAR(8))に使うため、形式も見る。
+	if param.tonamelEventId != "" && !entity.IsValidTonamelEventId(param.tonamelEventId) {
+		return apperror.ErrInvalidRecord
+	}
+
 	return nil
 }
 
@@ -415,6 +447,11 @@ func (u *Record) Create(
 	param *RecordParam,
 ) (*entity.Record, error) {
 	if err := normalizeAndValidateRecordParam(param); err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	if err := u.verifyDeckReferences(ctx, param); err != nil {
 		logError(ctx, err)
 		return nil, err
 	}
@@ -569,6 +606,11 @@ func (u *Record) Update(
 	if err == apperror.ErrRecordNotFound {
 		return nil, err
 	} else if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	if err := u.verifyDeckReferences(ctx, param); err != nil {
 		logError(ctx, err)
 		return nil, err
 	}

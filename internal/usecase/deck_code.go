@@ -83,7 +83,9 @@ type DeckCodeInterface interface {
 }
 
 type DeckCode struct {
-	repository      repository.DeckCodeInterface
+	repository repository.DeckCodeInterface
+	// deckRepository は作成時に deck_id が本人のデッキかを確かめるために使う(ownership.go)。
+	deckRepository  repository.DeckInterface
 	deckAsset       repository.DeckAssetInterface
 	tag             repository.TagInterface
 	badgeEvaluation BadgeEvaluationInterface
@@ -97,13 +99,14 @@ type DeckCode struct {
 
 func NewDeckCode(
 	repository repository.DeckCodeInterface,
+	deckRepository repository.DeckInterface,
 	deckAsset repository.DeckAssetInterface,
 	tag repository.TagInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	transactionManager repository.TransactionManager,
 	deckCodePost repository.DeckCodePostInterface,
 ) DeckCodeInterface {
-	return &DeckCode{repository, deckAsset, tag, badgeEvaluation, transactionManager, deckCodePost}
+	return &DeckCode{repository, deckRepository, deckAsset, tag, badgeEvaluation, transactionManager, deckCodePost}
 }
 
 // syncDeckCodeTags は deckCodeId について、userId が付与できる有効なタグ(自分のタグ or
@@ -164,6 +167,13 @@ func (u *DeckCode) Create(
 	ctx context.Context,
 	param *DeckCodeCreateParam,
 ) (*entity.DeckCode, error) {
+	// 他人のデッキにデッキコードを足せると、そのデッキの公開一覧の「最新デッキコード」を
+	// 差し替えられてしまう。外部サイトへの取得を始める前に弾く。
+	if err := verifyDeckOwnership(ctx, u.deckRepository, param.UserId, param.DeckId); err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
 	id, err := generateId()
 	if err != nil {
 		logError(ctx, err)

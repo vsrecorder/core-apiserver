@@ -225,6 +225,9 @@ Deck・User の各usecaseへ注入され、書き込み処理の中でバッジ�
   `overrideTimeNow(t, 固定時刻)`（usecase）で差し替える。パッケージ変数を書き換えるため、
   これを使うテストは並列実行しない。
 - JWTが必要なテストは `internal/testutil` の `GenerateJWTSecret` / `GenerateJWT` を使う。
+  認証ミドルウェアは uid の状態を `authentication.UserVerifier` に問い合わせる（未設定なら 500）ため、
+  `internal/controller` のテストは `main_test.go` の `TestMain` で全 uid を有効として通している。
+  別パッケージから認証ミドルウェアを通すテストを書くときも同様に `SetUserVerifier` を設定する。
 
 ### テストで時刻を作るときの Location
 
@@ -281,12 +284,14 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 
 仕様の背景・アルゴリズムは `adr/` に置く。`adr/*.md` は「なぜそう決めたか」（ADR）と
 「どう動くか」（アルゴリズム仕様書）が混在しているので、既存の粒度に合わせて追記する。
-`adr/security-review-2026-07-18.md` には対処済みのセキュリティ指摘とその理由がまとまっており、
-認証・入力処理・タイムアウト周りを触る前に目を通すこと。
+`adr/security-review-2026-07-18.md` と `adr/security-review-2026-09-17.md` には対処済みの
+セキュリティ指摘とその理由がまとまっており、認証・認可・入力処理・タイムアウト周りを触る前に
+目を通すこと。
 
 ## 変更時に壊してはいけない不変条件
 
-セキュリティ精査で入れた防御なので、外さないこと（`adr/security-review-2026-07-18.md`）:
+セキュリティ精査で入れた防御なので、外さないこと（`adr/security-review-2026-07-18.md`、
+`adr/security-review-2026-09-17.md`）:
 
 - `VSRECORDER_JWT_SECRET` は32文字以上必須。未設定・短すぎる場合は起動時にfail fastする。
   JWT検証側でも空鍵を拒否する二層防御になっている。
@@ -301,6 +306,35 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
   公開鍵で作られている」場合と「サーバの鍵設定を誤った」場合の両方で起きる。同じプロセスで
   1件でも受理されている（＝鍵は正しい）ときだけ前者と断定して失効させる。無条件に失効させると
   鍵の設定ミスで全購読が消え、全ユーザーに許諾を取り直させることになる（回復不能）。
+- push 購読（endpoint は全体で一意）の持ち主変更は、鍵（p256dh / auth）が一致するときだけ許す
+  （`usecase/push_subscription.go` の `canTakeOverPushSubscription`）。同じ端末でのアカウント切替は
+  鍵が同じなので通り、endpoint しか知らない第三者が持ち主を奪って通知を止めることはできない。
+- **リクエストボディで参照する他リソース（`deck_id` / `deck_code_id` / `record_id`）は、usecase が
+  保存前に本人のものか検証する**（`usecase/ownership.go`）。認可ミドルウェアが見るのはパスの `:id`
+  だけなので、ボディの参照先はここでしか守れない。他人のもの・存在しないものはどちらも
+  `apperror.ErrRecordNotFound`（IDの存在を教えない）にし、コントローラは 404 を返す。
+  参照先を持つ書き込みを追加したら同じ検証を入れること。
+- **デッキ／デッキコードで絞る記録の一覧（`FindByDeckId` 系）は必ず `user_id` も条件に含める。**
+  デッキIDは公開情報から誰でも知り得るため、`deck_id` だけで絞ると他人の非公開記録が返る。
+- `GET /matches`（ユーザー横断の最新対戦）は公開記録の対戦に限り、usecase がメモ等の本人向けの
+  項目を落として返す（`sanitizeMatchForPublicFeed`）。相手デッキの入力候補にしか使わない。
+- 一覧系の `limit` は `helper.MaxLimit`（100）で頭打ちにする。上限が無いと未認証の公開一覧に
+  巨大な `limit` を渡すだけでコンテナのメモリ上限（128MiB）を超えて落とせる。
+- 外部サイトのURLやストレージのキーに埋め込む値（デッキコード・Tonamel の大会ID）は
+  `entity.IsValidDeckCodeFormat` / `entity.IsValidTonamelEventId` で文字種を検証し、埋め込みは
+  `url.PathEscape` を通す。
+- **認証ミドルウェアは署名に加えて uid の状態（登録済み・退会していない）を確認する**
+  （`authentication.SetUserVerifier` で main が `usecase.ActiveUserVerifier` を注入。未設定なら 500）。
+  登録前の uid を通してよいのは `POST /users` だけで、そこだけ `RegistrationAuthenticationMiddleware`
+  を使う。他のルートで使わないこと。
+- 非公開デッキの派生データ（デッキコードの個別・デッキ別一覧）はデッキ本体と同じ公開範囲で守る
+  （`DeckCodeGetByIdAuthorizationMiddleware` / `DeckGetByIdAuthorizationMiddleware`）。
+  デッキIDは公開記録から誰でも知り得るので、「IDを知らなければ辿れない」を防御にしない。
+- 外部サイト（tonamel.com）の取得は保存済み（`tonamel_events`）を先に引き、応答本文の上限と
+  同時取得数の上限（`infrastructure/tonamel_event.go`）を外さない。未認証で叩ける経路から走るため。
+- リクエストボディの参照先IDは列幅（`MaxEntityIdLength` / `MaxUserIdLength`）を、スプライトは
+  `validatePokemonSprites` を通す。保存時の外部キー違反は `wrapForeignKeyViolation` で
+  `apperror.ErrInvalidReference`（400）にする。
 
 ### 退会したユーザのデータを残さない
 

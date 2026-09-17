@@ -68,6 +68,8 @@ func TestRecordInfrastructure(t *testing.T) {
 		"FindByOfficialEventId": test_RecordInfrastructure_FindByOfficialEventId,
 		"FindByTonamelEventId":  test_RecordInfrastructure_FindByTonamelEventId,
 		"FindByDeckId":          test_RecordInfrastructure_FindByDeckId,
+		"FindByDeckIdOnCursor":  test_RecordInfrastructure_FindByDeckIdOnCursor,
+		"FindByDeckCodeId":      test_RecordInfrastructure_FindByDeckCodeId,
 		"DeleteByUserId":        test_RecordInfrastructure_DeleteByUserId,
 		"Save":                  test_RecordInfrastructure_Save,
 		"Delete":                test_RecordInfrastructure_Delete,
@@ -611,8 +613,9 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "records" WHERE deck_id = $1 AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT * FROM "records" WHERE (user_id = $1 AND deck_id = $2) AND "records"."deleted_at" IS NULL ORDER BY event_date DESC NULLS LAST, created_at DESC LIMIT $3 OFFSET $4`,
 	)).WithArgs(
+		"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
 		"01JHAKSVXZ4XW91TDQ8EDP1N8P",
 		limit,
 		offset,
@@ -620,7 +623,7 @@ func test_RecordInfrastructure_FindByDeckId(t *testing.T) {
 
 	expectRecordTagsQuery(mock)
 
-	records, err := r.FindByDeckId(context.Background(), "01JHAKSVXZ4XW91TDQ8EDP1N8P", limit, offset, eventType)
+	records, err := r.FindByDeckId(context.Background(), "CeQ0Oa9g9uRThL11lj4l45VAg8p1", "01JHAKSVXZ4XW91TDQ8EDP1N8P", limit, offset, eventType)
 
 	require.NoError(t, err)
 	require.Equal(t, 1, len(records))

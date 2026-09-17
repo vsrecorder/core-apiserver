@@ -61,6 +61,20 @@ var (
 	// HTTP では 409 Conflict に対応する。
 	ErrTooManyPushSubscriptions = errors.New("too many push subscriptions")
 
+	// ErrInvalidReference はリクエストが参照するマスタ(ポケモンのスプライト等)が存在しない
+	// 場合に返す。入口の形式検証は通るが外部キー制約で弾かれる値で、クライアント起因のため
+	// HTTP では 400 Bad Request に対応する。
+	ErrInvalidReference = errors.New("invalid reference")
+
+	// ErrExternalFetchBusy は外部サイトへの同時取得数が上限に達していて、取得を断った場合に返す。
+	// 一時的な状態なので HTTP では 503 Service Unavailable に対応する。
+	ErrExternalFetchBusy = errors.New("external fetch is busy")
+
+	// ErrPushSubscriptionOwnedByOther は、他人が登録した endpoint を別の鍵で登録し直そうとした
+	// 場合に返す。同じ端末でのアカウント切替(鍵は同じ)は許し、endpoint だけを知る第三者が
+	// 持ち主を奪って元の持ち主への通知を止めるのを防ぐ。HTTP では 409 Conflict に対応する。
+	ErrPushSubscriptionOwnedByOther = errors.New("push subscription is owned by another user")
+
 	// ErrTooManyUserGyms は1ユーザーのMyジム登録数が上限に達している場合に返す。
 	// 上限を超えたぶんを黙って押し出さず、どれを外すかはユーザーに選ばせる。
 	// HTTP では 409 Conflict に対応する。

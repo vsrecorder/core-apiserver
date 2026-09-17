@@ -28,10 +28,12 @@ func (s stubCalendarRepository) FindByUserId(ctx context.Context, userId string)
 // 問い合わせられたIDを記録する。events に登録したIDのみ結果として返し、
 // errは FindByIds 全体のエラーとして返す。
 type stubTonamelEventStore struct {
-	mu           sync.Mutex
-	queriedIds   []string
-	events       map[string]*entity.TonamelEvent
-	err          error
+	mu         sync.Mutex
+	queriedIds []string
+	events     map[string]*entity.TonamelEvent
+	err        error
+	// saveErr を設定すると Save が失敗する(保存失敗を許容する経路の検証用)
+	saveErr      error
 	savedByCalls []*entity.TonamelEvent
 }
 
@@ -55,6 +57,9 @@ func (s *stubTonamelEventStore) FindByIds(ctx context.Context, ids []string) ([]
 }
 
 func (s *stubTonamelEventStore) Save(ctx context.Context, tonamelEvent *entity.TonamelEvent) error {
+	if s.saveErr != nil {
+		return s.saveErr
+	}
 	s.mu.Lock()
 	s.savedByCalls = append(s.savedByCalls, tonamelEvent)
 	s.mu.Unlock()

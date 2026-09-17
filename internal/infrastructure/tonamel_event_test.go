@@ -115,3 +115,46 @@ func TestTonamelEventInfrastructure_FindById(t *testing.T) {
 		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 	})
 }
+
+// 未認証の経路から走る外部取得なので、応答の大きさと同時取得数に上限があること。
+func TestTonamelEventInfrastructure_FindById_Limits(t *testing.T) {
+	t.Run("正常系_巨大なページでも先頭のOGPを読んで返す", func(t *testing.T) {
+		r := setup4TonamelEventInfrastructure(t, func(w http.ResponseWriter, req *http.Request) {
+			fmt.Fprint(w, `<html><head><meta property="og:title" content="巨大な大会 - Tonamel"></head><body>`)
+			// 読み込み上限を超える本文。上限で打ち切られ、メモリに全部は載らない
+			filler := strings.Repeat("<p>x</p>", 1024)
+			for written := 0; written < tonamelEventMaxBodyBytes+1024; written += len(filler) {
+				fmt.Fprint(w, filler)
+			}
+			fmt.Fprint(w, `</body></html>`)
+		})
+
+		ret, err := r.FindById(context.Background(), "OakZc")
+
+		require.NoError(t, err)
+		require.Equal(t, "巨大な大会", ret.Title)
+	})
+
+	t.Run("異常系_同時取得数が上限に達していればErrExternalFetchBusyを返し取得しない", func(t *testing.T) {
+		fetched := false
+		r := setup4TonamelEventInfrastructure(t, func(w http.ResponseWriter, req *http.Request) {
+			fetched = true
+		})
+
+		// 上限までスロットを埋める(他の取得が進行中の状態を再現する)
+		for i := 0; i < tonamelEventMaxConcurrentFetches; i++ {
+			tonamelEventFetchSlots <- struct{}{}
+		}
+		t.Cleanup(func() {
+			for i := 0; i < tonamelEventMaxConcurrentFetches; i++ {
+				<-tonamelEventFetchSlots
+			}
+		})
+
+		ret, err := r.FindById(context.Background(), "OakZc")
+
+		require.ErrorIs(t, err, apperror.ErrExternalFetchBusy)
+		require.Nil(t, ret)
+		require.False(t, fetched)
+	})
+}

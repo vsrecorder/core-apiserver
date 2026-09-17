@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -20,6 +21,21 @@ import (
 // httptestサーバへ差し替え可能な変数にしている。
 var tonamelEventBaseURL = "https://tonamel.com/competition/"
 
+const (
+	// tonamelEventMaxBodyBytes は大会ページの読み込み上限。必要な OGP の meta は <head> に
+	// あるため先頭だけで足り、上限を置かないと外部サイトの応答の大きさがそのままメモリになる。
+	tonamelEventMaxBodyBytes = 2 << 20
+
+	// tonamelEventMaxConcurrentFetches は tonamel.com への同時取得数の上限(プロセス全体)。
+	// 取得は未認証の GET /tonamel_events/:id からも走るため、上限が無いと大量に叩かれるだけで
+	// 外向きの接続と goroutine が最大でタイムアウト(10秒)ずつ滞留する。超えたぶんは待たせずに
+	// 断る(記録作成側は大会情報の取得失敗を許容しており、後から埋め直せる)。
+	tonamelEventMaxConcurrentFetches = 4
+)
+
+// tonamelEventFetchSlots は同時取得数を数えるセマフォ。
+var tonamelEventFetchSlots = make(chan struct{}, tonamelEventMaxConcurrentFetches)
+
 type TonamelEvent struct {
 	logger *slog.Logger
 }
@@ -32,15 +48,31 @@ func (i *TonamelEvent) FindById(
 	ctx context.Context,
 	id string,
 ) (*entity.TonamelEvent, error) {
-	url := tonamelEventBaseURL + id
+	// IDは形式を検証済みだが、URLのパスに埋め込む値は必ずエスケープして
+	// 万一の混入でもパスが変わらないようにする(検証済みの値では変化しない)。
+	requestURL := tonamelEventBaseURL + url.PathEscape(id)
 
-	res, err := httpclient.Get(url)
+	select {
+	case tonamelEventFetchSlots <- struct{}{}:
+		defer func() { <-tonamelEventFetchSlots }()
+	default:
+		i.logger.WarnContext(
+			ctx,
+			"Tonamel fetch rejected: too many concurrent fetches",
+			slog.String("tonamel_id", id),
+			slog.Int("max_concurrent_fetches", tonamelEventMaxConcurrentFetches),
+		)
+
+		return nil, apperror.ErrExternalFetchBusy
+	}
+
+	res, err := httpclient.Get(requestURL)
 	if err != nil {
 		i.logger.ErrorContext(
 			ctx,
 			"failed to fetch Tonamel event page",
 			slog.String("tonamel_id", id),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.String("error_message", err.Error()),
 		)
 
@@ -62,7 +94,7 @@ func (i *TonamelEvent) FindById(
 			ctx,
 			"Tonamel event not found",
 			slog.String("tonamel_id", id),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.Int("status_code", res.StatusCode),
 		)
 
@@ -74,20 +106,20 @@ func (i *TonamelEvent) FindById(
 			ctx,
 			"Tonamel event page returned non-200 status",
 			slog.String("tonamel_id", id),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.Int("status_code", res.StatusCode),
 		)
 
 		return nil, fmt.Errorf("tonamel event page status: %d", res.StatusCode)
 	}
 
-	ogpTitle, ogpDescription, ogpImage, err := extractOGP(res.Body)
+	ogpTitle, ogpDescription, ogpImage, err := extractOGP(io.LimitReader(res.Body, tonamelEventMaxBodyBytes))
 	if err != nil {
 		i.logger.ErrorContext(
 			ctx,
 			"failed to parse Tonamel event page HTML",
 			slog.String("tonamel_id", id),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 			slog.String("error_message", err.Error()),
 		)
 
@@ -99,7 +131,7 @@ func (i *TonamelEvent) FindById(
 			ctx,
 			"Tonamel OGP title not found",
 			slog.String("tonamel_id", id),
-			slog.String("request_url", url),
+			slog.String("request_url", requestURL),
 		)
 
 		return nil, apperror.ErrRecordNotFound

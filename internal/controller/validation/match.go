@@ -30,6 +30,18 @@ func isValidMatchRequest(req dto.MatchRequest) bool {
 		return false
 	}
 
+	// 参照先IDが列幅を超えていると保存時にDBエラー(500)になるため、入口で弾く
+	if !isValidOptionalId(req.RecordId, MaxEntityIdLength) ||
+		!isValidOptionalId(req.DeckId, MaxEntityIdLength) ||
+		!isValidOptionalId(req.DeckCodeId, MaxEntityIdLength) ||
+		!isValidOptionalId(req.OpponentsUserId, MaxUserIdLength) {
+		return false
+	}
+
+	if !validatePokemonSprites(req.PokemonSprites) {
+		return false
+	}
+
 	if !validateTagIds(req.TagIds) {
 		return false
 	}

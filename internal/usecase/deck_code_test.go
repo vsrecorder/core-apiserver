@@ -53,14 +53,27 @@ func setup4DeckCodeUsecase(t *testing.T) (
 	// みんなの公開デッキの投稿。バージョン削除の連動(取り下げ)を Delete のテストで検証する。
 	mockDeckCodePost := mock_repository.NewMockDeckCodePostInterface(mockCtrl)
 
+	// 作成時の所有者検証(ownership.go)が deck_id のデッキを引く。ここでは常に本人のデッキとして
+	// 返し、他人・存在しないデッキの扱いは Create の専用ケースで別のモックを使って検証する。
+	mockDeckRepository := mock_repository.NewMockDeckInterface(mockCtrl)
+	mockDeckRepository.EXPECT().
+		FindById(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, id string) (*entity.Deck, error) {
+			return &entity.Deck{ID: id, UserId: deckCodeTestUid}, nil
+		}).AnyTimes()
+
 	badgeEvaluationCalled := false
-	usecase := NewDeckCode(mockRepository, mockDeckAsset, mockTagRepository, spyDeckCodeBadgeEvaluation{called: &badgeEvaluationCalled}, stubTransactionManager{}, mockDeckCodePost)
+	usecase := NewDeckCode(mockRepository, mockDeckRepository, mockDeckAsset, mockTagRepository, spyDeckCodeBadgeEvaluation{called: &badgeEvaluationCalled}, stubTransactionManager{}, mockDeckCodePost)
 
 	return mockRepository, mockDeckAsset, &badgeEvaluationCalled, mockDeckCodePost, usecase
 }
 
+// deckCodeTestUid はデッキコードのテストで一貫して使うユーザーID。setup4DeckCodeUsecase の
+// デッキ所有者スタブもこの値を持ち主として返す。
+const deckCodeTestUid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
 func TestDeckCodeUsecase(t *testing.T) {
-	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	uid := deckCodeTestUid
 	deckId := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
 	code := "5dbFbk-uBwjqP-VVk5Vv"
 

@@ -111,6 +111,9 @@ func (c *Match) RegisterRoute(relativePath string) {
 	}
 }
 
+// GetLatest はユーザーを問わず最新の対戦結果を返す。webapp が相手デッキの入力候補
+// (自分の対戦がまだ無い人向けのダミー候補)に使う。他人の対戦なので、usecase が
+// 公開記録の対戦に限り、メモ等の本人向けの項目を落としたものだけを返す。
 func (c *Match) GetLatest(ctx *gin.Context) {
 	limit, err := helper.ParseQueryLimit(ctx)
 	if err != nil {
@@ -286,6 +289,16 @@ func (c *Match) Create(ctx *gin.Context) {
 			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
+		// record_id / deck_id / deck_code_id が存在しない、または他人のもの(usecase は区別しない)。
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx, err)
+			return
+		}
+		// 存在しないスプライトID等、参照先が無い入力(外部キー違反)は 400。
+		if errors.Is(err, apperror.ErrInvalidReference) {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}
@@ -349,6 +362,16 @@ func (c *Match) Update(ctx *gin.Context) {
 	if err != nil {
 		// 対戦結果の整合性エラーは 400。
 		if errors.Is(err, apperror.ErrInvalidMatch) {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+		// record_id / deck_id / deck_code_id が存在しない、または他人のもの(usecase は区別しない)。
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx, err)
+			return
+		}
+		// 存在しないスプライトID等、参照先が無い入力(外部キー違反)は 400。
+		if errors.Is(err, apperror.ErrInvalidReference) {
 			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}

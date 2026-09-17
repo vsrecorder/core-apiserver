@@ -59,8 +59,14 @@ type RecordInterface interface {
 		offset int,
 	) ([]*entity.Record, error)
 
+	// FindByDeckId / FindByDeckIdOnCursor / FindByDeckCodeId は、いずれも uid の記録に限って返す。
+	// デッキIDは公開デッキ一覧やみんなの公開デッキから誰でも取得できるため、
+	// deck_id だけで絞ると他人の非公開記録(メモ等)まで読めてしまう。
+	// 記録のデッキ参照は本人のデッキに限られる(usecase が保存時に検証する)ので、
+	// 「そのデッキの記録」と「本人のそのデッキの記録」は同じ集合になる。
 	FindByDeckId(
 		ctx context.Context,
+		uid string,
 		deckId string,
 		limit int,
 		offset int,
@@ -69,6 +75,7 @@ type RecordInterface interface {
 
 	FindByDeckIdOnCursor(
 		ctx context.Context,
+		uid string,
 		deckId string,
 		limit int,
 		cursorEventDate time.Time,
@@ -78,6 +85,7 @@ type RecordInterface interface {
 
 	FindByDeckCodeId(
 		ctx context.Context,
+		uid string,
 		deckCodeId string,
 		limit int,
 		offset int,

@@ -40,6 +40,8 @@ func TestAuthenticationMiddleware(t *testing.T) {
 }
 
 func test_RequiredAuthenticationMiddleware(t *testing.T) {
+	allowAllUsers(t)
+
 	// JWTのシークレットキーを生成する
 	secretKey, err := GenerateJWTSecret()
 	require.NoError(t, err)
@@ -177,6 +179,8 @@ func test_RequiredAuthenticationMiddleware(t *testing.T) {
 }
 
 func test_OptionalAuthenticationMiddleware(t *testing.T) {
+	allowAllUsers(t)
+
 	// JWTのシークレットキーを生成する
 	secretKey, err := GenerateJWTSecret()
 	require.NoError(t, err)

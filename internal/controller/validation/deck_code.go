@@ -8,6 +8,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 )
 
 func DeckCodeCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
@@ -19,6 +20,12 @@ func DeckCodeCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 		}
 
 		if req.Code == "" || exceedsLength(req.Code, MaxDeckCodeLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		// デッキコードは公式サイトのURLとストレージのキーにそのまま使うため、文字種を限定する。
+		if !entity.IsValidDeckCodeFormat(req.Code) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

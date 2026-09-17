@@ -26,26 +26,31 @@ type DeckCode struct {
 	logger             *slog.Logger
 	router             *gin.Engine
 	deckcodeRepository repository.DeckCodeInterface
-	recordRepository   repository.RecordInterface
-	usecase            usecase.DeckCodeInterface
+	// deckRepository は参照系の認可(親デッキが非公開なら他人に見せない)に使う。
+	deckRepository   repository.DeckInterface
+	recordRepository repository.RecordInterface
+	usecase          usecase.DeckCodeInterface
 }
 
 func NewDeckCode(
 	logger *slog.Logger,
 	router *gin.Engine,
 	deckcodeRepository repository.DeckCodeInterface,
+	deckRepository repository.DeckInterface,
 	recordRepository repository.RecordInterface,
 	usecase usecase.DeckCodeInterface,
 ) *DeckCode {
-	return &DeckCode{logger, router, deckcodeRepository, recordRepository, usecase}
+	return &DeckCode{logger, router, deckcodeRepository, deckRepository, recordRepository, usecase}
 }
 
 func (c *DeckCode) RegisterRoute(relativePath string) {
 	{
 		r := c.router.Group(relativePath + DeckCodesPath)
+		// 参照はデッキ本体(GET /decks/:id)と同じ公開範囲に揃える。非公開デッキのコードは他人に 403。
 		r.GET(
 			"/:id",
 			authentication.OptionalAuthenticationMiddleware(),
+			authorization.DeckCodeGetByIdAuthorizationMiddleware(c.deckcodeRepository, c.deckRepository),
 			c.GetById,
 		)
 		r.POST(
@@ -71,9 +76,11 @@ func (c *DeckCode) RegisterRoute(relativePath string) {
 
 	{
 		r := c.router.Group(relativePath + DecksPath)
+		// デッキ別の一覧もデッキ本体と同じ公開範囲(非公開デッキは他人に 403)。
 		r.GET(
 			"/:id"+DeckCodesPath,
 			authentication.OptionalAuthenticationMiddleware(),
+			authorization.DeckGetByIdAuthorizationMiddleware(c.deckRepository),
 			c.GetByDeckId,
 		)
 	}
@@ -144,6 +151,12 @@ func (c *DeckCode) Create(ctx *gin.Context) {
 
 	deckcode, err := c.usecase.Create(ctx.Request.Context(), param)
 	if err != nil {
+		// deck_id が存在しない、または他人のデッキ(usecase は区別せず「存在しない」として返す)。
+		if errors.Is(err, apperror.ErrRecordNotFound) {
+			apierror.ErrNotFound.JSON(ctx, err)
+			return
+		}
+
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}

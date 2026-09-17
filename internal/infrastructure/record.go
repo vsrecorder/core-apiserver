@@ -286,8 +286,12 @@ func (i *Record) FindByTonamelEventId(
 	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
+// デッキ・デッキコードで絞る一覧には必ず user_id を含める。deck_id / deck_code_id は
+// 公開デッキ一覧やみんなの公開デッキから誰でも知り得る値なので、それだけで絞ると
+// 他人の非公開記録まで返してしまう(認可は上位層ではなくクエリで完結させる)。
 func (i *Record) FindByDeckId(
 	ctx context.Context,
+	uid string,
 	deckId string,
 	limit int,
 	offset int,
@@ -297,22 +301,22 @@ func (i *Record) FindByDeckId(
 
 	switch eventType {
 	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("official_event_id != 0 AND user_id = ? AND deck_id = ?", uid, deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("tonamel_event_id != '' AND user_id = ? AND deck_id = ?", uid, deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	case "unofficial":
-		if tx := i.db.Where("unofficial_event_id != '' AND deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("unofficial_event_id != '' AND user_id = ? AND deck_id = ?", uid, deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	default:
-		if tx := i.db.Where("deck_id = ?", deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("user_id = ? AND deck_id = ?", uid, deckId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
@@ -323,6 +327,7 @@ func (i *Record) FindByDeckId(
 
 func (i *Record) FindByDeckIdOnCursor(
 	ctx context.Context,
+	uid string,
 	deckId string,
 	limit int,
 	cursorEventDate time.Time,
@@ -332,18 +337,18 @@ func (i *Record) FindByDeckIdOnCursor(
 	var models []*model.Record
 
 	cursorCond, cursorArgs := buildCursorCondition(cursorEventDate, cursorCreatedAt)
-	deckArgs := append([]interface{}{deckId}, cursorArgs...)
+	deckArgs := append([]interface{}{uid, deckId}, cursorArgs...)
 
 	var cond string
 	switch eventType {
 	case "official":
-		cond = "official_event_id != 0 AND deck_id = ? AND " + cursorCond
+		cond = "official_event_id != 0 AND user_id = ? AND deck_id = ? AND " + cursorCond
 	case "tonamel":
-		cond = "tonamel_event_id != '' AND deck_id = ? AND " + cursorCond
+		cond = "tonamel_event_id != '' AND user_id = ? AND deck_id = ? AND " + cursorCond
 	case "unofficial":
-		cond = "unofficial_event_id != '' AND deck_id = ? AND " + cursorCond
+		cond = "unofficial_event_id != '' AND user_id = ? AND deck_id = ? AND " + cursorCond
 	default:
-		cond = "deck_id = ? AND " + cursorCond
+		cond = "user_id = ? AND deck_id = ? AND " + cursorCond
 	}
 
 	if tx := i.db.Where(cond, deckArgs...).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
@@ -356,13 +361,14 @@ func (i *Record) FindByDeckIdOnCursor(
 
 func (i *Record) FindByDeckCodeId(
 	ctx context.Context,
+	uid string,
 	deckCodeId string,
 	limit int,
 	offset int,
 ) ([]*entity.Record, error) {
 	var models []*model.Record
 
-	if tx := i.db.Where("deck_code_id = ?", deckCodeId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("user_id = ? AND deck_code_id = ?", uid, deckCodeId).Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}

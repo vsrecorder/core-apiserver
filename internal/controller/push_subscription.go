@@ -59,6 +59,12 @@ func (c *PushSubscription) Subscribe(ctx *gin.Context) {
 			return
 		}
 
+		// 他人が登録した endpoint を別の鍵で登録し直そうとした(usecase.canTakeOverPushSubscription)。
+		if errors.Is(err, apperror.ErrPushSubscriptionOwnedByOther) {
+			apierror.ErrPushSubscriptionOwnedByOther.JSON(ctx, err)
+			return
+		}
+
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}

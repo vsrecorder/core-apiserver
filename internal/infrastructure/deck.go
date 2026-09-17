@@ -986,7 +986,8 @@ func (i *Deck) Save(
 			for _, deckPokemonSpriteModal := range deckPokemonSpriteModals {
 				if err := tx.Save(deckPokemonSpriteModal).Error; err != nil {
 					logError(ctx, err)
-					return err
+					// 存在しないスプライトIDは外部キーで弾かれる。クライアント起因なので 400 で返せるよう変換する。
+					return wrapForeignKeyViolation(err)
 				}
 			}
 
@@ -1016,7 +1017,8 @@ func (i *Deck) Save(
 			for _, deckPokemonSpriteModal := range deckPokemonSpriteModals {
 				if err := tx.Save(deckPokemonSpriteModal).Error; err != nil {
 					logError(ctx, err)
-					return err
+					// 存在しないスプライトIDは外部キーで弾かれる。クライアント起因なので 400 で返せるよう変換する。
+					return wrapForeignKeyViolation(err)
 				}
 			}
 

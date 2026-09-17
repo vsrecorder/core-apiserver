@@ -252,6 +252,8 @@ func newRecordUsecaseForTest(
 	return NewRecord(
 		testLogger(),
 		repo,
+		stubDeckRepository{},
+		stubDeckCodeRepository{},
 		stubTagRepository{},
 		badgeEval,
 		designationEval,
@@ -438,7 +440,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		}}
 		store := &stubTonamelEventStore{} // 事前に保存済みのものは無い
 
-		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
+		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -458,7 +460,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 			"61ozP": {ID: "61ozP"}, // 既に保存済み
 		}}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
+		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -474,7 +476,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		fetcher := &stubTonamelEventFetcher{}
 		store := &stubTonamelEventStore{}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
+		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(1, "", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -491,7 +493,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		fetcher := &stubTonamelEventFetcher{err: errors.New("")} // tonamel.com取得に失敗
 		store := &stubTonamelEventStore{}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
+		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -878,6 +880,8 @@ func test_RecordUsecase_FindByTonamelEventId(t *testing.T, mockRepository *mock_
 }
 
 func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
 	t.Run("正常系_指定デッキの記録一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -898,9 +902,9 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 			record,
 		}
 
-		mockRepository.EXPECT().FindByDeckId(context.Background(), deckId, limit, offset, eventType).Return(records, nil)
+		mockRepository.EXPECT().FindByDeckId(context.Background(), uid, deckId, limit, offset, eventType).Return(records, nil)
 
-		ret, err := usecase.FindByDeckId(context.Background(), deckId, limit, offset, eventType)
+		ret, err := usecase.FindByDeckId(context.Background(), uid, deckId, limit, offset, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, id, ret[0].ID)
@@ -915,9 +919,9 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 		offset := 0
 		eventType := ""
 
-		mockRepository.EXPECT().FindByDeckId(context.Background(), deckId, limit, offset, eventType).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindByDeckId(context.Background(), uid, deckId, limit, offset, eventType).Return(nil, errors.New(""))
 
-		ret, err := usecase.FindByDeckId(context.Background(), deckId, limit, offset, eventType)
+		ret, err := usecase.FindByDeckId(context.Background(), uid, deckId, limit, offset, eventType)
 
 		require.Error(t, err)
 		require.Empty(t, ret)
@@ -925,6 +929,8 @@ func test_RecordUsecase_FindByDeckId(t *testing.T, mockRepository *mock_reposito
 }
 
 func test_RecordUsecase_FindByDeckIdOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
 	t.Run("正常系_指定デッキのカーソル以降の記録一覧を返す", func(t *testing.T) {
 		id, err := generateId()
 		require.NoError(t, err)
@@ -946,9 +952,9 @@ func test_RecordUsecase_FindByDeckIdOnCursor(t *testing.T, mockRepository *mock_
 			record,
 		}
 
-		mockRepository.EXPECT().FindByDeckIdOnCursor(context.Background(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
+		mockRepository.EXPECT().FindByDeckIdOnCursor(context.Background(), uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
 
-		ret, err := usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
+		ret, err := usecase.FindByDeckIdOnCursor(context.Background(), uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 		require.NoError(t, err)
 		require.Equal(t, id, ret[0].ID)
@@ -964,9 +970,9 @@ func test_RecordUsecase_FindByDeckIdOnCursor(t *testing.T, mockRepository *mock_
 		cursorCreatedAt := time.Now().Local()
 		eventType := ""
 
-		mockRepository.EXPECT().FindByDeckIdOnCursor(context.Background(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType).Return(nil, errors.New(""))
+		mockRepository.EXPECT().FindByDeckIdOnCursor(context.Background(), uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType).Return(nil, errors.New(""))
 
-		ret, err := usecase.FindByDeckIdOnCursor(context.Background(), deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
+		ret, err := usecase.FindByDeckIdOnCursor(context.Background(), uid, deckId, limit, cursorEventDate, cursorCreatedAt, eventType)
 
 		require.Error(t, err)
 		require.Empty(t, ret)

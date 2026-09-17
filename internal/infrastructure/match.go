@@ -569,10 +569,14 @@ func (i *Match) FindLatest(
 ) ([]*entity.Match, error) {
 	var results []*model.MatchJoinGame
 
+	// 全ユーザー横断の一覧なので、公開されている記録(private_flg = false)に属する対戦だけを
+	// 対象にする。記録の公開一覧(Record.Find)と同じ条件で、記録を非公開にした人の対戦が
+	// ここから漏れないようにする。論理削除された記録の対戦も同様に除く。
 	subQuery := i.db.Table("matches").
-		Select("id").
-		Where("deleted_at IS NULL").
-		Order("created_at DESC").
+		Select("matches.id").
+		Joins("JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.private_flg = false").
+		Where("matches.deleted_at IS NULL").
+		Order("matches.created_at DESC").
 		Limit(limit)
 
 	tx := i.db.Table(
@@ -801,7 +805,8 @@ func (i *Match) Create(
 		for _, matchPokemonSpriteModal := range matchPokemonSpriteModals {
 			if err := tx.Save(matchPokemonSpriteModal).Error; err != nil {
 				logError(ctx, err)
-				return err
+				// 存在しないスプライトIDは外部キーで弾かれる。クライアント起因なので 400 で返せるよう変換する。
+				return wrapForeignKeyViolation(err)
 			}
 		}
 
@@ -870,7 +875,8 @@ func (i *Match) Update(
 		for _, matchPokemonSpriteModal := range matchPokemonSpriteModals {
 			if err := tx.Save(matchPokemonSpriteModal).Error; err != nil {
 				logError(ctx, err)
-				return err
+				// 存在しないスプライトIDは外部キーで弾かれる。クライアント起因なので 400 で返せるよう変換する。
+				return wrapForeignKeyViolation(err)
 			}
 		}
 

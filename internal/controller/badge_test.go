@@ -16,6 +16,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
+	"github.com/vsrecorder/core-apiserver/internal/testutil"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -23,8 +24,15 @@ func setup4TestBadgeController(t *testing.T) (
 	*Badge,
 	*mock_usecase.MockBadgeInterface,
 	*mock_repository.MockChampionshipSeriesInterface,
+	string,
 ) {
+	t.Helper()
+
 	gin.SetMode(gin.TestMode)
+
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	mockCtrl := gomock.NewController(t)
 	mockUsecase := mock_usecase.NewMockBadgeInterface(mockCtrl)
@@ -34,7 +42,7 @@ func setup4TestBadgeController(t *testing.T) (
 	c := NewBadge(r, mockUsecase, mockSeriesRepo)
 	c.RegisterRoute("")
 
-	return c, mockUsecase, mockSeriesRepo
+	return c, mockUsecase, mockSeriesRepo, secretKey
 }
 
 func newTestBadgeDefinition(id string) *entity.BadgeDefinition {
@@ -50,7 +58,7 @@ func TestBadgeController(t *testing.T) {
 
 	t.Run("GetAllDefinitions", func(t *testing.T) {
 		t.Run("正常系_バッジ定義一覧を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestBadgeController(t)
+			c, mockUsecase, _, _ := setup4TestBadgeController(t)
 
 			definitions := []*entity.BadgeDefinition{newTestBadgeDefinition("badge-first-record")}
 
@@ -68,7 +76,7 @@ func TestBadgeController(t *testing.T) {
 		})
 
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestBadgeController(t)
+			c, mockUsecase, _, _ := setup4TestBadgeController(t)
 
 			mockUsecase.EXPECT().GetAllDefinitions(gomock.Any()).Return(nil, errors.New(""))
 
@@ -82,7 +90,7 @@ func TestBadgeController(t *testing.T) {
 
 	t.Run("GetByUserId", func(t *testing.T) {
 		t.Run("正常系_season指定でユーザの獲得状況を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestBadgeController(t)
+			c, mockUsecase, _, secretKey := setup4TestBadgeController(t)
 
 			views := []*usecase.UserBadgeView{
 				{Definition: newTestBadgeDefinition("badge-first-record"), Achieved: true, CurrentValue: 1},
@@ -92,13 +100,14 @@ func TestBadgeController(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath+"?season=2026", nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusOK, w.Code)
 		})
 
 		t.Run("正常系_season未指定なら現在のシーズンで判定する", func(t *testing.T) {
-			c, mockUsecase, mockSeriesRepo := setup4TestBadgeController(t)
+			c, mockUsecase, mockSeriesRepo, secretKey := setup4TestBadgeController(t)
 
 			// championship_seriesのIDから現在のシーズン識別子を解決する
 			mockSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(
@@ -108,43 +117,72 @@ func TestBadgeController(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath, nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusOK, w.Code)
 		})
 
 		t.Run("異常系_seasonの形式が不正なら400を返す", func(t *testing.T) {
-			c, _, _ := setup4TestBadgeController(t)
+			c, _, _, secretKey := setup4TestBadgeController(t)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath+"?season=abc", nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusBadRequest, w.Code)
 		})
 
 		t.Run("異常系_現在のシーズンが引けなければ500を返す", func(t *testing.T) {
-			c, _, mockSeriesRepo := setup4TestBadgeController(t)
+			c, _, mockSeriesRepo, secretKey := setup4TestBadgeController(t)
 
 			mockSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath, nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusInternalServerError, w.Code)
 		})
 
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestBadgeController(t)
+			c, mockUsecase, _, secretKey := setup4TestBadgeController(t)
 
 			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2026").Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath+"?season=2026", nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusInternalServerError, w.Code)
 		})
+	})
+}
+
+func TestBadgeController_GetByUserId_Authorization(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
+		c, _, _, _ := setup4TestBadgeController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("異常系_他人のバッジは403で見せない", func(t *testing.T) {
+		c, _, _, secretKey := setup4TestBadgeController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+BadgesPath, nil)
+		setJWTAuthHeader(t, req, "KBp7roRDZobZg1t0OPzFR1kvLeO2", secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 }

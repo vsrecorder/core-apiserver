@@ -15,11 +15,18 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
+	"github.com/vsrecorder/core-apiserver/internal/testutil"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
-func setup4TestEnvironmentBadgeController(t *testing.T) (*EnvironmentBadge, *mock_usecase.MockEnvironmentBadgeInterface) {
+func setup4TestEnvironmentBadgeController(t *testing.T) (*EnvironmentBadge, *mock_usecase.MockEnvironmentBadgeInterface, string) {
+	t.Helper()
+
 	gin.SetMode(gin.TestMode)
+
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	mockCtrl := gomock.NewController(t)
 	mockUsecase := mock_usecase.NewMockEnvironmentBadgeInterface(mockCtrl)
@@ -28,14 +35,14 @@ func setup4TestEnvironmentBadgeController(t *testing.T) (*EnvironmentBadge, *moc
 	c := NewEnvironmentBadge(r, mockUsecase)
 	c.RegisterRoute("")
 
-	return c, mockUsecase
+	return c, mockUsecase, secretKey
 }
 
 func TestEnvironmentBadgeController_GetByUserId(t *testing.T) {
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
 
 	t.Run("正常系_指定ユーザの環境バッジ一覧を返す", func(t *testing.T) {
-		c, mockUsecase := setup4TestEnvironmentBadgeController(t)
+		c, mockUsecase, secretKey := setup4TestEnvironmentBadgeController(t)
 
 		views := []*usecase.EnvironmentBadgeView{
 			{
@@ -49,6 +56,7 @@ func TestEnvironmentBadgeController_GetByUserId(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+EnvironmentBadgesPath, nil)
+		setJWTAuthHeader(t, req, uid, secretKey)
 		c.router.ServeHTTP(w, req)
 
 		var res dto.UserEnvironmentBadgesResponse
@@ -60,14 +68,40 @@ func TestEnvironmentBadgeController_GetByUserId(t *testing.T) {
 	})
 
 	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-		c, mockUsecase := setup4TestEnvironmentBadgeController(t)
+		c, mockUsecase, secretKey := setup4TestEnvironmentBadgeController(t)
 
 		mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid).Return(nil, errors.New(""))
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+EnvironmentBadgesPath, nil)
+		setJWTAuthHeader(t, req, uid, secretKey)
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+func TestEnvironmentBadgeController_GetByUserId_Authorization(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
+		c, _, _ := setup4TestEnvironmentBadgeController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+EnvironmentBadgesPath, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("異常系_他人の環境バッジは403で見せない", func(t *testing.T) {
+		c, _, secretKey := setup4TestEnvironmentBadgeController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+EnvironmentBadgesPath, nil)
+		setJWTAuthHeader(t, req, "KBp7roRDZobZg1t0OPzFR1kvLeO2", secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 }

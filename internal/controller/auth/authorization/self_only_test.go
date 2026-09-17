@@ -21,6 +21,11 @@ func TestSelfOnlyAuthorizationMiddlewares(t *testing.T) {
 		"DeckUsageStatAuthorizationMiddleware":         DeckUsageStatAuthorizationMiddleware(),
 		"OldestRecordAuthorizationMiddleware":          OldestRecordAuthorizationMiddleware(),
 		"OpponentDeckUsageStatAuthorizationMiddleware": OpponentDeckUsageStatAuthorizationMiddleware(),
+		"UserStatAuthorizationMiddleware":              UserStatAuthorizationMiddleware(),
+		"StreakAuthorizationMiddleware":                StreakAuthorizationMiddleware(),
+		"BadgeAuthorizationMiddleware":                 BadgeAuthorizationMiddleware(),
+		"DesignationAuthorizationMiddleware":           DesignationAuthorizationMiddleware(),
+		"EnvironmentBadgeAuthorizationMiddleware":      EnvironmentBadgeAuthorizationMiddleware(),
 	}
 
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"

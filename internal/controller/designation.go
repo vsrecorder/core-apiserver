@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
+	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
@@ -48,6 +50,8 @@ func (c *Designation) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + UsersPath)
 	r.GET(
 		"/:id"+DesignationPath,
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.DesignationAuthorizationMiddleware(),
 		c.GetByUserId,
 	)
 }

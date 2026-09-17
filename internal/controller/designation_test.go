@@ -17,6 +17,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_repository"
 	"github.com/vsrecorder/core-apiserver/internal/mock/mock_usecase"
+	"github.com/vsrecorder/core-apiserver/internal/testutil"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -24,8 +25,15 @@ func setup4TestDesignationController(t *testing.T) (
 	*Designation,
 	*mock_usecase.MockDesignationInterface,
 	*mock_repository.MockChampionshipSeriesInterface,
+	string,
 ) {
+	t.Helper()
+
 	gin.SetMode(gin.TestMode)
+
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
 	mockCtrl := gomock.NewController(t)
 	mockUsecase := mock_usecase.NewMockDesignationInterface(mockCtrl)
@@ -35,7 +43,7 @@ func setup4TestDesignationController(t *testing.T) (
 	c := NewDesignation(r, mockUsecase, mockSeriesRepo)
 	c.RegisterRoute("")
 
-	return c, mockUsecase, mockSeriesRepo
+	return c, mockUsecase, mockSeriesRepo, secretKey
 }
 
 func newTestDesignation(id string, tier int) *entity.Designation {
@@ -48,7 +56,7 @@ func TestDesignationController(t *testing.T) {
 
 	t.Run("GetAllDefinitions", func(t *testing.T) {
 		t.Run("正常系_称号定義一覧を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestDesignationController(t)
+			c, mockUsecase, _, _ := setup4TestDesignationController(t)
 
 			mockUsecase.EXPECT().GetAllDefinitions(gomock.Any()).Return(
 				[]*entity.Designation{newTestDesignation("designation-rookie", 1)}, nil,
@@ -62,7 +70,7 @@ func TestDesignationController(t *testing.T) {
 		})
 
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestDesignationController(t)
+			c, mockUsecase, _, _ := setup4TestDesignationController(t)
 
 			mockUsecase.EXPECT().GetAllDefinitions(gomock.Any()).Return(nil, errors.New(""))
 
@@ -76,7 +84,7 @@ func TestDesignationController(t *testing.T) {
 
 	t.Run("GetByUserId", func(t *testing.T) {
 		t.Run("正常系_season指定でユーザの称号を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestDesignationController(t)
+			c, mockUsecase, _, secretKey := setup4TestDesignationController(t)
 
 			view := &usecase.UserDesignationView{Current: newTestDesignation("designation-rookie", 1)}
 
@@ -84,6 +92,7 @@ func TestDesignationController(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath+"?season=2026", nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			var res dto.UserDesignationResponse
@@ -95,7 +104,7 @@ func TestDesignationController(t *testing.T) {
 		})
 
 		t.Run("正常系_season未指定なら現在のシーズンで判定する", func(t *testing.T) {
-			c, mockUsecase, mockSeriesRepo := setup4TestDesignationController(t)
+			c, mockUsecase, mockSeriesRepo, secretKey := setup4TestDesignationController(t)
 
 			mockSeriesRepo.EXPECT().FindByDate(gomock.Any(), gomock.Any()).Return(
 				&entity.ChampionshipSeries{ID: "series_2026"}, nil,
@@ -104,40 +113,44 @@ func TestDesignationController(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath, nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusOK, w.Code)
 		})
 
 		t.Run("異常系_seasonの形式が不正なら400を返す", func(t *testing.T) {
-			c, _, _ := setup4TestDesignationController(t)
+			c, _, _, secretKey := setup4TestDesignationController(t)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath+"?season=abc", nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusBadRequest, w.Code)
 		})
 
 		t.Run("異常系_存在しないseasonなら404を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestDesignationController(t)
+			c, mockUsecase, _, secretKey := setup4TestDesignationController(t)
 
 			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2022").Return(nil, apperror.ErrRecordNotFound)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath+"?season=2022", nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusNotFound, w.Code)
 		})
 
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestDesignationController(t)
+			c, mockUsecase, _, secretKey := setup4TestDesignationController(t)
 
 			mockUsecase.EXPECT().GetByUserId(gomock.Any(), uid, "2026").Return(nil, errors.New(""))
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath+"?season=2026", nil)
+			setJWTAuthHeader(t, req, uid, secretKey)
 			c.router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusInternalServerError, w.Code)
@@ -146,7 +159,7 @@ func TestDesignationController(t *testing.T) {
 
 	t.Run("GetRankStats", func(t *testing.T) {
 		t.Run("正常系_season指定でティア別の分布を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestDesignationController(t)
+			c, mockUsecase, _, _ := setup4TestDesignationController(t)
 
 			view := &usecase.DesignationRankStatsView{}
 
@@ -164,7 +177,7 @@ func TestDesignationController(t *testing.T) {
 		})
 
 		t.Run("異常系_存在しないseasonなら404を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestDesignationController(t)
+			c, mockUsecase, _, _ := setup4TestDesignationController(t)
 
 			mockUsecase.EXPECT().GetRankStats(gomock.Any(), "2022").Return(nil, apperror.ErrRecordNotFound)
 
@@ -176,7 +189,7 @@ func TestDesignationController(t *testing.T) {
 		})
 
 		t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-			c, mockUsecase, _ := setup4TestDesignationController(t)
+			c, mockUsecase, _, _ := setup4TestDesignationController(t)
 
 			mockUsecase.EXPECT().GetRankStats(gomock.Any(), "2026").Return(nil, errors.New(""))
 
@@ -186,5 +199,30 @@ func TestDesignationController(t *testing.T) {
 
 			require.Equal(t, http.StatusInternalServerError, w.Code)
 		})
+	})
+}
+
+func TestDesignationController_GetByUserId_Authorization(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
+		c, _, _, _ := setup4TestDesignationController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("異常系_他人の称号は403で見せない", func(t *testing.T) {
+		c, _, _, secretKey := setup4TestDesignationController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", UsersPath+"/"+uid+DesignationPath, nil)
+		setJWTAuthHeader(t, req, "KBp7roRDZobZg1t0OPzFR1kvLeO2", secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
 	})
 }

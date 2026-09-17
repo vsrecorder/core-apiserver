@@ -80,6 +80,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/deck_usage_stat.go -destination=./internal/mock/mock_repository/deck_usage_stat.go
 	mockgen -source=./internal/domain/repository/kizuna.go -destination=./internal/mock/mock_repository/kizuna.go
 	mockgen -source=./internal/domain/repository/oldest_record.go -destination=./internal/mock/mock_repository/oldest_record.go
+	mockgen -source=./internal/domain/repository/opponent_deck_candidate.go -destination=./internal/mock/mock_repository/opponent_deck_candidate.go
 	mockgen -source=./internal/domain/repository/weekly_deck_usage_stat.go -destination=./internal/mock/mock_repository/weekly_deck_usage_stat.go
 	mockgen -source=./internal/domain/repository/standard_regulation.go -destination=./internal/mock/mock_repository/standard_regulation.go
 	mockgen -source=./internal/domain/repository/regulation.go -destination=./internal/mock/mock_repository/regulation.go
@@ -126,6 +127,7 @@ mockgen:
 	mockgen -source=./internal/usecase/deck_usage_stat.go -destination=./internal/mock/mock_usecase/deck_usage_stat.go
 	mockgen -source=./internal/usecase/kizuna.go -destination=./internal/mock/mock_usecase/kizuna.go
 	mockgen -source=./internal/usecase/oldest_record.go -destination=./internal/mock/mock_usecase/oldest_record.go
+	mockgen -source=./internal/usecase/opponent_deck_candidate.go -destination=./internal/mock/mock_usecase/opponent_deck_candidate.go
 	mockgen -source=./internal/usecase/weekly_deck_usage_stat.go -destination=./internal/mock/mock_usecase/weekly_deck_usage_stat.go
 	mockgen -source=./internal/usecase/standard_regulation.go -destination=./internal/mock/mock_usecase/standard_regulation.go
 	mockgen -source=./internal/usecase/regulation.go -destination=./internal/mock/mock_usecase/regulation.go

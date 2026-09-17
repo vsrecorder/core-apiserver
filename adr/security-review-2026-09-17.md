@@ -49,6 +49,10 @@ webapp はこの応答を「相手デッキの入力候補（自分の対戦が�
   属する対戦だけを対象にし、usecase 側で本人向けの項目（memo・games.memo・opponents_user_id・
   deck_id・deck_code_id・tags）を落として返す（`sanitizeMatchForPublicFeed`）。
 - **箇所**: `infrastructure/match.go`, `usecase/match.go`
+- **その後**: 候補の用途に対戦結果を返す必要は無いため、「表記 × スプライト」の出現回数だけを
+  返す専用のエンドポイント `GET /matches/opponent_deck_candidates` を追加した（記録の公開・
+  非公開を問わず集計する。[opponent-deck-candidates.md](opponent-deck-candidates.md)）。
+  `GET /matches` は webapp が切り替えるまで残し、その後に削除する。
 
 ### 3. [中] 作成・更新時に他人のデッキ・デッキコード・記録を参照できた
 

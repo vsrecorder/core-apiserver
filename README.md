@@ -65,6 +65,7 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 | `/users`                 | ユーザー                   |
 | `/records`               | 対戦記録                   |
 | `/matches`               | マッチ                     |
+| `/matches/opponent_deck_candidates` | 相手デッキの入力候補（全ユーザーの集計） |
 | `/decks`, `/deckcodes`   | デッキ / デッキコード      |
 | `/official_events`       | 公式イベント               |
 | `/unofficial_events`     | 非公式イベント             |

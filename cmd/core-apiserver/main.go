@@ -656,6 +656,15 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	// 相手デッキの入力候補(全ユーザーの対戦結果からの集計)。自分の対戦が無い人向けの候補で、
+	// これまで GET /matches を流用していた用途を置き換える。
+	controller.NewOpponentDeckCandidate(
+		r,
+		usecase.NewOpponentDeckCandidate(
+			infrastructure.NewOpponentDeckCandidate(db),
+		),
+	).RegisterRoute(relativePath)
+
 	// 活動ログのカレンダー。記録・対戦結果・デッキ・デッキコードと参照先のイベント情報を
 	// まとめて返し、呼び出し側が記録1件ごとにAPIを呼ばずに済むようにする。
 	controller.NewCalendar(

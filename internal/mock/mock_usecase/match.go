@@ -116,21 +116,6 @@ func (mr *MockMatchInterfaceMockRecorder) FindByUserId(ctx, userId, limit any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserId", reflect.TypeOf((*MockMatchInterface)(nil).FindByUserId), ctx, userId, limit)
 }
 
-// FindLatest mocks base method.
-func (m *MockMatchInterface) FindLatest(ctx context.Context, limit int) ([]*entity.Match, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindLatest", ctx, limit)
-	ret0, _ := ret[0].([]*entity.Match)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindLatest indicates an expected call of FindLatest.
-func (mr *MockMatchInterfaceMockRecorder) FindLatest(ctx, limit any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLatest", reflect.TypeOf((*MockMatchInterface)(nil).FindLatest), ctx, limit)
-}
-
 // FindSummariesByRecordIds mocks base method.
 func (m *MockMatchInterface) FindSummariesByRecordIds(ctx context.Context, userId string, recordIds []string) ([]*entity.MatchSummary, error) {
 	m.ctrl.T.Helper()

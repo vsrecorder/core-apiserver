@@ -316,10 +316,10 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
   参照先を持つ書き込みを追加したら同じ検証を入れること。
 - **デッキ／デッキコードで絞る記録の一覧（`FindByDeckId` 系）は必ず `user_id` も条件に含める。**
   デッキIDは公開情報から誰でも知り得るため、`deck_id` だけで絞ると他人の非公開記録が返る。
-- 相手デッキの入力候補（自分の対戦が無い人向け）は `GET /matches/opponent_deck_candidates` が
-  「表記 × スプライト」の出現回数だけを返す（`adr/opponent-deck-candidates.md`）。誰の対戦かを
-  含む応答を候補の素材に流用しない。`GET /matches`（ユーザー横断の最新対戦）は webapp が
-  切り替えるまで残してあり、公開記録の対戦に限りメモ等を落として返す（`sanitizeMatchForPublicFeed`）。
+- 相手デッキの入力候補は `GET /matches/opponent_deck_candidates` が「表記 × スプライト」の
+  出現回数だけを返す（`adr/opponent-deck-candidates.md`）。**誰の対戦かを含む応答を候補の素材に
+  流用しない。** 以前は `GET /matches`（ユーザー横断の最新対戦）を流用しており、対戦結果そのものが
+  横断で読めていた（`adr/security-review-2026-09-17.md` の 2）。そのエンドポイントは削除済み。
 - 一覧系の `limit` は `helper.MaxLimit`（100）で頭打ちにする。上限が無いと未認証の公開一覧に
   巨大な `limit` を渡すだけでコンテナのメモリ上限（128MiB）を超えて落とせる。
 - 外部サイトのURLやストレージのキーに埋め込む値（デッキコード・Tonamel の大会ID）は

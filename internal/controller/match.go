@@ -44,11 +44,6 @@ func NewMatch(
 func (c *Match) RegisterRoute(relativePath string) {
 	{
 		r := c.router.Group(relativePath + MatchesPath)
-		r.GET(
-			"",
-			authentication.RequiredAuthenticationMiddleware(),
-			c.GetLatest,
-		)
 		// "/:id" より前に登録し、summary が記録IDとして解釈されないようにする。
 		// 認可はusecase(のリポジトリ)がuidで絞り込むため、authorizationは挟まない。
 		r.GET(
@@ -109,32 +104,6 @@ func (c *Match) RegisterRoute(relativePath string) {
 			c.GetByUserId,
 		)
 	}
-}
-
-// GetLatest はユーザーを問わず最新の対戦結果を返す。webapp が相手デッキの入力候補
-// (自分の対戦がまだ無い人向けのダミー候補)に使う。他人の対戦なので、usecase が
-// 公開記録の対戦に限り、メモ等の本人向けの項目を落としたものだけを返す。
-func (c *Match) GetLatest(ctx *gin.Context) {
-	limit, err := helper.ParseQueryLimit(ctx)
-	if err != nil {
-		apierror.ErrBadRequest.JSON(ctx, err)
-		return
-	}
-
-	matches, err := c.usecase.FindLatest(ctx.Request.Context(), limit)
-	if err != nil {
-		if errors.Is(err, apperror.ErrRecordNotFound) {
-			ctx.JSON(http.StatusOK, []*dto.MatchResponse{})
-			return
-		}
-
-		apierror.ErrInternalServerError.JSON(ctx, err)
-		return
-	}
-
-	res := presenter.NewMatchGetByRecordIdResponse(matches)
-
-	ctx.JSON(http.StatusOK, res)
 }
 
 func (c *Match) GetById(ctx *gin.Context) {

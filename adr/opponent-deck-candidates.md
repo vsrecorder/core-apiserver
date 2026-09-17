@@ -47,14 +47,14 @@
   対戦を記録した直後にその相手デッキが候補へ出る必要がある）。
 - 認証を要求する。対戦結果を書く画面からしか使わず、未認証で叩ける集計を増やさないため。
 
-## 残すもの・次にやること
+## 切り替えの結果
 
-- `GET /matches`（最新の対戦結果）と `GET /users/:id/matches` は、webapp がこのエンドポイントへ
-  切り替えるまで残す。切り替え後、候補の用途では使わなくなる。
-- webapp の切り替え: `QuickRecordCreate` / `CreateMatchModal` / `UpdateMatchModal` が
-  「自身の対戦一覧」と「全体の対戦一覧」を別々に取得して併合しているのを、
-  `/api/matches/opponent_deck_candidates?limit=50` の 1 回に置き換える。併合・重複排除・
-  期間の絞り込み・出現回数の集計はすべてサーバ側で済んでいる。
+- webapp の切り替えは完了済み。`QuickRecordCreate` / `CreateMatchModal` / `UpdateMatchModal` が
+  「自身の対戦一覧」と「全体の対戦一覧」を別々に取得して併合していたのを、
+  `/api/matches/opponent_deck_candidates?limit=50` の 1 回に置き換えた。併合・重複排除・
+  期間の絞り込み・出現回数の集計はすべてサーバ側で行う。
+- 候補の素材にしていた `GET /matches`（ユーザー横断の最新対戦）は削除済み。
+  `GET /users/:id/matches` は残っているが、候補の用途では使わない。
 
 ## 補足: なぜ自身の履歴もサーバ側で集計するか
 

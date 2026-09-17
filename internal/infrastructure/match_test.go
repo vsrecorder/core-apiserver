@@ -155,7 +155,6 @@ func TestMatchInfrastructure(t *testing.T) {
 		"FindByRecordId":           test_MatchInfrastructure_FindByRecordId,
 		"FindByUserId":             test_MatchInfrastructure_FindByUserId,
 		"FindSummariesByRecordIds": test_MatchInfrastructure_FindSummariesByRecordIds,
-		"FindLatest":               test_MatchInfrastructure_FindLatest,
 		"Create":                   test_MatchInfrastructure_Create,
 		"Update":                   test_MatchInfrastructure_Update,
 		"Delete":                   test_MatchInfrastructure_Delete,
@@ -381,58 +380,6 @@ func test_MatchInfrastructure_FindByUserId(t *testing.T) {
 			WithArgs(uid, limit).WillReturnRows(sqlmock.NewRows(matchJoinGameColumns))
 
 		matches, err := r.FindByUserId(context.Background(), uid, limit)
-
-		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
-		require.Nil(t, matches)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-}
-
-func test_MatchInfrastructure_FindLatest(t *testing.T) {
-	matchId := "01HD7Y3K8D6FDHMHTZ2GT41TN1"
-
-	// ユーザを問わず最新のMatchが返る
-	t.Run("正常系_全ユーザの最新Matchを返す", func(t *testing.T) {
-		r, mock, err := setup4MatchInfrastructure()
-		require.NoError(t, err)
-
-		datetime := time.Now().Local()
-		limit := 10
-
-		rows := addMatchJoinGameRow(sqlmock.NewRows(matchJoinGameColumns), datetime, matchJoinGameRow{
-			matchId: matchId, position: 1, victoryFlg: true,
-			gameId: "01HD7Y3K8D6FDHMHTZ2GT41TG1", goFirst: true, winningFlg: true,
-		})
-
-		mock.ExpectQuery(matchJoinGameQuery("matches",
-			`WHERE matches.id IN (SELECT matches.id FROM "matches" JOIN records ON records.id = matches.record_id AND records.deleted_at IS NULL AND records.private_flg = false WHERE matches.deleted_at IS NULL ORDER BY matches.created_at DESC LIMIT $1) ORDER BY matches.created_at DESC, games.created_at ASC`,
-		)).WithArgs(limit).WillReturnRows(rows)
-
-		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "match_pokemon_sprites" WHERE match_id IN ($1) ORDER BY position ASC`,
-		)).WithArgs(matchId).WillReturnRows(sqlmock.NewRows(matchPokemonSpriteColumns))
-
-		expectMatchTagsQuery(mock)
-
-		matches, err := r.FindLatest(context.Background(), limit)
-
-		require.NoError(t, err)
-		require.Len(t, matches, 1)
-		require.Equal(t, matchId, matches[0].ID)
-		require.Len(t, matches[0].Games, 1)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("異常系_該当なしはErrRecordNotFoundを返す", func(t *testing.T) {
-		r, mock, err := setup4MatchInfrastructure()
-		require.NoError(t, err)
-
-		limit := 10
-
-		mock.ExpectQuery(matchJoinGameQuery("matches", ``)).
-			WithArgs(limit).WillReturnRows(sqlmock.NewRows(matchJoinGameColumns))
-
-		matches, err := r.FindLatest(context.Background(), limit)
 
 		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, matches)

@@ -12,7 +12,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
-	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/testutil"
@@ -79,61 +78,5 @@ func TestMatchController_ReferenceOwnership(t *testing.T) {
 		c.router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusNotFound, w.Code)
-	})
-}
-
-// ユーザー横断の最新対戦。認証は必須で、limit は上限(helper.MaxLimit)に丸められる。
-func TestMatchController_GetLatest(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
-
-	secretKey, err := testutil.GenerateJWTSecret()
-	require.NoError(t, err)
-	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
-
-	t.Run("正常系_指定件数の最新対戦を返す", func(t *testing.T) {
-		r := gin.Default()
-		c, _, _, mockUsecase := setup4TestMatchController(t, r)
-
-		mockUsecase.EXPECT().FindLatest(gomock.Any(), 5).Return([]*entity.Match{{ID: "01HD7Y3K8D6FDHMHTZ2GT41TN1", OpponentsDeckInfo: "ロストバレット"}}, nil)
-
-		w := httptest.NewRecorder()
-		req, err := http.NewRequest("GET", "/matches?limit=5", nil)
-		require.NoError(t, err)
-		setJWTAuthHeader(t, req, uid, secretKey)
-
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("正常系_上限を超えるlimitは上限に丸めて取得する", func(t *testing.T) {
-		r := gin.Default()
-		c, _, _, mockUsecase := setup4TestMatchController(t, r)
-
-		mockUsecase.EXPECT().FindLatest(gomock.Any(), helper.MaxLimit).Return([]*entity.Match{}, nil)
-
-		w := httptest.NewRecorder()
-		req, err := http.NewRequest("GET", "/matches?limit=1000000", nil)
-		require.NoError(t, err)
-		setJWTAuthHeader(t, req, uid, secretKey)
-
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
-		r := gin.Default()
-		c, _, _, _ := setup4TestMatchController(t, r)
-
-		w := httptest.NewRecorder()
-		req, err := http.NewRequest("GET", "/matches", nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 }

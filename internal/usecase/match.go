@@ -124,14 +124,6 @@ type MatchInterface interface {
 		recordIds []string,
 	) ([]*entity.MatchSummary, error)
 
-	// FindLatest はユーザーを問わず最新の対戦結果を返す。webapp が相手デッキの入力候補
-	// (自分の対戦が無い人向けのダミー候補)に使うため、公開記録の対戦に限り、
-	// メモなど本人向けの項目は落として返す(sanitizeMatchForPublicFeed)。
-	FindLatest(
-		ctx context.Context,
-		limit int,
-	) ([]*entity.Match, error)
-
 	Create(
 		ctx context.Context,
 		param *MatchParam,
@@ -276,42 +268,6 @@ func (u *Match) FindSummariesByRecordIds(
 	}
 
 	return summaries, nil
-}
-
-func (u *Match) FindLatest(
-	ctx context.Context,
-	limit int,
-) ([]*entity.Match, error) {
-	matches, err := u.repository.FindLatest(ctx, limit)
-
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	for _, match := range matches {
-		sanitizeMatchForPublicFeed(match)
-	}
-
-	return matches, nil
-}
-
-// sanitizeMatchForPublicFeed は他人に見せる対戦結果から、本人向けの項目を落とす。
-//
-// 全ユーザー横断の一覧(FindLatest)が必要とするのは相手デッキの情報とスプライト、
-// 不戦勝/不戦敗のフラグだけ(webapp の buildDeckHistories)。対戦メモ・対局メモは
-// 本人の覚え書きで、記録の個別ページ同様に他人へ見せる前提の項目ではない。
-// タグ名や参照先(デッキ・デッキコード・対戦相手)も、候補の生成には要らないので返さない。
-func sanitizeMatchForPublicFeed(match *entity.Match) {
-	match.DeckId = ""
-	match.DeckCodeId = ""
-	match.OpponentsUserId = ""
-	match.Memo = ""
-	match.Tags = nil
-
-	for _, game := range match.Games {
-		game.Memo = ""
-	}
 }
 
 // validateMatchParam は対戦結果の整合性を domain 層の共通関数で検証する。

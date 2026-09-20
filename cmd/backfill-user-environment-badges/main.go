@@ -18,7 +18,14 @@
 //
 // 既に行がある組み合わせもスキップせず上書きする(判定基準の変更後に再実行して達成日時を
 // 更新し直せるようにするため)。上書き対象は achieved_at / created_at のみで、record_id /
-// notification_id は最初に作成された時点の値を保持する。
+// notification_id は最初に作成された時点の値を保持する。ただし再計算しても
+// achieved_at / created_at が既存値と一致する行は書き込まない(値が変わらないのに
+// 全行を UPDATE しても意味が無いため)。
+//
+// -dry-run では、新規付与(change=create)と、達成日時が変わる既存行(change=update。
+// 現在値を current_achieved_at / current_created_at に併記する)だけをログへ出し、
+// 変わらない行は completed ログの unchanged 件数にのみ計上する。全件を出すと実際に
+// 変わる行が埋もれ、再実行の影響を事前に確認できなくなるため。
 //
 // このツールは user_environment_badges 行の作成/更新のみを行い、通知(notifications)の
 // 作成は行わない。バッジ獲得に対する通知の作成は backfill-notifications 側にまとめている
@@ -116,19 +123,28 @@ func main() {
 	}
 	slog.Info("backfilling environment badges", batchAttrs...)
 
-	backfilled := 0
+	total := backfillStats{}
+	changedUsers := 0
 	for _, user := range users {
-		created, err := backfillUser(context.Background(), db, environmentRepo, officialEventEnvironmentRepo, userEnvironmentBadgeRepo, user, *dryRun)
+		stats, err := backfillUser(context.Background(), db, environmentRepo, officialEventEnvironmentRepo, userEnvironmentBadgeRepo, user, *dryRun)
+		// 途中で失敗しても、そこまでに処理した分は実際に反映されている(または反映予定で
+		// ある)ため、集計には含める。
+		total.add(stats)
 		if err != nil {
 			slog.Error("failed to backfill user", slog.String("user_id", user.ID), logging.Err(err))
 			continue
 		}
-		if created > 0 {
-			backfilled++
+		if stats.changed() > 0 {
+			changedUsers++
 		}
 	}
 
-	slog.Info("completed", append(batchAttrs, slog.Int("backfilled_users", backfilled))...)
+	slog.Info("completed", append(batchAttrs,
+		slog.Int("changed_users", changedUsers),
+		slog.Int("created", total.created),
+		slog.Int("updated", total.updated),
+		slog.Int("unchanged", total.unchanged),
+	)...)
 
 	os.Exit(ExitCodeOK)
 }
@@ -142,7 +158,51 @@ type matchBasis struct {
 	matchCreatedAt  time.Time
 }
 
-// backfillUser は1ユーザー分の環境バッジを補完する。作成した(dry-runなら作成予定の)件数を返す。
+// backfillStats は user_environment_badges への反映内容の内訳。
+// dry-run のときは「再実行するとこうなる」という予定を表す。
+type backfillStats struct {
+	created   int // 行が無いため新規に付与する
+	updated   int // 行はあるが achieved_at / created_at が変わるため上書きする
+	unchanged int // 行があり値も変わらないため書き込まない
+}
+
+// changed は書き込みが発生する(dry-runなら発生する予定の)件数を返す。
+func (s backfillStats) changed() int {
+	return s.created + s.updated
+}
+
+func (s *backfillStats) add(other backfillStats) {
+	s.created += other.created
+	s.updated += other.updated
+	s.unchanged += other.unchanged
+}
+
+// badgeChange は既存行と再計算した値を比べた結果。ログの change 属性にそのまま出す。
+type badgeChange string
+
+const (
+	badgeChangeCreate badgeChange = "create"
+	badgeChangeUpdate badgeChange = "update"
+	badgeChangeNone   badgeChange = "none"
+)
+
+// classifyBadgeChange は再実行で書き込みが必要かを判定する。比較対象を achieved_at /
+// created_at に限るのは、Save が conflict 時に上書きするのがこの2つだけで、
+// record_id / notification_id は既存値のまま残る(＝差があっても書き込む理由にならない)ため。
+func classifyBadgeChange(existing *model.UserEnvironmentBadge, achievedAt time.Time, createdAt time.Time) badgeChange {
+	if existing == nil {
+		return badgeChangeCreate
+	}
+
+	// 同じ時刻がDBドライバの都合で別Locationになっていても変更扱いにしないよう Equal で比べる。
+	if existing.AchievedAt.Equal(achievedAt) && existing.CreatedAt.Equal(createdAt) {
+		return badgeChangeNone
+	}
+
+	return badgeChangeUpdate
+}
+
+// backfillUser は1ユーザー分の環境バッジを補完し、その内訳を返す。
 func backfillUser(
 	ctx context.Context,
 	db *gorm.DB,
@@ -151,13 +211,13 @@ func backfillUser(
 	userEnvironmentBadgeRepo repository.UserEnvironmentBadgeInterface,
 	user *model.User,
 	dryRun bool,
-) (int, error) {
+) (backfillStats, error) {
 	var matches []*model.Match
 	if tx := db.Where("user_id = ?", user.ID).Find(&matches); tx.Error != nil {
-		return 0, tx.Error
+		return backfillStats{}, tx.Error
 	}
 	if len(matches) == 0 {
-		return 0, nil
+		return backfillStats{}, nil
 	}
 
 	recordIdSet := make(map[string]struct{}, len(matches))
@@ -171,7 +231,7 @@ func backfillUser(
 
 	var records []*model.Record
 	if tx := db.Where("id IN ?", recordIds).Find(&records); tx.Error != nil {
-		return 0, tx.Error
+		return backfillStats{}, tx.Error
 	}
 	recordById := make(map[string]*model.Record, len(records))
 	for _, r := range records {
@@ -200,7 +260,7 @@ func backfillUser(
 
 	var existing []*model.UserEnvironmentBadge
 	if tx := db.Where("user_id = ?", user.ID).Find(&existing); tx.Error != nil {
-		return 0, tx.Error
+		return backfillStats{}, tx.Error
 	}
 	existingByEnv := make(map[string]*model.UserEnvironmentBadge, len(existing))
 	for _, ub := range existing {
@@ -209,10 +269,10 @@ func backfillUser(
 
 	// processed は同一実行内での重複処理を防ぐためのもの(basesはbasisTime昇順なので、
 	// 同じ環境について複数回対戦していても最初に到達した=最も古い基準日時を採用する)。
-	// 既存データによるスキップには使わない(既存分も上書き対象にするため)。
+	// 既存データによるスキップには使わない(既存分も再計算の対象にするため)。
 	processed := make(map[string]bool, len(bases))
 
-	created := 0
+	stats := backfillStats{}
 	for _, b := range bases {
 		env, err := usecase.ResolveEnvironmentForOfficialEvent(
 			ctx,
@@ -225,39 +285,59 @@ func backfillUser(
 			if errors.Is(err, apperror.ErrRecordNotFound) {
 				continue
 			}
-			return created, err
+			return stats, err
 		}
 		if processed[env.ID] {
 			continue
 		}
+		// 書き込むかどうかに関わらず、この環境の採用値はここで確定する。値が変わらない
+		// ときに立て忘れると、同じ環境のより新しい対戦で再判定され「最も古い基準日時を
+		// 採る」という前提が崩れるため、判定した時点で立てる。
+		processed[env.ID] = true
 
-		_, hasExisting := existingByEnv[env.ID]
-
-		if dryRun {
-			slog.Info("environment badge to backfill",
-				slog.String("user_id", user.ID), slog.String("environment_id", env.ID),
-				// overwrite=true は既存の付与を上書きすることを表す(新規付与と区別する)
-				slog.Bool("overwrite", hasExisting),
-				slog.String("achieved_at", b.basisTime.Format(time.RFC3339)), slog.Bool("dry_run", true))
-			processed[env.ID] = true
-			created++
+		existing := existingByEnv[env.ID]
+		change := classifyBadgeChange(existing, b.basisTime, b.matchCreatedAt)
+		if change == badgeChangeNone {
+			stats.unchanged++
 			continue
 		}
 
-		// notification_idは常に空で渡す。Save()はconflict時にachieved_at/created_atのみを
-		// 上書きし、notification_idは既存値を保持する(backfill-notificationsが後から
-		// 書き戻す値のため、ここで上書きしてしまわないようにするため)。
-		userEnvironmentBadge := entity.NewUserEnvironmentBadge(user.ID, env.ID, b.recordId, "", b.basisTime, b.matchCreatedAt)
-		if err := userEnvironmentBadgeRepo.Save(ctx, userEnvironmentBadge); err != nil {
-			return created, err
+		attrs := []any{
+			slog.String("user_id", user.ID),
+			slog.String("environment_id", env.ID),
+			// create=新規付与 / update=既存の付与を上書き
+			slog.String("change", string(change)),
+			slog.String("achieved_at", b.basisTime.Format(time.RFC3339)),
+			slog.String("created_at", b.matchCreatedAt.Format(time.RFC3339)),
+		}
+		if change == badgeChangeUpdate {
+			// 上書きで何がどう動くかは、現在値を並べないと判断できない。
+			attrs = append(attrs,
+				slog.String("current_achieved_at", existing.AchievedAt.Format(time.RFC3339)),
+				slog.String("current_created_at", existing.CreatedAt.Format(time.RFC3339)),
+			)
 		}
 
-		slog.Info("environment badge backfilled",
-			slog.String("user_id", user.ID), slog.String("environment_id", env.ID),
-			slog.String("achieved_at", b.basisTime.Format(time.RFC3339)))
-		processed[env.ID] = true
-		created++
+		if dryRun {
+			slog.Info("environment badge to backfill", append(attrs, slog.Bool("dry_run", true))...)
+		} else {
+			// notification_idは常に空で渡す。Save()はconflict時にachieved_at/created_atのみを
+			// 上書きし、notification_idは既存値を保持する(backfill-notificationsが後から
+			// 書き戻す値のため、ここで上書きしてしまわないようにするため)。
+			userEnvironmentBadge := entity.NewUserEnvironmentBadge(user.ID, env.ID, b.recordId, "", b.basisTime, b.matchCreatedAt)
+			if err := userEnvironmentBadgeRepo.Save(ctx, userEnvironmentBadge); err != nil {
+				return stats, err
+			}
+
+			slog.Info("environment badge backfilled", append(attrs, slog.Bool("dry_run", false))...)
+		}
+
+		if change == badgeChangeCreate {
+			stats.created++
+		} else {
+			stats.updated++
+		}
 	}
 
-	return created, nil
+	return stats, nil
 }

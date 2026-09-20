@@ -22,10 +22,10 @@
 // achieved_at / created_at が既存値と一致する行は書き込まない(値が変わらないのに
 // 全行を UPDATE しても意味が無いため)。
 //
-// -dry-run では、新規付与(change=create)と、達成日時が変わる既存行(change=update。
-// 現在値を current_achieved_at / current_created_at に併記する)だけをログへ出し、
-// 変わらない行は completed ログの unchanged 件数にのみ計上する。全件を出すと実際に
-// 変わる行が埋もれ、再実行の影響を事前に確認できなくなるため。
+// -dry-run では、新規付与(change=create)と、値が変わる既存行(change=update。
+// 変わる列を changed_fields に、現在値を current_achieved_at / current_created_at に
+// 併記する)だけをログへ出し、変わらない行は completed ログの unchanged 件数にのみ
+// 計上する。全件を出すと実際に変わる行が埋もれ、再実行の影響を事前に確認できなくなるため。
 //
 // このツールは user_environment_badges 行の作成/更新のみを行い、通知(notifications)の
 // 作成は行わない。バッジ獲得に対する通知の作成は backfill-notifications 側にまとめている
@@ -50,6 +50,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -150,12 +151,35 @@ func main() {
 }
 
 type matchBasis struct {
+	matchId  string
 	recordId string
 	// officialEventId は環境の例外判定(official_event_environments)に使う。
 	// 環境バッジの対象は公式イベントに紐づく記録のみなので、必ず0以外になる。
 	officialEventId uint
 	basisTime       time.Time
 	matchCreatedAt  time.Time
+}
+
+// sortBasesForAdoption は、ユーザー×環境ごとに採用する対戦を決めるための順序へ並べ替える。
+// 先頭に近いものほど優先して採用される。
+//
+// 基準日時が同じ対戦は珍しくない(同じ記録の中の各対戦、同じ開催日の別記録)。基準日時だけで
+// 比べると同点の並びが sort.Slice(非安定)とDBの返却順(ORDER BY無し)任せになり、採用される
+// 対戦が実行ごとに変わる。created_at が毎回揺れて差分の確認にならないため、同点は対戦の
+// 作成日時 → recordId → matchId の順で割って全順序にする。
+func sortBasesForAdoption(bases []matchBasis) {
+	sort.Slice(bases, func(i, j int) bool {
+		if !bases[i].basisTime.Equal(bases[j].basisTime) {
+			return bases[i].basisTime.Before(bases[j].basisTime)
+		}
+		if !bases[i].matchCreatedAt.Equal(bases[j].matchCreatedAt) {
+			return bases[i].matchCreatedAt.Before(bases[j].matchCreatedAt)
+		}
+		if bases[i].recordId != bases[j].recordId {
+			return bases[i].recordId < bases[j].recordId
+		}
+		return bases[i].matchId < bases[j].matchId
+	})
 }
 
 // backfillStats は user_environment_badges への反映内容の内訳。
@@ -186,6 +210,22 @@ const (
 	badgeChangeNone   badgeChange = "none"
 )
 
+// sameStoredTime は、timestamp 列へ保存したときに同じ値になるかを返す。
+//
+// time.Equal(瞬間の一致)では判定できない。user_environment_badges.achieved_at は
+// TIMESTAMP(without time zone)で、ドライバは Location を捨てて壁時計をそのまま格納し、
+// 読み出すときに接続の TimeZone(Asia/Tokyo)を付けて返す。一方 achieved_at の元になる
+// records.event_date は DATE で、UTCラベルの 00:00 として読める。そのため
+// event_date(2026-08-14T00:00:00Z)を保存して読み戻すと 2026-08-14T00:00:00+09:00 になり、
+// 格納されている値は同じなのに Equal は永久に false を返す。
+// 格納後の値が一致するかを見たいので、Location を無視して壁時計を比べる。
+func sameStoredTime(a time.Time, b time.Time) bool {
+	// PostgreSQLのtimestampはマイクロ秒精度。それ未満は格納時に落ちるため比較しない。
+	const layout = "2006-01-02 15:04:05.999999"
+
+	return a.Format(layout) == b.Format(layout)
+}
+
 // classifyBadgeChange は再実行で書き込みが必要かを判定する。比較対象を achieved_at /
 // created_at に限るのは、Save が conflict 時に上書きするのがこの2つだけで、
 // record_id / notification_id は既存値のまま残る(＝差があっても書き込む理由にならない)ため。
@@ -194,12 +234,25 @@ func classifyBadgeChange(existing *model.UserEnvironmentBadge, achievedAt time.T
 		return badgeChangeCreate
 	}
 
-	// 同じ時刻がDBドライバの都合で別Locationになっていても変更扱いにしないよう Equal で比べる。
-	if existing.AchievedAt.Equal(achievedAt) && existing.CreatedAt.Equal(createdAt) {
+	if sameStoredTime(existing.AchievedAt, achievedAt) && sameStoredTime(existing.CreatedAt, createdAt) {
 		return badgeChangeNone
 	}
 
 	return badgeChangeUpdate
+}
+
+// changedFields は上書きで実際に変わる列を返す。achieved_at(達成日時そのもの)が動くのか、
+// created_at(採用した対戦)だけが動くのかで確認の重さが違うため、ログで区別できるようにする。
+func changedFields(existing *model.UserEnvironmentBadge, achievedAt time.Time, createdAt time.Time) []string {
+	var fields []string
+	if !sameStoredTime(existing.AchievedAt, achievedAt) {
+		fields = append(fields, "achieved_at")
+	}
+	if !sameStoredTime(existing.CreatedAt, createdAt) {
+		fields = append(fields, "created_at")
+	}
+
+	return fields
 }
 
 // backfillUser は1ユーザー分の環境バッジを補完し、その内訳を返す。
@@ -250,13 +303,14 @@ func backfillUser(
 			continue
 		}
 		bases = append(bases, matchBasis{
+			matchId:         m.ID,
 			recordId:        m.RecordId,
 			officialEventId: record.OfficialEventId,
 			basisTime:       usecase.RecordBasisTime(record.EventDate, record.CreatedAt),
 			matchCreatedAt:  m.CreatedAt,
 		})
 	}
-	sort.Slice(bases, func(i, j int) bool { return bases[i].basisTime.Before(bases[j].basisTime) })
+	sortBasesForAdoption(bases)
 
 	var existing []*model.UserEnvironmentBadge
 	if tx := db.Where("user_id = ?", user.ID).Find(&existing); tx.Error != nil {
@@ -311,8 +365,9 @@ func backfillUser(
 			slog.String("created_at", b.matchCreatedAt.Format(time.RFC3339)),
 		}
 		if change == badgeChangeUpdate {
-			// 上書きで何がどう動くかは、現在値を並べないと判断できない。
+			// 上書きで何がどう動くかは、変わる列と現在値を並べないと判断できない。
 			attrs = append(attrs,
+				slog.String("changed_fields", strings.Join(changedFields(existing, b.basisTime, b.matchCreatedAt), ",")),
 				slog.String("current_achieved_at", existing.AchievedAt.Format(time.RFC3339)),
 				slog.String("current_created_at", existing.CreatedAt.Format(time.RFC3339)),
 			)

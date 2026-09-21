@@ -560,9 +560,13 @@ CREATE TABLE official_event_environments (
 -- チャンピオンズリーグ2027 横浜(2026-09-20〜22)。30th CELEBRATION(m6a, 2026-09-16〜)の
 -- 発売後の開催だが、カードプールはストームエメラルダ(m6)まで。
 INSERT INTO official_event_environments VALUES (1112094, 'm6'); -- ボランティアジャッジ募集
+INSERT INTO official_event_environments VALUES (1141900, 'm6'); -- ボランティアジャッジ募集
+INSERT INTO official_event_environments VALUES (1141901, 'm6'); -- ボランティアジャッジ募集
+INSERT INTO official_event_environments VALUES (1141902, 'm6'); -- ボランティアジャッジ募集
+
 INSERT INTO official_event_environments VALUES (1113193, 'm6'); -- マスターリーグ 1日目予選
 INSERT INTO official_event_environments VALUES (1113194, 'm6'); -- マスターリーグ 2日目予選
-INSERT INTO official_event_environments VALUES (1113195, 'm6'); -- マスターリーグ 本戦
+INSERT INTO official_event_environments VALUES (1113195, 'm6'); -- マスターリーグ 3日目本戦
 
 INSERT INTO official_event_environments VALUES (1113198, 'm6'); -- シニアリーグ 1日目大会
 INSERT INTO official_event_environments VALUES (1113199, 'm6'); -- シニアリーグ 2日目大会

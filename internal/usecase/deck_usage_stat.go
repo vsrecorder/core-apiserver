@@ -23,6 +23,14 @@ type DeckUsageStatInterface interface {
 		// excludeDefaultMatches が true なら不戦勝/不戦敗を対戦の集計から外す
 		excludeDefaultMatches bool,
 	) (*entity.DeckUsageStat, error)
+
+	// GetDeckCodeUsageStat はデッキの対戦成績をバージョン(デッキコード)ごとに分けて返す(全期間)。
+	GetDeckCodeUsageStat(
+		ctx context.Context,
+		userId string,
+		deckId string,
+		excludeDefaultMatches bool,
+	) (*entity.DeckCodeUsageStat, error)
 }
 
 type DeckUsageStat struct {
@@ -132,4 +140,13 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 	}
 
 	return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, period, regulationId, excludeDefaultMatches)
+}
+
+func (u *DeckUsageStat) GetDeckCodeUsageStat(
+	ctx context.Context,
+	userId string,
+	deckId string,
+	excludeDefaultMatches bool,
+) (*entity.DeckCodeUsageStat, error) {
+	return u.deckUsageStatRepo.FindDeckCodeUsageStat(ctx, userId, deckId, excludeDefaultMatches)
 }

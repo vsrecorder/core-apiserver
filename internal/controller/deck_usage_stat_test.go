@@ -127,3 +127,95 @@ func TestDeckUsageStatController_GetByUserId(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
+
+func TestDeckUsageStatController_GetDeckCodeUsageByUserId(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	deckId := "01HD7Y3K8D6FDHMHTZ2GT41TN2"
+	path := UsersPath + "/" + uid + DeckCodeUsageStatsPath
+
+	t.Run("正常系_本人ならデッキIDと除外指定を渡してバージョン別の成績を返す", func(t *testing.T) {
+		c, mockUsecase, secretKey := setup4TestDeckUsageStatController(t)
+
+		mockUsecase.EXPECT().GetDeckCodeUsageStat(gomock.Any(), uid, deckId, true).
+			Return(&entity.DeckCodeUsageStat{
+				UserId: uid,
+				DeckId: deckId,
+				DeckCodes: []*entity.DeckCodeUsage{
+					entity.NewDeckCodeUsage("01HD7Y3K8D6FDHMHTZ2GT41TC1", 5, 3, 1),
+				},
+				UnassignedCount: 2,
+			}, nil)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", path+"?deck_id="+deckId+"&exclude_default_matches=true", nil)
+		setJWTAuthHeader(t, req, uid, secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.JSONEq(t, `{
+			"user_id": "`+uid+`",
+			"deck_id": "`+deckId+`",
+			"deck_codes": [
+				{"deck_code_id": "01HD7Y3K8D6FDHMHTZ2GT41TC1", "count": 5, "wins": 3, "losses": 1, "draws": 1, "win_rate": 0.75}
+			],
+			"unassigned_count": 2
+		}`, w.Body.String())
+	})
+
+	t.Run("異常系_deck_idが無ければ400を返す", func(t *testing.T) {
+		c, _, secretKey := setup4TestDeckUsageStatController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", path, nil)
+		setJWTAuthHeader(t, req, uid, secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_deck_idが列幅を超えれば400を返す", func(t *testing.T) {
+		c, _, secretKey := setup4TestDeckUsageStatController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", path+"?deck_id="+deckId+"X", nil)
+		setJWTAuthHeader(t, req, uid, secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
+		c, _, _ := setup4TestDeckUsageStatController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", path+"?deck_id="+deckId, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("異常系_他人の成績は403を返す", func(t *testing.T) {
+		c, _, secretKey := setup4TestDeckUsageStatController(t)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", path+"?deck_id="+deckId, nil)
+		setJWTAuthHeader(t, req, "KBp7roRDZobZg1t0OPzFR1kvLeO2", secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
+		c, mockUsecase, secretKey := setup4TestDeckUsageStatController(t)
+
+		mockUsecase.EXPECT().GetDeckCodeUsageStat(gomock.Any(), uid, deckId, false).
+			Return(nil, errors.New(""))
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", path+"?deck_id="+deckId, nil)
+		setJWTAuthHeader(t, req, uid, secretKey)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}

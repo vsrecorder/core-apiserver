@@ -2832,3 +2832,80 @@ func TestIntegrationPushDeliveryHealth(t *testing.T) {
 		require.Empty(t, stats)
 	})
 }
+
+// デッキの戦績をバージョン(デッキコード)ごとに分けて集計できること。
+// 他人の記録・集計対象外の記録・除外した不戦が混ざらず、バージョン未指定の対戦は
+// 件数だけに回ることを実DBのスキーマで確認する。
+func TestIntegrationDeckCodeUsageStat(t *testing.T) {
+	db := setupIntegrationDB(t, "games", "matches", "records", "decks")
+
+	const uid = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	const otherUid = "KBp7roRDZobZg1t0OPzFR1kvLeO2"
+	const deckId = "deck-version-stat"
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	eventDate := time.Date(2026, 9, 15, 0, 0, 0, 0, time.Local)
+
+	require.NoError(t, db.Create(&model.Deck{
+		ID: deckId, CreatedAt: now, UpdatedAt: now, UserId: uid, Name: "テストデッキ",
+	}).Error)
+
+	createRecord := func(recordId string, userId string, deckCodeId string, ignoreStats bool) {
+		t.Helper()
+
+		require.NoError(t, db.Create(&model.Record{
+			ID: recordId, CreatedAt: now, UpdatedAt: now, UserId: userId, DeckId: deckId,
+			DeckCodeId: deckCodeId, EventDate: eventDate, RegulationId: entity.RegulationIdStandard,
+			IgnoreStatsFlg: ignoreStats,
+		}).Error)
+	}
+	createMatch := func(matchId string, recordId string, userId string, victory bool, draw bool, defaultVictory bool) {
+		t.Helper()
+
+		require.NoError(t, db.Create(&model.Match{
+			ID: matchId, CreatedAt: now, UpdatedAt: now, RecordId: recordId, UserId: userId,
+			DeckId: deckId, VictoryFlg: victory, DrawFlg: draw, DefaultVictoryFlg: defaultVictory,
+			// 引き分けは BO3 にしか無い(matches_draw_bo3_chk)
+			BO3Flg: draw,
+		}).Error)
+	}
+
+	// v1: 1勝1敗、v2: 1勝1分 + 不戦勝1
+	createRecord("rec-v1", uid, "deckcode-v1", false)
+	createMatch("mat-v1-1", "rec-v1", uid, true, false, false)
+	createMatch("mat-v1-2", "rec-v1", uid, false, false, false)
+	createRecord("rec-v2", uid, "deckcode-v2", false)
+	createMatch("mat-v2-1", "rec-v2", uid, true, false, false)
+	createMatch("mat-v2-2", "rec-v2", uid, false, true, false)
+	createMatch("mat-v2-3", "rec-v2", uid, true, false, true)
+	// バージョン未指定の記録
+	createRecord("rec-none", uid, "", false)
+	createMatch("mat-none-1", "rec-none", uid, true, false, false)
+	// 集計対象外の記録・他人の記録(同じデッキIDを名乗っていても数えない)
+	createRecord("rec-ignored", uid, "deckcode-v1", true)
+	createMatch("mat-ignored-1", "rec-ignored", uid, true, false, false)
+	createRecord("rec-other", otherUid, "deckcode-v1", false)
+	createMatch("mat-other-1", "rec-other", otherUid, true, false, false)
+
+	stat, err := NewDeckUsageStat(db).FindDeckCodeUsageStat(context.Background(), uid, deckId, true)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, stat.UnassignedCount)
+
+	byId := map[string]*entity.DeckCodeUsage{}
+	for _, dc := range stat.DeckCodes {
+		byId[dc.DeckCodeId] = dc
+	}
+	require.Len(t, byId, 2)
+
+	require.Equal(t, 2, byId["deckcode-v1"].Count)
+	require.Equal(t, 1, byId["deckcode-v1"].Wins)
+	require.Equal(t, 1, byId["deckcode-v1"].Losses)
+
+	// 不戦勝は外れ、引き分けは負けに数えない
+	require.Equal(t, 2, byId["deckcode-v2"].Count)
+	require.Equal(t, 1, byId["deckcode-v2"].Wins)
+	require.Equal(t, 0, byId["deckcode-v2"].Losses)
+	require.Equal(t, 1, byId["deckcode-v2"].Draws)
+	require.InDelta(t, 1.0, byId["deckcode-v2"].WinRate, 1e-9)
+}

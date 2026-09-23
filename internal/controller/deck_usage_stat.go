@@ -18,6 +18,8 @@ import (
 
 const (
 	DeckUsageStatsPath = "/deck_usage"
+	// DeckCodeUsageStatsPath はデッキの成績をバージョン(デッキコード)ごとに分けて返す。
+	DeckCodeUsageStatsPath = "/deck_code_usage"
 )
 
 type DeckUsageStat struct {
@@ -40,6 +42,15 @@ func (c *DeckUsageStat) RegisterRoute(relativePath string) {
 		authorization.DeckUsageStatAuthorizationMiddleware(),
 		validation.DeckUsageStatGetMiddleware(),
 		c.GetByUserId,
+	)
+	// 自分の成績だけを返す(他人の :id は DeckUsageStatAuthorizationMiddleware が 403 にする)。
+	// 集計でも records.user_id で絞るため、他人のデッキIDを渡されても何も数えない。
+	r.GET(
+		"/:id"+DeckCodeUsageStatsPath,
+		authentication.RequiredAuthenticationMiddleware(),
+		authorization.DeckUsageStatAuthorizationMiddleware(),
+		validation.DeckCodeUsageStatGetMiddleware(),
+		c.GetDeckCodeUsageByUserId,
 	)
 }
 
@@ -66,6 +77,22 @@ func (c *DeckUsageStat) GetByUserId(ctx *gin.Context) {
 	}
 
 	res := presenter.NewDeckUsageStatResponse(stat, week, yearMonth, environmentId, season, standardRegulationId, regulationId)
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+func (c *DeckUsageStat) GetDeckCodeUsageByUserId(ctx *gin.Context) {
+	uid := helper.GetId(ctx)
+	deckId := helper.GetDeckId(ctx)
+	excludeDefaultMatches := helper.GetExcludeDefaultMatches(ctx)
+
+	stat, err := c.usecase.GetDeckCodeUsageStat(ctx.Request.Context(), uid, deckId, excludeDefaultMatches)
+	if err != nil {
+		apierror.ErrInternalServerError.JSON(ctx, err)
+		return
+	}
+
+	res := presenter.NewDeckCodeUsageStatResponse(stat)
 
 	ctx.JSON(http.StatusOK, res)
 }

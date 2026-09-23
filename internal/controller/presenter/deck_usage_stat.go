@@ -58,3 +58,24 @@ func NewDeckUsageStatResponse(
 		Decks:                decks,
 	}
 }
+
+func NewDeckCodeUsageStatResponse(stat *entity.DeckCodeUsageStat) *dto.DeckCodeUsageStatResponse {
+	deckcodes := []*dto.DeckCodeUsageItemResponse{}
+	for _, dc := range stat.DeckCodes {
+		deckcodes = append(deckcodes, &dto.DeckCodeUsageItemResponse{
+			DeckCodeId: dc.DeckCodeId,
+			Count:      dc.Count,
+			Wins:       dc.Wins,
+			Losses:     dc.Losses,
+			Draws:      dc.Draws,
+			WinRate:    dc.WinRate,
+		})
+	}
+
+	return &dto.DeckCodeUsageStatResponse{
+		UserId:          stat.UserId,
+		DeckId:          stat.DeckId,
+		DeckCodes:       deckcodes,
+		UnassignedCount: stat.UnassignedCount,
+	}
+}

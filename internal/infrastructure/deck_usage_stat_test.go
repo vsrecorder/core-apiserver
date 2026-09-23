@@ -301,3 +301,57 @@ func test_DeckUsageStatInfrastructure_DefaultOnlyDeckRemains(t *testing.T) {
 	require.Equal(t, 1, deck.DefaultMatchCount)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+const deckCodeUsageStatQuery = `SELECT COALESCE(records.deck_code_id, '') AS deck_code_id, COUNT(matches.id) AS count, SUM(CASE WHEN matches.victory_flg THEN 1 ELSE 0 END) AS wins, SUM(CASE WHEN matches.draw_flg THEN 1 ELSE 0 END) AS draws FROM "matches" JOIN records ON matches.record_id = records.id WHERE records.user_id = $1 AND records.deck_id = $2 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL`
+
+var deckCodeUsageColumns = []string{"deck_code_id", "count", "wins", "draws"}
+
+func TestDeckUsageStatInfrastructure_FindDeckCodeUsageStat(t *testing.T) {
+	userId := "user-01"
+	deckId := "deck-01"
+
+	t.Run("正常系_バージョンごとの勝敗を集計し未指定の対戦は件数だけ返す", func(t *testing.T) {
+		i, mock, err := setup4DeckUsageStatInfrastructure()
+		require.NoError(t, err)
+
+		mock.ExpectQuery(regexp.QuoteMeta(deckCodeUsageStatQuery + ` GROUP BY COALESCE(records.deck_code_id, '')`)).
+			WithArgs(userId, deckId).
+			WillReturnRows(sqlmock.NewRows(deckCodeUsageColumns).
+				AddRow("deckcode-01", 12, 5, 0).
+				AddRow("deckcode-02", 5, 3, 1).
+				AddRow("", 4, 2, 0))
+
+		stat, err := i.FindDeckCodeUsageStat(context.Background(), userId, deckId, false)
+
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+		require.Equal(t, 4, stat.UnassignedCount)
+		require.Len(t, stat.DeckCodes, 2)
+
+		require.Equal(t, "deckcode-01", stat.DeckCodes[0].DeckCodeId)
+		require.Equal(t, 7, stat.DeckCodes[0].Losses)
+		require.InDelta(t, 5.0/12.0, stat.DeckCodes[0].WinRate, 1e-9)
+
+		// 引き分けは負けにも勝率の分母にも数えない
+		require.Equal(t, 1, stat.DeckCodes[1].Losses)
+		require.Equal(t, 1, stat.DeckCodes[1].Draws)
+		require.InDelta(t, 0.75, stat.DeckCodes[1].WinRate, 1e-9)
+	})
+
+	t.Run("正常系_不戦勝・不戦敗を外す指定なら条件を足す", func(t *testing.T) {
+		i, mock, err := setup4DeckUsageStatInfrastructure()
+		require.NoError(t, err)
+
+		// Where を重ねると GORM が各条件を括弧で包む
+		mock.ExpectQuery(regexp.QuoteMeta(`SELECT COALESCE(records.deck_code_id, '') AS deck_code_id, COUNT(matches.id) AS count, SUM(CASE WHEN matches.victory_flg THEN 1 ELSE 0 END) AS wins, SUM(CASE WHEN matches.draw_flg THEN 1 ELSE 0 END) AS draws FROM "matches" JOIN records ON matches.record_id = records.id WHERE (records.user_id = $1 AND records.deck_id = $2 AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL) AND (matches.default_victory_flg = false AND matches.default_defeat_flg = false) GROUP BY COALESCE(records.deck_code_id, '')`)).
+			WithArgs(userId, deckId).
+			WillReturnRows(sqlmock.NewRows(deckCodeUsageColumns))
+
+		stat, err := i.FindDeckCodeUsageStat(context.Background(), userId, deckId, true)
+
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+		require.Empty(t, stat.DeckCodes)
+		require.Equal(t, 0, stat.UnassignedCount)
+	})
+}

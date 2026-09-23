@@ -42,6 +42,21 @@ func (m *MockDeckUsageStatInterface) EXPECT() *MockDeckUsageStatInterfaceMockRec
 	return m.recorder
 }
 
+// FindDeckCodeUsageStat mocks base method.
+func (m *MockDeckUsageStatInterface) FindDeckCodeUsageStat(ctx context.Context, userId, deckId string, excludeDefaultMatches bool) (*entity.DeckCodeUsageStat, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindDeckCodeUsageStat", ctx, userId, deckId, excludeDefaultMatches)
+	ret0, _ := ret[0].(*entity.DeckCodeUsageStat)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindDeckCodeUsageStat indicates an expected call of FindDeckCodeUsageStat.
+func (mr *MockDeckUsageStatInterfaceMockRecorder) FindDeckCodeUsageStat(ctx, userId, deckId, excludeDefaultMatches any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDeckCodeUsageStat", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).FindDeckCodeUsageStat), ctx, userId, deckId, excludeDefaultMatches)
+}
+
 // FindDeckUsageStat mocks base method.
 func (m *MockDeckUsageStatInterface) FindDeckUsageStat(ctx context.Context, userId string, period repository.StatPeriod, regulationId uint, excludeDefaultMatches bool) (*entity.DeckUsageStat, error) {
 	m.ctrl.T.Helper()

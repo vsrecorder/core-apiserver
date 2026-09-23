@@ -276,3 +276,56 @@ func (i *DeckUsageStat) FindDeckUsageStat(
 
 	return entity.NewDeckUsageStat(userId, totalMatches, decks), nil
 }
+
+// deckCodeUsageResult はバージョン(デッキコード)ごとの対戦成績の集計行。
+type deckCodeUsageResult struct {
+	DeckCodeId string
+	Count      int
+	Wins       int
+	Draws      int
+}
+
+func (i *DeckUsageStat) FindDeckCodeUsageStat(
+	ctx context.Context,
+	userId string,
+	deckId string,
+	excludeDefaultMatches bool,
+) (*entity.DeckCodeUsageStat, error) {
+	var results []deckCodeUsageResult
+
+	// FindDeckUsageStat と同じく records 側の deck_id / deck_code_id を正とする
+	// (matches 側は記録後にデッキを変更しても更新されないため)。
+	// user_id を必ず条件に含めるのは、デッキIDだけで絞ると他人の非公開記録まで数えてしまうため。
+	// 勝敗は対戦(matches)単位で数えればよく、先攻/後攻は使わないので games は結合しない。
+	query := i.db.Table("matches").
+		Select("COALESCE(records.deck_code_id, '') AS deck_code_id, COUNT(matches.id) AS count, SUM(CASE WHEN matches.victory_flg THEN 1 ELSE 0 END) AS wins, SUM(CASE WHEN matches.draw_flg THEN 1 ELSE 0 END) AS draws").
+		Joins("JOIN records ON matches.record_id = records.id").
+		Where("records.user_id = ? AND records.deck_id = ? AND records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL", userId, deckId)
+
+	query = applyExcludeDefaultMatches(query, excludeDefaultMatches)
+
+	query = query.Group("COALESCE(records.deck_code_id, '')")
+
+	if tx := query.Scan(&results); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, tx.Error
+	}
+
+	stat := &entity.DeckCodeUsageStat{
+		UserId:    userId,
+		DeckId:    deckId,
+		DeckCodes: []*entity.DeckCodeUsage{},
+	}
+
+	for _, r := range results {
+		// バージョン未指定の記録はどのバージョンにも振り分けられないので件数だけ返す
+		if r.DeckCodeId == "" {
+			stat.UnassignedCount += r.Count
+			continue
+		}
+
+		stat.DeckCodes = append(stat.DeckCodes, entity.NewDeckCodeUsage(r.DeckCodeId, r.Count, r.Wins, r.Draws))
+	}
+
+	return stat, nil
+}

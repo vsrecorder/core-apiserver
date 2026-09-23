@@ -87,3 +87,48 @@ func NewDeckUsageStat(
 		Decks:        decks,
 	}
 }
+
+// DeckCodeUsage はデッキの1バージョン(デッキコード)で戦った対戦の成績を表す。
+// デッキ詳細の「あゆみ」で、どのバージョンが一番勝てていたかを示すために使う。
+type DeckCodeUsage struct {
+	DeckCodeId string
+	Count      int
+	Wins       int
+	Losses     int
+	Draws      int
+	// WinRate は勝ち/(勝ち+負け)。引き分けは分母に含めない(DeckUsage と同じ定義)。
+	WinRate float64
+}
+
+func NewDeckCodeUsage(
+	deckCodeId string,
+	count int,
+	wins int,
+	draws int,
+) *DeckCodeUsage {
+	// 引き分けは負けに数えない。勝率も分母から除外する(DeckUsage と同じ)。
+	losses := count - wins - draws
+	var winRate float64
+	if decided := wins + losses; decided > 0 {
+		winRate = float64(wins) / float64(decided)
+	}
+
+	return &DeckCodeUsage{
+		DeckCodeId: deckCodeId,
+		Count:      count,
+		Wins:       wins,
+		Losses:     losses,
+		Draws:      draws,
+		WinRate:    winRate,
+	}
+}
+
+// DeckCodeUsageStat は1つのデッキの対戦成績をバージョン(デッキコード)ごとに分けたもの。
+type DeckCodeUsageStat struct {
+	UserId    string
+	DeckId    string
+	DeckCodes []*DeckCodeUsage
+	// UnassignedCount はバージョンを指定せずに記録した対戦の数。
+	// どのバージョンの成績にも入らないため、画面で「内訳に含まれない対戦がある」ことを示すのに使う。
+	UnassignedCount int
+}

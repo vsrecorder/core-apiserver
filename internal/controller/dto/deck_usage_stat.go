@@ -32,3 +32,19 @@ type DeckUsageStatResponse struct {
 	TotalRecords         int                      `json:"total_records"`
 	Decks                []*DeckUsageItemResponse `json:"decks"`
 }
+
+type DeckCodeUsageItemResponse struct {
+	DeckCodeId string  `json:"deck_code_id"`
+	Count      int     `json:"count"`
+	Wins       int     `json:"wins"`
+	Losses     int     `json:"losses"`
+	Draws      int     `json:"draws"`
+	WinRate    float64 `json:"win_rate"`
+}
+
+type DeckCodeUsageStatResponse struct {
+	UserId          string                       `json:"user_id"`
+	DeckId          string                       `json:"deck_id"`
+	DeckCodes       []*DeckCodeUsageItemResponse `json:"deck_codes"`
+	UnassignedCount int                          `json:"unassigned_count"`
+}

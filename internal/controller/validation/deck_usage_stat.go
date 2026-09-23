@@ -57,3 +57,24 @@ func DeckUsageStatGetMiddleware() gin.HandlerFunc {
 		helper.SetExcludeDefaultMatches(ctx, excludeDefaultMatches)
 	}
 }
+
+// DeckCodeUsageStatGetMiddleware はバージョン別成績の取得条件を検証する。
+// deck_id は必須。無いとユーザーの全デッキの対戦がバージョン別に混ざって返ってしまい、
+// 画面側で使い道がないため 400 にする。
+func DeckCodeUsageStatGetMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		deckId := helper.GetQueryDeckId(ctx)
+		if deckId == "" || exceedsLength(deckId, MaxEntityIdLength) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+		helper.SetDeckId(ctx, deckId)
+
+		excludeDefaultMatches, err := helper.ParseQueryExcludeDefaultMatches(ctx)
+		if err != nil {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+		helper.SetExcludeDefaultMatches(ctx, excludeDefaultMatches)
+	}
+}

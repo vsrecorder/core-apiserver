@@ -140,9 +140,10 @@ GET /api/v1beta/deck_meta/weekly_usage?week=YYYY-MM-DD&grouping=exact|first_spri
   全行が NEW になる
 
 UI 表示(`WeeklyDeckUsagePanel.tsx`): 順位バッジの下に ▲n/▼n/−/NEW、使用率の右と
-勝率チップの隣にポイント差(+1.2pt / -0.8pt)。使用率のポイント差は表示中の基準に
-合わせる — 「全体」では `previous_usage_rate`、「その他を除いた割合」では
-`previous_usage_rate_excl_other`(前週の除外後分母で計算した使用率)と比較する。
+勝率チップの隣にポイント差(+1.2pt / -0.8pt)。使用率は「その他」を含む全体件数を
+分母にした値だけを扱い、ポイント差は `previous_usage_rate` と比較する。
+(以前あった「その他を除いた割合」の表示と、その前週差用の `previous_usage_rate_excl_other` は
+2026-09 に廃止した。画面ごとに分母が違い、同じデッキの使用率が食い違っていたため)
 
 ---
 

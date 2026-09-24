@@ -16,8 +16,6 @@ type WeeklyDeckUsageItemResponse struct {
 	PreviousRank      *int     `json:"previous_rank,omitempty"`
 	PreviousUsageRate *float64 `json:"previous_usage_rate,omitempty"`
 	PreviousWinRate   *float64 `json:"previous_win_rate,omitempty"`
-	// 前週の「その他を除いた分母」での使用率。「その他を除いた割合」表示の前週差に使う。
-	PreviousUsageRateExclOther *float64 `json:"previous_usage_rate_excl_other,omitempty"`
 }
 
 type WeeklyDeckUsageStatResponse struct {

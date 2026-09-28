@@ -638,6 +638,12 @@ CREATE TABLE cityleague_results (
     rank                                 SMALLINT NOT NULL,
     point                                SMALLINT NOT NULL,
     deck_code                            VARCHAR(21) NOT NULL,
+    -- 行が取り込まれた日時。大会結果一覧で、同じ開催日の大会を追加の新しい順に並べるのに使う。
+    -- 取り込み(import-cityleague-result-job 等の db.Save)はこの列をモデルに持たないので、
+    -- 挿入時は既定値が入り、再取り込みの UPDATE では書き換わらない。
+    -- 既存の環境へは ALTER TABLE cityleague_results ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+    -- で追加する(既存行は追加した時刻で一律になり、それらの並びは従来どおり official_event_id 順)。
+    created_at                           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cityleague_schedule_id) REFERENCES cityleague_schedules (id),
     FOREIGN KEY (official_event_id)      REFERENCES official_events (id)
 );

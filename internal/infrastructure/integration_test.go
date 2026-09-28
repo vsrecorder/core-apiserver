@@ -1213,6 +1213,96 @@ func TestIntegrationCityleagueResultFindByPlayerId(t *testing.T) {
 	})
 }
 
+// 大会結果一覧(FindByTerm / FindByDate)の並び。同じ開催日の中は結果が追加された新しい順で、
+// 窓関数(MIN(created_at) OVER ...)の効き方は sqlmock では確認できないため実DBで確かめる。
+func TestIntegrationCityleagueResultOrderByAdded(t *testing.T) {
+	db := setupIntegrationDB(t, "cityleague_results", "official_events")
+
+	day1 := time.Date(2026, 4, 5, 0, 0, 0, 0, time.Local)
+	day2 := time.Date(2026, 4, 12, 0, 0, 0, 0, time.Local)
+
+	for _, e := range []struct {
+		id   uint
+		date time.Time
+	}{{952749, day1}, {952750, day1}, {952751, day1}, {952752, day2}} {
+		require.NoError(t, db.Exec(
+			`INSERT INTO official_events (id, title, address, date) VALUES (?, ?, ?, ?)`,
+			e.id, "シティリーグ2026 シーズン4", "東京都", e.date,
+		).Error)
+	}
+
+	base := time.Date(2026, 4, 13, 10, 0, 0, 0, time.Local)
+	insertResult := func(officialEventId uint, eventDate time.Time, playerId string, point uint, addedAt time.Time) {
+		t.Helper()
+		require.NoError(t, db.Create(&model.CityleagueResult{
+			CityleagueScheduleId: "2026s4",
+			OfficialEventId:      officialEventId,
+			LeagueType:           1,
+			EventDate:            eventDate,
+			PlayerId:             playerId,
+			PlayerName:           "テストプレイヤー",
+			Rank:                 1,
+			Point:                point,
+			DeckCode:             "gnnHHn-Vg3aWc-LHNnHH",
+		}).Error)
+		// モデルは created_at を持たないので、取り込み時刻は後から書き換えて作る
+		require.NoError(t, db.Exec(
+			`UPDATE cityleague_results SET created_at = ? WHERE official_event_id = ? AND player_id = ?`,
+			addedAt, officialEventId, playerId,
+		).Error)
+	}
+
+	// 4/5 開催: 952749 → 952750 → 952751 の順に取り込まれた(official_event_id の順とは逆に並ぶべき)。
+	// 952751 は入賞者ごとに取り込み時刻がずれ、point の低い方が先に入っている
+	insertResult(952749, day1, "0000000001", 15, base)
+	insertResult(952750, day1, "0000000002", 15, base.Add(1*time.Minute))
+	insertResult(952751, day1, "0000000003", 12, base.Add(2*time.Minute))
+	insertResult(952751, day1, "0000000004", 15, base.Add(5*time.Minute))
+	// 4/12 開催: 取り込みは最も古いが、開催日が新しいので先頭に来る
+	insertResult(952752, day2, "0000000005", 15, base.Add(-1*time.Hour))
+
+	ctx := context.Background()
+	r := NewCityleagueResult(db)
+
+	eventIds := func(results []*entity.CityleagueResult) []uint {
+		ids := []uint{}
+		for _, result := range results {
+			ids = append(ids, result.OfficialEventId)
+		}
+		return ids
+	}
+
+	t.Run("正常系_FindByTermは開催日の新しい順_同じ日の中は追加の新しい順", func(t *testing.T) {
+		ret, err := r.FindByTerm(ctx, 1, day1, day2)
+
+		require.NoError(t, err)
+		require.Equal(t, []uint{952752, 952751, 952750, 952749}, eventIds(ret))
+
+		// 取り込み時刻が入賞者ごとにずれても、大会の中は point の高い順のまま
+		require.Len(t, ret[1].EventResults, 2)
+		require.Equal(t, uint(15), ret[1].EventResults[0].Point)
+		require.Equal(t, uint(12), ret[1].EventResults[1].Point)
+	})
+
+	t.Run("正常系_FindByDateは追加の新しい順", func(t *testing.T) {
+		ret, err := r.FindByDate(ctx, 1, day1)
+
+		require.NoError(t, err)
+		require.Equal(t, []uint{952751, 952750, 952749}, eventIds(ret))
+	})
+
+	t.Run("正常系_取り込み時刻が同じならofficial_event_idの順", func(t *testing.T) {
+		require.NoError(t, db.Exec(
+			`UPDATE cityleague_results SET created_at = ? WHERE event_date = ?`, base, day1,
+		).Error)
+
+		ret, err := r.FindByDate(ctx, 1, day1)
+
+		require.NoError(t, err)
+		require.Equal(t, []uint{952749, 952750, 952751}, eventIds(ret))
+	})
+}
+
 // 記録のレギュレーション(records.regulation_id)。FK制約とDEFAULTの効き方は
 // sqlmockでは確認できないため、実DBで往復させる。
 func TestIntegrationRecordRegulation(t *testing.T) {

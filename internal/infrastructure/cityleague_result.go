@@ -252,6 +252,15 @@ func (i *CityleagueResult) FindByCityleagueScheduleId(
 	return ret, nil
 }
 
+// orderByAddedDesc は、大会(official_event_id)を結果が追加された新しい順に並べる ORDER BY の項。
+//
+// 大会結果一覧(webapp の /cityleague_results)は開催日ごとに1日ずつ読み込み、同じ開催日の中を
+// この順に並べる(直近に取り込まれた大会ほど上に出す)。
+// created_at は入賞者1人につき1行ずつ入り、同じ大会の中でも取り込みの間隔ぶん少しずつずれる。
+// 行単位で並べると同じ大会の入賞者が point 順にならないので、大会ごとの最初の取り込み時刻
+// (MIN)にそろえてから並べる。同時刻(created_at 追加前からある行など)は従来の順に落ちる。
+const orderByAddedDesc = "MIN(created_at) OVER (PARTITION BY official_event_id) DESC"
+
 func (i *CityleagueResult) FindByDate(
 	ctx context.Context,
 	leagueType uint,
@@ -259,12 +268,12 @@ func (i *CityleagueResult) FindByDate(
 ) ([]*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
 	if leagueType == 0 {
-		if tx := i.db.Where("event_date = ?", date).Order("league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("event_date = ?", date).Order(orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.db.Where("league_type = ? AND event_date = ?", leagueType, date).Order("league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("league_type = ? AND event_date = ?", leagueType, date).Order(orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
@@ -318,12 +327,12 @@ func (i *CityleagueResult) FindByTerm(
 ) ([]*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
 	if leagueType == 0 {
-		if tx := i.db.Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date DESC, "+orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.db.Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.db.Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date DESC, "+orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}

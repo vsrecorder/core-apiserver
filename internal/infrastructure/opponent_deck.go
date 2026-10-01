@@ -67,10 +67,10 @@ func (i *OpponentDeck) FindByUserId(
 	var rows []opponentDeckRow
 
 	query := opponentDeckMatches(i.db, userId).
-		Select("matches.opponents_deck_info AS opponents_deck_info, "+
-			"COALESCE(s1.pokemon_sprite_id, '') AS sprite1, "+
-			"COALESCE(s2.pokemon_sprite_id, '') AS sprite2, "+
-			"COUNT(*) AS count, "+
+		Select("matches.opponents_deck_info AS opponents_deck_info, " +
+			"COALESCE(s1.pokemon_sprite_id, '') AS sprite1, " +
+			"COALESCE(s2.pokemon_sprite_id, '') AS sprite2, " +
+			"COUNT(*) AS count, " +
 			"TO_CHAR(MAX(records.event_date), 'YYYY-MM-DD') AS last_event_date").
 		Where("matches.opponents_deck_info <> '' OR s1.pokemon_sprite_id IS NOT NULL OR s2.pokemon_sprite_id IS NOT NULL").
 		Group("matches.opponents_deck_info, sprite1, sprite2").

@@ -665,6 +665,14 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	// 自分の対戦結果に付けた相手デッキの一覧と、同じ組み合わせの対戦をまとめて置き換える一括編集。
+	controller.NewOpponentDeck(
+		r,
+		usecase.NewOpponentDeck(
+			infrastructure.NewOpponentDeck(db),
+		),
+	).RegisterRoute(relativePath)
+
 	// 活動ログのカレンダー。記録・対戦結果・デッキ・デッキコードと参照先のイベント情報を
 	// まとめて返し、呼び出し側が記録1件ごとにAPIを呼ばずに済むようにする。
 	controller.NewCalendar(

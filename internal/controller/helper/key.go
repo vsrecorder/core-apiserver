@@ -664,3 +664,14 @@ func GetDeckCodePostCreateRequest(ctx *gin.Context) dto.DeckCodePostCreateReques
 
 	return req
 }
+
+func SetOpponentDeckReplaceRequest(ctx *gin.Context, value dto.OpponentDeckReplaceRequest) {
+	ctx.Set("opponent_deck_replace_request", value)
+}
+
+func GetOpponentDeckReplaceRequest(ctx *gin.Context) dto.OpponentDeckReplaceRequest {
+	value, _ := ctx.Get("opponent_deck_replace_request")
+	req, _ := value.(dto.OpponentDeckReplaceRequest)
+
+	return req
+}

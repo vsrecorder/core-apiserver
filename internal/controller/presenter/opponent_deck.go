@@ -31,6 +31,42 @@ func NewOpponentDecksGetResponse(
 	}
 }
 
+func NewOpponentDeckMatchesGetResponse(
+	matches []*entity.OpponentDeckMatch,
+) *dto.OpponentDeckMatchesGetResponse {
+	data := make([]*dto.OpponentDeckMatchResponse, 0, len(matches))
+	for _, match := range matches {
+		games := make([]*dto.OpponentDeckMatchGameResponse, 0, len(match.Games))
+		for _, game := range match.Games {
+			games = append(games, &dto.OpponentDeckMatchGameResponse{
+				GoFirst:    game.GoFirst,
+				WinningFlg: game.WinningFlg,
+			})
+		}
+
+		data = append(data, &dto.OpponentDeckMatchResponse{
+			ID:                   match.MatchId,
+			RecordId:             match.RecordId,
+			EventDate:            match.EventDate,
+			EventType:            match.EventType,
+			EventTitle:           match.EventTitle,
+			DeckName:             match.DeckName,
+			BO3Flg:               match.BO3Flg,
+			GroupMatchFlg:        match.GroupMatchFlg,
+			GroupMatchVictoryFlg: match.GroupMatchVictoryFlg,
+			DefaultVictoryFlg:    match.DefaultVictoryFlg,
+			DefaultDefeatFlg:     match.DefaultDefeatFlg,
+			VictoryFlg:           match.VictoryFlg,
+			DrawFlg:              match.DrawFlg,
+			Games:                games,
+		})
+	}
+
+	return &dto.OpponentDeckMatchesGetResponse{
+		Data: data,
+	}
+}
+
 func NewOpponentDeckReplaceResponse(
 	updatedCount int,
 ) *dto.OpponentDeckReplaceResponse {

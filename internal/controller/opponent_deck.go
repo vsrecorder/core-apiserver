@@ -18,6 +18,8 @@ import (
 
 const (
 	OpponentDecksPath = "/opponent_decks"
+	// OpponentDeckMatchesPath は組み合わせ 1 つの対戦の一覧(/matches/opponent_decks/matches)。
+	OpponentDeckMatchesPath = OpponentDecksPath + MatchesPath
 )
 
 // OpponentDeck は自分の対戦結果に付けた相手デッキ(表記 × スプライト)の一覧と、一括での置き換え。
@@ -38,13 +40,19 @@ func NewOpponentDeck(
 	return &OpponentDeck{router, usecase}
 }
 
-// RegisterRoute は GET / PUT /matches/opponent_decks を登録する。
+// RegisterRoute は GET / PUT /matches/opponent_decks と GET /matches/opponent_decks/matches を登録する。
 func (c *OpponentDeck) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + MatchesPath)
 	r.GET(
 		OpponentDecksPath,
 		authentication.RequiredAuthenticationMiddleware(),
 		c.Get,
+	)
+	r.GET(
+		OpponentDeckMatchesPath,
+		authentication.RequiredAuthenticationMiddleware(),
+		validation.OpponentDeckMatchesGetMiddleware(),
+		c.GetMatches,
 	)
 	r.PUT(
 		OpponentDecksPath,
@@ -64,6 +72,21 @@ func (c *OpponentDeck) Get(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, presenter.NewOpponentDecksGetResponse(decks))
+}
+
+// GetMatches は組み合わせ 1 つの対戦を、どの記録でどんな結果だったかが分かる形で返す。
+// 一括編集で、置き換える前にその表記をどこで使ったかを確かめるために使う。
+func (c *OpponentDeck) GetMatches(ctx *gin.Context) {
+	uid := helper.GetUID(ctx)
+	spec := helper.GetOpponentDeckSpecRequest(ctx)
+
+	matches, err := c.usecase.FindMatches(ctx.Request.Context(), uid, opponentDeckSpecParamOf(&spec))
+	if err != nil {
+		apierror.ErrInternalServerError.JSON(ctx, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, presenter.NewOpponentDeckMatchesGetResponse(matches))
 }
 
 func (c *OpponentDeck) Replace(ctx *gin.Context) {

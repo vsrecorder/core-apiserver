@@ -57,6 +57,21 @@ func (mr *MockOpponentDeckInterfaceMockRecorder) FindByUserId(ctx, uid any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserId", reflect.TypeOf((*MockOpponentDeckInterface)(nil).FindByUserId), ctx, uid)
 }
 
+// FindMatches mocks base method.
+func (m *MockOpponentDeckInterface) FindMatches(ctx context.Context, uid string, param *usecase.OpponentDeckSpecParam) ([]*entity.OpponentDeckMatch, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindMatches", ctx, uid, param)
+	ret0, _ := ret[0].([]*entity.OpponentDeckMatch)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindMatches indicates an expected call of FindMatches.
+func (mr *MockOpponentDeckInterfaceMockRecorder) FindMatches(ctx, uid, param any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindMatches", reflect.TypeOf((*MockOpponentDeckInterface)(nil).FindMatches), ctx, uid, param)
+}
+
 // Replace mocks base method.
 func (m *MockOpponentDeckInterface) Replace(ctx context.Context, uid string, param *usecase.OpponentDeckReplaceParam) (int, error) {
 	m.ctrl.T.Helper()

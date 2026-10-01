@@ -19,6 +19,10 @@ const (
 	// 対戦の多い利用者でも、IN 句やスプライトの INSERT のプレースホルダが
 	// PostgreSQL の上限(65535)に届かないよう分けて書く。
 	opponentDeckReplaceChunkSize = 1000
+
+	// maxOpponentDeckMatches は組み合わせ 1 つについて返す対戦の上限。どの記録で使った表記かを
+	// 思い出すためのもので、新しいものから見えれば足りる。
+	maxOpponentDeckMatches = 100
 )
 
 type OpponentDeck struct {
@@ -47,6 +51,15 @@ func opponentDeckMatches(db *gorm.DB, userId string) *gorm.DB {
 		Joins("LEFT JOIN match_pokemon_sprites s1 ON s1.match_id = matches.id AND s1.position = 1").
 		Joins("LEFT JOIN match_pokemon_sprites s2 ON s2.match_id = matches.id AND s2.position = 2").
 		Where("matches.deleted_at IS NULL AND matches.user_id = ?", userId)
+}
+
+// whereOpponentDeckSpec は opponentDeckMatches を、相手デッキが spec と同じ組み合わせ
+// (表記と 1体目・2体目のスプライトがすべて一致)の対戦に絞る。対戦の一覧と置き換えで同じ判定を使う。
+func whereOpponentDeckSpec(db *gorm.DB, spec *entity.OpponentDeckSpec) *gorm.DB {
+	return db.
+		Where("matches.opponents_deck_info = ?", spec.OpponentsDeckInfo).
+		Where("COALESCE(s1.pokemon_sprite_id, '') = ? AND COALESCE(s2.pokemon_sprite_id, '') = ?",
+			spec.SpriteIdAt(1), spec.SpriteIdAt(2))
 }
 
 /*
@@ -98,6 +111,150 @@ func (i *OpponentDeck) FindByUserId(
 	return ret, nil
 }
 
+type opponentDeckMatchRow struct {
+	MatchId              string
+	RecordId             string
+	EventDate            string
+	OfficialEventId      uint
+	TonamelEventId       string
+	UnofficialEventId    string
+	OfficialEventTitle   string
+	TonamelEventTitle    string
+	UnofficialEventTitle string
+	DeckName             string
+	Bo3Flg               bool
+	GroupMatchFlg        bool
+	GroupMatchVictoryFlg bool
+	DefaultVictoryFlg    bool
+	DefaultDefeatFlg     bool
+	VictoryFlg           bool
+	DrawFlg              bool
+}
+
+type opponentDeckMatchGameRow struct {
+	MatchId    string
+	GoFirst    bool
+	WinningFlg bool
+}
+
+/*
+ * FindMatchesBySpec は spec と同じ組み合わせの対戦を、記録の見出し(開催日・イベント名・使用デッキ)と
+ * 対局の先攻・後攻と勝敗を付けて返す。一致の判定は Replace と同じで、ここに出た対戦が置き換わる。
+ *
+ * 並びは記録の開催日の新しい順(同じ日は記録を作った順の新しい順)、同じ記録の中は対戦の並び順。
+ * イベント名は記録の種類ごとに別のテーブルにあるので、3 つとも外部結合して Go で選ぶ。
+ * Tonamel の大会名は取得済みのもの(tonamel_events)だけを使い、外部サイトへは取りに行かない。
+ * 対局は対戦の数にかかわらず 1 文で引く。
+ */
+func (i *OpponentDeck) FindMatchesBySpec(
+	ctx context.Context,
+	userId string,
+	spec *entity.OpponentDeckSpec,
+) ([]*entity.OpponentDeckMatch, error) {
+	var rows []opponentDeckMatchRow
+
+	query := whereOpponentDeckSpec(opponentDeckMatches(i.db, userId), spec).
+		Joins("LEFT JOIN official_events ON official_events.id = records.official_event_id").
+		Joins("LEFT JOIN tonamel_events ON tonamel_events.id = records.tonamel_event_id").
+		Joins("LEFT JOIN unofficial_events ON unofficial_events.id = records.unofficial_event_id").
+		Joins("LEFT JOIN decks ON decks.id = records.deck_id").
+		Select("matches.id AS match_id, " +
+			"matches.record_id AS record_id, " +
+			"COALESCE(TO_CHAR(records.event_date, 'YYYY-MM-DD'), '') AS event_date, " +
+			"COALESCE(records.official_event_id, 0) AS official_event_id, " +
+			"COALESCE(records.tonamel_event_id, '') AS tonamel_event_id, " +
+			"COALESCE(records.unofficial_event_id, '') AS unofficial_event_id, " +
+			"COALESCE(official_events.title, '') AS official_event_title, " +
+			"COALESCE(tonamel_events.title, '') AS tonamel_event_title, " +
+			"COALESCE(unofficial_events.title, '') AS unofficial_event_title, " +
+			"COALESCE(decks.name, '') AS deck_name, " +
+			"matches.bo3_flg AS bo3_flg, " +
+			"matches.group_match_flg AS group_match_flg, " +
+			"matches.group_match_victory_flg AS group_match_victory_flg, " +
+			"matches.default_victory_flg AS default_victory_flg, " +
+			"matches.default_defeat_flg AS default_defeat_flg, " +
+			"matches.victory_flg AS victory_flg, " +
+			"matches.draw_flg AS draw_flg").
+		Order("records.event_date DESC NULLS LAST, records.created_at DESC, matches.position ASC, matches.created_at ASC").
+		Limit(maxOpponentDeckMatches)
+
+	if tx := query.Scan(&rows); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, tx.Error
+	}
+
+	if len(rows) == 0 {
+		return []*entity.OpponentDeckMatch{}, nil
+	}
+
+	matchIds := make([]string, 0, len(rows))
+	for _, row := range rows {
+		matchIds = append(matchIds, row.MatchId)
+	}
+
+	var gameRows []opponentDeckMatchGameRow
+	if tx := i.db.Table("games").
+		Select("match_id, COALESCE(go_first, false) AS go_first, COALESCE(winning_flg, false) AS winning_flg").
+		Where("deleted_at IS NULL AND match_id IN ?", matchIds).
+		Order("match_id ASC, created_at ASC").
+		Scan(&gameRows); tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, tx.Error
+	}
+
+	gamesByMatchId := make(map[string][]*entity.OpponentDeckMatchGame, len(rows))
+	for _, game := range gameRows {
+		gamesByMatchId[game.MatchId] = append(gamesByMatchId[game.MatchId], &entity.OpponentDeckMatchGame{
+			GoFirst:    game.GoFirst,
+			WinningFlg: game.WinningFlg,
+		})
+	}
+
+	ret := make([]*entity.OpponentDeckMatch, 0, len(rows))
+	for _, row := range rows {
+		eventType, eventTitle := opponentDeckMatchEventOf(row)
+
+		games := gamesByMatchId[row.MatchId]
+		if games == nil {
+			games = []*entity.OpponentDeckMatchGame{}
+		}
+
+		ret = append(ret, &entity.OpponentDeckMatch{
+			MatchId:              row.MatchId,
+			RecordId:             row.RecordId,
+			EventDate:            row.EventDate,
+			EventType:            eventType,
+			EventTitle:           eventTitle,
+			DeckName:             row.DeckName,
+			BO3Flg:               row.Bo3Flg,
+			GroupMatchFlg:        row.GroupMatchFlg,
+			GroupMatchVictoryFlg: row.GroupMatchVictoryFlg,
+			DefaultVictoryFlg:    row.DefaultVictoryFlg,
+			DefaultDefeatFlg:     row.DefaultDefeatFlg,
+			VictoryFlg:           row.VictoryFlg,
+			DrawFlg:              row.DrawFlg,
+			Games:                games,
+		})
+	}
+
+	return ret, nil
+}
+
+// opponentDeckMatchEventOf は記録のイベントの種類とタイトルを決める。
+// 判定の順(公式 → Tonamel → 自由形式)は webapp の記録カードの出し分けと同じ。
+func opponentDeckMatchEventOf(row opponentDeckMatchRow) (string, string) {
+	switch {
+	case row.OfficialEventId != 0:
+		return "official", row.OfficialEventTitle
+	case row.TonamelEventId != "":
+		return "tonamel", row.TonamelEventTitle
+	case row.UnofficialEventId != "":
+		return "unofficial", row.UnofficialEventTitle
+	default:
+		return "", ""
+	}
+}
+
 /*
  * Replace は from と同じ組み合わせの対戦を探し、表記とスプライトを to に置き換える。
  *
@@ -116,10 +273,7 @@ func (i *OpponentDeck) Replace(
 
 	err := dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
 		var ids []string
-		if err := opponentDeckMatches(tx, userId).
-			Where("matches.opponents_deck_info = ?", from.OpponentsDeckInfo).
-			Where("COALESCE(s1.pokemon_sprite_id, '') = ? AND COALESCE(s2.pokemon_sprite_id, '') = ?",
-				from.SpriteIdAt(1), from.SpriteIdAt(2)).
+		if err := whereOpponentDeckSpec(opponentDeckMatches(tx, userId), from).
 			Order("matches.id ASC").
 			Pluck("matches.id", &ids).Error; err != nil {
 			logError(ctx, err)

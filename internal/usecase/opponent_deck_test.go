@@ -57,3 +57,40 @@ func TestOpponentDeckUsecase_Replace(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestOpponentDeckUsecase_FindMatches(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+
+	t.Run("正常系_指定を組み合わせにしてリポジトリの結果を返す", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mockRepository := mock_repository.NewMockOpponentDeckInterface(mockCtrl)
+		u := NewOpponentDeck(mockRepository)
+
+		matches := []*entity.OpponentDeckMatch{{MatchId: "01K6MATCH1", RecordId: "01K6RECORD1"}}
+		mockRepository.EXPECT().FindMatchesBySpec(gomock.Any(), uid, gomock.Any()).DoAndReturn(
+			func(_ context.Context, _ string, spec *entity.OpponentDeckSpec) ([]*entity.OpponentDeckMatch, error) {
+				require.Equal(t, "ドラパ", spec.OpponentsDeckInfo)
+				require.Equal(t, "", spec.SpriteIdAt(1))
+				require.Equal(t, "0887", spec.SpriteIdAt(2))
+				return matches, nil
+			})
+
+		ret, err := u.FindMatches(context.Background(), uid,
+			NewOpponentDeckSpecParam("ドラパ", []*PokemonSpriteParam{NewPokemonSpriteParamWithPosition("0887", 2)}))
+
+		require.NoError(t, err)
+		require.Equal(t, matches, ret)
+	})
+
+	t.Run("異常系_リポジトリのエラーを返す", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mockRepository := mock_repository.NewMockOpponentDeckInterface(mockCtrl)
+		u := NewOpponentDeck(mockRepository)
+
+		mockRepository.EXPECT().FindMatchesBySpec(gomock.Any(), uid, gomock.Any()).Return(nil, errors.New(""))
+
+		_, err := u.FindMatches(context.Background(), uid, NewOpponentDeckSpecParam("ドラパ", nil))
+
+		require.Error(t, err)
+	})
+}

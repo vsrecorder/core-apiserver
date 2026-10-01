@@ -46,6 +46,14 @@ type OpponentDeckInterface interface {
 		uid string,
 	) ([]*entity.OpponentDeck, error)
 
+	// FindMatches は uid 自身の対戦結果のうち、相手デッキが param と同じ組み合わせのものを、
+	// 記録の開催日の新しい順に返す。
+	FindMatches(
+		ctx context.Context,
+		uid string,
+		param *OpponentDeckSpecParam,
+	) ([]*entity.OpponentDeckMatch, error)
+
 	// Replace は uid 自身の対戦結果のうち、相手デッキが param.From と同じものを param.To に
 	// 置き換え、置き換えた対戦の数を返す。
 	Replace(
@@ -76,6 +84,20 @@ func (u *OpponentDeck) FindByUserId(
 	}
 
 	return decks, nil
+}
+
+func (u *OpponentDeck) FindMatches(
+	ctx context.Context,
+	uid string,
+	param *OpponentDeckSpecParam,
+) ([]*entity.OpponentDeckMatch, error) {
+	matches, err := u.repository.FindMatchesBySpec(ctx, uid, opponentDeckSpecOf(param))
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
+	return matches, nil
 }
 
 func (u *OpponentDeck) Replace(

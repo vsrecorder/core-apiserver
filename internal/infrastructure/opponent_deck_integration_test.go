@@ -183,3 +183,115 @@ func TestIntegrationOpponentDeck(t *testing.T) {
 	require.Equal(t, "ドラパルトex", infoOf("m-a-1"))
 	require.Equal(t, []string{"0887", "0006"}, spritesOf("m-a-1"))
 }
+
+// 組み合わせ 1 つの対戦の一覧を実DBで確認する。イベント名は記録の種類ごとに別のテーブルを
+// 外部結合して選ぶので、結合の条件と種類の判定がスキーマと合っているかを見る。
+func TestIntegrationOpponentDeckMatches(t *testing.T) {
+	db := setupIntegrationDB(t,
+		"games", "match_pokemon_sprites", "matches", "records", "decks",
+		"unofficial_events", "tonamel_events", "official_events", "pokemon_sprites")
+
+	const (
+		userA = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		userB = "KBp7roRDZobZg1t0OPzFR1kvLeO2"
+	)
+
+	now := time.Now().Local().Truncate(time.Microsecond)
+	dateOf := func(day int) time.Time { return time.Date(2026, 9, day, 0, 0, 0, 0, time.UTC) }
+
+	require.NoError(t, db.Create(&model.PokemonSprite{ID: "0887", Name: "ドラパルト"}).Error)
+	require.NoError(t, db.Exec(
+		"INSERT INTO official_events (id, title, address, date) VALUES (?, ?, ?, ?)",
+		700001, "シティリーグ 東京", "東京都", dateOf(28)).Error)
+	require.NoError(t, db.Create(&model.TonamelEvent{ID: "AbCd1", Title: "Tonamel杯", CreatedAt: now, UpdatedAt: now}).Error)
+	require.NoError(t, db.Create(&model.UnofficialEvent{
+		ID: "unofficial-1", CreatedAt: now, UpdatedAt: now, UserId: userA, Title: "身内の大会", Date: dateOf(20),
+	}).Error)
+	require.NoError(t, db.Create(&model.Deck{ID: "deck-a", CreatedAt: now, UpdatedAt: now, UserId: userA, Name: "サーナイト"}).Error)
+
+	createRecord := func(record *model.Record) {
+		t.Helper()
+		record.CreatedAt, record.UpdatedAt = now, now
+		require.NoError(t, db.Create(record).Error)
+	}
+	createRecord(&model.Record{ID: "rec-official", UserId: userA, OfficialEventId: 700001, DeckId: "deck-a", EventDate: dateOf(28)})
+	createRecord(&model.Record{ID: "rec-tonamel", UserId: userA, TonamelEventId: "AbCd1", EventDate: dateOf(25)})
+	// 大会名を取得していない Tonamel の記録は、種類だけ分かってタイトルは空
+	createRecord(&model.Record{ID: "rec-tonamel-unknown", UserId: userA, TonamelEventId: "ZzZz9", EventDate: dateOf(22)})
+	createRecord(&model.Record{ID: "rec-unofficial", UserId: userA, UnofficialEventId: "unofficial-1", EventDate: dateOf(20)})
+	createRecord(&model.Record{ID: "rec-b", UserId: userB, OfficialEventId: 700001, EventDate: dateOf(28)})
+
+	createMatch := func(match *model.Match, sprite1 string) {
+		t.Helper()
+		match.CreatedAt, match.UpdatedAt = now, now
+		require.NoError(t, db.Create(match).Error)
+		if sprite1 != "" {
+			require.NoError(t, db.Create(&model.MatchPokemonSprite{MatchId: match.ID, Position: 1, PokemonSpriteId: sprite1}).Error)
+		}
+	}
+	createGame := func(id string, matchId string, goFirst bool, winning bool) {
+		t.Helper()
+		require.NoError(t, db.Create(&model.Game{
+			ID: id, CreatedAt: now, UpdatedAt: now, MatchId: matchId, UserId: userA, GoFirst: goFirst, WinningFlg: winning,
+		}).Error)
+		// 対局は作った順に並べる
+		now = now.Add(time.Second)
+	}
+
+	// 同じ記録の中は対戦の並び順(position)で返す
+	createMatch(&model.Match{ID: "m-official-2", RecordId: "rec-official", UserId: userA, OpponentsDeckInfo: "ドラパ", Position: 2, BO3Flg: true, VictoryFlg: true}, "0887")
+	createMatch(&model.Match{ID: "m-official-1", RecordId: "rec-official", UserId: userA, OpponentsDeckInfo: "ドラパ", Position: 1}, "0887")
+	createMatch(&model.Match{ID: "m-tonamel", RecordId: "rec-tonamel", UserId: userA, OpponentsDeckInfo: "ドラパ", VictoryFlg: true}, "0887")
+	createMatch(&model.Match{ID: "m-tonamel-unknown", RecordId: "rec-tonamel-unknown", UserId: userA, OpponentsDeckInfo: "ドラパ"}, "0887")
+	createMatch(&model.Match{ID: "m-unofficial", RecordId: "rec-unofficial", UserId: userA, OpponentsDeckInfo: "ドラパ"}, "0887")
+	// スプライトが違う(無い)対戦と、他人の対戦は含めない
+	createMatch(&model.Match{ID: "m-other-sprite", RecordId: "rec-official", UserId: userA, OpponentsDeckInfo: "ドラパ"}, "")
+	createMatch(&model.Match{ID: "m-b", RecordId: "rec-b", UserId: userB, OpponentsDeckInfo: "ドラパ"}, "0887")
+
+	createGame("g-1", "m-official-2", true, true)
+	createGame("g-2", "m-official-2", false, false)
+	createGame("g-3", "m-official-2", true, true)
+	createGame("g-deleted", "m-official-2", true, false)
+	require.NoError(t, db.Delete(&model.Game{ID: "g-deleted"}).Error)
+	createGame("g-4", "m-tonamel", false, true)
+
+	r := NewOpponentDeck(db)
+	matches, err := r.FindMatchesBySpec(context.Background(), userA,
+		entity.NewOpponentDeckSpec("ドラパ", []*entity.PokemonSprite{entity.NewPokemonSpriteWithPosition("0887", 1)}))
+	require.NoError(t, err)
+
+	ids := make([]string, 0, len(matches))
+	for _, m := range matches {
+		ids = append(ids, m.MatchId)
+	}
+	require.Equal(t, []string{"m-official-1", "m-official-2", "m-tonamel", "m-tonamel-unknown", "m-unofficial"}, ids)
+
+	official := matches[1]
+	require.Equal(t, "rec-official", official.RecordId)
+	require.Equal(t, "2026-09-28", official.EventDate)
+	require.Equal(t, "official", official.EventType)
+	require.Equal(t, "シティリーグ 東京", official.EventTitle)
+	require.Equal(t, "サーナイト", official.DeckName)
+	require.True(t, official.BO3Flg)
+	require.True(t, official.VictoryFlg)
+	// 論理削除した対局は含めない
+	require.Len(t, official.Games, 3)
+	require.True(t, official.Games[0].GoFirst)
+	require.False(t, official.Games[1].WinningFlg)
+	require.Empty(t, matches[0].Games)
+
+	require.Equal(t, "tonamel", matches[2].EventType)
+	require.Equal(t, "Tonamel杯", matches[2].EventTitle)
+	require.Equal(t, "", matches[2].DeckName)
+	require.Len(t, matches[2].Games, 1)
+	require.Equal(t, "tonamel", matches[3].EventType)
+	require.Equal(t, "", matches[3].EventTitle)
+	require.Equal(t, "unofficial", matches[4].EventType)
+	require.Equal(t, "身内の大会", matches[4].EventTitle)
+	require.Equal(t, "2026-09-20", matches[4].EventDate)
+
+	// 一致するものが無ければ空
+	matches, err = r.FindMatchesBySpec(context.Background(), userA, entity.NewOpponentDeckSpec("存在しない表記", nil))
+	require.NoError(t, err)
+	require.Empty(t, matches)
+}

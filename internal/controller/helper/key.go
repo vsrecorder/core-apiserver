@@ -675,3 +675,16 @@ func GetOpponentDeckReplaceRequest(ctx *gin.Context) dto.OpponentDeckReplaceRequ
 
 	return req
 }
+
+// SetOpponentDeckSpecRequest / GetOpponentDeckSpecRequest は GET /matches/opponent_decks/matches の
+// 相手デッキの組み合わせ(クエリから組み立てたもの)。
+func SetOpponentDeckSpecRequest(ctx *gin.Context, value dto.OpponentDeckSpecRequest) {
+	ctx.Set("opponent_deck_spec_request", value)
+}
+
+func GetOpponentDeckSpecRequest(ctx *gin.Context) dto.OpponentDeckSpecRequest {
+	value, _ := ctx.Get("opponent_deck_spec_request")
+	req, _ := value.(dto.OpponentDeckSpecRequest)
+
+	return req
+}

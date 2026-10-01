@@ -239,3 +239,142 @@ func TestOpponentDeckController_Replace(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 }
+
+func TestOpponentDeckController_GetMatches(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	path := MatchesPath + OpponentDeckMatchesPath
+
+	get := func(c *OpponentDeck, secretKey string, query string) *httptest.ResponseRecorder {
+		t.Helper()
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", path+query, nil)
+		if secretKey != "" {
+			setJWTAuthHeader(t, req, uid, secretKey)
+		}
+		c.router.ServeHTTP(w, req)
+
+		return w
+	}
+
+	t.Run("正常系_組み合わせの対戦を記録の見出しと対局付きで返す", func(t *testing.T) {
+		c, mockUsecase, secretKey := setup4TestOpponentDeckController(t)
+
+		matches := []*entity.OpponentDeckMatch{
+			{
+				MatchId:    "01K6MATCH1",
+				RecordId:   "01K6RECORD1",
+				EventDate:  "2026-09-28",
+				EventType:  "official",
+				EventTitle: "シティリーグ 東京",
+				DeckName:   "サーナイト",
+				BO3Flg:     true,
+				VictoryFlg: true,
+				Games: []*entity.OpponentDeckMatchGame{
+					{GoFirst: true, WinningFlg: true},
+					{GoFirst: false, WinningFlg: false},
+					{GoFirst: true, WinningFlg: true},
+				},
+			},
+			{
+				MatchId:           "01K6MATCH2",
+				RecordId:          "01K6RECORD2",
+				DefaultVictoryFlg: true,
+				Games:             []*entity.OpponentDeckMatchGame{},
+			},
+		}
+		mockUsecase.EXPECT().FindMatches(gomock.Any(), uid, gomock.Any()).DoAndReturn(
+			func(_ any, _ string, param *usecase.OpponentDeckSpecParam) ([]*entity.OpponentDeckMatch, error) {
+				require.Equal(t, "ドラパルト ex", param.OpponentsDeckInfo)
+				// 2体目だけの指定は position 2 のまま渡す
+				require.Len(t, param.PokemonSprites, 1)
+				require.Equal(t, "0887", param.PokemonSprites[0].ID)
+				require.Equal(t, uint(2), param.PokemonSprites[0].Position)
+				return matches, nil
+			})
+
+		w := get(c, secretKey, "?opponents_deck_info=%E3%83%89%E3%83%A9%E3%83%91%E3%83%AB%E3%83%88+ex&pokemon_sprite_id_2=0887")
+
+		var res dto.OpponentDeckMatchesGetResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Len(t, res.Data, 2)
+		require.Equal(t, "01K6MATCH1", res.Data[0].ID)
+		require.Equal(t, "01K6RECORD1", res.Data[0].RecordId)
+		require.Equal(t, "2026-09-28", res.Data[0].EventDate)
+		require.Equal(t, "official", res.Data[0].EventType)
+		require.Equal(t, "シティリーグ 東京", res.Data[0].EventTitle)
+		require.Equal(t, "サーナイト", res.Data[0].DeckName)
+		require.True(t, res.Data[0].BO3Flg)
+		require.True(t, res.Data[0].VictoryFlg)
+		require.Len(t, res.Data[0].Games, 3)
+		require.False(t, res.Data[0].Games[1].WinningFlg)
+		require.True(t, res.Data[1].DefaultVictoryFlg)
+		// 対局の無い対戦は空配列(null にしない)
+		require.NotNil(t, res.Data[1].Games)
+		require.Empty(t, res.Data[1].Games)
+	})
+
+	t.Run("正常系_スプライトだけの組み合わせも引ける", func(t *testing.T) {
+		c, mockUsecase, secretKey := setup4TestOpponentDeckController(t)
+
+		mockUsecase.EXPECT().FindMatches(gomock.Any(), uid, gomock.Any()).DoAndReturn(
+			func(_ any, _ string, param *usecase.OpponentDeckSpecParam) ([]*entity.OpponentDeckMatch, error) {
+				require.Equal(t, "", param.OpponentsDeckInfo)
+				require.Len(t, param.PokemonSprites, 2)
+				require.Equal(t, uint(1), param.PokemonSprites[0].Position)
+				require.Equal(t, uint(2), param.PokemonSprites[1].Position)
+				return []*entity.OpponentDeckMatch{}, nil
+			})
+
+		w := get(c, secretKey, "?pokemon_sprite_id_1=0887&pokemon_sprite_id_2=0006")
+
+		var res dto.OpponentDeckMatchesGetResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.NotNil(t, res.Data)
+		require.Empty(t, res.Data)
+	})
+
+	t.Run("異常系_表記もスプライトも無ければ400を返す", func(t *testing.T) {
+		c, _, secretKey := setup4TestOpponentDeckController(t)
+
+		w := get(c, secretKey, "?opponents_deck_info=")
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_表記が長すぎる・スプライトIDの形式が違えば400を返す", func(t *testing.T) {
+		c, _, secretKey := setup4TestOpponentDeckController(t)
+
+		long := make([]rune, 64)
+		for i := range long {
+			long[i] = 'a'
+		}
+		w := get(c, secretKey, "?opponents_deck_info="+string(long))
+		require.Equal(t, http.StatusBadRequest, w.Code)
+
+		w = get(c, secretKey, "?opponents_deck_info=x&pokemon_sprite_id_1=%27%3B")
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
+		c, mockUsecase, secretKey := setup4TestOpponentDeckController(t)
+
+		mockUsecase.EXPECT().FindMatches(gomock.Any(), uid, gomock.Any()).Return(nil, errors.New(""))
+
+		w := get(c, secretKey, "?opponents_deck_info=x")
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("異常系_未認証なら401を返す", func(t *testing.T) {
+		c, _, _ := setup4TestOpponentDeckController(t)
+
+		w := get(c, "", "?opponents_deck_info=x")
+
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}

@@ -63,3 +63,35 @@ func (s *OpponentDeckSpec) SpriteIdAt(position uint) string {
 func (s *OpponentDeckSpec) IsEmpty() bool {
 	return s.OpponentsDeckInfo == "" && len(s.PokemonSprites) == 0
 }
+
+// OpponentDeckMatch は相手デッキの組み合わせに当てはまる対戦 1 件と、その対戦を付けた記録の見出し。
+//
+// 一括編集で組み合わせを選んだときに、どの記録でどんな対戦結果に付けた表記なのかを見せるために使う
+// (「ドラパ」が本当にドラパルトなのか、いつの対戦なのかを思い出してから直せるように)。
+type OpponentDeckMatch struct {
+	MatchId  string
+	RecordId string
+	// EventDate は記録の開催日(YYYY-MM-DD)。未設定の記録は空文字。
+	EventDate string
+	// EventType は記録のイベントの種類("official" / "tonamel" / "unofficial")。どれでもなければ空文字。
+	EventType string
+	// EventTitle はイベントのタイトル。取得できなければ空文字。
+	EventTitle string
+	// DeckName は記録に登録した自分のデッキの名前。未登録なら空文字。
+	DeckName             string
+	BO3Flg               bool
+	GroupMatchFlg        bool
+	GroupMatchVictoryFlg bool
+	DefaultVictoryFlg    bool
+	DefaultDefeatFlg     bool
+	VictoryFlg           bool
+	DrawFlg              bool
+	// Games は対局(1本目から順)。不戦勝・不戦敗や対局を入力していない対戦は空。
+	Games []*OpponentDeckMatchGame
+}
+
+// OpponentDeckMatchGame は対戦の中の対局 1 本の先攻・後攻と勝敗。
+type OpponentDeckMatchGame struct {
+	GoFirst    bool
+	WinningFlg bool
+}

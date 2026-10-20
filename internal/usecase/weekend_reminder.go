@@ -16,10 +16,14 @@ const (
 	NotificationCategoryReminder = "reminder"
 
 	// 文言は B1_B2_PUSH_NOTIFICATION_PLAN.md §5.5 のとおり。見出しは同一週の二重送信判定の
-	// キーにもなるため固定文言にする。リンク先は最短フォーム(/records/quick)。
+	// キーにもなるため固定文言にする。
+	//
+	// リンク先は /records/create(B-5 と同じ)。宛先は全員が記録経験者で、最短フォーム
+	// /records/quick は記録のあるユーザーを /records/create へリダイレクトする。その際に
+	// SW が付けたタップ計測の ?pd= が落ち、タップが1件も記録されていなかった(2026-10-20 判明)。
 	weekendReminderTitle   = "今週末、対戦の予定は？"
 	weekendReminderBody    = "帰り道の3タップで記録できます。先週の戦績もすぐ見返せます"
-	weekendReminderLinkUrl = "/records/quick"
+	weekendReminderLinkUrl = "/records/create"
 
 	// weekendReminderDedupScanLimit は二重送信判定で遡って確認する直近通知の件数(B-5 と同じ考え方)。
 	weekendReminderDedupScanLimit = 30

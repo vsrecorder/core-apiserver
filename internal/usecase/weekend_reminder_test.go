@@ -92,7 +92,8 @@ func TestWeekendReminder_RemindUser(t *testing.T) {
 		require.Equal(t, NotificationCategoryReminder, saved.Category)
 		require.Equal(t, weekendReminderTitle, saved.Title)
 		require.Equal(t, weekendReminderBody, saved.Body)
-		require.Equal(t, weekendReminderLinkUrl, saved.LinkUrl)
+		// /records/quick だと記録のある宛先はリダイレクトされ、タップ計測の ?pd= が落ちる
+		require.Equal(t, "/records/create", saved.LinkUrl)
 		require.Equal(t, weekendReminderOddWeekNow, saved.CreatedAt)
 	})
 

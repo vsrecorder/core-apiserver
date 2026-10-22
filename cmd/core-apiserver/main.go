@@ -356,6 +356,13 @@ func main() {
 		),
 	).RegisterRoute(relativePath)
 
+	controller.NewSiteStat(
+		r,
+		usecase.NewSiteStat(
+			infrastructure.NewSiteStat(db),
+		),
+	).RegisterRoute(relativePath)
+
 	controller.NewUserGym(
 		r,
 		usecase.NewUserGym(

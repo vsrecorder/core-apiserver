@@ -110,6 +110,7 @@ mockgen:
 	mockgen -source=./internal/domain/repository/push_sender.go -destination=./internal/mock/mock_repository/push_sender.go
 	mockgen -source=./internal/domain/repository/pokemon_sprite.go -destination=./internal/mock/mock_repository/pokemon_sprite.go
 	mockgen -source=./internal/domain/repository/shop.go -destination=./internal/mock/mock_repository/shop.go
+	mockgen -source=./internal/domain/repository/site_stat.go -destination=./internal/mock/mock_repository/site_stat.go
 	mockgen -source=./internal/domain/repository/user_gym.go -destination=./internal/mock/mock_repository/user_gym.go
 	mockgen -source=./internal/domain/repository/deck_code_post.go -destination=./internal/mock/mock_repository/deck_code_post.go
 
@@ -157,6 +158,7 @@ mockgen:
 	mockgen -source=./internal/usecase/user_acquisition.go -destination=./internal/mock/mock_usecase/user_acquisition.go
 	mockgen -source=./internal/usecase/push_notifier.go -destination=./internal/mock/mock_usecase/push_notifier.go
 	mockgen -source=./internal/usecase/shop.go -destination=./internal/mock/mock_usecase/shop.go
+	mockgen -source=./internal/usecase/site_stat.go -destination=./internal/mock/mock_usecase/site_stat.go
 	mockgen -source=./internal/usecase/user_gym.go -destination=./internal/mock/mock_usecase/user_gym.go
 
 .PHONY: image

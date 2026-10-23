@@ -26,6 +26,8 @@ func NewPushDelivery(
 //
 // status='sent' を成功として数え、失敗のうち最も多いステータスコードも返す。
 // platform は push_subscriptions 側にしか無いので join する。
+// status='holdout' は実験のためにあえて送らなかった行で、配達を試みていないので数えない。
+// 数えると保留群の比率ぶん成功率が下がり、配信路が壊れていなくても警告が飛ぶ。
 func (i *PushDelivery) AggregateHealthByPlatformSince(
 	ctx context.Context,
 	since time.Time,
@@ -56,6 +58,7 @@ func (i *PushDelivery) AggregateHealthByPlatformSince(
 		).
 		Joins("JOIN push_subscriptions AS s ON s.id = d.subscription_id").
 		Where("d.created_at >= ?", since).
+		Where("d.status <> ?", entity.PushDeliveryStatusHoldout).
 		Group("s.platform").
 		Order("s.platform").
 		Scan(&rows)

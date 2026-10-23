@@ -2885,6 +2885,12 @@ func TestIntegrationPushDeliveryHealth(t *testing.T) {
 	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D06", "01HD7Y3K8D6FDHMHTZ2GT41S02", entity.PushDeliveryStatusFailed, 410, now)
 	// 期間外。集計に混ざってはいけない
 	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D07", "01HD7Y3K8D6FDHMHTZ2GT41S02", entity.PushDeliveryStatusSent, 201, now.AddDate(0, 0, -30))
+	// ホールドアウト(実験のためにあえて送らなかった)。配達を試みていないので集計に混ざってはいけない
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D08", "01HD7Y3K8D6FDHMHTZ2GT41S02", entity.PushDeliveryStatusHoldout, 0, now)
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D09", "01HD7Y3K8D6FDHMHTZ2GT41S02", entity.PushDeliveryStatusHoldout, 0, now)
+	// desktop: ホールドアウトしか無い。配達を試みていない platform は結果に出ない
+	newSubscription(t, "01HD7Y3K8D6FDHMHTZ2GT41S03", "https://updates.push.services.mozilla.com/desktop-1", entity.PushPlatformDesktop)
+	newDelivery(t, "01HD7Y3K8D6FDHMHTZ2GT41D10", "01HD7Y3K8D6FDHMHTZ2GT41S03", entity.PushDeliveryStatusHoldout, 0, now)
 
 	t.Run("正常系_platform別に成功数と最多の失敗コードを集計する", func(t *testing.T) {
 		stats, err := r.AggregateHealthByPlatformSince(context.Background(), now.AddDate(0, 0, -7))
@@ -2909,10 +2915,12 @@ func TestIntegrationPushDeliveryHealth(t *testing.T) {
 
 		android := byPlatform[entity.PushPlatformAndroid]
 		require.NotNil(t, android)
-		require.Equal(t, 3, android.Total) // 30日前の1件は入らない
+		require.Equal(t, 3, android.Total) // 30日前の1件とホールドアウト2件は入らない
 		require.Equal(t, 2, android.Sent)
 		require.Equal(t, 410, android.TopFailureStatusCode)
 		require.False(t, android.LastSentAt.IsZero())
+
+		require.NotContains(t, byPlatform, entity.PushPlatformDesktop)
 	})
 
 	t.Run("正常系_期間内に配達が無ければ空で返る", func(t *testing.T) {

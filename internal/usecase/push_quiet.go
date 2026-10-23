@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
@@ -38,6 +39,11 @@ func isPushUnresponsive(
 	clickedByWeek := map[time.Time]bool{}
 	var weeks []time.Time
 	for _, d := range deliveries {
+		// 届いていない push は「無視された」ことにならない。ホールドアウトであえて送らなかった週や、
+		// 失敗・失効で端末に届かなかった週まで数えると、受け取ってもいない通知で隔週に落としてしまう
+		if d.Status != entity.PushDeliveryStatusSent {
+			continue
+		}
 		week := mondayOf(d.CreatedAt)
 		if _, ok := clickedByWeek[week]; !ok {
 			clickedByWeek[week] = false

@@ -6,7 +6,9 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -101,6 +103,43 @@ func TestWebPushSender(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, http.StatusGone, status)
+	})
+
+	// webpush-go は本文をレコードサイズまで詰め物で膨らませる。4096 のままだと Firefox(Android)の
+	// 配信路が 413 Payload Too Large で弾くので、通常の通知は 2048 に収める
+	t.Run("正常系_通常の通知はレコードサイズ2048で送り長すぎる通知だけ4096に広げる", func(t *testing.T) {
+		privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+		require.NoError(t, err)
+
+		var receivedBody []byte
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			receivedBody, _ = io.ReadAll(r.Body)
+			w.WriteHeader(http.StatusCreated)
+		}))
+		defer server.Close()
+
+		s := NewWebPushSender(publicKey, privateKey, "mailto:test@example.com")
+
+		// 週次レポートと同じくらいの長さの日本語の通知
+		_, err = s.Send(context.Background(), newTestSubscription(t, server.URL+"/push"), &entity.PushPayload{
+			Title:      "先週のふりかえりが届きました",
+			Body:       strings.Repeat("先週は12戦 8勝4敗（勝率 66.7%）。相棒デッキは『ドラパルトex』でした。", 3),
+			URL:        "/reports/weekly/2026-10-12",
+			DeliveryId: "01M4X1SXCP4V0XS8YPHSS1CN1W",
+			Tag:        "weekly_report",
+		})
+		require.NoError(t, err)
+		require.Len(t, receivedBody, 2048)
+		// ヘッダの rs(salt の直後の4バイト)にもレコードサイズが入る
+		require.Equal(t, uint32(2048), binary.BigEndian.Uint32(receivedBody[16:20]))
+
+		// 2048 に入らない長さなら上限まで広げて送る(送れないよりよい)
+		_, err = s.Send(context.Background(), newTestSubscription(t, server.URL+"/push"), &entity.PushPayload{
+			Title: "t",
+			Body:  strings.Repeat("あ", 1000),
+		})
+		require.NoError(t, err)
+		require.Len(t, receivedBody, int(webpush.MaxRecordSize))
 	})
 
 	// 拒否の理由はプッシュサービスが本文で返す。これを残さないと、403 が鍵・subject・JWT の

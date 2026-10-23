@@ -21,6 +21,27 @@ import (
 // 週次の想起なので1日持てば十分で、それ以上古い通知が翌日以降に突然届いても価値が無い。
 const pushTTLSeconds = 24 * 60 * 60
 
+// pushRecordSize は暗号化したペイロードのレコードサイズ(バイト)。
+// webpush-go は中身の長さによらず本文をこのサイズまで詰め物で膨らませる。既定の 4096 のままだと、
+// Firefox(Android)の配信路が「constrained device」向けの上限で 413 Payload Too Large を返し、
+// Firefox Android の購読者には一通も届かない(2026-10-19 の週次レポートで実際に弾かれた)。
+// 2048 なら base64 にしても上限に収まり、通知文(タイトル・本文・リンク)には十分な余裕がある。
+const pushRecordSize uint32 = 2048
+
+// pushRecordOverhead はレコードのうち中身以外が占めるバイト数。
+// ヘッダ(salt 16 + rs 4 + 鍵長 1 + 公開鍵 65)・認証タグ 16・区切り 1 の合計。
+const pushRecordOverhead = 16 + 4 + 1 + 65 + 16 + 1
+
+// recordSizeFor は中身が収まるレコードサイズを返す。
+// 通知文が長すぎて pushRecordSize に入らないときだけ上限の 4096 に広げる
+// (Firefox Android には届かなくなるが、他の端末にまで送れなくなるよりよい)。
+func recordSizeFor(body []byte) uint32 {
+	if len(body)+pushRecordOverhead > int(pushRecordSize) {
+		return webpush.MaxRecordSize
+	}
+	return pushRecordSize
+}
+
 // pushErrorBodyLimit は失敗時に読み取るレスポンス本文の上限。理由が分かれば十分なので短く切る。
 const pushErrorBodyLimit = 512
 
@@ -142,6 +163,7 @@ func (s *WebPushSender) Send(
 		&webpush.Options{
 			HTTPClient:      s.client,
 			Subscriber:      s.subject,
+			RecordSize:      recordSizeFor(body),
 			TTL:             pushTTLSeconds,
 			Urgency:         webpush.UrgencyNormal,
 			VAPIDPublicKey:  s.publicKey,

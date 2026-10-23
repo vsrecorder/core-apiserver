@@ -210,6 +210,30 @@ func TestWeekendReminder_RemindUser(t *testing.T) {
 		require.Equal(t, []string{PushCampaignWeekendReminder}, m.pushNotifier.campaigns())
 	})
 
+	t.Run("隔週ガード_届いていない週(ホールドアウト・失敗)は未タップに数えず毎週送る", func(t *testing.T) {
+		m, u := setup4WeekendReminder(t, weekendReminderOddWeekNow)
+		longAgo := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
+
+		// 4週ぶん行はあるが、先週はホールドアウト、2週前は送信失敗で、届いたのは2週だけ
+		deliveries := unclickedDeliveries(weekendReminderOddWeekNow.AddDate(0, 0, -7), 4)
+		deliveries[0].Status = entity.PushDeliveryStatusHoldout
+		deliveries[1].Status = entity.PushDeliveryStatusHoldout
+		deliveries[2].Status = entity.PushDeliveryStatusFailed
+		deliveries[3].Status = entity.PushDeliveryStatusFailed
+
+		m.userStreak.EXPECT().FindByUserId(gomock.Any(), "user-1").Return(entity.NewUserStreak("user-1", 0, 3, 0, 0, longAgo, time.Now()), nil)
+		m.pushSubscription.EXPECT().FindLiveByUserId(gomock.Any(), "user-1").Return(liveSubscriptions(), nil)
+		m.notification.EXPECT().FindByUserId(gomock.Any(), "user-1", weekendReminderDedupScanLimit).Return(nil, nil)
+		m.pushDelivery.EXPECT().FindRecentByUserIdAndCampaign(gomock.Any(), "user-1", PushCampaignWeekendReminder, pushQuietRecentScanLimit).Return(deliveries, nil)
+		m.notification.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+		sent, err := u.RemindUser(context.Background(), "user-1", false)
+
+		require.NoError(t, err)
+		require.True(t, sent)
+		require.Equal(t, []string{PushCampaignWeekendReminder}, m.pushNotifier.campaigns())
+	})
+
 	t.Run("隔週ガード_未タップでも直近4週のうちに記録があれば毎週送る", func(t *testing.T) {
 		m, u := setup4WeekendReminder(t, weekendReminderOddWeekNow)
 		// 最終記録は2週前(直近4週の中)

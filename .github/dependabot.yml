@@ -1,0 +1,55 @@
+# Dependabot の設定(依存の更新を週 1 回、PR として提案させる)
+#
+# 2026-10-31 のセキュリティ精査で、既知の脆弱性を含む依存や、サポートの切れたツールチェーン
+# (Go 1.25)・ベースイメージが気付かれないまま残っていたため導入した。
+#
+# - マイナー・パッチの更新はエコシステムごとに 1 本の PR にまとめる(PR の数を増やさない)。
+#   メジャーの更新は依存ごとに別の PR になるので、変更点を読んでから取り込む。
+# - cooldown: 公開から 7 日たっていない版は提案しない。乗っ取られたアカウントから公開された
+#   直後の版をそのまま取り込む、サプライチェーン攻撃の典型を避けるため。
+#   脆弱性の修正(security updates)には cooldown が効かないので、そちらは待たずに来る。
+# - 脆弱性のアラートと修正 PR(security updates)は、この設定ファイルとは別に、GitHub の
+#   リポジトリの Settings → Advanced Security で Dependabot alerts / security updates を有効にする。
+version: 2
+updates:
+  # Go のモジュール(go.mod)。golang.org/x/net などの脆弱性の修正もここから来る
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      gomod-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # Dockerfile のベースイメージ(golang・distroless)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+
+  # GitHub Actions のアクション(.github/workflows)。まとめて 1 本の PR にする
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]

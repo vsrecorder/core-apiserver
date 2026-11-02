@@ -12,10 +12,10 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: Setup Go 1.25.7
+      - name: Setup Go 1.27.3
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25.7"
+          go-version: "1.27.3"
       # CIのrunnerはUTC、開発機と本番はJSTのため両方で回す。片方だけだと、
       # time.Local に依存したテストが一方の環境でだけ通ってすり抜ける。
       # -count=1 はキャッシュ無効化。TZ はテストキャッシュのキーに入らないため、

@@ -43,8 +43,18 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    #
+    # ポートはループバック(127.0.0.1)にだけ開く。
+    #
+    # "8914:8914" の形だと docker は全インターフェース(0.0.0.0 と [::])に開き、iptables を
+    # 直接書き換えるため、ホストのファイアウォールも効かない。外からはクラウド側のパケット
+    # フィルタだけが頼りで、その設定ひとつで nginx の流量制限・fail2ban・アクセスログを通らずに
+    # 直接叩ける状態だった(2026-10-31 の精査で指摘)。
+    # nginx は 127.0.0.1:8914 へ proxy_pass しているので(proxy リポジトリの sites-enabled/vsrecorder.mobi)、
+    # ループバックだけで足りる。webapp・core-apiserver のコンテナ同士も公開ドメイン経由でつなぐため影響しない。
+    #
     ports:
-      - 8914:8914
+      - "127.0.0.1:8914:8914"
     environment:
       - TZ=Asia/Tokyo
       - VSRECORDER_JWT_SECRET=${VSRECORDER_JWT_SECRET}

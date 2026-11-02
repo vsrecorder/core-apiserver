@@ -325,7 +325,10 @@ CREATE TABLE records (
     deck_id                   VARCHAR(26) DEFAULT NULL,
     deck_code_id              VARCHAR(26) DEFAULT NULL,
     event_date                DATE DEFAULT NULL,
-    private_flg               BOOLEAN DEFAULT NULL,
+    -- 公開設定。NULL を許すと、一覧(private_flg = false)では非公開、個別取得では Go の bool に
+    -- false として入って公開、と扱いが割れるため NOT NULL にし、既定は非公開(true)にする
+    -- (2026-10-31 のセキュリティ精査の M-4)。アプリは常に値を明示して書き込む。
+    private_flg               BOOLEAN NOT NULL DEFAULT true,
     ignore_stats_flg          BOOLEAN NOT NULL DEFAULT false,
     -- レギュレーション。既存の記録と、未指定でPOSTしてくる旧クライアントは
     -- スタンダード(1)として扱うため NOT NULL DEFAULT 1 にしてある。

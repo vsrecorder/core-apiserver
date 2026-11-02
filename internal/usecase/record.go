@@ -68,21 +68,6 @@ type RecordInterface interface {
 		id string,
 	) (*entity.Record, error)
 
-	Find(
-		ctx context.Context,
-		limit int,
-		offset int,
-		eventType string,
-	) ([]*entity.Record, error)
-
-	FindOnCursor(
-		ctx context.Context,
-		limit int,
-		cursorEventDate time.Time,
-		cursorCreatedAt time.Time,
-		eventType string,
-	) ([]*entity.Record, error)
-
 	FindByUserId(
 		ctx context.Context,
 		uid string,
@@ -244,39 +229,6 @@ func (u *Record) FindById(
 	}
 
 	return record, nil
-}
-
-func (u *Record) Find(
-	ctx context.Context,
-	limit int,
-	offset int,
-	eventType string,
-) ([]*entity.Record, error) {
-	records, err := u.repository.Find(ctx, limit, offset, eventType)
-
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	return records, nil
-}
-
-func (u *Record) FindOnCursor(
-	ctx context.Context,
-	limit int,
-	cursorEventDate time.Time,
-	cursorCreatedAt time.Time,
-	eventType string,
-) ([]*entity.Record, error) {
-	records, err := u.repository.FindOnCursor(ctx, limit, cursorEventDate, cursorCreatedAt, eventType)
-
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	return records, nil
 }
 
 func (u *Record) FindByUserId(

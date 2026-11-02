@@ -37,11 +37,21 @@ func NewRecord(
 
 func (c *Record) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + RecordsPath)
+	//
+	// 一覧は本人の記録だけを返す。ログインしていなければ 401。
+	//
+	// 以前は未ログインの要求に、全ユーザーの公開設定(private_flg = false)の記録を、メモ・
+	// TCG マイスターの URL・フレンド ID・ユーザー ID ごと返していた。webapp にはこの一覧を
+	// 使う画面が無く(BFF の /api/records もログイン必須)、nginx が /api/v1beta をそのまま
+	// 公開しているため、製品のどこからも使われない口から誰でも一覧できた
+	// (2026-10-31 のセキュリティ精査の M-4)。
+	// 他人の記録を見せる機能(みんなの公開記録など)を作るときは、ここを開け直すのではなく、
+	// 返す項目を明示的に絞った専用の API を別に用意すること。
+	//
 	r.GET(
 		"",
-		authentication.OptionalAuthenticationMiddleware(),
+		authentication.RequiredAuthenticationMiddleware(),
 		validation.RecordGetMiddleware(),
-		c.Get,
 		c.GetByUserId,
 	)
 	r.GET(
@@ -69,38 +79,6 @@ func (c *Record) RegisterRoute(relativePath string) {
 		authorization.RecordDeleteAuthorizationMiddleware(c.repository),
 		c.Delete,
 	)
-}
-
-func (c *Record) Get(ctx *gin.Context) {
-	if uid := helper.GetUID(ctx); uid == "" {
-		limit := helper.GetLimit(ctx)
-		offset := helper.GetOffset(ctx)
-		cursorEventDate := helper.GetCursorEventDate(ctx)
-		cursorCreatedAt := helper.GetCursorCreatedAt(ctx)
-		eventType := helper.GetEventType(ctx)
-
-		if !cursorCreatedAt.IsZero() {
-			records, err := c.usecase.FindOnCursor(ctx.Request.Context(), limit, cursorEventDate, cursorCreatedAt, eventType)
-			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx, err)
-				return
-			}
-
-			res := presenter.NewRecordGetResponse(limit, offset, cursorEventDate, cursorCreatedAt, records)
-
-			ctx.JSON(http.StatusOK, res)
-		} else {
-			records, err := c.usecase.Find(ctx.Request.Context(), limit, offset, eventType)
-			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx, err)
-				return
-			}
-
-			res := presenter.NewRecordGetResponse(limit, offset, cursorEventDate, cursorCreatedAt, records)
-
-			ctx.JSON(http.StatusOK, res)
-		}
-	}
 }
 
 func (c *Record) GetByUserId(ctx *gin.Context) {

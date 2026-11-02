@@ -22,47 +22,6 @@ func encodeCursor(eventDate, createdAt time.Time) string {
 	return base64.StdEncoding.EncodeToString(b)
 }
 
-func NewRecordGetResponse(
-	limit int,
-	offset int,
-	cursorEventDate time.Time,
-	cursorCreatedAt time.Time,
-	records []*entity.Record,
-) *dto.RecordGetResponse {
-	ret := []*dto.RecordData{}
-
-	for _, record := range records {
-		ret = append(ret, &dto.RecordData{
-			Cursor: encodeCursor(record.EventDate, record.CreatedAt),
-			Data: &dto.RecordResponse{
-				ID:                record.ID,
-				CreatedAt:         record.CreatedAt,
-				OfficialEventId:   record.OfficialEventId,
-				TonamelEventId:    record.TonamelEventId,
-				FriendId:          record.FriendId,
-				UnofficialEventId: record.UnofficialEventId,
-				UserId:            record.UserId,
-				DeckId:            record.DeckId,
-				DeckCodeId:        record.DeckCodeId,
-				EventDate:         record.EventDate,
-				PrivateFlg:        record.PrivateFlg,
-				IgnoreStatsFlg:    record.IgnoreStatsFlg,
-				RegulationId:      record.RegulationId,
-				TCGMeisterURL:     record.TCGMeisterURL,
-				Memo:              record.Memo,
-				Tags:              newTagResponses(record.Tags),
-			},
-		})
-	}
-
-	return &dto.RecordGetResponse{
-		Limit:   limit,
-		Offset:  offset,
-		Cursor:  encodeCursor(cursorEventDate, cursorCreatedAt),
-		Records: ret,
-	}
-}
-
 func NewRecordGetByIdResponse(
 	record *entity.Record,
 ) *dto.RecordGetByIdResponse {

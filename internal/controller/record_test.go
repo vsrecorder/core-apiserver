@@ -80,160 +80,43 @@ func TestRecordController(t *testing.T) {
 	}
 }
 
+// test_RecordController_Get は、一覧(GET /records)がログイン必須であることを確かめる。
+// 以前は未ログインの要求に全ユーザーの公開記録をメモごと返していた(2026-10-31 の精査の M-4)。
+// usecase のモックに期待を置いていないので、拒否する前に一覧を取りに行けばこのテストは落ちる。
 func test_RecordController_Get(t *testing.T) {
 	r := gin.Default()
-	c, _, mockUsecase := setup4TestRecordController(t, r)
 
-	t.Run("正常系_limitとoffset指定で記録一覧を返す", func(t *testing.T) {
-		record := entity.Record{}
-		records := []*entity.Record{
-			&record,
-		}
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		limit := 10
-		offset := 0
-		eventType := ""
+	c, _, _ := setup4TestRecordController(t, r)
 
-		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset, eventType).Return(records, nil)
+	for _, tt := range []struct {
+		name  string
+		path  string
+		token string
+	}{
+		{name: "異常系_未ログインなら401を返し一覧を取りに行かない", path: RecordsPath},
+		{name: "異常系_絞り込みやページ指定があっても未ログインなら401", path: RecordsPath + "?limit=100&offset=0&event_type=official"},
+		{name: "異常系_カーソル指定でも未ログインなら401", path: RecordsPath + "?cursor=" + encodeTestCursor(testControllerEventDate, testControllerEventDate)},
+		{name: "異常系_検証できないトークンなら401", path: RecordsPath, token: "invalid-token"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
 
-		w := httptest.NewRecorder()
+			req, err := http.NewRequest("GET", tt.path, nil)
+			require.NoError(t, err)
+			if tt.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tt.token)
+			}
 
-		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?limit=%d&offset=%d", limit, offset), nil)
-		require.NoError(t, err)
+			c.router.ServeHTTP(w, req)
 
-		c.router.ServeHTTP(w, req)
-
-		var res dto.RecordGetResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(records), len(res.Records))
-	})
-
-	t.Run("正常系_クエリ未指定ならデフォルト値で記録一覧を返す", func(t *testing.T) {
-		record := entity.Record{}
-		records := []*entity.Record{
-			&record,
-		}
-
-		limit := 10
-		offset := 0
-		eventType := ""
-
-		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset, eventType).Return(records, nil)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", RecordsPath, nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.RecordGetResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(records), len(res.Records))
-	})
-
-	t.Run("正常系_該当なしでも空の記録一覧と空カーソルを返す", func(t *testing.T) {
-		records := []*entity.Record{}
-
-		limit := 10
-		offset := 0
-		cursor := encodeTestCursor(time.Time{}, time.Time{})
-		eventType := ""
-
-		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset, eventType).Return(records, nil)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", RecordsPath, nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.RecordGetResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(records), len(res.Records))
-		require.Equal(t, "{\"limit\":10,\"offset\":0,\"cursor\":\""+cursor+"\",\"records\":[]}", w.Body.String())
-	})
-
-	t.Run("正常系_カーソル指定時はFindOnCursorで取得しカーソルを返す", func(t *testing.T) {
-		record := entity.Record{}
-		records := []*entity.Record{
-			&record,
-		}
-
-		limit := 10
-		offset := 0
-		cursorEventDate, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
-		require.NoError(t, err)
-		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
-		require.NoError(t, err)
-		eventType := ""
-
-		mockUsecase.EXPECT().FindOnCursor(gomock.Any(), limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
-
-		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", compositeCursor), nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.RecordGetResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(records), len(res.Records))
-		require.Equal(t, compositeCursor, res.Cursor)
-	})
-
-	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-		mockUsecase.EXPECT().Find(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", RecordsPath, nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-
-	t.Run("異常系_カーソル取得のエラーで500を返す", func(t *testing.T) {
-		cursorEventDate, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
-		require.NoError(t, err)
-		cursorCreatedAt, err := time.Parse(time.RFC3339, time.Now().Local().Format(time.RFC3339))
-		require.NoError(t, err)
-
-		mockUsecase.EXPECT().FindOnCursor(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
-
-		compositeCursor := encodeTestCursor(cursorEventDate, cursorCreatedAt)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", fmt.Sprintf(RecordsPath+"?cursor=%s", compositeCursor), nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusInternalServerError, w.Code)
-	})
+			require.Equal(t, http.StatusUnauthorized, w.Code)
+			require.NotContains(t, w.Body.String(), `"records"`)
+		})
+	}
 }
 
 func test_RecordController_GetById(t *testing.T) {

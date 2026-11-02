@@ -13,21 +13,6 @@ type RecordInterface interface {
 		id string,
 	) (*entity.Record, error)
 
-	Find(
-		ctx context.Context,
-		limit int,
-		offset int,
-		eventType string,
-	) ([]*entity.Record, error)
-
-	FindOnCursor(
-		ctx context.Context,
-		limit int,
-		cursorEventDate time.Time,
-		cursorCreatedAt time.Time,
-		eventType string,
-	) ([]*entity.Record, error)
-
 	FindByUserId(
 		ctx context.Context,
 		uid string,

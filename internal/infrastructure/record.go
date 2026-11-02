@@ -105,40 +105,6 @@ func (i *Record) FindById(
 	return ret, nil
 }
 
-func (i *Record) Find(
-	ctx context.Context,
-	limit int,
-	offset int,
-	eventType string,
-) ([]*entity.Record, error) {
-	var models []*model.Record
-
-	switch eventType {
-	case "official":
-		if tx := i.db.Where("official_event_id != 0 AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			logError(ctx, tx.Error)
-			return nil, tx.Error
-		}
-	case "tonamel":
-		if tx := i.db.Where("tonamel_event_id != '' AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			logError(ctx, tx.Error)
-			return nil, tx.Error
-		}
-	case "unofficial":
-		if tx := i.db.Where("unofficial_event_id != '' AND private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			logError(ctx, tx.Error)
-			return nil, tx.Error
-		}
-	default:
-		if tx := i.db.Where("private_flg = false").Limit(limit).Offset(offset).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-			logError(ctx, tx.Error)
-			return nil, tx.Error
-		}
-	}
-
-	return i.newRecordEntitiesWithTags(ctx, models)
-}
-
 // buildCursorCondition は ORDER BY event_date DESC NULLS LAST, created_at DESC に対応した
 // カーソルページング用の WHERE 条件と引数を返す。
 // cursorEventDate が非ゼロ（event_date あり区間）の場合:
@@ -153,37 +119,6 @@ func buildCursorCondition(cursorEventDate, cursorCreatedAt time.Time) (string, [
 			[]interface{}{cursorEventDate, cursorEventDate, cursorCreatedAt}
 	}
 	return "(event_date IS NULL AND created_at < ?)", []interface{}{cursorCreatedAt}
-}
-
-func (i *Record) FindOnCursor(
-	ctx context.Context,
-	limit int,
-	cursorEventDate time.Time,
-	cursorCreatedAt time.Time,
-	eventType string,
-) ([]*entity.Record, error) {
-	var models []*model.Record
-
-	cursorCond, cursorArgs := buildCursorCondition(cursorEventDate, cursorCreatedAt)
-
-	var cond string
-	switch eventType {
-	case "official":
-		cond = "official_event_id != 0 AND " + cursorCond + " AND private_flg = false"
-	case "tonamel":
-		cond = "tonamel_event_id != '' AND " + cursorCond + " AND private_flg = false"
-	case "unofficial":
-		cond = "unofficial_event_id != '' AND " + cursorCond + " AND private_flg = false"
-	default:
-		cond = cursorCond + " AND private_flg = false"
-	}
-
-	if tx := i.db.Where(cond, cursorArgs...).Limit(limit).Order("event_date DESC NULLS LAST, created_at DESC").Find(&models); tx.Error != nil {
-		logError(ctx, tx.Error)
-		return nil, tx.Error
-	}
-
-	return i.newRecordEntitiesWithTags(ctx, models)
 }
 
 func (i *Record) FindByUserId(

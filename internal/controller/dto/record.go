@@ -52,13 +52,6 @@ type RecordResponse struct {
 	Tags              []*TagResponse `json:"tags"`
 }
 
-type RecordGetResponse struct {
-	Limit   int           `json:"limit"`
-	Offset  int           `json:"offset"`
-	Cursor  string        `json:"cursor"`
-	Records []*RecordData `json:"records"`
-}
-
 type RecordGetByIdResponse struct {
 	RecordResponse
 }

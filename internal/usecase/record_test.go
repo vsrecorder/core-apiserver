@@ -516,8 +516,6 @@ func TestRecordUsecase(t *testing.T) {
 		mockRepository *mock_repository.MockRecordInterface,
 		usecase RecordInterface,
 	){
-		"Find":                  test_RecordUsecase_Find,
-		"FindOnCursor":          test_RecordUsecase_FindOnCursor,
 		"FindById":              test_RecordUsecase_FindById,
 		"FindByUserId":          test_RecordUsecase_FindByUserId,
 		"FindByUserIdOnCursor":  test_RecordUsecase_FindByUserIdOnCursor,
@@ -533,117 +531,6 @@ func TestRecordUsecase(t *testing.T) {
 			fn(t, mockRepository, usecase)
 		})
 	}
-}
-
-func test_RecordUsecase_Find(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_記録一覧をそのまま返す", func(t *testing.T) {
-		limit := 10
-		offset := 0
-		eventType := ""
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		record := &entity.Record{
-			ID: id,
-		}
-
-		records := []*entity.Record{
-			record,
-		}
-
-		mockRepository.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
-
-		ret, err := usecase.Find(context.Background(), limit, offset, eventType)
-
-		require.NoError(t, err)
-		require.Equal(t, id, ret[0].ID)
-	})
-
-	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
-		limit := 10
-		offset := 0
-		eventType := ""
-
-		records := []*entity.Record{}
-
-		mockRepository.EXPECT().Find(context.Background(), limit, offset, eventType).Return(records, nil)
-
-		ret, err := usecase.Find(context.Background(), limit, offset, eventType)
-
-		require.NoError(t, err)
-		require.Equal(t, len(records), len(ret))
-	})
-
-	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
-		limit := 10
-		offset := 0
-		eventType := ""
-
-		mockRepository.EXPECT().Find(context.Background(), limit, offset, eventType).Return(nil, errors.New(""))
-
-		ret, err := usecase.Find(context.Background(), limit, offset, eventType)
-
-		require.Error(t, err)
-		require.Empty(t, ret)
-	})
-}
-
-func test_RecordUsecase_FindOnCursor(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {
-	t.Run("正常系_カーソル以降の記録一覧を返す", func(t *testing.T) {
-		limit := 10
-		cursorEventDate := time.Now().Local()
-		cursorCreatedAt := time.Now().Local()
-		eventType := ""
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		record := &entity.Record{
-			ID: id,
-		}
-
-		records := []*entity.Record{
-			record,
-		}
-
-		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
-
-		ret, err := usecase.FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType)
-
-		require.NoError(t, err)
-		require.Equal(t, id, ret[0].ID)
-	})
-
-	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
-		limit := 10
-		cursorEventDate := time.Now().Local()
-		cursorCreatedAt := time.Now().Local()
-		eventType := ""
-
-		records := []*entity.Record{}
-
-		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType).Return(records, nil)
-
-		ret, err := usecase.FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType)
-
-		require.NoError(t, err)
-		require.Equal(t, len(records), len(ret))
-	})
-
-	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
-		limit := 10
-		cursorEventDate := time.Now().Local()
-		cursorCreatedAt := time.Now().Local()
-		eventType := ""
-
-		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType).Return(nil, errors.New(""))
-
-		ret, err := usecase.FindOnCursor(context.Background(), limit, cursorEventDate, cursorCreatedAt, eventType)
-
-		require.Error(t, err)
-		require.Empty(t, ret)
-	})
 }
 
 func test_RecordUsecase_FindById(t *testing.T, mockRepository *mock_repository.MockRecordInterface, usecase RecordInterface) {

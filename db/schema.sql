@@ -507,6 +507,7 @@ CREATE TABLE environments (
     to_date    DATE NOT NULL
 );
 
+INSERT INTO environments VALUES ('m7','ハドウシーカー','2026-11-27','2027-02-18');
 INSERT INTO environments VALUES ('m6a','30th CELEBRATION','2026-09-16','2026-11-26');
 INSERT INTO environments VALUES ('m6','ストームエメラルダ','2026-07-31','2026-09-15');
 INSERT INTO environments VALUES ('m5','アビスアイ','2026-05-22','2026-07-30');
@@ -605,6 +606,7 @@ CREATE TABLE cityleague_schedules (
     to_date     DATE NOT NULL
 );
 
+INSERT INTO cityleague_schedules VALUES ('2027s2','シティリーグ2027 シーズン2','2026-12-05','2027-01-17');
 INSERT INTO cityleague_schedules VALUES ('2027s1','シティリーグ2027 シーズン1','2026-09-26','2026-11-15');
 
 INSERT INTO cityleague_schedules VALUES ('2026s4','シティリーグ2026 シーズン4','2026-03-14','2026-05-06');

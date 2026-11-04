@@ -25,6 +25,10 @@ const (
 	PushCampaignWeekendReminder = "weekend_reminder"
 	// PushCampaignEnvNews は P-2 の代替、記録ゼロの週の環境ニュース(月曜 08:00・購読者のみ)。
 	PushCampaignEnvNews = "env_news"
+	// PushCampaignMonthlyReport は先月のバトルレポート(毎月1日 12:00)。
+	PushCampaignMonthlyReport = "monthly_report"
+	// PushCampaignEnvironmentReport は終わった環境のバトルレポート(新しい環境の初日 12:00)。
+	PushCampaignEnvironmentReport = "environment_report"
 )
 
 const (
@@ -43,6 +47,7 @@ const (
 
 // pushCampaignsCountedForCap は週あたり上限に数えるキャンペーン。
 // 月曜の weekly_report(先週記録した人への配当)と env_news(記録ゼロの週の代替)は数えない。
+// 月初の monthly_report・環境の切り替わりの environment_report も同じく配当なので数えない。
 // これにより1人あたり最大でも 月(レポート or 環境ニュース)・金(週末)・日(nudge) の3通に収まる。
 // 反応の無い人への間引き(isPushUnresponsive)は env_news と weekend_reminder が各自で行う。
 var pushCampaignsCountedForCap = []string{PushCampaignWeekendReminder, PushCampaignStreakNudge}

@@ -58,6 +58,18 @@ CRON_TZ=Asia/Tokyo
 # 毎週月曜 08:00 JST — 週次バトルレポート通知
 0 8 * * 1 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekly-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekly-report -dry-run=false >> /var/log/vsrecorder/weekly-report.log 2>&1
 
+# ── 月次・環境別バトルレポート通知（cmd/notify-period-report）──
+# 毎日 12:00 JST。その日が月初なら先月、新しい環境の初日(前の環境の to_date の翌日)なら
+# 終わった環境について、1戦以上記録したユーザーへバトルレポート
+# (/users/report/{YYYY-MM}・/users/report/environments/{id}) へ誘導するアプリ内通知(+push)を作成する。
+# どちらでもない日は何もせずに終わる。月初と環境の切り替わりが重なれば両方を送る。
+# 既存の通知(月 08:00・金/日 20:00・毎日 21:00)と時刻が重ならないよう昼にしている。
+# 同じ月・同じ環境の通知は二重に作らないため、多重起動しても安全。
+# 取りこぼした日は -date=YYYY-MM-DD か -month=YYYY-MM / -environment-id=ID を付けて手で流す。
+# 検証時は -dry-run=true にすると対象者をログ出力するだけで通知は作られない。
+# 毎日 12:00 JST — 月次・環境別バトルレポート通知
+0 12 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-period-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-period-report -dry-run=false >> /var/log/vsrecorder/period-report.log 2>&1
+
 # ── B-2 週末リマインド（B1_B2_PUSH_NOTIFICATION_PLAN.md §5.5）──
 # 毎週金曜 20:00 JST。Web Push を購読していて今週まだ記録が無い記録経験者へ、
 # 週末の記録を想起させる通知(アプリ内通知 + push)を作成する。

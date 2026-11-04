@@ -170,7 +170,7 @@ func (u *WeeklyReportNotifier) notifyReport(
 		userId,
 		NotificationCategoryWeeklyReport,
 		weeklyReportTitle,
-		weeklyReportBody(stat, u.topDeckName(ctx, userId, fromDate, toDate)),
+		reportBody("先週は", stat, topDeckName(ctx, u.deckUsageStatRepo, userId, statPeriodOf(fromDate, toDate))),
 		linkUrl,
 	)
 
@@ -296,14 +296,20 @@ func (u *WeeklyReportNotifier) alreadyNotified(ctx context.Context, userId strin
 	return exists, nil
 }
 
-// topDeckName はその週に最も多く使ったデッキ(相棒デッキ)の名前を返す。
+// topDeckName はその期間に最も多く使ったデッキ(相棒デッキ)の名前を返す。
+// 週次・月次・環境別のバトルレポート通知で共通に使う。
 // 集計に失敗しても通知本体は出したいので、失敗時は警告だけ残して空文字を返す。
-func (u *WeeklyReportNotifier) topDeckName(ctx context.Context, userId string, fromDate, toDate time.Time) string {
-	// 不戦勝/不戦敗は外す(excludeDefaultMatches=true)。本文の戦績と同じ週の集計であり、
+func topDeckName(
+	ctx context.Context,
+	deckUsageStatRepo repository.DeckUsageStatInterface,
+	userId string,
+	period repository.StatPeriod,
+) string {
+	// 不戦勝/不戦敗は外す(excludeDefaultMatches=true)。本文の戦績と同じ期間の集計であり、
 	// リンク先のふりかえりも除外したうえで使用数の多いデッキを出しているため、ここだけ
 	// 含めると通知の相棒デッキと画面の1位が別のデッキになりうる。
 	// 不戦しか使っていないデッキは相棒デッキになれないが、対戦していない以上それでよい。
-	stat, err := u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, statPeriodOf(fromDate, toDate), 0, true)
+	stat, err := deckUsageStatRepo.FindDeckUsageStat(ctx, userId, period, 0, true)
 	if err != nil {
 		logWarn(ctx, err)
 		return ""
@@ -325,19 +331,24 @@ func (u *WeeklyReportNotifier) topDeckName(ctx context.Context, userId string, f
 	return strings.TrimSpace(top.Name)
 }
 
-// weeklyReportBody は通知本文を組み立てる。
+// reportBody はバトルレポート通知の本文を組み立てる。prefix は期間を表す書き出し
+// (「先週は」「10月は」「この環境では」)。
 // 例: 先週は12戦 8勝4敗（勝率 66.7%）。相棒デッキは『リザードンex』でした。
-// 引き分けは試合数と勝敗の合計が食い違って見えないよう、ある週だけ内訳に添える。
+// 引き分けは試合数と勝敗の合計が食い違って見えないよう、ある期間だけ内訳に添える。
 // デッキ名が取れない(デッキ未登録など)場合は相棒デッキの文を省く。
-func weeklyReportBody(stat *entity.UserStat, deckName string) string {
+// デッキ名が異常に長くても VARCHAR(256) を超えないよう、超える場合は相棒デッキの文を落とす。
+func reportBody(prefix string, stat *entity.UserStat, deckName string) string {
 	record := fmt.Sprintf("%d勝%d敗", stat.Wins, stat.Losses)
 	if draws := stat.TotalMatches - stat.Wins - stat.Losses; draws > 0 {
 		record += fmt.Sprintf("%d分", draws)
 	}
 
-	body := fmt.Sprintf("先週は%d戦 %s（勝率 %.1f%%）。", stat.TotalMatches, record, stat.WinRate*100)
+	body := fmt.Sprintf("%s%d戦 %s（勝率 %.1f%%）。", prefix, stat.TotalMatches, record, stat.WinRate*100)
 	if deckName != "" {
-		body += fmt.Sprintf("相棒デッキは『%s』でした。", deckName)
+		withDeck := body + fmt.Sprintf("相棒デッキは『%s』でした。", deckName)
+		if utf8.RuneCountInString(withDeck) <= notificationBodyMaxLength {
+			return withDeck
+		}
 	}
 
 	return body

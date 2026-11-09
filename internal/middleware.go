@@ -54,12 +54,17 @@ func RequestIDMiddleware() gin.HandlerFunc {
 // docker の healthcheck が定期的に叩くため、アクセスログには残さない。
 const healthPath = "/health"
 
+// dbHealthPath は外形監視が DB まで届くかを確かめる経路(cmd/core-apiserver の dbHealthPath と同じ値)。
+// 外形監視が定期的に叩くため、これもアクセスログには残さない。
+const dbHealthPath = "/api/v1beta/health/db"
+
 func AccessLogMiddleware(logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 死活確認は30秒ごとに来る。通したままだと1日で数千行になり、
 		// 調べたいログが埋もれる(応答できない状態は healthcheck の結果として
 		// docker 側に残るので、ここで記録しなくても追える)。
-		if c.Request.URL.Path == healthPath {
+		// DB の確認(dbHealthPath)も同じ扱い。ping の失敗は経路の側でエラーとしてログに残す。
+		if c.Request.URL.Path == healthPath || c.Request.URL.Path == dbHealthPath {
 			c.Next()
 			return
 		}

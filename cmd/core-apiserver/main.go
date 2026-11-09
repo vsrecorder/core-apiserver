@@ -82,6 +82,52 @@ func runHealthCheckAt(port string) int {
 	return ExitCodeOK
 }
 
+/*
+ * 外形監視が DB まで届くかを確かめる経路。webapp の /health(外形監視の口)から叩かれる。
+ *
+ *   GET /api/v1beta/health/db → 200 "ok"
+ *                               503 "db unreachable" … DB に ping が通らない・時間切れ
+ *
+ * 死活の口は他にもあり、見ているものが違う。
+ *   /livez    … nginx 自身が 200 を返す。GSLB の監視用(proxy リポジトリ)
+ *   /health   … このサーバが HTTP を受けられるかだけ。DB は見ない(docker の healthcheck 用。
+ *               DB まで見ると DB の不調でデプロイの待ち合わせが終わらなくなる。runHealthCheck を参照)
+ *   ここ      … DB に ping が通るか。docker の healthcheck には使わないこと(同じ理由)
+ *
+ * /api/v1beta の下に置いているのは、本番の webapp が公開ドメイン(nginx)経由でこのサーバを呼ぶため。
+ * nginx は /api/v1beta 配下しかこのサーバへ流さない。外からも叩けるが、返すのは "ok" か
+ * "db unreachable" だけで、接続先やエラーの文言は出さない(ログにだけ残す)。
+ * 認証は通さない(監視から叩けるように)。
+ */
+const dbHealthPath = relativePath + "/health/db"
+
+// dbHealthTimeout は ping を待つ上限。webapp 側の待ち時間(3 秒)より短くして、
+// webapp の時間切れ(api unreachable)ではなく db unreachable として見えるようにする。
+const dbHealthTimeout = 2 * time.Second
+
+// pinger は DB に ping を打てるもの(*sql.DB)。テストで差し替えるために切り出している。
+type pinger interface {
+	PingContext(ctx context.Context) error
+}
+
+func dbHealthHandler(db pinger) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		// 応答を覚えさせると障害や復旧を見誤るため、どこにもキャッシュさせない
+		ctx.Header("Cache-Control", "no-store")
+
+		c, cancel := context.WithTimeout(ctx.Request.Context(), dbHealthTimeout)
+		defer cancel()
+
+		if err := db.PingContext(c); err != nil {
+			slog.ErrorContext(ctx.Request.Context(), "db health check failed", logging.Err(err))
+			ctx.String(http.StatusServiceUnavailable, "db unreachable")
+			return
+		}
+
+		ctx.String(http.StatusOK, "ok")
+	}
+}
+
 // jwtSecretMinLength はVSRECORDER_JWT_SECRETに要求する最小文字数。
 // HS256の鍵として妥当な強度(256bit相当)を下回る値を弾く。
 const jwtSecretMinLength = 32
@@ -274,6 +320,14 @@ func main() {
 	r.GET(healthPath, func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "health")
 	})
+
+	// 外形監視(webapp の /health)が DB まで届くかを確かめる経路。上の /health とは役割が違う(dbHealthPath の説明を参照)
+	sqlDB, err := db.DB()
+	if err != nil {
+		slog.Error("failed to get sql.DB", logging.Err(err))
+		os.Exit(ExitCodeNG)
+	}
+	r.GET(dbHealthPath, dbHealthHandler(sqlDB))
 
 	badgeEvaluation := usecase.NewBadgeEvaluation(
 		infrastructure.NewBadgeDefinition(db),

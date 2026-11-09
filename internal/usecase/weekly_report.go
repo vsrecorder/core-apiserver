@@ -469,11 +469,11 @@ func deckDisplayName(sprites []*entity.PokemonSprite, names map[string]string) s
 }
 
 // envNewsBody は環境ニュースの本文を組み立てる。
-// 例: 先週の環境: 使用率1位は『ドラパルト＋ヨノワール』(6.1%)。いちばん伸びたのは『メガレックウザ＋ホウオウ』(+3.9pt)。今週1戦記録すると、来週はあなたのレポートが届きます
+// 例: 先週の環境: 使用率1位は『ドラパルト＋ヨノワール』(6.1%)。いちばん伸びたのは『メガレックウザ＋ホウオウ』(+3.9pt)。今週1戦記録すると、来週はあなたのバトルレポートが届きます
 // 伸びたデッキが1位と同じなら1文にまとめ、前週データが無ければその文を省く。
 // 名前が長すぎて VARCHAR(256) を超える場合は、伸びたデッキの文から順に落とす。
 func envNewsBody(h *envNewsHeadline) string {
-	const cta = "今週1戦記録すると、来週はあなたのレポートが届きます"
+	const cta = "今週1戦記録すると、来週はあなたのバトルレポートが届きます"
 	top := fmt.Sprintf("先週の環境: 使用率1位は『%s』(%.1f%%)", h.TopName, h.TopRate*100)
 
 	candidates := []string{}

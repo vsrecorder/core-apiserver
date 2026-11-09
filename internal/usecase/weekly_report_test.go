@@ -317,7 +317,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 		require.Equal(t, envNewsTitle, saved.Title)
 		require.Equal(t, wantLink, saved.LinkUrl)
 		require.Equal(t,
-			"先週の環境: 使用率1位は『ドラパルト＋ヨノワール』(6.1%)。いちばん伸びたのは『メガレックウザ＋ホウオウ』(+3.9pt)。今週1戦記録すると、来週はあなたのレポートが届きます",
+			"先週の環境: 使用率1位は『ドラパルト＋ヨノワール』(6.1%)。いちばん伸びたのは『メガレックウザ＋ホウオウ』(+3.9pt)。今週1戦記録すると、来週はあなたのバトルレポートが届きます",
 			saved.Body)
 		require.Equal(t, []string{PushCampaignEnvNews}, m.pushNotifier.campaigns())
 		require.Same(t, saved, m.pushNotifier.calls[0].notification)
@@ -343,7 +343,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 
 		require.NoError(t, err)
 		require.True(t, sent)
-		require.Equal(t, "先週の環境: 使用率1位は『メガレックウザ＋ホウオウ』(10.0%・前週比+6.0pt)。今週1戦記録すると、来週はあなたのレポートが届きます", saved.Body)
+		require.Equal(t, "先週の環境: 使用率1位は『メガレックウザ＋ホウオウ』(10.0%・前週比+6.0pt)。今週1戦記録すると、来週はあなたのバトルレポートが届きます", saved.Body)
 	})
 
 	t.Run("正常系_前週データが無ければ伸びたデッキの文を省く", func(t *testing.T) {
@@ -365,7 +365,7 @@ func TestWeeklyReportNotifier_NotifyUser_EnvNews(t *testing.T) {
 
 		require.NoError(t, err)
 		require.True(t, sent)
-		require.Equal(t, "先週の環境: 使用率1位は『ドラパルト＋ヨノワール』(12.0%)。今週1戦記録すると、来週はあなたのレポートが届きます", saved.Body)
+		require.Equal(t, "先週の環境: 使用率1位は『ドラパルト＋ヨノワール』(12.0%)。今週1戦記録すると、来週はあなたのバトルレポートが届きます", saved.Body)
 	})
 
 	t.Run("正常系_一度も記録していない(ストリーク行なし)購読者にも環境ニュースを送る", func(t *testing.T) {

@@ -62,20 +62,38 @@ const (
 	// UserDailyActivityCategoryDeckForm はその日、デッキ登録フォームを開いたシグナル。
 	// A-2(デッキコード→記録フォーム直行)の副導線がどこまで進んだかを測る。
 	UserDailyActivityCategoryDeckForm = "deck_form"
+
+	// 以下2つは D-4(ウィンバック)の効果を測る(D4_WINBACK_PLAN.md §5.3)。
+	//
+	// 休眠していた人が戻ってきても、流入元(user_acquisitions)は登録の時点で紐づける
+	// 作りなので、呼び戻しの投稿から来たことを UTM では数えられない。
+	// そこで「呼び戻しのリンクに着地した日」と「おかえりカードを見た日」を日次シグナルで残し、
+	// それぞれ 7日以内に記録したかを records と突き合わせる。
+
+	// UserDailyActivityCategoryWinbackCard はその日、ホームの「おかえりカード」
+	// (直前の4週すべてで対戦していない人に出す)が表示されたシグナル。
+	UserDailyActivityCategoryWinbackCard = "winback_card"
+
+	// UserDailyActivityCategoryWinbackLanding はその日、ログイン済みで
+	// utm_campaign が "winback_" で始まる URL に着地したシグナル(X の呼び戻し投稿など)。
+	// ログインして元のページへ戻った直後も含む。
+	UserDailyActivityCategoryWinbackLanding = "winback_landing"
 )
 
 // UserDailyActivityCategories は既知の計測カテゴリの集合。
 // 未知の値をそのまま書き込むと、集計時に誰も気づけない無音のゴミが溜まるため、
 // 受け入れ判定は必ずここを通す。
 var UserDailyActivityCategories = map[string]struct{}{
-	UserDailyActivityCategoryVisit:         {},
-	UserDailyActivityCategoryReview:        {},
-	UserDailyActivityCategoryStandalone:    {},
-	UserDailyActivityCategoryPushCapable:   {},
-	UserDailyActivityCategoryReport:        {},
-	UserDailyActivityCategoryOnboardingCta: {},
-	UserDailyActivityCategoryRecordForm:    {},
-	UserDailyActivityCategoryDeckForm:      {},
+	UserDailyActivityCategoryVisit:          {},
+	UserDailyActivityCategoryReview:         {},
+	UserDailyActivityCategoryStandalone:     {},
+	UserDailyActivityCategoryPushCapable:    {},
+	UserDailyActivityCategoryReport:         {},
+	UserDailyActivityCategoryOnboardingCta:  {},
+	UserDailyActivityCategoryRecordForm:     {},
+	UserDailyActivityCategoryDeckForm:       {},
+	UserDailyActivityCategoryWinbackCard:    {},
+	UserDailyActivityCategoryWinbackLanding: {},
 }
 
 // IsKnownUserDailyActivityCategory は既知のカテゴリかどうかを返す。

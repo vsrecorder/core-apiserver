@@ -30,10 +30,26 @@ jobs:
     needs:
       - test
     runs-on: ubuntu-latest
+    env:
+      # Dependabot が起動した実行と fork からの PR には Actions のシークレットが渡されない
+      # (Dependabot の実行に見えるのは Dependabot 用のシークレットだけ)ため、ログインできずに
+      # 落ちる。これらはビルドだけ行い、ログインと push はしない。ビルドは残すので、
+      # ベースイメージの更新で Dockerfile が壊れていないかは確かめられる。
+      #
+      # Dependabot 用に Docker の認証情報を登録する手もあるが、取り込むか決める前の依存更新を
+      # 含むイメージで develop タグを自動で上書きすることになるので採らない。なお人が
+      # Dependabot のブランチを更新(Update branch や追加のコミット)すると起動者がその人になり、
+      # 通常の PR と同じく push まで走る。
+      #
+      # github.actor は再実行しても最初の起動者のままで、権限も最初の起動者のものが使われる
+      # ため、人が再実行しても判定とシークレットの有無は食い違わない。
+      # notify-slack の if にも同じ条件を書いている。片方だけ変えないこと。
+      PUSH_IMAGE: ${{ github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
       - name: Login to Container Registry
+        if: env.PUSH_IMAGE == 'true'
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -45,11 +61,15 @@ jobs:
             --cache-from vsrecorder/core-apiserver:develop \
             --tag vsrecorder/core-apiserver:develop
       - name: Push Container Image
+        if: env.PUSH_IMAGE == 'true'
         run: |
           docker push vsrecorder/core-apiserver:develop
 
   notify-slack:
-    if: ${{ always() }}
+    # Dependabot の実行と fork からの PR には SLACK_WEBHOOK_URL も渡されないので通知しない
+    # (送れずにジョブが落ちるだけになる)。結果は PR のチェックで確認する。
+    # 条件は build-and-push-container-image の PUSH_IMAGE と揃えること。
+    if: ${{ always() && github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     needs:
       - build-and-push-container-image
     runs-on: ubuntu-latest

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z "${SLACK_WEBHOOK_URL}" ] || \
-   [ -z "${SUCCESS}"] || [ -z "${WORKFLOW}" ] || [ -z "${SERVER_URL}" ] || [ -z "${REPOSITORY}" ] || \
+   [ -z "${SUCCESS}" ] || [ -z "${WORKFLOW}" ] || [ -z "${SERVER_URL}" ] || [ -z "${REPOSITORY}" ] || \
    [ -z "${BRANCH}" ] || [ -z "${SHA}" ] || [ -z "${RUN_ID}" ] || [ -z "${ACTOR}" ] \
    ; then
     echo "実行に必要な環境変数が設定されていません。"

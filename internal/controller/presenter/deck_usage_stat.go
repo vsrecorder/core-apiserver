@@ -24,25 +24,34 @@ func NewDeckUsageStatResponse(
 			})
 		}
 
+		deckPokemonSprites := []*dto.PokemonSpriteResponse{}
+		for _, pokemonSprite := range deck.DeckPokemonSprites {
+			deckPokemonSprites = append(deckPokemonSprites, &dto.PokemonSpriteResponse{
+				ID:       pokemonSprite.ID,
+				Position: pokemonSprite.Position,
+			})
+		}
+
 		decks = append(decks, &dto.DeckUsageItemResponse{
-			DeckId:            deck.DeckId,
-			Name:              deck.Name,
-			Count:             deck.Count,
-			UsageRate:         deck.UsageRate,
-			Wins:              deck.Wins,
-			Losses:            deck.Losses,
-			WinRate:           deck.WinRate,
-			GameCount:         deck.GameCount,
-			GoFirstCount:      deck.GoFirstCount,
-			GoSecondCount:     deck.GoSecondCount,
-			GoFirstRate:       deck.GoFirstRate,
-			GoFirstWins:       deck.GoFirstWins,
-			GoFirstWinRate:    deck.GoFirstWinRate,
-			GoSecondWins:      deck.GoSecondWins,
-			GoSecondWinRate:   deck.GoSecondWinRate,
-			IgnoredCount:      deck.IgnoredCount,
-			DefaultMatchCount: deck.DefaultMatchCount,
-			PokemonSprites:    pokemonSprites,
+			DeckId:             deck.DeckId,
+			Name:               deck.Name,
+			Count:              deck.Count,
+			UsageRate:          deck.UsageRate,
+			Wins:               deck.Wins,
+			Losses:             deck.Losses,
+			WinRate:            deck.WinRate,
+			GameCount:          deck.GameCount,
+			GoFirstCount:       deck.GoFirstCount,
+			GoSecondCount:      deck.GoSecondCount,
+			GoFirstRate:        deck.GoFirstRate,
+			GoFirstWins:        deck.GoFirstWins,
+			GoFirstWinRate:     deck.GoFirstWinRate,
+			GoSecondWins:       deck.GoSecondWins,
+			GoSecondWinRate:    deck.GoSecondWinRate,
+			IgnoredCount:       deck.IgnoredCount,
+			DefaultMatchCount:  deck.DefaultMatchCount,
+			PokemonSprites:     pokemonSprites,
+			DeckPokemonSprites: deckPokemonSprites,
 		})
 	}
 

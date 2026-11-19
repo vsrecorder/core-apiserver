@@ -438,9 +438,34 @@ func ReplaceAutoDeckNameAliases(
 	return saved, nil
 }
 
+// ownDeckSpritesJoin は、記録の自分デッキのスプライトを own_sprites として結合する。
+// 記録が使ったバージョンにスプライトがあればそれだけを、無ければデッキのものを返す。
+// 枠ごとに混ぜない(バージョンに1体でもあれば、デッキのスプライトは1行も出さない)。
+// どちらにも無い記録は結合で落ちる(教師データにならない)。
+// records と decks が結合済みであること。
+const ownDeckSpritesJoin = `JOIN LATERAL (
+	SELECT position, pokemon_sprite_id
+	FROM deck_code_pokemon_sprites
+	WHERE deck_code_pokemon_sprites.deck_code_id = records.deck_code_id
+	UNION ALL
+	SELECT position, pokemon_sprite_id
+	FROM deck_pokemon_sprites
+	WHERE deck_pokemon_sprites.deck_id = decks.id
+	  AND NOT EXISTS (
+	      SELECT 1 FROM deck_code_pokemon_sprites
+	      WHERE deck_code_pokemon_sprites.deck_code_id = records.deck_code_id
+	  )
+) own_sprites ON true`
+
 // aggregateDeckNameSupply は名前とスプライトが両方ある記録を、正規化名×指紋で集計する。
 // 相手デッキ(opponents_deck_info × match_pokemon_sprites)と
-// 自分デッキ(decks.name × deck_pokemon_sprites)の双方を教師データにする。
+// 自分デッキ(decks.name × その記録で使ったバージョンのスプライト)の双方を教師データにする。
+//
+// 自分デッキのスプライトは、記録が使ったバージョン(deck_code_pokemon_sprites)を優先し、
+// バージョンが紐付いていない・未設定のときだけデッキ(deck_pokemon_sprites)のものを使う
+// (ownDeckSpritesJoin)。週次の使用率統計(weekly_deck_usage_stat.go)と同じ規則。
+// デッキのスプライトは最新バージョンに合わせて変わっていくので、デッキのものだけを見ると、
+// 相棒を入れ替えた時点で過去の記録まで「その名前 × 新しい相棒」の教師データに変わってしまう。
 func aggregateDeckNameSupply(
 	ctx context.Context,
 	db *gorm.DB,
@@ -465,11 +490,11 @@ func aggregateDeckNameSupply(
 		Select(
 			"decks.name AS name, " +
 				"records.user_id AS user_id, " +
-				"string_agg(deck_pokemon_sprites.position::text || ':' || deck_pokemon_sprites.pokemon_sprite_id, ',' ORDER BY deck_pokemon_sprites.position) AS layout",
+				"string_agg(own_sprites.position::text || ':' || own_sprites.pokemon_sprite_id, ',' ORDER BY own_sprites.position) AS layout",
 		).
 		Joins("JOIN records ON matches.record_id = records.id").
 		Joins("JOIN decks ON decks.id = records.deck_id").
-		Joins("JOIN deck_pokemon_sprites ON deck_pokemon_sprites.deck_id = decks.id").
+		Joins(ownDeckSpritesJoin).
 		Where("records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND decks.name <> ''").
 		Group("matches.id, decks.name, records.user_id")
 
@@ -547,8 +572,10 @@ func aggregateDeckNameDemand(
 		Select("decks.name AS name, COUNT(*) AS count").
 		Joins("JOIN records ON matches.record_id = records.id").
 		Joins("JOIN decks ON decks.id = records.deck_id").
-		Joins("LEFT JOIN deck_pokemon_sprites ON deck_pokemon_sprites.deck_id = decks.id").
-		Where("records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND decks.name <> '' AND deck_pokemon_sprites.deck_id IS NULL").
+		// バージョンにもデッキにもスプライトが無い票だけが、集計から除外されている(需要)。
+		Where("records.deleted_at IS NULL AND records.ignore_stats_flg = false AND matches.deleted_at IS NULL AND decks.name <> ''" +
+			" AND NOT EXISTS (SELECT 1 FROM deck_code_pokemon_sprites WHERE deck_code_pokemon_sprites.deck_code_id = records.deck_code_id)" +
+			" AND NOT EXISTS (SELECT 1 FROM deck_pokemon_sprites WHERE deck_pokemon_sprites.deck_id = decks.id)").
 		Group("decks.name")
 
 	for _, query := range []*gorm.DB{opponentQuery, ownQuery} {

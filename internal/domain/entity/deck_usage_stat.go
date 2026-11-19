@@ -28,7 +28,13 @@ type DeckUsage struct {
 	// 見分けがつかないため、外した件数を返して画面側で理由を示せるようにする。
 	// IgnoredCount と同じくコンストラクタ外でフィールドに直接設定する。
 	DefaultMatchCount int
-	PokemonSprites    []*PokemonSprite
+	// PokemonSprites はこの行の成績に対応するスプライト。期間中の対戦で使ったバージョンのもの
+	// (1デッキ1行の集計ではいちばん多く使った組み合わせ、行を分ける集計ではその行の組み合わせ)。
+	PokemonSprites []*PokemonSprite
+	// DeckPokemonSprites はデッキ自体のいまのスプライト(＝最新バージョンのスプライト)。
+	// 期間によって変わらない。「どのデッキか」を示す用途(デッキの選択肢のアイコンなど)に使う。
+	// コンストラクタ外でフィールドに直接設定する。
+	DeckPokemonSprites []*PokemonSprite
 }
 
 func NewDeckUsage(

@@ -65,7 +65,15 @@ func (c *DeckUsageStat) GetByUserId(ctx *gin.Context) {
 	allTime := helper.GetAllTime(ctx)
 	excludeDefaultMatches := helper.GetExcludeDefaultMatches(ctx)
 
-	stat, err := c.usecase.GetDeckUsageStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches)
+	// split_by_sprites=true なら、同じデッキでも対戦で使ったスプライトの組み合わせごとに行を分ける
+	// (同じ deck_id の行が複数返る)。使用率を並べて見せる画面だけが付ける。既定(付けない)は
+	// 1デッキ1行で、デッキIDで引く呼び出し側(デッキ一覧カード・デッキの選択肢など)はこちらを使う。
+	getDeckUsageStat := c.usecase.GetDeckUsageStat
+	if ctx.Query("split_by_sprites") == "true" {
+		getDeckUsageStat = c.usecase.GetDeckUsageStatBySprites
+	}
+
+	stat, err := getDeckUsageStat(ctx.Request.Context(), uid, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches)
 	if err != nil {
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)

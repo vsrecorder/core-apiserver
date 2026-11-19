@@ -204,6 +204,11 @@ var specs = []tableSpec{
 		note:  "デッキコードに付けたタグ。user_id を持たないためデッキコード経由でたどる",
 	},
 	{
+		name:  "deck_code_pokemon_sprites",
+		where: `deck_code_id IN (` + targetDeckCodes + `)`,
+		note:  "デッキコードのスプライト。user_id を持たないためデッキコード経由でたどる",
+	},
+	{
 		name:         "deck_codes",
 		where:        `user_id = @user_id OR deck_id IN (` + targetDecks + `)`,
 		foreignWhere: `user_id <> @user_id AND deck_id IN (` + targetDecks + `)`,

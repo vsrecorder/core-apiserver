@@ -55,6 +55,15 @@ type DeckInterface interface {
 		uid string,
 	) error
 
+	// ReplacePokemonSprites はデッキのスプライトだけを sprites に置き換える(全削除して入れ直す)。
+	// 最新バージョンのスプライトをデッキへ写すときに使う。名前や公開設定など本体には触れない。
+	// 存在しないスプライトIDは ErrInvalidReference を返す。
+	ReplacePokemonSprites(
+		ctx context.Context,
+		deckId string,
+		sprites []*entity.PokemonSprite,
+	) error
+
 	Save(
 		ctx context.Context,
 		entity *entity.Deck,

@@ -4,8 +4,9 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 )
 
-// MaxPokemonSpritesPerEntity はデッキ・対戦結果に付けられるスプライトの数。
-// 表示枠は position 1 / 2 の2つ(deck_pokemon_sprites / match_pokemon_sprites の主キーは position)。
+// MaxPokemonSpritesPerEntity はデッキ・デッキコード(バージョン)・対戦結果に付けられるスプライトの数。
+// 表示枠は position 1 / 2 の2つ(deck_pokemon_sprites / deck_code_pokemon_sprites /
+// match_pokemon_sprites の主キーは position)。
 const MaxPokemonSpritesPerEntity = 2
 
 /*

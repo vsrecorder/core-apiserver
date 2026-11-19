@@ -27,17 +27,9 @@ func newDeckResponse(deck *entity.Deck) dto.DeckResponse {
 		UserId:      deck.UserId,
 		Name:        deck.Name,
 		PrivateFlg:  deck.PrivateFlg,
-		LatestDeckCode: dto.DeckCodeResponse{
-			ID:             deck.LatestDeckCode.ID,
-			CreatedAt:      deck.LatestDeckCode.CreatedAt,
-			UserId:         deck.LatestDeckCode.UserId,
-			DeckId:         deck.LatestDeckCode.DeckId,
-			Code:           deck.LatestDeckCode.Code,
-			PrivateCodeFlg: deck.LatestDeckCode.PrivateCodeFlg,
-			Memo:           deck.LatestDeckCode.Memo,
-			// 新バージョン作成時のタグ継承などで使うため、最新バージョンの付与タグも返す。
-			Tags: newTagResponses(deck.LatestDeckCode.Tags),
-		},
+		// 新バージョン作成時のタグ・スプライトの継承などで使うため、最新バージョンの
+		// 付与タグとスプライトも返す(newDeckCodeResponse が載せる)。
+		LatestDeckCode: newDeckCodeResponse(deck.LatestDeckCode),
 		PokemonSprites: pokemonSpritesResponse,
 		Tags:           newTagResponses(deck.Tags),
 	}

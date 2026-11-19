@@ -84,9 +84,11 @@ func TestGenerateDeckNameAliasCandidates(t *testing.T) {
 		manualAliases *sqlmock.Rows,
 	) {
 		mock.ExpectQuery(`string_agg\(match_pokemon_sprites`).WillReturnRows(opponentSupply)
-		mock.ExpectQuery(`string_agg\(deck_pokemon_sprites`).WillReturnRows(ownSupply)
+		// 自分デッキは「記録が使ったバージョンのスプライト、無ければデッキのもの」(own_sprites)
+		mock.ExpectQuery(`string_agg\(own_sprites.*JOIN LATERAL.*deck_code_pokemon_sprites.*UNION ALL.*deck_pokemon_sprites`).WillReturnRows(ownSupply)
 		mock.ExpectQuery(`COUNT\(\*\).*match_pokemon_sprites\.match_id IS NULL`).WillReturnRows(opponentDemand)
-		mock.ExpectQuery(`COUNT\(\*\).*deck_pokemon_sprites\.deck_id IS NULL`).WillReturnRows(ownDemand)
+		// バージョンにもデッキにもスプライトが無い票だけを需要として数える
+		mock.ExpectQuery(`COUNT\(\*\).*NOT EXISTS \(SELECT 1 FROM deck_code_pokemon_sprites.*NOT EXISTS \(SELECT 1 FROM deck_pokemon_sprites`).WillReturnRows(ownDemand)
 		mock.ExpectQuery(`SELECT \* FROM "deck_name_aliases" WHERE source = \$1`).
 			WithArgs("manual").
 			WillReturnRows(manualAliases)

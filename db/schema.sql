@@ -819,6 +819,24 @@ CREATE TABLE deck_pokemon_sprites (
 
 
 
+-- デッキコード(バージョン)のスプライト。バージョンごとに相棒が変わるデッキ
+-- (例: 同じデッキ名のまま2体目を入れ替えた)を、バージョン単位で見分けられるようにする。
+-- 行が無いバージョンは「未設定」で、表示も集計も親デッキ(deck_pokemon_sprites)へフォールバックする。
+-- デッキのスプライトは最新バージョンのスプライトと常に揃える(usecase/deck_sprite_sync.go)。
+-- 記録の表示・週次の使用率・デッキ名辞書は「その記録で使ったバージョン」のスプライトを見る。
+-- 既存のバージョンへは db/backfill/2026-11-19-deck-code-pokemon-sprites.sql でデッキのものを書き込む。
+-- 規約は deck_pokemon_sprites と同じ(ソフトデリート列なし、position 1/2 が表示枠)。
+CREATE TABLE deck_code_pokemon_sprites (
+    deck_code_id VARCHAR(26) NOT NULL,
+    position     SMALLINT NOT NULL CHECK (position > 0),
+    pokemon_sprite_id VARCHAR(128) NOT NULL,
+    PRIMARY KEY (deck_code_id, position),
+    FOREIGN KEY (deck_code_id)      REFERENCES deck_codes(id),
+    FOREIGN KEY (pokemon_sprite_id) REFERENCES pokemon_sprites(id)
+);
+
+
+
 -- デッキ名エイリアス辞書。スプライト未設定のマッチ/デッキを、
 -- デッキ名(自由入力)から代表スプライトへ解決するために使う(週次デッキ使用率の集計)。
 -- alias は人間可読のまま格納してよい(集計時に NormalizeDeckName で正規化して突合する)。
@@ -1191,6 +1209,7 @@ GRANT SELECT ON games                   TO grafana;
 GRANT SELECT ON decks                   TO grafana;
 GRANT SELECT ON deck_codes              TO grafana;
 GRANT SELECT ON deck_pokemon_sprites    TO grafana;
+GRANT SELECT ON deck_code_pokemon_sprites TO grafana;
 GRANT SELECT ON deck_name_aliases       TO grafana;
 
 GRANT SELECT ON tags                    TO grafana;

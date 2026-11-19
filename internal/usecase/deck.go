@@ -153,6 +153,9 @@ type Deck struct {
 	// deckCodePost はみんなの公開デッキへの投稿。アーカイブ・削除したデッキの投稿を
 	// 連動して取り下げるために使う。nil なら連動しない(投稿機能を持たないテスト用)。
 	deckCodePost repository.DeckCodePostInterface
+	// deckCode はデッキのスプライトを変えたときに、最新バージョンのスプライトを揃えるために使う
+	// (deck_sprite_sync.go)。
+	deckCode repository.DeckCodeInterface
 }
 
 func NewDeck(
@@ -163,6 +166,7 @@ func NewDeck(
 	transactionManager repository.TransactionManager,
 	badgeEvaluation BadgeEvaluationInterface,
 	deckCodePost repository.DeckCodePostInterface,
+	deckCode repository.DeckCodeInterface,
 ) DeckInterface {
 	return &Deck{
 		repository,
@@ -172,6 +176,7 @@ func NewDeck(
 		transactionManager,
 		badgeEvaluation,
 		deckCodePost,
+		deckCode,
 	}
 }
 
@@ -409,6 +414,19 @@ func (u *Deck) Create(
 			LatestDeckCode.Tags = tags
 		}
 
+		// デッキ登録と同時に作られた最初のバージョンにも、デッキと同じスプライトを設定しておく。
+		// 未設定のままだとデッキのスプライトで表示されるので見た目は同じだが、あとでデッキの
+		// スプライトを変えたときに、このバージョン(とそれを使った記録)の表示まで変わってしまう。
+		// どのバージョンも自分のスプライトを持つようにそろえる(既存分は db/backfill で設定する)。
+		if LatestDeckCode.ID != "" && len(pokemonSprites) > 0 {
+			versionSprites := copyPokemonSprites(pokemonSprites)
+			if err := u.deckCode.ReplacePokemonSprites(ctx, LatestDeckCode.ID, versionSprites); err != nil {
+				logError(ctx, err)
+				return err
+			}
+			LatestDeckCode.PokemonSprites = versionSprites
+		}
+
 		return nil
 	}); err != nil {
 		return nil, err
@@ -473,6 +491,21 @@ func (u *Deck) Update(
 			return err
 		}
 		deck.Tags = tags
+
+		// デッキのスプライトを変えたら、最新バージョンに設定があればそれも同じにする
+		// (デッキと最新バージョンのスプライトを常に揃える。deck_sprite_sync.go)。
+		// 最新バージョンが未設定ならデッキのスプライトで表示されるので、何もしなくても揃う。
+		// デッキのスプライトを空にしたときは、最新バージョンも未設定に戻る。
+		if latest := ret.LatestDeckCode; latest != nil && latest.ID != "" &&
+			len(latest.PokemonSprites) > 0 && !samePokemonSprites(latest.PokemonSprites, pokemonSprites) {
+			synced := copyPokemonSprites(pokemonSprites)
+			if err := u.deckCode.ReplacePokemonSprites(ctx, latest.ID, synced); err != nil {
+				logError(ctx, err)
+				return err
+			}
+			// deck.LatestDeckCode は latest と同じ実体を指すため、レスポンスにも反映される。
+			latest.PokemonSprites = synced
+		}
 
 		return nil
 	}); err != nil {

@@ -235,8 +235,10 @@ func (u *User) Delete(
 	//                            record_tags / match_tags / match_pokemon_sprites
 	//   Deck.DeleteByUserId      decks / deck_codes(自分のデッキに紐づくもの) /
 	//                            deck_tags / deck_code_tags / deck_pokemon_sprites /
+	//                            deck_code_pokemon_sprites /
 	//                            user_favorite_decks(自分のデッキに付いたもの)
-	//   DeckCode.DeleteByUserId  deck_codes(自分が作ったもの) / deck_code_tags
+	//   DeckCode.DeleteByUserId  deck_codes(自分が作ったもの) / deck_code_tags /
+	//                            deck_code_pokemon_sprites
 	//   Tag.DeleteByUserId       tags と、そのタグの中間テーブルの行
 	//   以下は1テーブルずつ       user_favorite_decks(他人のデッキに付けたもの) /
 	//                            user_streaks / user_daily_activities / user_badges /

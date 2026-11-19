@@ -308,9 +308,20 @@ func (i *Calendar) findDeckCodesByDeckId(
 		return nil, tx.Error
 	}
 
+	deckCodeIds := make([]string, 0, len(deckCodeModels))
+	for _, m := range deckCodeModels {
+		deckCodeIds = append(deckCodeIds, m.ID)
+	}
+
+	// バージョンのスプライト。記録が使ったバージョンに設定があれば、カレンダーはそちらを優先表示する。
+	spritesByDeckCodeId, err := findDeckCodePokemonSpritesByDeckCodeIds(ctx, i.db, deckCodeIds)
+	if err != nil {
+		return nil, err
+	}
+
 	deckCodesByDeckId := make(map[string][]*entity.DeckCode)
 	for _, m := range deckCodeModels {
-		deckCodesByDeckId[m.DeckId] = append(deckCodesByDeckId[m.DeckId], entity.NewDeckCode(
+		deckCode := entity.NewDeckCode(
 			m.ID,
 			m.CreatedAt,
 			m.UserId,
@@ -318,7 +329,9 @@ func (i *Calendar) findDeckCodesByDeckId(
 			m.Code,
 			m.PrivateCodeFlg,
 			m.Memo,
-		))
+		)
+		deckCode.PokemonSprites = spritesByDeckCodeId[m.ID]
+		deckCodesByDeckId[m.DeckId] = append(deckCodesByDeckId[m.DeckId], deckCode)
 	}
 
 	return deckCodesByDeckId, nil

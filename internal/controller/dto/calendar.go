@@ -50,6 +50,9 @@ type CalendarDeckCodeResponse struct {
 	ID        string    `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	Code      string    `json:"code"`
+	// PokemonSprites はこのバージョンに設定したスプライト。未設定なら空配列で、
+	// 表示側は親デッキの pokemon_sprites へフォールバックする。
+	PokemonSprites []*PokemonSpriteResponse `json:"pokemon_sprites"`
 }
 
 // CalendarTonamelEventResponse はカレンダー表示に必要なTonamelイベントの情報。

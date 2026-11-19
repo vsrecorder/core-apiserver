@@ -99,6 +99,20 @@ func (mr *MockDeckCodeInterfaceMockRecorder) FindById(ctx, id any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindById", reflect.TypeOf((*MockDeckCodeInterface)(nil).FindById), ctx, id)
 }
 
+// ReplacePokemonSprites mocks base method.
+func (m *MockDeckCodeInterface) ReplacePokemonSprites(ctx context.Context, deckCodeId string, sprites []*entity.PokemonSprite) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplacePokemonSprites", ctx, deckCodeId, sprites)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplacePokemonSprites indicates an expected call of ReplacePokemonSprites.
+func (mr *MockDeckCodeInterfaceMockRecorder) ReplacePokemonSprites(ctx, deckCodeId, sprites any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplacePokemonSprites", reflect.TypeOf((*MockDeckCodeInterface)(nil).ReplacePokemonSprites), ctx, deckCodeId, sprites)
+}
+
 // Save mocks base method.
 func (m *MockDeckCodeInterface) Save(ctx context.Context, entity *entity.DeckCode) error {
 	m.ctrl.T.Helper()

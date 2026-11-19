@@ -88,6 +88,11 @@ func TestCalendarInfrastructure(t *testing.T) {
 		expectDeckCodesQuery(mock).WillReturnRows(sqlmock.NewRows(deckCodeColumns).
 			AddRow(deckCodeId, now, uid, deckId, "5dbFbk-uBwjqP-VVk5Vv", false, ""),
 		)
+		// バージョンに設定したスプライト(記録が使ったバージョンにあれば、表示側がデッキより優先する)
+		mock.ExpectQuery(`SELECT \* FROM "deck_code_pokemon_sprites" WHERE deck_code_id IN`).
+			WithArgs(deckCodeId).
+			WillReturnRows(sqlmock.NewRows([]string{"deck_code_id", "position", "pokemon_sprite_id"}).
+				AddRow(deckCodeId, 2, "dusknoir"))
 
 		// 参照されている公式イベント・自由形式イベントだけをまとめて取得する
 		mock.ExpectQuery(`SELECT \* FROM "official_events" WHERE id IN`).
@@ -116,6 +121,9 @@ func TestCalendarInfrastructure(t *testing.T) {
 		require.Equal(t, "gardevoir", ret.Decks[0].Deck.PokemonSprites[0].ID)
 		require.Len(t, ret.Decks[0].DeckCodes, 1)
 		require.Equal(t, deckCodeId, ret.Decks[0].DeckCodes[0].ID)
+		require.Len(t, ret.Decks[0].DeckCodes[0].PokemonSprites, 1)
+		require.Equal(t, "dusknoir", ret.Decks[0].DeckCodes[0].PokemonSprites[0].ID)
+		require.Equal(t, uint(2), ret.Decks[0].DeckCodes[0].PokemonSprites[0].Position)
 
 		require.Len(t, ret.OfficialEvents, 1)
 		require.Equal(t, uint(606466), ret.OfficialEvents[0].ID)

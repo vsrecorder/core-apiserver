@@ -70,3 +70,18 @@ func (mr *MockDeckUsageStatInterfaceMockRecorder) GetDeckUsageStat(ctx, userId, 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeckUsageStat", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).GetDeckUsageStat), ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches)
 }
+
+// GetDeckUsageStatBySprites mocks base method.
+func (m *MockDeckUsageStatInterface) GetDeckUsageStatBySprites(ctx context.Context, userId, week, yearMonth, environmentId, season, standardRegulationId string, regulationId uint, allTime, excludeDefaultMatches bool) (*entity.DeckUsageStat, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDeckUsageStatBySprites", ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches)
+	ret0, _ := ret[0].(*entity.DeckUsageStat)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDeckUsageStatBySprites indicates an expected call of GetDeckUsageStatBySprites.
+func (mr *MockDeckUsageStatInterfaceMockRecorder) GetDeckUsageStatBySprites(ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeckUsageStatBySprites", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).GetDeckUsageStatBySprites), ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches)
+}

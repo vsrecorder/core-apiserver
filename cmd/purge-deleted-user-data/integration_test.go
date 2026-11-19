@@ -98,6 +98,7 @@ func assertTargetDataGone(t *testing.T, tx *gorm.DB) {
 		{"deck_code_tags", "SELECT COUNT(*) FROM deck_code_tags WHERE deck_code_id = '" + testId("C1") + "'"},
 		{"match_pokemon_sprites", "SELECT COUNT(*) FROM match_pokemon_sprites WHERE match_id = '" + testId("M1") + "'"},
 		{"deck_pokemon_sprites", "SELECT COUNT(*) FROM deck_pokemon_sprites WHERE deck_id = '" + testId("D1") + "'"},
+		{"deck_code_pokemon_sprites", "SELECT COUNT(*) FROM deck_code_pokemon_sprites WHERE deck_code_id = '" + testId("C1") + "'"},
 	} {
 		assert.Zero(t, countByQuery(t, tx, target.query), "%s に対象ユーザのデータが残っている", target.name)
 	}
@@ -233,6 +234,7 @@ func seed(t *testing.T, tx *gorm.DB) {
 	exec(`INSERT INTO pokemon_sprites (id, name) VALUES (?, 'テストスプライト')`, spriteId)
 	exec(`INSERT INTO match_pokemon_sprites (match_id, position, pokemon_sprite_id) VALUES (?, 1, ?)`, matchId, spriteId)
 	exec(`INSERT INTO deck_pokemon_sprites (deck_id, position, pokemon_sprite_id) VALUES (?, 1, ?)`, deckId, spriteId)
+	exec(`INSERT INTO deck_code_pokemon_sprites (deck_code_id, position, pokemon_sprite_id) VALUES (?, 1, ?)`, deckCodeId, spriteId)
 
 	// --- お気に入り。対象ユーザ自身のものと、他ユーザが対象ユーザのデッキに付けたもの(巻き込み) ---
 	exec(`INSERT INTO user_favorite_decks (user_id, deck_id, created_at) VALUES (?, ?, now()), (?, ?, now()), (?, ?, now())`,

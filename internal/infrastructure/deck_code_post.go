@@ -173,10 +173,20 @@ func (i *DeckCodePost) assemble(ctx context.Context, rows []*deckCodePostRow) ([
 	db := dbFromContext(ctx, i.db)
 
 	deckIds := make([]string, 0, len(rows))
+	deckCodeIds := make([]string, 0, len(rows))
 	postIds := make([]string, 0, len(rows))
 	for _, r := range rows {
 		deckIds = append(deckIds, r.DeckId)
+		deckCodeIds = append(deckCodeIds, r.DeckCodeId)
 		postIds = append(postIds, r.ID)
+	}
+
+	// 投稿はバージョン(デッキコード)単位なので、そのバージョンにスプライトの設定があれば
+	// デッキのスプライトより優先する。未設定のバージョンはデッキのスプライトを使う。
+	spritesByDeckCodeId, err := findDeckCodePokemonSpritesByDeckCodeIds(ctx, db, deckCodeIds)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
 	}
 
 	spritesByDeckId, err := findDeckPokemonSpritesByDeckIds(ctx, db, deckIds)
@@ -205,7 +215,10 @@ func (i *DeckCodePost) assemble(ctx context.Context, rows []*deckCodePostRow) ([
 		post.Code = r.Code
 		post.LikedByMe = r.LikedByMe
 
-		sprites := spritesByDeckId[r.DeckId]
+		sprites := spritesByDeckCodeId[r.DeckCodeId]
+		if len(sprites) == 0 {
+			sprites = spritesByDeckId[r.DeckId]
+		}
 		if sprites == nil {
 			sprites = []*entity.PokemonSprite{}
 		}
@@ -284,11 +297,17 @@ func (i *DeckCodePost) Find(
 		// 収録セット違いをまとめて拾うため、カードIDではなく名前で絞る
 		q = q.Where("deck_code_posts.ace_spec_card_name = ?", filter.AceSpecCardName)
 	}
-	// 指定されたスプライトをすべて持つデッキに絞る(位置は問わない)。2体指定なら両方を持つデッキ
+	// 指定されたスプライトをすべて持つ投稿に絞る(位置は問わない)。2体指定なら両方を持つ投稿。
+	// 絞り込みは表示(assemble)と同じスプライトを見る: 投稿したバージョンに設定があればそれ、
+	// 無ければデッキのスプライト。片方だけ見ると、表示されているスプライトで絞っても出てこない
+	// (または表示されていないスプライトで出てくる)投稿ができる。
 	for _, spriteId := range filter.PokemonSpriteIds {
 		q = q.Where(
-			"EXISTS (SELECT 1 FROM deck_pokemon_sprites dps WHERE dps.deck_id = deck_code_posts.deck_id AND dps.pokemon_sprite_id = ?)",
-			spriteId,
+			`CASE WHEN EXISTS (SELECT 1 FROM deck_code_pokemon_sprites dcps WHERE dcps.deck_code_id = deck_code_posts.deck_code_id)
+			 THEN EXISTS (SELECT 1 FROM deck_code_pokemon_sprites dcps WHERE dcps.deck_code_id = deck_code_posts.deck_code_id AND dcps.pokemon_sprite_id = ?)
+			 ELSE EXISTS (SELECT 1 FROM deck_pokemon_sprites dps WHERE dps.deck_id = deck_code_posts.deck_id AND dps.pokemon_sprite_id = ?)
+			 END`,
+			spriteId, spriteId,
 		)
 	}
 

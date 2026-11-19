@@ -83,9 +83,10 @@ func newCalendarDeckResponses(
 		deckCodes := []*dto.CalendarDeckCodeResponse{}
 		for _, deckCode := range deck.DeckCodes {
 			deckCodes = append(deckCodes, &dto.CalendarDeckCodeResponse{
-				ID:        deckCode.ID,
-				CreatedAt: deckCode.CreatedAt,
-				Code:      deckCode.Code,
+				ID:             deckCode.ID,
+				CreatedAt:      deckCode.CreatedAt,
+				Code:           deckCode.Code,
+				PokemonSprites: newCalendarPokemonSpriteResponses(deckCode.PokemonSprites),
 			})
 		}
 

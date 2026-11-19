@@ -93,6 +93,14 @@ func TestDeckCodeValidation(t *testing.T) {
 			})
 		*/
 
+		t.Run("異常系_スプライトが3体以上なら400を返す", func(t *testing.T) {
+			ctx, w := newValidationJSONContext(t, `{"deck_id":"01HD7Y3K8D6FDHMHTZ2GT41TD1","code":"5dbFbk-uBwjqP-VVk5Vv","pokemon_sprites":[{"id":"0887"},{"id":"0006"},{"id":"0257"}]}`)
+
+			DeckCodeCreateMiddleware(slog.Default())(ctx)
+
+			require.Equal(t, http.StatusBadRequest, w.Code)
+		})
+
 		t.Run("異常系_JSONとして不正なボディなら400を返す", func(t *testing.T) {
 			ctx, w := newValidationJSONContext(t, "bad data")
 
@@ -159,6 +167,47 @@ func TestDeckCodeValidation(t *testing.T) {
 			DeckCodeUpdateMiddleware()(ctx)
 
 			require.Equal(t, http.StatusBadRequest, w.Code)
+		})
+
+		// スプライトは「項目ごと省略」と「空配列」で意味が違う(省略は現在の設定を保ち、
+		// 空配列は未設定に戻す)。入口でこの区別が潰れると、メモだけを更新する古いクライアントが
+		// 設定済みのスプライトを消してしまう。
+		t.Run("正常系_スプライトの省略はnil_空配列は空のまま渡る", func(t *testing.T) {
+			ctx, w := newValidationJSONContext(t, `{"private_code_flg":true,"memo":"メモ","tag_ids":[]}`)
+			DeckCodeUpdateMiddleware()(ctx)
+			require.Equal(t, http.StatusOK, w.Code)
+			require.Nil(t, helper.GetDeckCodeUpdateRequest(ctx).PokemonSprites)
+
+			ctx, w = newValidationJSONContext(t, `{"private_code_flg":true,"memo":"メモ","tag_ids":[],"pokemon_sprites":[]}`)
+			DeckCodeUpdateMiddleware()(ctx)
+			require.Equal(t, http.StatusOK, w.Code)
+			require.NotNil(t, helper.GetDeckCodeUpdateRequest(ctx).PokemonSprites)
+			require.Empty(t, helper.GetDeckCodeUpdateRequest(ctx).PokemonSprites)
+		})
+
+		t.Run("正常系_スプライトを枠つきで受理する", func(t *testing.T) {
+			ctx, w := newValidationJSONContext(t, `{"pokemon_sprites":[{"id":"0887","position":1},{"id":"0006","position":2}]}`)
+
+			DeckCodeUpdateMiddleware()(ctx)
+
+			require.Equal(t, http.StatusOK, w.Code)
+			sprites := helper.GetDeckCodeUpdateRequest(ctx).PokemonSprites
+			require.Len(t, sprites, 2)
+			require.Equal(t, "0006", sprites[1].ID)
+			require.Equal(t, uint(2), sprites[1].Position)
+		})
+
+		t.Run("異常系_スプライトが3体以上または枠が重複なら400を返す", func(t *testing.T) {
+			for _, body := range []string{
+				`{"pokemon_sprites":[{"id":"0887"},{"id":"0006"},{"id":"0257"}]}`,
+				`{"pokemon_sprites":[{"id":"0887","position":1},{"id":"0006","position":1}]}`,
+			} {
+				ctx, w := newValidationJSONContext(t, body)
+
+				DeckCodeUpdateMiddleware()(ctx)
+
+				require.Equal(t, http.StatusBadRequest, w.Code, body)
+			}
 		})
 
 		t.Run("異常系_メモが上限を超えたら400を返す", func(t *testing.T) {

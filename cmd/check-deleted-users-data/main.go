@@ -487,6 +487,19 @@ var specs = []tableSpec{
 		note:        "退会処理が deck_code 経由で削除する。deck_code を経由しない孤立行があると残る",
 	},
 	{
+		name:     "deck_code_pokemon_sprites",
+		category: categoryLeak,
+		query: `SELECT c.user_id, COUNT(*) FROM deck_code_pokemon_sprites t
+		        JOIN deck_codes c ON c.id = t.deck_code_id
+		        JOIN users u ON u.id = c.user_id
+		        WHERE u.deleted_at IS NOT NULL
+		        GROUP BY c.user_id`,
+		deleteQuery: `DELETE FROM deck_code_pokemon_sprites t USING deck_codes c, users u
+		              WHERE c.id = t.deck_code_id AND u.id = c.user_id AND u.deleted_at IS NOT NULL`,
+		ownerColumn: "c.user_id",
+		note:        "退会処理が deck_code 経由で削除する。deck_code を経由しない孤立行があると残る",
+	},
+	{
 		name:     "record_tags",
 		category: categoryLeak,
 		query: `SELECT r.user_id, COUNT(*) FROM record_tags t

@@ -30,6 +30,11 @@ type DeckCode struct {
 	Memo           string
 	// Tags は付与されたタグ。読み込み時にインフラ層が詰める。詳細は Deck.Tags と同様。
 	Tags []*Tag
+	// PokemonSprites はこのバージョンに設定したスプライト。空は「未設定」で、表示側が
+	// 親デッキのスプライトへフォールバックする。読み込み時にインフラ層が詰める。
+	// 書き込みは DeckCode.Save ではなく ReplacePokemonSprites が担うため、コンストラクタ引数には
+	// 含めない(Deck.Save など別経路の保存で誤って空へ上書きしないため。Tags と同じ方針)。
+	PokemonSprites []*PokemonSprite
 }
 
 func NewDeckCode(

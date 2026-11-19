@@ -128,6 +128,7 @@ func TestDeckUsecase(t *testing.T) {
 				stubTransactionManager{},
 				stubBadgeEvaluation{},
 				mockDeckCodePost,
+				mock_repository.NewMockDeckCodeInterface(mockCtrl),
 			)
 
 			fn(t, mockRepository, mockDeckAsset, mockUserFavoriteDeck, mockDeckCodePost, usecase)
@@ -634,6 +635,7 @@ func test_DeckUsecase_Create(
 			stubTransactionManager{},
 			errBadgeEvaluation{},
 			mockDeckCodePost,
+			nil,
 		)
 		param := NewDeckCreateParam(uid, "テストデッキ", false, "", false, nil, nil)
 
@@ -1108,6 +1110,7 @@ func TestDeckUsecaseCreateAppliesTagsToDeckCode(t *testing.T) {
 		stubTransactionManager{},
 		stubBadgeEvaluation{},
 		mock_repository.NewMockDeckCodePostInterface(mockCtrl),
+		mock_repository.NewMockDeckCodeInterface(mockCtrl),
 	)
 
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
@@ -1154,6 +1157,7 @@ func TestDeckUsecaseCreateDeckCodeWithoutTags(t *testing.T) {
 		stubTransactionManager{},
 		stubBadgeEvaluation{},
 		mock_repository.NewMockDeckCodePostInterface(mockCtrl),
+		mock_repository.NewMockDeckCodeInterface(mockCtrl),
 	)
 
 	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"

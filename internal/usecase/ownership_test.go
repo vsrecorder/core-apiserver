@@ -143,7 +143,7 @@ func TestDeckCodeUsecase_Create_RejectsOthersDeck(t *testing.T) {
 	t.Run("異常系_他人のデッキへの作成はErrRecordNotFoundでアップロードも保存もしない", func(t *testing.T) {
 		usecase := newUsecase(t, &entity.Deck{ID: deckId, UserId: "someone-else"}, nil)
 
-		ret, err := usecase.Create(context.Background(), NewDeckCodeCreateParam(uid, deckId, code, false, "", nil))
+		ret, err := usecase.Create(context.Background(), NewDeckCodeCreateParam(uid, deckId, code, false, "", nil, nil))
 
 		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, ret)
@@ -152,7 +152,7 @@ func TestDeckCodeUsecase_Create_RejectsOthersDeck(t *testing.T) {
 	t.Run("異常系_存在しないデッキへの作成はErrRecordNotFound", func(t *testing.T) {
 		usecase := newUsecase(t, nil, apperror.ErrRecordNotFound)
 
-		ret, err := usecase.Create(context.Background(), NewDeckCodeCreateParam(uid, deckId, code, false, "", nil))
+		ret, err := usecase.Create(context.Background(), NewDeckCodeCreateParam(uid, deckId, code, false, "", nil, nil))
 
 		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
 		require.Nil(t, ret)

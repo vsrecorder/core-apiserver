@@ -36,9 +36,12 @@ func NewWeeklyDeckUsageStat(
 // opponents_deck_info（対戦相手デッキ名・フリーテキスト）は指紋計算には使わず、
 // スプライト未設定のマッチをデッキ名から推測するフォールバック（deck_name.go）にのみ使う。
 type weeklyMatchRow struct {
-	MatchId           string
-	UserId            string
-	DeckId            string
+	MatchId string
+	UserId  string
+	DeckId  string
+	// DeckCodeId は記録が使ったバージョン(デッキコード)。未設定の記録は空。
+	// 自分側の票は、このバージョンのスプライトを優先して分類する。
+	DeckCodeId        string
 	VictoryFlg        bool
 	DrawFlg           bool
 	OpponentsDeckInfo string
@@ -204,7 +207,8 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 				"records.deck_id AS deck_id, "+
 				"matches.victory_flg AS victory_flg, "+
 				"matches.draw_flg AS draw_flg, "+
-				"matches.opponents_deck_info AS opponents_deck_info",
+				"matches.opponents_deck_info AS opponents_deck_info, "+
+				"COALESCE(records.deck_code_id, '') AS deck_code_id",
 		).
 		Joins("JOIN records ON matches.record_id = records.id").
 		Where(
@@ -235,10 +239,15 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 	// スプライトを一括取得するため、マッチIDとデッキIDを集める。
 	matchIds := make([]string, 0, len(rows))
 	deckIdSet := make(map[string]struct{})
+	deckCodeIdSet := make(map[string]struct{})
 	for _, r := range rows {
 		matchIds = append(matchIds, r.MatchId)
 		if r.DeckId != "" {
 			deckIdSet[r.DeckId] = struct{}{}
+			// デッキが外れている記録は自分側の票を作らないので、バージョンも引かない。
+			if r.DeckCodeId != "" {
+				deckCodeIdSet[r.DeckCodeId] = struct{}{}
+			}
 		}
 	}
 
@@ -274,6 +283,41 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		}
 	}
 
+	// 記録が使ったバージョンの指紋（deck_code_pokemon_sprites）を取得する。
+	//
+	// 自分側の票は、デッキのスプライトではなく「その記録で使ったバージョン」のスプライトで分類する。
+	// デッキのスプライトは最新バージョンに合わせて変わっていく(usecase/deck_sprite_sync.go)ので、
+	// デッキのもので分類すると、相棒を入れ替えた時点で過去の週の票まで新しい組み合わせへ
+	// 数え直されてしまう。バージョンのスプライトはそのバージョンを使った当時の構築を表す。
+	// バージョンが紐付いていない記録・スプライト未設定のバージョンは、従来どおりデッキのもので分類する。
+	// バージョンの論理削除は見ない(deck_pokemon_sprites の取得がデッキの論理削除を見ないのと同じ)。
+	spritesByDeckCode := make(map[string][]spritePos, len(deckCodeIdSet))
+	if len(deckCodeIdSet) > 0 {
+		deckCodeIds := make([]string, 0, len(deckCodeIdSet))
+		for id := range deckCodeIdSet {
+			deckCodeIds = append(deckCodeIds, id)
+		}
+
+		var spriteModels []*model.DeckCodePokemonSprite
+		if tx := i.db.Where("deck_code_id IN ?", deckCodeIds).Order("position ASC").Find(&spriteModels); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return nil, tx.Error
+		}
+		for _, s := range spriteModels {
+			spritesByDeckCode[s.DeckCodeId] = append(spritesByDeckCode[s.DeckCodeId], spritePos{id: s.PokemonSpriteId, position: s.Position})
+		}
+	}
+
+	// ownSpritesOf は自分側の票の指紋に使うスプライトを返す(バージョン優先、無ければデッキ)。
+	// 枠ごとに混ぜない: バージョンに1体でもあれば、空き枠も含めてバージョンの内容をそのまま使う
+	// (画面の表示 resolveVersionSprites と同じ規則)。
+	ownSpritesOf := func(r weeklyMatchRow) []spritePos {
+		if sprites := spritesByDeckCode[r.DeckCodeId]; len(sprites) > 0 {
+			return sprites
+		}
+		return spritesByDeck[r.DeckId]
+	}
+
 	// スプライトが未設定の票はデッキ名からの推測にフォールバックする(deck_name.go)。
 	// 推測対象が1件も無い週では、デッキ名・辞書のクエリを一切発行しない。
 	deckNames := make(map[string]string)
@@ -286,7 +330,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 			if len(spritesByMatch[r.MatchId]) == 0 && r.OpponentsDeckInfo != "" {
 				needMatcher = true
 			}
-			if r.DeckId != "" && len(spritesByDeck[r.DeckId]) == 0 {
+			if r.DeckId != "" && len(ownSpritesOf(r)) == 0 {
 				if _, ok := seenNameDeckIds[r.DeckId]; !ok {
 					seenNameDeckIds[r.DeckId] = struct{}{}
 					nameDeckIds = append(nameDeckIds, r.DeckId)
@@ -378,7 +422,7 @@ func (i *WeeklyDeckUsageStat) aggregateWeek(
 		// 自分側の票: マッチ単位。記録者が勝てばその指紋の勝ち。
 		// スプライト未設定ならデッキ名からの推測にフォールバックする。
 		if r.DeckId != "" {
-			ownSprites := spritesByDeck[r.DeckId]
+			ownSprites := ownSpritesOf(r)
 			if len(ownSprites) == 0 && matcher != nil {
 				ownSprites = matcher.guess(deckNames[r.DeckId])
 			}

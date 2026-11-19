@@ -18,7 +18,7 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 	fromDate := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
 	toDate := time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local)
 
-	const weeklyMatchQueryPattern = `SELECT matches\.id AS match_id, records\.user_id AS user_id, records\.deck_id AS deck_id, matches\.victory_flg AS victory_flg, matches\.draw_flg AS draw_flg, matches\.opponents_deck_info AS opponents_deck_info FROM "matches" JOIN records`
+	const weeklyMatchQueryPattern = `SELECT matches\.id AS match_id, records\.user_id AS user_id, records\.deck_id AS deck_id, matches\.victory_flg AS victory_flg, matches\.draw_flg AS draw_flg, matches\.opponents_deck_info AS opponents_deck_info, COALESCE\(records\.deck_code_id, ''\) AS deck_code_id FROM "matches" JOIN records`
 
 	// スタンダード(regulation_id)の記録だけを集計するため、期間の前に
 	// レギュレーションが引数として渡る。
@@ -143,6 +143,69 @@ func TestWeeklyDeckUsageStatInfrastructure(t *testing.T) {
 		require.Equal(t, 5, ret.Decks[0].Wins)
 		require.InDelta(t, 1.0, ret.Decks[0].WinRate, 1e-9)
 		require.Equal(t, "gardevoir", ret.Decks[0].PokemonSprites[0].ID)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 自分側の票は、デッキのスプライトではなく記録が使ったバージョンのスプライトで分類する。
+	// デッキのスプライトは最新バージョンに合わせて変わるので、デッキのもので分類すると
+	// 相棒を入れ替えた時点で過去の票まで新しい組み合わせへ数え直されてしまう。
+	t.Run("正常系_自分側の票は記録が使ったバージョンのスプライトで分類し未設定ならデッキのものを使う", func(t *testing.T) {
+		db, mock := setupSqlmockDB(t)
+		r := NewWeeklyDeckUsageStat(db)
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		deckId := "01HD7Y3K8D6FDHMHTZ2GT41TD1"
+		oldVersionId := "01HD7Y3K8D6FDHMHTZ2GT41TC1" // 相棒がヨノワールだった頃のバージョン
+		unsetVersionId := "01HD7Y3K8D6FDHMHTZ2GT41TC2"
+
+		// どちらの組み合わせも個別表示の下限(minVariantCount)に届くよう、5戦ずつ積む。
+		columns := append(append([]string{}, weeklyMatchRowColumns...), "deck_code_id")
+		rows := sqlmock.NewRows(columns)
+		// 旧バージョンで5戦(3勝2敗)
+		for i := 0; i < 5; i++ {
+			rows = rows.AddRow("old-"+string(rune('1'+i)), uid, deckId, i < 3, "", oldVersionId)
+		}
+		// スプライト未設定のバージョンで3戦(全勝) → デッキのスプライトで分類
+		for i := 0; i < 3; i++ {
+			rows = rows.AddRow("unset-"+string(rune('1'+i)), uid, deckId, true, "", unsetVersionId)
+		}
+		// バージョンが紐付いていない記録で2戦(全敗) → デッキのスプライトで分類
+		for i := 0; i < 2; i++ {
+			rows = rows.AddRow("none-"+string(rune('1'+i)), uid, deckId, false, "", "")
+		}
+		expectWeeklyMatchQuery(mock).WillReturnRows(rows)
+
+		mock.ExpectQuery(`SELECT \* FROM "match_pokemon_sprites" WHERE match_id IN`).
+			WillReturnRows(sqlmock.NewRows(matchPokemonSpriteColumns))
+		// デッキのスプライトは、相棒をリザードンへ入れ替えたあとのもの
+		mock.ExpectQuery(`SELECT \* FROM "deck_pokemon_sprites" WHERE deck_id IN`).
+			WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns).
+				AddRow(deckId, 1, "0887").
+				AddRow(deckId, 2, "0006"))
+		mock.ExpectQuery(`SELECT \* FROM "deck_code_pokemon_sprites" WHERE deck_code_id IN`).
+			WillReturnRows(sqlmock.NewRows([]string{"deck_code_id", "position", "pokemon_sprite_id"}).
+				AddRow(oldVersionId, 1, "0887").
+				AddRow(oldVersionId, 2, "0477"))
+		expectPrevWeekEmpty(mock)
+
+		ret, err := r.FindWeeklyDeckUsageStat(context.Background(), fromDate, toDate, entity.DeckUsageGroupingExact)
+
+		require.NoError(t, err)
+		require.Equal(t, 10, ret.TotalVotes)
+		require.Len(t, ret.Decks, 2)
+
+		byPartner := map[string]*entity.DeckUsageVariant{}
+		for _, deck := range ret.Decks {
+			require.Len(t, deck.PokemonSprites, 2)
+			byPartner[deck.PokemonSprites[1].ID] = deck
+		}
+
+		// 旧バージョンの5戦は、当時の相棒(ヨノワール)の組み合わせに残る
+		require.Equal(t, 5, byPartner["0477"].Count)
+		require.Equal(t, 3, byPartner["0477"].Wins)
+		// 未設定・紐付けなしの5戦は、デッキのスプライト(リザードン)の組み合わせ
+		require.Equal(t, 5, byPartner["0006"].Count)
+		require.Equal(t, 3, byPartner["0006"].Wins)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 

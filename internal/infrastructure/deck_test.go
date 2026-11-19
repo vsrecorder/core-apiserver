@@ -86,11 +86,14 @@ func expectDeckTagsQuery(mock sqlmock.Sqlmock) {
 }
 
 // expectDeckCodeTagsQuery は各Findの後に走る latest_deck_code のタグ取得
-// (attachLatestDeckCodeTags→findTagsByDeckCodeIds)に対する期待を空の結果で登録する。
+// (attachLatestDeckCodeTags→findTagsByDeckCodeIds)と、それに続くバージョンのスプライト取得
+// (findDeckCodePokemonSpritesByDeckCodeIds)に対する期待を空の結果で登録する。
 // カラム構成は deck_tags と同じ(owner_id/id/created_at/... の別名)ため deckTagColumns を流用する。
 func expectDeckCodeTagsQuery(mock sqlmock.Sqlmock) {
 	mock.ExpectQuery(regexp.QuoteMeta(`FROM "deck_code_tags"`)).
 		WillReturnRows(sqlmock.NewRows(deckTagColumns))
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "deck_code_pokemon_sprites" WHERE deck_code_id IN`)).
+		WillReturnRows(sqlmock.NewRows([]string{"deck_code_id", "position", "pokemon_sprite_id"}))
 }
 
 // deckJoinDeckCodeQuery は decks と deck_codes を JOIN するクエリにマッチする正規表現を組み立てる。
@@ -672,6 +675,13 @@ func test_DeckInfrastructure_DeleteByUserId(t *testing.T) {
 		// デッキコードのタグは、デッキコードを論理削除する前に消す
 		mock.ExpectExec(regexp.QuoteMeta(
 			`DELETE FROM "deck_code_tags" WHERE deck_code_id IN (SELECT "id" FROM "deck_codes" WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $1 AND "decks"."deleted_at" IS NULL) AND "deck_codes"."deleted_at" IS NULL)`,
+		)).WithArgs(
+			uid,
+		).WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// デッキコードのスプライトも同じく、デッキコードを論理削除する前に消す
+		mock.ExpectExec(regexp.QuoteMeta(
+			`DELETE FROM "deck_code_pokemon_sprites" WHERE deck_code_id IN (SELECT "id" FROM "deck_codes" WHERE deck_id IN (SELECT "id" FROM "decks" WHERE user_id = $1 AND "decks"."deleted_at" IS NULL) AND "deck_codes"."deleted_at" IS NULL)`,
 		)).WithArgs(
 			uid,
 		).WillReturnResult(sqlmock.NewResult(0, 1))

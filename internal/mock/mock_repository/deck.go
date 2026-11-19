@@ -160,6 +160,20 @@ func (mr *MockDeckInterfaceMockRecorder) FindOnCursor(ctx, limit, cursor any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOnCursor", reflect.TypeOf((*MockDeckInterface)(nil).FindOnCursor), ctx, limit, cursor)
 }
 
+// ReplacePokemonSprites mocks base method.
+func (m *MockDeckInterface) ReplacePokemonSprites(ctx context.Context, deckId string, sprites []*entity.PokemonSprite) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplacePokemonSprites", ctx, deckId, sprites)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplacePokemonSprites indicates an expected call of ReplacePokemonSprites.
+func (mr *MockDeckInterfaceMockRecorder) ReplacePokemonSprites(ctx, deckId, sprites any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplacePokemonSprites", reflect.TypeOf((*MockDeckInterface)(nil).ReplacePokemonSprites), ctx, deckId, sprites)
+}
+
 // Save mocks base method.
 func (m *MockDeckInterface) Save(ctx context.Context, entity *entity.Deck) error {
 	m.ctrl.T.Helper()

@@ -45,6 +45,11 @@ func DeckCodeCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 			return
 		}
 
+		if !validatePokemonSprites(req.PokemonSprites) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
 		helper.SetDeckCodeCreateRequest(ctx, req)
 	}
 }
@@ -63,6 +68,11 @@ func DeckCodeUpdateMiddleware() gin.HandlerFunc {
 		}
 
 		if !validateTagIds(req.TagIds) {
+			apierror.ErrBadRequest.JSON(ctx)
+			return
+		}
+
+		if !validatePokemonSprites(req.PokemonSprites) {
 			apierror.ErrBadRequest.JSON(ctx)
 			return
 		}

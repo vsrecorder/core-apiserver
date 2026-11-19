@@ -22,7 +22,7 @@ func NewDeck(
 	return &Deck{db}
 }
 
-// attachLatestDeckCodeTags は、各 deck の LatestDeckCode に付与タグをまとめてロードして載せる。
+// attachLatestDeckCodeTags は、各 deck の LatestDeckCode に付与タグとスプライトをまとめてロードして載せる。
 // deck の読み出しは deck 本体のタグ(findTagsByDeckIds)しか積まないため、レスポンスの
 // latest_deck_code.tags を正しく返す(新バージョン作成時のタグ継承などで使う)にはこれを併用する。
 func attachLatestDeckCodeTags(ctx context.Context, db *gorm.DB, decks []*entity.Deck) error {
@@ -42,9 +42,18 @@ func attachLatestDeckCodeTags(ctx context.Context, db *gorm.DB, decks []*entity.
 		return err
 	}
 
+	// バージョンのスプライト(未設定なら空)。新バージョン作成時の初期値(直前のバージョンの
+	// 設定を引き継ぐ)に使う。デッキ自体のスプライト(deck.PokemonSprites)はこれで置き換えない。
+	spritesByDeckCodeId, err := findDeckCodePokemonSpritesByDeckCodeIds(ctx, db, ids)
+	if err != nil {
+		logError(ctx, err)
+		return err
+	}
+
 	for _, d := range decks {
 		if d != nil && d.LatestDeckCode != nil {
 			d.LatestDeckCode.Tags = tagsByDeckCodeId[d.LatestDeckCode.ID]
+			d.LatestDeckCode.PokemonSprites = spritesByDeckCodeId[d.LatestDeckCode.ID]
 		}
 	}
 	return nil
@@ -889,6 +898,15 @@ func (i *Deck) DeleteByUserId(
 			return tx.Error
 		}
 
+		// デッキコードのスプライトも同様に、デッキコードより先に消す。
+		if tx := tx.Where(
+			"deck_code_id IN (?)",
+			tx.Model(&model.DeckCode{}).Select("id").Where("deck_id IN (?)", deckIds()),
+		).Delete(&model.DeckCodePokemonSprite{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
 		// デッキコードを先に消す。decks を先に消すとサブクエリが0件になり消し残る。
 		// ここで消えるのは「このユーザのデッキに紐づくコード」であり、
 		// 作成者が他人のものも含む(デッキが消える以上、残しても参照先が無い)。
@@ -1025,6 +1043,35 @@ func (i *Deck) Save(
 			return nil
 		}, &sql.TxOptions{Isolation: sql.LevelDefault})
 	}
+}
+
+// ReplacePokemonSprites はデッキのスプライトだけを置き換える(本体には触れない)。
+func (i *Deck) ReplacePokemonSprites(
+	ctx context.Context,
+	deckId string,
+	sprites []*entity.PokemonSprite,
+) error {
+	return dbFromContext(ctx, i.db).Transaction(func(tx *gorm.DB) error {
+		if tx := tx.Where("deck_id = ?", deckId).Delete(&model.DeckPokemonSprite{}); tx.Error != nil {
+			logError(ctx, tx.Error)
+			return tx.Error
+		}
+
+		for idx, sprite := range sprites {
+			// position 未指定(0)は配列インデックスから採番する(Save と同じ規約)。
+			position := sprite.Position
+			if position == 0 {
+				position = uint(idx + 1)
+			}
+
+			if err := tx.Create(model.NewDeckPokemonSprite(deckId, position, sprite.ID)).Error; err != nil {
+				logError(ctx, err)
+				return wrapForeignKeyViolation(err)
+			}
+		}
+
+		return nil
+	})
 }
 
 func (i *Deck) Delete(

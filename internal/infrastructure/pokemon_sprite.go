@@ -107,3 +107,33 @@ func findDeckPokemonSpritesByDeckIds(
 
 	return spritesByDeckId, nil
 }
+
+// findDeckCodePokemonSpritesByDeckCodeIds は複数のデッキコード(バージョン)のスプライトを
+// 1クエリでまとめて取得し、deck_code_id ごとに束ねて返す。未設定のバージョンはキーを持たない。
+func findDeckCodePokemonSpritesByDeckCodeIds(
+	ctx context.Context,
+	db *gorm.DB,
+	deckCodeIds []string,
+) (map[string][]*entity.PokemonSprite, error) {
+	if len(deckCodeIds) == 0 {
+		return map[string][]*entity.PokemonSprite{}, nil
+	}
+
+	var spriteModels []*model.DeckCodePokemonSprite
+	if tx := db.WithContext(ctx).
+		Where("deck_code_id IN ?", deckCodeIds).
+		Order("position ASC").
+		Find(&spriteModels); tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	spritesByDeckCodeId := make(map[string][]*entity.PokemonSprite, len(deckCodeIds))
+	for _, m := range spriteModels {
+		spritesByDeckCodeId[m.DeckCodeId] = append(
+			spritesByDeckCodeId[m.DeckCodeId],
+			entity.NewPokemonSpriteWithPosition(m.PokemonSpriteId, m.Position),
+		)
+	}
+
+	return spritesByDeckCodeId, nil
+}

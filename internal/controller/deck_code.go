@@ -10,6 +10,7 @@ import (
 	"github.com/vsrecorder/core-apiserver/internal/controller/apierror"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authentication"
 	"github.com/vsrecorder/core-apiserver/internal/controller/auth/authorization"
+	"github.com/vsrecorder/core-apiserver/internal/controller/dto"
 	"github.com/vsrecorder/core-apiserver/internal/controller/helper"
 	"github.com/vsrecorder/core-apiserver/internal/controller/presenter"
 	"github.com/vsrecorder/core-apiserver/internal/controller/validation"
@@ -86,6 +87,21 @@ func (c *DeckCode) RegisterRoute(relativePath string) {
 	}
 }
 
+// newPokemonSpriteParams はリクエストのスプライト指定を usecase の入力へ変換する。
+// nil(項目ごと省略)と空配列の違いを保つ: 更新では nil が「触れない」、空配列が「未設定に戻す」。
+func newPokemonSpriteParams(sprites []*dto.PokemonSpriteRequest) []*usecase.PokemonSpriteParam {
+	if sprites == nil {
+		return nil
+	}
+
+	params := make([]*usecase.PokemonSpriteParam, 0, len(sprites))
+	for _, sprite := range sprites {
+		params = append(params, usecase.NewPokemonSpriteParamWithPosition(sprite.ID, sprite.Position))
+	}
+
+	return params
+}
+
 func (c *DeckCode) GetById(ctx *gin.Context) {
 	id := helper.GetId(ctx)
 	uid := helper.GetUID(ctx)
@@ -147,6 +163,7 @@ func (c *DeckCode) Create(ctx *gin.Context) {
 		req.PrivateCodeFlg,
 		req.Memo,
 		req.TagIds,
+		newPokemonSpriteParams(req.PokemonSprites),
 	)
 
 	deckcode, err := c.usecase.Create(ctx.Request.Context(), param)
@@ -154,6 +171,12 @@ func (c *DeckCode) Create(ctx *gin.Context) {
 		// deck_id が存在しない、または他人のデッキ(usecase は区別せず「存在しない」として返す)。
 		if errors.Is(err, apperror.ErrRecordNotFound) {
 			apierror.ErrNotFound.JSON(ctx, err)
+			return
+		}
+
+		// 存在しないスプライトIDが指定された(クライアント起因)。
+		if errors.Is(err, apperror.ErrInvalidReference) {
+			apierror.ErrBadRequest.JSON(ctx, err)
 			return
 		}
 
@@ -174,10 +197,17 @@ func (c *DeckCode) Update(ctx *gin.Context) {
 		req.PrivateCodeFlg,
 		req.Memo,
 		req.TagIds,
+		newPokemonSpriteParams(req.PokemonSprites),
 	)
 
 	deckcode, err := c.usecase.Update(ctx.Request.Context(), id, param)
 	if err != nil {
+		// 存在しないスプライトIDが指定された(クライアント起因)。
+		if errors.Is(err, apperror.ErrInvalidReference) {
+			apierror.ErrBadRequest.JSON(ctx, err)
+			return
+		}
+
 		apierror.ErrInternalServerError.JSON(ctx, err)
 		return
 	}

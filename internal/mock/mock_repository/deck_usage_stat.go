@@ -71,3 +71,18 @@ func (mr *MockDeckUsageStatInterfaceMockRecorder) FindDeckUsageStat(ctx, userId,
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDeckUsageStat", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).FindDeckUsageStat), ctx, userId, period, regulationId, excludeDefaultMatches)
 }
+
+// FindDeckUsageStatBySprites mocks base method.
+func (m *MockDeckUsageStatInterface) FindDeckUsageStatBySprites(ctx context.Context, userId string, period repository.StatPeriod, regulationId uint, excludeDefaultMatches bool) (*entity.DeckUsageStat, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindDeckUsageStatBySprites", ctx, userId, period, regulationId, excludeDefaultMatches)
+	ret0, _ := ret[0].(*entity.DeckUsageStat)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindDeckUsageStatBySprites indicates an expected call of FindDeckUsageStatBySprites.
+func (mr *MockDeckUsageStatInterfaceMockRecorder) FindDeckUsageStatBySprites(ctx, userId, period, regulationId, excludeDefaultMatches any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindDeckUsageStatBySprites", reflect.TypeOf((*MockDeckUsageStatInterface)(nil).FindDeckUsageStatBySprites), ctx, userId, period, regulationId, excludeDefaultMatches)
+}

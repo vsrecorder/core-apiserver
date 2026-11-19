@@ -24,6 +24,21 @@ type DeckUsageStatInterface interface {
 		excludeDefaultMatches bool,
 	) (*entity.DeckUsageStat, error)
 
+	// GetDeckUsageStatBySprites は GetDeckUsageStat と同じ条件の集計を、同じデッキでも対戦で使った
+	// スプライトの組み合わせごとに行を分けて返す(同じ DeckId の行が複数返りうる)。
+	GetDeckUsageStatBySprites(
+		ctx context.Context,
+		userId string,
+		week string,
+		yearMonth string,
+		environmentId string,
+		season string,
+		standardRegulationId string,
+		regulationId uint,
+		allTime bool,
+		excludeDefaultMatches bool,
+	) (*entity.DeckUsageStat, error)
+
 	// GetDeckCodeUsageStat はデッキの対戦成績をバージョン(デッキコード)ごとに分けて返す(全期間)。
 	GetDeckCodeUsageStat(
 		ctx context.Context,
@@ -69,12 +84,50 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 	allTime bool,
 	excludeDefaultMatches bool,
 ) (*entity.DeckUsageStat, error) {
+	return u.getDeckUsageStat(ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches, false)
+}
+
+func (u *DeckUsageStat) GetDeckUsageStatBySprites(
+	ctx context.Context,
+	userId string,
+	week string,
+	yearMonth string,
+	environmentId string,
+	season string,
+	standardRegulationId string,
+	regulationId uint,
+	allTime bool,
+	excludeDefaultMatches bool,
+) (*entity.DeckUsageStat, error) {
+	return u.getDeckUsageStat(ctx, userId, week, yearMonth, environmentId, season, standardRegulationId, regulationId, allTime, excludeDefaultMatches, true)
+}
+
+// getDeckUsageStat は期間の条件を組み立てて集計する。splitBySprites が true なら、
+// スプライトの組み合わせごとに行を分ける集計(FindDeckUsageStatBySprites)を使う。
+func (u *DeckUsageStat) getDeckUsageStat(
+	ctx context.Context,
+	userId string,
+	week string,
+	yearMonth string,
+	environmentId string,
+	season string,
+	standardRegulationId string,
+	regulationId uint,
+	allTime bool,
+	excludeDefaultMatches bool,
+	splitBySprites bool,
+) (*entity.DeckUsageStat, error) {
+	find := u.deckUsageStatRepo.FindDeckUsageStat
+	if splitBySprites {
+		find = u.deckUsageStatRepo.FindDeckUsageStatBySprites
+	}
+
 	var fromDate, toDate time.Time
 
 	// 全期間集計が指定された場合は期間条件を一切適用しない
 	// （デッキ一覧カードのように期間セレクタを持たない画面向け）。
 	if allTime {
-		return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, repository.StatPeriod{}, regulationId, excludeDefaultMatches)
+		return find(ctx, userId, repository.StatPeriod{}, regulationId, excludeDefaultMatches)
 	}
 
 	if week != "" {
@@ -139,7 +192,7 @@ func (u *DeckUsageStat) GetDeckUsageStat(
 		period.BaseFrom, period.BaseTo = period.From, period.To
 	}
 
-	return u.deckUsageStatRepo.FindDeckUsageStat(ctx, userId, period, regulationId, excludeDefaultMatches)
+	return find(ctx, userId, period, regulationId, excludeDefaultMatches)
 }
 
 func (u *DeckUsageStat) GetDeckCodeUsageStat(

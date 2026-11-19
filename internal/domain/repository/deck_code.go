@@ -30,6 +30,16 @@ type DeckCodeInterface interface {
 		entity *entity.DeckCode,
 	) error
 
+	// ReplacePokemonSprites は deckCodeId のスプライトを sprites の内容に置き換える(空なら未設定に戻す)。
+	// デッキコード本体(Save)とは別テーブルのため分けてある。本体と食い違わないよう、
+	// 呼び出し側は同じトランザクションの中で呼ぶこと。
+	// 存在しないスプライトIDは apperror.ErrInvalidReference で返る。
+	ReplacePokemonSprites(
+		ctx context.Context,
+		deckCodeId string,
+		sprites []*entity.PokemonSprite,
+	) error
+
 	Delete(
 		ctx context.Context,
 		id string,

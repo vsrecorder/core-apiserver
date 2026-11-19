@@ -448,6 +448,7 @@ func main() {
 			infrastructure.NewTransactionManager(db),
 			badgeEvaluation,
 			infrastructure.NewDeckCodePost(db),
+			infrastructure.NewDeckCode(db),
 		),
 	).RegisterRoute(relativePath)
 

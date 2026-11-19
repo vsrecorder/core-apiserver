@@ -64,3 +64,23 @@ func NewDeckPokemonSprite(
 		PokemonSpriteId: pokemon_sprite_id,
 	}
 }
+
+// DeckCodePokemonSprite は deck_code_pokemon_sprites(バージョンごとのスプライト)の1行。
+// 行が無いバージョンは未設定で、表示側が親デッキのスプライトへフォールバックする。
+type DeckCodePokemonSprite struct {
+	DeckCodeId      string `gorm:"primaryKey"`
+	Position        uint   `gorm:"primaryKey"`
+	PokemonSpriteId string
+}
+
+func NewDeckCodePokemonSprite(
+	deck_code_id string,
+	position uint,
+	pokemon_sprite_id string,
+) *DeckCodePokemonSprite {
+	return &DeckCodePokemonSprite{
+		DeckCodeId:      deck_code_id,
+		Position:        position,
+		PokemonSpriteId: pokemon_sprite_id,
+	}
+}

@@ -824,7 +824,7 @@ CREATE TABLE deck_pokemon_sprites (
 -- 行が無いバージョンは「未設定」で、表示も集計も親デッキ(deck_pokemon_sprites)へフォールバックする。
 -- デッキのスプライトは最新バージョンのスプライトと常に揃える(usecase/deck_sprite_sync.go)。
 -- 記録の表示・週次の使用率・デッキ名辞書は「その記録で使ったバージョン」のスプライトを見る。
--- 既存のバージョンへは db/backfill/2026-11-19-deck-code-pokemon-sprites.sql でデッキのものを書き込む。
+-- 導入前からあるバージョンへは、導入時(2026-11-19)に一度だけデッキのものを書き込み済み。
 -- 規約は deck_pokemon_sprites と同じ(ソフトデリート列なし、position 1/2 が表示枠)。
 CREATE TABLE deck_code_pokemon_sprites (
     deck_code_id VARCHAR(26) NOT NULL,

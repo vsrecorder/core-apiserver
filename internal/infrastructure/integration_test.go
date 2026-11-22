@@ -1213,6 +1213,79 @@ func TestIntegrationCityleagueResultFindByPlayerId(t *testing.T) {
 	})
 }
 
+// シティリーグのシーズン(cityleague_schedule_id)で絞り込む FindByCityleagueScheduleId。
+// 以前は存在しない列(cityleague_id)を条件にしていて必ず SQL エラーになっていた。
+// sqlmock は生成された SQL の文字列しか見ないため、列の有無は実DBで確かめる。
+func TestIntegrationCityleagueResultFindByCityleagueScheduleId(t *testing.T) {
+	db := setupIntegrationDB(t, "cityleague_results", "official_events")
+
+	// cityleague_schedules は db/schema.sql が初期データを持つ(2026s3・2026s4)のでそのまま使う
+	s3Date := time.Date(2026, 2, 1, 0, 0, 0, 0, time.Local)
+	s4Day1 := time.Date(2026, 4, 5, 0, 0, 0, 0, time.Local)
+	s4Day2 := time.Date(2026, 4, 12, 0, 0, 0, 0, time.Local)
+
+	for _, e := range []struct {
+		id   uint
+		date time.Time
+	}{{952740, s3Date}, {952749, s4Day1}, {952750, s4Day2}, {952751, s4Day2}} {
+		require.NoError(t, db.Exec(
+			`INSERT INTO official_events (id, title, address, date) VALUES (?, ?, ?, ?)`,
+			e.id, "シティリーグ2026", "東京都", e.date,
+		).Error)
+	}
+
+	insertResult := func(scheduleId string, officialEventId uint, leagueType uint, eventDate time.Time, playerId string, point uint) {
+		t.Helper()
+		require.NoError(t, db.Create(&model.CityleagueResult{
+			CityleagueScheduleId: scheduleId,
+			OfficialEventId:      officialEventId,
+			LeagueType:           leagueType,
+			EventDate:            eventDate,
+			PlayerId:             playerId,
+			PlayerName:           "テストプレイヤー",
+			Rank:                 1,
+			Point:                point,
+			DeckCode:             "gnnHHn-Vg3aWc-LHNnHH",
+		}).Error)
+	}
+
+	// 別シーズン(返してはならない)
+	insertResult("2026s3", 952740, 1, s3Date, "0000000001", 15)
+	// 対象シーズン
+	insertResult("2026s4", 952749, 1, s4Day1, "0000000002", 15)
+	insertResult("2026s4", 952750, 1, s4Day2, "0000000003", 12)
+	insertResult("2026s4", 952750, 1, s4Day2, "0000000004", 15)
+	// 対象シーズンの別リーグ(返してはならない)
+	insertResult("2026s4", 952751, 2, s4Day2, "0000000005", 15)
+
+	ctx := context.Background()
+	r := NewCityleagueResult(db)
+
+	t.Run("正常系_シーズンとリーグで絞り込み_イベント単位にまとめて開催日の新しい順に返す", func(t *testing.T) {
+		ret, err := r.FindByCityleagueScheduleId(ctx, 1, "2026s4")
+
+		require.NoError(t, err)
+		require.Len(t, ret, 2)
+
+		require.Equal(t, uint(952750), ret[0].OfficialEventId)
+		require.Equal(t, "2026s4", ret[0].CityleagueScheduleId)
+		require.Len(t, ret[0].EventResults, 2)
+		// 大会の中は point の高い順
+		require.Equal(t, "0000000004", ret[0].EventResults[0].PlayerId)
+		require.Equal(t, "0000000003", ret[0].EventResults[1].PlayerId)
+
+		require.Equal(t, uint(952749), ret[1].OfficialEventId)
+		require.Len(t, ret[1].EventResults, 1)
+	})
+
+	t.Run("正常系_該当が無ければ空を返す", func(t *testing.T) {
+		ret, err := r.FindByCityleagueScheduleId(ctx, 1, "2025s1")
+
+		require.NoError(t, err)
+		require.Empty(t, ret)
+	})
+}
+
 // 大会結果一覧(FindByTerm / FindByDate)の並び。同じ開催日の中は結果が追加された新しい順で、
 // 窓関数(MIN(created_at) OVER ...)の効き方は sqlmock では確認できないため実DBで確かめる。
 func TestIntegrationCityleagueResultOrderByAdded(t *testing.T) {

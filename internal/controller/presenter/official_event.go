@@ -24,6 +24,7 @@ func newOfficialEventResponse(officialEvent *entity.OfficialEvent) *dto.Official
 		EndedAt:                 officialEvent.EndedAt,
 		TypeId:                  officialEvent.TypeId,
 		TypeName:                officialEvent.TypeName,
+		LeagueId:                officialEvent.LeagueId,
 		LeagueTitle:             officialEvent.LeagueTitle,
 		RegulationTitle:         officialEvent.RegulationTitle,
 		CSPFlg:                  officialEvent.CSPFlg,

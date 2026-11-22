@@ -377,6 +377,7 @@ func (i *Calendar) findOfficialEvents(
 			m.EndedAt,
 			m.TypeId,
 			m.TypeName,
+			m.LeagueId,
 			m.LeagueTitle,
 			m.RegulationTitle,
 			m.CSPFlg,

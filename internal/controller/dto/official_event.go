@@ -12,6 +12,7 @@ type OfficialEventResponse struct {
 	EndedAt                 time.Time `json:"ended_at"`
 	TypeId                  uint      `json:"type_id"`
 	TypeName                string    `json:"type_name"`
+	LeagueId                uint      `json:"league_id"`
 	LeagueTitle             string    `json:"league_title"`
 	RegulationTitle         string    `json:"regulation_title"`
 	CSPFlg                  bool      `json:"csp_flg"`

@@ -4,6 +4,9 @@ import (
 	"time"
 )
 
+// LeagueId は公式サイトのリーグID。リーグのシリーズごとに振られ、league_title が同じでも
+// シリーズが違えば別の値になる(例: トレーナーズリーグ2026 はオープン=1410・ジュニア=1413・
+// シニア=1414・マスター=1417)。DB では NULL があり得て、その場合は 0 になる。
 type OfficialEvent struct {
 	ID                      uint
 	Title                   string
@@ -14,6 +17,7 @@ type OfficialEvent struct {
 	EndedAt                 time.Time
 	TypeId                  uint
 	TypeName                string
+	LeagueId                uint
 	LeagueTitle             string
 	RegulationTitle         string
 	CSPFlg                  bool
@@ -38,6 +42,7 @@ func NewOfficialEvent(
 	endedAt time.Time,
 	typeId uint,
 	typeName string,
+	leagueId uint,
 	leagueTitle string,
 	regulationTitle string,
 	cspFlg bool,
@@ -61,6 +66,7 @@ func NewOfficialEvent(
 		EndedAt:                 endedAt,
 		TypeId:                  typeId,
 		TypeName:                typeName,
+		LeagueId:                leagueId,
 		LeagueTitle:             leagueTitle,
 		RegulationTitle:         regulationTitle,
 		CSPFlg:                  cspFlg,

@@ -14,6 +14,7 @@ type OfficialEvent struct {
 	EndedAt                 time.Time
 	TypeId                  uint
 	TypeName                string
+	LeagueId                uint
 	LeagueTitle             string
 	RegulationTitle         string
 	CSPFlg                  bool

@@ -55,6 +55,7 @@ var officialEventColumns = []string{
 	"ended_at",
 	"type_id",
 	"type_name",
+	"league_id",
 	"league_title",
 	"regulation_title",
 	"csp_flg",
@@ -108,6 +109,7 @@ func officialEventRows(date, startedAt, endedAt time.Time) *sqlmock.Rows {
 		endedAt,
 		uint(1),
 		"大型大会",
+		uint(1385),
 		"マスター",
 		"スタンダード",
 		true,
@@ -147,6 +149,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.Equal(t, 1, len(events))
 		require.Equal(t, uint(606466), events[0].ID)
 		require.Equal(t, "マスター", events[0].LeagueTitle)
+		require.Equal(t, uint(1385), events[0].LeagueId)
 		require.Equal(t, date, events[0].Date)
 		require.Equal(t, "福岡県", events[0].PrefectureName)
 		require.Equal(t, "レギュレーションG", events[0].EnvironmentTitle)

@@ -207,7 +207,7 @@ func (i *CityleagueResult) FindByCityleagueScheduleId(
 	cityleagueScheduleId string,
 ) ([]*entity.CityleagueResult, error) {
 	var models []*model.CityleagueResult
-	if tx := i.db.Where("league_type = ? AND cityleague_id = ?", leagueType, cityleagueScheduleId).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+	if tx := i.db.Where("league_type = ? AND cityleague_schedule_id = ?", leagueType, cityleagueScheduleId).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}

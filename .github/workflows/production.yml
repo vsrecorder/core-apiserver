@@ -20,6 +20,10 @@ jobs:
       # テストより先に置き、整形漏れだけのときに長いテストを待たずに気付けるようにする。
       - name: Check gofmt
         run: make lint-fmt
+      # infrastructure の書き込みが dbFromContext を経由しているかを検査する(make lint-tx)。
+      # i.db を直接使うと、usecase 側のトランザクションに参加せず片方だけコミットされる。
+      - name: Check transaction usage
+        run: make lint-tx
       # CIのrunnerはUTC、開発機と本番はJSTのため両方で回す。片方だけだと、
       # time.Local に依存したテストが一方の環境でだけ通ってすり抜ける。
       # -count=1 はキャッシュ無効化。TZ はテストキャッシュのキーに入らないため、

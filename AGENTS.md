@@ -14,7 +14,7 @@ APIのベースパスは `/api/v1beta`、待ち受けポートは `8914`。
 ```sh
 make test              # go mod tidy && make lint-fmt && make lint-tx && UTC と Asia/Tokyo の両方で go test -v -cover -race ./...
 make lint-fmt          # gofmt で整形されていない .go ファイルが無いかの検査（CI でも実行する）
-make lint-tx           # infrastructure の書き込みが dbFromContext を経由しているかの検査
+make lint-tx           # infrastructure の書き込みが dbFromContext を経由しているかの検査（CI でも実行する）
 make run               # go run cmd/core-apiserver/main.go
 make build             # cmd配下の全コマンドを bin/ へビルド（cronが叩くバイナリもこれで揃う）
 make mockgen           # domain/repository・usecase のインタフェースからモックを再生成
@@ -185,7 +185,7 @@ Deck・User の各usecaseへ注入され、書き込み処理の中でバッジ�
 
 **infrastructure の書き込みは必ず `dbFromContext(ctx, i.db)` を経由する。** `i.db` を直接
 使うと、usecase 側でトランザクションに包んでも参加せず、上記の食い違いが起きる。読み取りは
-対象外。`make lint-tx`（`make test` から呼ばれる）が機械的に検査する。
+対象外。`make lint-tx`（`make test` と CI から呼ばれる）が機械的に検査する。
 
 **本体を保存したあとの付随処理（バッジ評価・ストリーク再計算・通知・外部通信）の失敗で、
 作成・更新そのものを失敗させない。** ここでエラーを返すと、保存できているのにクライアントには

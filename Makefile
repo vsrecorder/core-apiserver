@@ -17,9 +17,22 @@ lint-tx:
 		exit 1; \
 	fi
 
+# lint-fmt は gofmt で整形されていない .go ファイルが無いかを検査する(CI の test ジョブでも実行する)。
+# 対象は git 管理下のファイルだけ(bin/ などの生成物は見ない)。直すときは gofmt -w <ファイル>。
+.PHONY: lint-fmt
+lint-fmt:
+	@files=$$(gofmt -l $$(git ls-files '*.go')); \
+	if [ -n "$$files" ]; then \
+		echo "$$files"; \
+		echo ""; \
+		echo "上のファイルが gofmt で整形されていません。gofmt -w で整形してください"; \
+		exit 1; \
+	fi
+
 .PHONY: test
 test:
 	go mod tidy
+	$(MAKE) lint-fmt
 	$(MAKE) lint-tx
 	TZ=UTC go test -count=1 -v -cover -race ./...
 	TZ=Asia/Tokyo go test -count=1 -v -cover -race ./...

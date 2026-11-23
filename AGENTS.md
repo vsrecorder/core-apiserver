@@ -12,7 +12,8 @@ APIのベースパスは `/api/v1beta`、待ち受けポートは `8914`。
 ## コマンド
 
 ```sh
-make test              # go mod tidy && make lint-tx && UTC と Asia/Tokyo の両方で go test -v -cover -race ./...
+make test              # go mod tidy && make lint-fmt && make lint-tx && UTC と Asia/Tokyo の両方で go test -v -cover -race ./...
+make lint-fmt          # gofmt で整形されていない .go ファイルが無いかの検査（CI でも実行する）
 make lint-tx           # infrastructure の書き込みが dbFromContext を経由しているかの検査
 make run               # go run cmd/core-apiserver/main.go
 make build             # cmd配下の全コマンドを bin/ へビルド（cronが叩くバイナリもこれで揃う）

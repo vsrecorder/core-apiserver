@@ -300,12 +300,12 @@ func (i *CityleagueResult) FindByDate(
 ) ([]*entity.CityleagueResult, error) {
 	var models []*cityleagueResultWithPlayerRow
 	if leagueType == 0 {
-		if tx := i.withPlayer().Where("event_date = ?", date).Order(orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.withPlayer().Where("event_date = ?", date).Order(orderByAddedDesc + ", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.withPlayer().Where("league_type = ? AND event_date = ?", leagueType, date).Order(orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.withPlayer().Where("league_type = ? AND event_date = ?", leagueType, date).Order(orderByAddedDesc + ", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
@@ -359,12 +359,12 @@ func (i *CityleagueResult) FindByTerm(
 ) ([]*entity.CityleagueResult, error) {
 	var models []*cityleagueResultWithPlayerRow
 	if leagueType == 0 {
-		if tx := i.withPlayer().Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date DESC, "+orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.withPlayer().Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date DESC, " + orderByAddedDesc + ", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.withPlayer().Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date DESC, "+orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.withPlayer().Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date DESC, " + orderByAddedDesc + ", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}

@@ -570,7 +570,7 @@ func TestDeckUsageStatInfrastructure_FindDeckCodeUsageStat(t *testing.T) {
 		i, mock, err := setup4DeckUsageStatInfrastructure()
 		require.NoError(t, err)
 
-		mock.ExpectQuery(regexp.QuoteMeta(deckCodeUsageStatQuery + ` GROUP BY COALESCE(records.deck_code_id, '')`)).
+		mock.ExpectQuery(regexp.QuoteMeta(deckCodeUsageStatQuery+` GROUP BY COALESCE(records.deck_code_id, '')`)).
 			WithArgs(userId, deckId).
 			WillReturnRows(sqlmock.NewRows(deckCodeUsageColumns).
 				AddRow("deckcode-01", 12, 5, 0).

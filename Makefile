@@ -8,7 +8,7 @@ SHELL := /bin/bash
 # lint-tx は infrastructure の書き込みが dbFromContext を経由しているかを検査する。
 # i.db を直接使うと、usecase 側でトランザクションに包んでも参加せず、片方だけ
 # コミットされる(記録は保存されたのにタグが無い、バッジは付いたのに通知が無い等)。
-# 読み取りは対象外。書き込みだけを見る。
+# 読み取りは対象外。書き込みだけを見る。CI の test ジョブでも実行する。
 .PHONY: lint-tx
 lint-tx:
 	@if grep -rnE 'i\.db\.(Save|Create|Delete|Updates|Exec|Transaction)\(' --include='*.go' internal/infrastructure/ | grep -v '_test\.go'; then \

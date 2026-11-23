@@ -645,7 +645,7 @@ INSERT INTO cityleague_schedules VALUES ('2023s1','シティリーグ2023 シー
 --
 -- 結果テーブルからの外部キーは張らない(疎結合)。結果の取り込みと名前の取り込みを独立させ、
 -- 読み出しは LEFT JOIN にして、ここに行が無くても入賞自体は返す(名前は空文字)。
--- 既存の環境へは db/backfill/2026-11-23-players.sql で作成・移行する。
+-- 既存の環境へは 2026-11-23 に移行済み(移行SQLは core-apiserver#44 に残っている)。
 CREATE TABLE players (
     id                 VARCHAR(10) PRIMARY KEY,
     name               VARCHAR(255) NOT NULL,

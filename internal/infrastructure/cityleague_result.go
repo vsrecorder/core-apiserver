@@ -165,12 +165,42 @@ func (i *CityleagueResult) FindByPlayerId(
 	return ret, nil
 }
 
+// cityleagueResultWithPlayerRow は入賞1件を、players から引いたプレイヤー名と合わせて受ける行。
+// 名前は cityleague_results ではなく players が持つ(db/schema.sql の players のコメント参照)。
+type cityleagueResultWithPlayerRow struct {
+	model.CityleagueResult
+	PlayerName string
+}
+
+// cityleagueResultWithPlayerColumns は入賞者を返す読み出しの SELECT 句。
+// cityleague_results.* にしないのは、player_name 列を消す移行の途中(古い列が残っている間)に
+// 同名の列が2つ並ばないようにするため。
+const cityleagueResultWithPlayerColumns = "cityleague_results.cityleague_schedule_id," +
+	"cityleague_results.official_event_id," +
+	"cityleague_results.league_type," +
+	"cityleague_results.event_date," +
+	"cityleague_results.player_id," +
+	"COALESCE(players.name, '') AS player_name," +
+	"cityleague_results.rank," +
+	"cityleague_results.point," +
+	"cityleague_results.deck_code"
+
+// withPlayer は入賞者に players の名前を結合したクエリを返す。
+// 結果テーブルから players への外部キーは無く、名前の取り込みが遅れて行が無いこともあるので
+// LEFT JOIN にして入賞自体は落とさない(名前は空文字)。
+// players にも created_at があるため、ORDER BY・WHERE で created_at を使うときは表名を付ける。
+func (i *CityleagueResult) withPlayer() *gorm.DB {
+	return i.db.Table("cityleague_results").
+		Select(cityleagueResultWithPlayerColumns).
+		Joins("LEFT JOIN players ON players.id = cityleague_results.player_id")
+}
+
 func (i *CityleagueResult) FindByOfficialEventId(
 	ctx context.Context,
 	officialEventId uint,
 ) (*entity.CityleagueResult, error) {
-	var models []*model.CityleagueResult
-	if tx := i.db.Where("official_event_id = ?", officialEventId).Order("point DESC, player_id ASC").Find(&models); tx.Error != nil {
+	var models []*cityleagueResultWithPlayerRow
+	if tx := i.withPlayer().Where("official_event_id = ?", officialEventId).Order("point DESC, player_id ASC").Find(&models); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
@@ -206,15 +236,15 @@ func (i *CityleagueResult) FindByCityleagueScheduleId(
 	leagueType uint,
 	cityleagueScheduleId string,
 ) ([]*entity.CityleagueResult, error) {
-	var models []*model.CityleagueResult
-	if tx := i.db.Where("league_type = ? AND cityleague_schedule_id = ?", leagueType, cityleagueScheduleId).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+	var models []*cityleagueResultWithPlayerRow
+	if tx := i.withPlayer().Where("league_type = ? AND cityleague_schedule_id = ?", leagueType, cityleagueScheduleId).Order("event_date DESC, league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 		logError(ctx, tx.Error)
 		return nil, tx.Error
 	}
 
 	// OfficialEventId別にCityleagueResultをまとめる
 	var oeList []uint
-	oeMap := make(map[uint][]*model.CityleagueResult)
+	oeMap := make(map[uint][]*cityleagueResultWithPlayerRow)
 	for _, model := range models {
 		if len(oeMap[model.OfficialEventId]) == 0 {
 			oeList = append(oeList, model.OfficialEventId)
@@ -259,21 +289,23 @@ func (i *CityleagueResult) FindByCityleagueScheduleId(
 // created_at は入賞者1人につき1行ずつ入り、同じ大会の中でも取り込みの間隔ぶん少しずつずれる。
 // 行単位で並べると同じ大会の入賞者が point 順にならないので、大会ごとの最初の取り込み時刻
 // (MIN)にそろえてから並べる。同時刻(created_at 追加前からある行など)は従来の順に落ちる。
-const orderByAddedDesc = "MIN(created_at) OVER (PARTITION BY official_event_id) DESC"
+//
+// players を結合したクエリで使うため、同名の列がある created_at には表名を付ける。
+const orderByAddedDesc = "MIN(cityleague_results.created_at) OVER (PARTITION BY cityleague_results.official_event_id) DESC"
 
 func (i *CityleagueResult) FindByDate(
 	ctx context.Context,
 	leagueType uint,
 	date time.Time,
 ) ([]*entity.CityleagueResult, error) {
-	var models []*model.CityleagueResult
+	var models []*cityleagueResultWithPlayerRow
 	if leagueType == 0 {
-		if tx := i.db.Where("event_date = ?", date).Order(orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.withPlayer().Where("event_date = ?", date).Order(orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.db.Where("league_type = ? AND event_date = ?", leagueType, date).Order(orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.withPlayer().Where("league_type = ? AND event_date = ?", leagueType, date).Order(orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
@@ -281,7 +313,7 @@ func (i *CityleagueResult) FindByDate(
 
 	// OfficialEventId別にCityleagueResultをまとめる
 	var oeList []uint
-	oeMap := make(map[uint][]*model.CityleagueResult)
+	oeMap := make(map[uint][]*cityleagueResultWithPlayerRow)
 	for _, model := range models {
 		if len(oeMap[model.OfficialEventId]) == 0 {
 			oeList = append(oeList, model.OfficialEventId)
@@ -325,14 +357,14 @@ func (i *CityleagueResult) FindByTerm(
 	fromDate time.Time,
 	toDate time.Time,
 ) ([]*entity.CityleagueResult, error) {
-	var models []*model.CityleagueResult
+	var models []*cityleagueResultWithPlayerRow
 	if leagueType == 0 {
-		if tx := i.db.Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date DESC, "+orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.withPlayer().Where("event_date >= ? AND event_date <= ?", fromDate, toDate).Order("event_date DESC, "+orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
 	} else {
-		if tx := i.db.Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date DESC, "+orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
+		if tx := i.withPlayer().Where("league_type = ? AND event_date >= ? AND event_date <= ?", leagueType, fromDate, toDate).Order("event_date DESC, "+orderByAddedDesc+", league_type ASC, official_event_id ASC, point DESC, player_id ASC").Find(&models); tx.Error != nil {
 			logError(ctx, tx.Error)
 			return nil, tx.Error
 		}
@@ -340,7 +372,7 @@ func (i *CityleagueResult) FindByTerm(
 
 	// OfficialEventId別にCityleagueResultをまとめる
 	var oeList []uint
-	oeMap := make(map[uint][]*model.CityleagueResult)
+	oeMap := make(map[uint][]*cityleagueResultWithPlayerRow)
 	for _, model := range models {
 		if len(oeMap[model.OfficialEventId]) == 0 {
 			oeList = append(oeList, model.OfficialEventId)

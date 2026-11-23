@@ -1147,7 +1147,6 @@ func TestIntegrationCityleagueResultFindByPlayerId(t *testing.T) {
 			LeagueType:           1,
 			EventDate:            eventDate,
 			PlayerId:             targetPlayerId,
-			PlayerName:           "テストプレイヤー",
 			Rank:                 rank,
 			Point:                point,
 			DeckCode:             deckCode,
@@ -1217,7 +1216,7 @@ func TestIntegrationCityleagueResultFindByPlayerId(t *testing.T) {
 // 以前は存在しない列(cityleague_id)を条件にしていて必ず SQL エラーになっていた。
 // sqlmock は生成された SQL の文字列しか見ないため、列の有無は実DBで確かめる。
 func TestIntegrationCityleagueResultFindByCityleagueScheduleId(t *testing.T) {
-	db := setupIntegrationDB(t, "cityleague_results", "official_events")
+	db := setupIntegrationDB(t, "cityleague_results", "official_events", "players")
 
 	// cityleague_schedules は db/schema.sql が初期データを持つ(2026s3・2026s4)のでそのまま使う
 	s3Date := time.Date(2026, 2, 1, 0, 0, 0, 0, time.Local)
@@ -1242,7 +1241,6 @@ func TestIntegrationCityleagueResultFindByCityleagueScheduleId(t *testing.T) {
 			LeagueType:           leagueType,
 			EventDate:            eventDate,
 			PlayerId:             playerId,
-			PlayerName:           "テストプレイヤー",
 			Rank:                 1,
 			Point:                point,
 			DeckCode:             "gnnHHn-Vg3aWc-LHNnHH",
@@ -1258,6 +1256,9 @@ func TestIntegrationCityleagueResultFindByCityleagueScheduleId(t *testing.T) {
 	// 対象シーズンの別リーグ(返してはならない)
 	insertResult("2026s4", 952751, 2, s4Day2, "0000000005", 15)
 
+	// プレイヤー名は players から引く
+	require.NoError(t, db.Create(&model.Player{Id: "0000000004", Name: "テスト四郎", LatestEventDate: s4Day2}).Error)
+
 	ctx := context.Background()
 	r := NewCityleagueResult(db)
 
@@ -1272,6 +1273,7 @@ func TestIntegrationCityleagueResultFindByCityleagueScheduleId(t *testing.T) {
 		require.Len(t, ret[0].EventResults, 2)
 		// 大会の中は point の高い順
 		require.Equal(t, "0000000004", ret[0].EventResults[0].PlayerId)
+		require.Equal(t, "テスト四郎", ret[0].EventResults[0].PlayerName)
 		require.Equal(t, "0000000003", ret[0].EventResults[1].PlayerId)
 
 		require.Equal(t, uint(952749), ret[1].OfficialEventId)
@@ -1289,7 +1291,7 @@ func TestIntegrationCityleagueResultFindByCityleagueScheduleId(t *testing.T) {
 // 大会結果一覧(FindByTerm / FindByDate)の並び。同じ開催日の中は結果が追加された新しい順で、
 // 窓関数(MIN(created_at) OVER ...)の効き方は sqlmock では確認できないため実DBで確かめる。
 func TestIntegrationCityleagueResultOrderByAdded(t *testing.T) {
-	db := setupIntegrationDB(t, "cityleague_results", "official_events")
+	db := setupIntegrationDB(t, "cityleague_results", "official_events", "players")
 
 	day1 := time.Date(2026, 4, 5, 0, 0, 0, 0, time.Local)
 	day2 := time.Date(2026, 4, 12, 0, 0, 0, 0, time.Local)
@@ -1313,7 +1315,6 @@ func TestIntegrationCityleagueResultOrderByAdded(t *testing.T) {
 			LeagueType:           1,
 			EventDate:            eventDate,
 			PlayerId:             playerId,
-			PlayerName:           "テストプレイヤー",
 			Rank:                 1,
 			Point:                point,
 			DeckCode:             "gnnHHn-Vg3aWc-LHNnHH",
@@ -1333,6 +1334,23 @@ func TestIntegrationCityleagueResultOrderByAdded(t *testing.T) {
 	insertResult(952751, day1, "0000000004", 15, base.Add(5*time.Minute))
 	// 4/12 開催: 取り込みは最も古いが、開催日が新しいので先頭に来る
 	insertResult(952752, day2, "0000000005", 15, base.Add(-1*time.Hour))
+
+	// プレイヤー名は players から引く。players にも created_at があるので、並びに使う
+	// created_at が曖昧(ambiguous)にならないことも合わせて確かめる。
+	// 0000000004 は名前が未取り込み(players に行が無い)
+	for _, p := range []*model.Player{
+		{Id: "0000000001", Name: "テスト一郎", LatestEventDate: day1},
+		{Id: "0000000002", Name: "テスト二郎", LatestEventDate: day1},
+		{Id: "0000000003", Name: "テスト三郎", LatestEventDate: day1},
+		{Id: "0000000005", Name: "テスト五郎", LatestEventDate: day2},
+	} {
+		require.NoError(t, db.Create(p).Error)
+	}
+	// players の作成時刻を大会の取り込み時刻と逆順にしておき、並びが players 側の created_at に
+	// 引きずられていないことを確かめられるようにする
+	require.NoError(t, db.Exec(
+		`UPDATE players SET created_at = ? WHERE id = ?`, base.Add(10*time.Hour), "0000000001",
+	).Error)
 
 	ctx := context.Background()
 	r := NewCityleagueResult(db)
@@ -1362,6 +1380,24 @@ func TestIntegrationCityleagueResultOrderByAdded(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, []uint{952751, 952750, 952749}, eventIds(ret))
+	})
+
+	t.Run("正常系_プレイヤー名をplayersから引き_無ければ空文字で入賞は落とさない", func(t *testing.T) {
+		ret, err := r.FindByDate(ctx, 1, day1)
+
+		require.NoError(t, err)
+		require.Equal(t, uint(952751), ret[0].OfficialEventId)
+		require.Len(t, ret[0].EventResults, 2)
+		// point の高い順: 0000000004(15点・名前未取り込み) → 0000000003(12点)
+		require.Equal(t, "0000000004", ret[0].EventResults[0].PlayerId)
+		require.Empty(t, ret[0].EventResults[0].PlayerName)
+		require.Equal(t, "0000000003", ret[0].EventResults[1].PlayerId)
+		require.Equal(t, "テスト三郎", ret[0].EventResults[1].PlayerName)
+
+		byId, err := r.FindByOfficialEventId(ctx, 952749)
+		require.NoError(t, err)
+		require.Len(t, byId.EventResults, 1)
+		require.Equal(t, "テスト一郎", byId.EventResults[0].PlayerName)
 	})
 
 	t.Run("正常系_取り込み時刻が同じならofficial_event_idの順", func(t *testing.T) {
@@ -2081,7 +2117,7 @@ func TestIntegrationOfficialEventFindByShopIds(t *testing.T) {
 // 大型大会の結果取得。ORDER BY に予約語 rank を素で書いているため、
 // GORMが生成するSQLが実Postgresで通ることと、db/schema.sql との整合を確認する。
 func TestIntegrationChampionsleagueResult(t *testing.T) {
-	db := setupIntegrationDB(t, "championsleague_results", "official_events")
+	db := setupIntegrationDB(t, "championsleague_results", "official_events", "players")
 
 	// FK制約: championsleague_results -> championsleague_schedules / official_events。
 	// championsleague_schedules は db/schema.sql が初期データを持つのでそのまま使う。
@@ -2104,7 +2140,6 @@ func TestIntegrationChampionsleagueResult(t *testing.T) {
 			LeagueType:                leagueType,
 			EventDate:                 eventDate,
 			PlayerId:                  playerId,
-			PlayerName:                "テストプレイヤー",
 			Rank:                      rank,
 			DeckCode:                  deckCode,
 		}).Error)
@@ -2114,6 +2149,10 @@ func TestIntegrationChampionsleagueResult(t *testing.T) {
 	insertResult(1032135, 4, "0000000002", 2, "bbbbbb-bbbbbb-bbbbbb")
 	insertResult(1032135, 4, "0000000001", 1, "aaaaaa-aaaaaa-aaaaaa")
 	insertResult(1032136, 3, "0000000003", 1, "cccccc-cccccc-cccccc")
+
+	// プレイヤー名は players から引く。0000000003 は名前が未取り込み(players に行が無い)
+	require.NoError(t, db.Create(&model.Player{Id: "0000000001", Name: "テスト太郎", LatestEventDate: eventDate}).Error)
+	require.NoError(t, db.Create(&model.Player{Id: "0000000002", Name: "テスト次郎", LatestEventDate: eventDate}).Error)
 
 	ctx := context.Background()
 	r := NewChampionsleagueResult(db)
@@ -2131,10 +2170,15 @@ func TestIntegrationChampionsleagueResult(t *testing.T) {
 		// rank の昇順
 		require.Equal(t, uint(1), ret[0].EventResults[0].Rank)
 		require.Equal(t, "aaaaaa-aaaaaa-aaaaaa", ret[0].EventResults[0].DeckCode)
+		require.Equal(t, "テスト太郎", ret[0].EventResults[0].PlayerName)
 		require.Equal(t, uint(2), ret[0].EventResults[1].Rank)
+		require.Equal(t, "テスト次郎", ret[0].EventResults[1].PlayerName)
 
 		require.Equal(t, uint(1032136), ret[1].OfficialEventId)
 		require.Len(t, ret[1].EventResults, 1)
+		// players に行が無くても入賞は落とさない(名前は空文字)
+		require.Equal(t, "0000000003", ret[1].EventResults[0].PlayerId)
+		require.Empty(t, ret[1].EventResults[0].PlayerName)
 	})
 
 	t.Run("異常系_結果が無い大会IDはErrRecordNotFoundを返す", func(t *testing.T) {

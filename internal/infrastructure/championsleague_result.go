@@ -57,14 +57,38 @@ func (i *ChampionsleagueResult) FindEvents(
 	return ret, nil
 }
 
+// championsleagueResultWithPlayerRow は入賞1件を、players から引いたプレイヤー名と合わせて受ける行。
+// 名前は championsleague_results ではなく players が持つ(db/schema.sql の players のコメント参照)。
+type championsleagueResultWithPlayerRow struct {
+	model.ChampionsleagueResult
+	PlayerName string
+}
+
+// championsleagueResultWithPlayerColumns は入賞者を返す読み出しの SELECT 句。
+// championsleague_results.* にしないのは、player_name 列を消す移行の途中(古い列が残っている間)に
+// 同名の列が2つ並ばないようにするため。
+const championsleagueResultWithPlayerColumns = "championsleague_results.championsleague_schedule_id," +
+	"championsleague_results.official_event_id," +
+	"championsleague_results.league_type," +
+	"championsleague_results.event_date," +
+	"championsleague_results.player_id," +
+	"COALESCE(players.name, '') AS player_name," +
+	"championsleague_results.rank," +
+	"championsleague_results.deck_code"
+
 func (i *ChampionsleagueResult) FindByChampionsleagueScheduleId(
 	ctx context.Context,
 	leagueType uint,
 	championsleagueScheduleId string,
 ) ([]*entity.ChampionsleagueResult, error) {
-	var models []*model.ChampionsleagueResult
+	var models []*championsleagueResultWithPlayerRow
 
-	query := i.db.Where("championsleague_schedule_id = ?", championsleagueScheduleId)
+	// 結果テーブルから players への外部キーは無く、名前の取り込みが遅れて行が無いこともあるので
+	// LEFT JOIN にして入賞自体は落とさない(名前は空文字)。
+	query := i.db.Table("championsleague_results").
+		Select(championsleagueResultWithPlayerColumns).
+		Joins("LEFT JOIN players ON players.id = championsleague_results.player_id").
+		Where("championsleague_schedule_id = ?", championsleagueScheduleId)
 
 	if leagueType != 0 {
 		query = query.Where("league_type = ?", leagueType)
@@ -86,7 +110,7 @@ func (i *ChampionsleagueResult) FindByChampionsleagueScheduleId(
 	// OfficialEventId 別にまとめる。上の ORDER BY でイベントが固まって並ぶが、
 	// 大会は数イベントしか無いのでマップで受けても順序さえ保てば問題にならない。
 	var oeList []uint
-	oeMap := make(map[uint][]*model.ChampionsleagueResult)
+	oeMap := make(map[uint][]*championsleagueResultWithPlayerRow)
 	for _, m := range models {
 		if len(oeMap[m.OfficialEventId]) == 0 {
 			oeList = append(oeList, m.OfficialEventId)

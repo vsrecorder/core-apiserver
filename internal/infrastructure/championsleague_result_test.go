@@ -94,6 +94,7 @@ func test_ChampionsleagueResultInfrastructure_FindEventsReturnsEmptySlice(t *tes
 }
 
 // 入賞者1人=1レコードで返る行を、official_event_id ごとにまとめ直す。
+// プレイヤー名は players を LEFT JOIN して引く。
 func test_ChampionsleagueResultInfrastructure_FindByChampionsleagueScheduleId(t *testing.T) {
 	r, mock := setup4ChampionsleagueResultInfrastructure(t)
 
@@ -115,7 +116,7 @@ func test_ChampionsleagueResultInfrastructure_FindByChampionsleagueScheduleId(t 
 	}
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "championsleague_results" WHERE championsleague_schedule_id = $1 ORDER BY event_date DESC, league_type DESC, official_event_id ASC, rank ASC, player_id ASC`,
+		`SELECT championsleague_results.championsleague_schedule_id,championsleague_results.official_event_id,championsleague_results.league_type,championsleague_results.event_date,championsleague_results.player_id,COALESCE(players.name, '') AS player_name,championsleague_results.rank,championsleague_results.deck_code FROM "championsleague_results" LEFT JOIN players ON players.id = championsleague_results.player_id WHERE championsleague_schedule_id = $1 ORDER BY event_date DESC, league_type DESC, official_event_id ASC, rank ASC, player_id ASC`,
 	)).WithArgs("pjcs2026").WillReturnRows(rows)
 
 	ret, err := r.FindByChampionsleagueScheduleId(context.Background(), 0, "pjcs2026")
@@ -145,7 +146,7 @@ func test_ChampionsleagueResultInfrastructure_FindByChampionsleagueScheduleIdNot
 		"player_id", "player_name", "rank", "deck_code",
 	})
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "championsleague_results"`)).
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT championsleague_results.championsleague_schedule_id,championsleague_results.official_event_id,championsleague_results.league_type,championsleague_results.event_date,championsleague_results.player_id,COALESCE(players.name, '') AS player_name,championsleague_results.rank,championsleague_results.deck_code FROM "championsleague_results" LEFT JOIN players ON players.id = championsleague_results.player_id`)).
 		WithArgs("cl2027_yokohama").
 		WillReturnRows(rows)
 
@@ -171,7 +172,7 @@ func test_ChampionsleagueResultInfrastructure_FindByChampionsleagueScheduleIdLea
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(
-		`SELECT * FROM "championsleague_results" WHERE championsleague_schedule_id = $1 AND league_type = $2 ORDER BY event_date DESC, league_type DESC, official_event_id ASC, rank ASC, player_id ASC`,
+		`SELECT championsleague_results.championsleague_schedule_id,championsleague_results.official_event_id,championsleague_results.league_type,championsleague_results.event_date,championsleague_results.player_id,COALESCE(players.name, '') AS player_name,championsleague_results.rank,championsleague_results.deck_code FROM "championsleague_results" LEFT JOIN players ON players.id = championsleague_results.player_id WHERE championsleague_schedule_id = $1 AND league_type = $2 ORDER BY event_date DESC, league_type DESC, official_event_id ASC, rank ASC, player_id ASC`,
 	)).WithArgs("pjcs2026", uint(4)).WillReturnRows(rows)
 
 	ret, err := r.FindByChampionsleagueScheduleId(context.Background(), 4, "pjcs2026")

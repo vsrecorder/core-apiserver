@@ -4,13 +4,13 @@ import "time"
 
 // ChampionsleagueResult は championsleague_results テーブルの1行。
 // cityleague_results と違い point カラムを持たない(公式APIは返すがテーブルに列が無い)。
+// プレイヤー名は持たない(players テーブルが持つ。model.Player 参照)。
 type ChampionsleagueResult struct {
 	ChampionsleagueScheduleId string `gorm:"primaryKey"`
 	OfficialEventId           uint   `gorm:"primaryKey"`
 	LeagueType                uint
 	EventDate                 time.Time
 	PlayerId                  string `gorm:"primaryKey"`
-	PlayerName                string
 	Rank                      uint
 	DeckCode                  string
 }
@@ -21,7 +21,6 @@ func NewChampionsleagueResult(
 	leagueType uint,
 	eventDate time.Time,
 	playerId string,
-	playerName string,
 	rank uint,
 	deckCode string,
 ) *ChampionsleagueResult {
@@ -31,7 +30,6 @@ func NewChampionsleagueResult(
 		LeagueType:                leagueType,
 		EventDate:                 eventDate,
 		PlayerId:                  playerId,
-		PlayerName:                playerName,
 		Rank:                      rank,
 		DeckCode:                  deckCode,
 	}

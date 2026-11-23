@@ -633,13 +633,38 @@ INSERT INTO cityleague_schedules VALUES ('2023s1','シティリーグ2023 シー
 
 
 
+-- 大会結果に出てくるプレイヤー(公式サイトのプレイヤーID)と、その表示名。
+-- 以前は cityleague_results・championsleague_results が入賞1件ごとに player_name を持っていたが、
+-- 同じプレイヤーの名前が入賞の数だけ重複し、名前を差し替えるにも全行を書き換える必要があった。
+-- 名前はここに1人1行で持ち、結果テーブルは player_id だけを持つ。
+--
+-- 名前は最新の1つだけを持つ(過去の大会結果も最新の名前で表示する)。同じIDで大会ごとに名前が
+-- 違う人がいる(改名・表記ゆれ。作業機のデータで 3.5万人中 648人)ため、取り込みバッチは
+-- latest_event_date(この名前を取った大会の開催日)より新しいか同じ日の大会のときだけ名前を
+-- 上書きする。古い大会を取り込み直しても、新しい名前が古い名前に戻らないようにするため。
+--
+-- 結果テーブルからの外部キーは張らない(疎結合)。結果の取り込みと名前の取り込みを独立させ、
+-- 読み出しは LEFT JOIN にして、ここに行が無くても入賞自体は返す(名前は空文字)。
+-- 既存の環境へは db/backfill/2026-11-23-players.sql で作成・移行する。
+CREATE TABLE players (
+    id                 VARCHAR(10) PRIMARY KEY,
+    name               VARCHAR(255) NOT NULL,
+    latest_event_date  DATE NOT NULL,
+    created_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+
+
 CREATE TABLE cityleague_results (
     cityleague_schedule_id               VARCHAR(6) NOT NULL,
     official_event_id                    INT NOT NULL,
     league_type                          INT NOT NULL,
     event_date                           DATE DEFAULT NULL,
+    -- 名前は players が持つ(players.id と対応。外部キーは張らない)
     player_id                            VARCHAR(10) NOT NULL,
-    player_name                          VARCHAR(255) NOT NULL,
     rank                                 SMALLINT NOT NULL,
     point                                SMALLINT NOT NULL,
     deck_code                            VARCHAR(21) NOT NULL,
@@ -722,8 +747,8 @@ CREATE TABLE championsleague_results (
     official_event_id                         INT NOT NULL,
     league_type                               INT NOT NULL,
     event_date                                DATE DEFAULT NULL,
+    -- 名前は players が持つ(players.id と対応。外部キーは張らない)
     player_id                                 VARCHAR(10) NOT NULL,
-    player_name                               VARCHAR(255) NOT NULL,
     rank                                      SMALLINT NOT NULL,
     deck_code                                 VARCHAR(21) NOT NULL,
     FOREIGN KEY (championsleague_schedule_id) REFERENCES championsleague_schedules (id),

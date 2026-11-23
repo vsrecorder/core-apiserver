@@ -2,13 +2,14 @@ package model
 
 import "time"
 
+// CityleagueResult は cityleague_results テーブルの1行。
+// プレイヤー名は持たない(players テーブルが持つ。model.Player 参照)。
 type CityleagueResult struct {
 	CityleagueScheduleId string `gorm:"primaryKey"`
 	OfficialEventId      uint   `gorm:"primaryKey"`
 	LeagueType           uint
 	EventDate            time.Time
 	PlayerId             string `gorm:"primaryKey"`
-	PlayerName           string
 	Rank                 uint
 	Point                uint
 	DeckCode             string
@@ -20,7 +21,6 @@ func NewCityleagueResult(
 	leagueType uint,
 	eventDate time.Time,
 	playerId string,
-	playerName string,
 	rank uint,
 	point uint,
 	deckCode string,
@@ -31,7 +31,6 @@ func NewCityleagueResult(
 		LeagueType:           leagueType,
 		EventDate:            eventDate,
 		PlayerId:             playerId,
-		PlayerName:           playerName,
 		Rank:                 rank,
 		Point:                point,
 		DeckCode:             deckCode,

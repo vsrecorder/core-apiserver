@@ -13,10 +13,10 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
-      - name: Setup Go 1.27.3
+      - name: Setup Go 1.27.4
         uses: actions/setup-go@v7
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
       # gofmt で整形されていないファイルがあれば落とす(make lint-fmt と同じ検査)。
       # テストより先に置き、整形漏れだけのときに長いテストを待たずに気付けるようにする。
       - name: Check gofmt

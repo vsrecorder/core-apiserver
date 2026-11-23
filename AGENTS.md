@@ -6,7 +6,7 @@
 ## リポジトリ概要
 
 ポケモンカード対戦記録サービス **バトレコ (vsrecorder)** のコアAPIサーバ。
-Go 1.25.7 / Gin / GORM (PostgreSQL) 製。モジュール名は `github.com/vsrecorder/core-apiserver`。
+Go 1.27.4 / Gin / GORM (PostgreSQL) 製。モジュール名は `github.com/vsrecorder/core-apiserver`。
 APIのベースパスは `/api/v1beta`、待ち受けポートは `8914`。
 
 ## コマンド

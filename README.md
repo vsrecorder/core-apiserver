@@ -18,7 +18,7 @@
 
 | 項目             | 内容                                                     |
 | ---------------- | -------------------------------------------------------- |
-| 言語             | Go 1.27.3                                                |
+| 言語             | Go 1.27.4                                                |
 | Webフレームワーク | [Gin](https://github.com/gin-gonic/gin)                  |
 | ORM              | [GORM](https://gorm.io/) (PostgreSQL ドライバ)           |
 | データベース     | PostgreSQL                                               |
@@ -124,7 +124,7 @@ adr/                   # アーキテクチャ・デシジョン・レコード
 
 ### 前提
 
-- Go 1.27.3 以上
+- Go 1.27.4 以上
 - PostgreSQL
 - Docker / Docker Compose（コンテナ実行の場合）
 

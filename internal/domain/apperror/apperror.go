@@ -91,4 +91,9 @@ var (
 	// ErrDeckCodePostHidden は運営が非表示にした投稿のデッキコードを公開し直そうとした場合に返す
 	// (取り下げて別の投稿として作り直しても表示に戻せないようにする)。HTTP では 403 に対応する。
 	ErrDeckCodePostHidden = errors.New("deck code post is hidden")
+
+	// ErrTooManyResults は条件に合う件数が、1度に返せる上限を超えた場合に返す。
+	// 一部だけを返すと呼び出し側が欠けに気づけないため、絞り込みを促すエラーにする。
+	// HTTP では 400 Bad Request に対応する。
+	ErrTooManyResults = errors.New("too many results")
 )

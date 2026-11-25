@@ -74,6 +74,12 @@ func logError(ctx context.Context, err error) {
 		level = slog.LevelDebug
 	}
 
+	// 件数の上限超えは呼び出し側の指定(広すぎる期間など)が原因で、サーバの異常ではない。
+	// 応答を返すコントローラ層が Warn で記録するので、ここでは Error にしない。
+	if errors.Is(err, apperror.ErrTooManyResults) {
+		level = slog.LevelDebug
+	}
+
 	logging.LogAt(
 		ctx,
 		logging.Layered(logging.LayerUsecase),

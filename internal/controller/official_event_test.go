@@ -220,6 +220,40 @@ func test_OfficialEventController_Get(t *testing.T) {
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
+
+	// 件数の上限超えは指定が広すぎることが原因なので、500 ではなく 400 にする
+	t.Run("異常系_件数の上限超えで400を返す", func(t *testing.T) {
+		typeId := uint(0)
+		leagueType := uint(0)
+		now := time.Now()
+		startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+		endDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
+		mockUsecase.EXPECT().Find(gomock.Any(), typeId, leagueType, startDate, endDate).Return(
+			nil, apperror.ErrTooManyResults,
+		)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", OfficialEventsPath, nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	// date 単独指定の経路も同じ扱いにする(記録作成画面が使う)
+	t.Run("異常系_date指定でも件数の上限超えで400を返す", func(t *testing.T) {
+		date := time.Date(2026, 11, 22, 0, 0, 0, 0, time.Local)
+
+		mockUsecase.EXPECT().Find(gomock.Any(), uint(0), uint(0), date, date).Return(
+			nil, apperror.ErrTooManyResults,
+		)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", OfficialEventsPath+"?date=2026-11-22", nil)
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
 }
 
 func test_OfficialEventController_GetById(t *testing.T) {

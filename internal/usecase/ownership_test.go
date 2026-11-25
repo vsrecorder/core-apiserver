@@ -118,6 +118,46 @@ func TestVerifyOwnership(t *testing.T) {
 			require.ErrorIs(t, verifyRecordOwnership(context.Background(), repo, uid, id), apperror.ErrRecordNotFound)
 		})
 	})
+
+	t.Run("verifyUnofficialEventOwnership", func(t *testing.T) {
+		newMock := func(t *testing.T) *mock_repository.MockUnofficialEventInterface {
+			return mock_repository.NewMockUnofficialEventInterface(gomock.NewController(t))
+		}
+
+		t.Run("正常系_未指定なら参照なしとして通す", func(t *testing.T) {
+			// 参照が無いのでリポジトリは呼ばれない(EXPECT を書かない)
+			require.NoError(t, verifyUnofficialEventOwnership(context.Background(), newMock(t), uid, ""))
+		})
+
+		t.Run("正常系_本人の自由形式イベントは通す", func(t *testing.T) {
+			repo := newMock(t)
+			repo.EXPECT().FindById(context.Background(), id).Return(&entity.UnofficialEvent{ID: id, UserId: uid}, nil)
+
+			require.NoError(t, verifyUnofficialEventOwnership(context.Background(), repo, uid, id))
+		})
+
+		t.Run("異常系_他人の自由形式イベントはErrRecordNotFound", func(t *testing.T) {
+			repo := newMock(t)
+			repo.EXPECT().FindById(context.Background(), id).Return(&entity.UnofficialEvent{ID: id, UserId: other}, nil)
+
+			require.ErrorIs(t, verifyUnofficialEventOwnership(context.Background(), repo, uid, id), apperror.ErrRecordNotFound)
+		})
+
+		t.Run("異常系_存在しない自由形式イベントはErrRecordNotFound", func(t *testing.T) {
+			repo := newMock(t)
+			repo.EXPECT().FindById(context.Background(), id).Return(nil, apperror.ErrRecordNotFound)
+
+			require.ErrorIs(t, verifyUnofficialEventOwnership(context.Background(), repo, uid, id), apperror.ErrRecordNotFound)
+		})
+
+		t.Run("異常系_リポジトリのエラーはそのまま返す", func(t *testing.T) {
+			repo := newMock(t)
+			repoErr := errors.New("db down")
+			repo.EXPECT().FindById(context.Background(), id).Return(nil, repoErr)
+
+			require.ErrorIs(t, verifyUnofficialEventOwnership(context.Background(), repo, uid, id), repoErr)
+		})
+	})
 }
 
 // 他人のデッキにデッキコードを足せると、そのデッキの公開一覧の「最新デッキコード」を
@@ -173,6 +213,7 @@ func TestRecordUsecase_RejectsOthersDeckReferences(t *testing.T) {
 			mockRepository,
 			stubDeckRepository{owner: deckOwner},
 			stubDeckCodeRepository{owner: deckCodeOwner},
+			stubOwnedUnofficialEventRepository{},
 			stubTagRepository{},
 			stubBadgeEvaluation{},
 			stubDesignationEvaluation{},
@@ -236,6 +277,158 @@ func TestRecordUsecase_RejectsOthersDeckReferences(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, deckId, ret.DeckId)
 		require.Equal(t, deckCodeId, ret.DeckCodeId)
+	})
+}
+
+// 記録の unofficial_event_id に他人の自由形式イベントを指定できると、その記録を消すだけで
+// 相手のイベントが消える(記録の削除は紐づく自由形式イベントも消すため)。
+// 作成でも、更新での付け替えでも保存前に弾くこと。
+func TestRecordUsecase_RejectsOthersUnofficialEventReferences(t *testing.T) {
+	uid := "owner"
+	other := "someone-else"
+	eventId := "01HD7Y3K8D6FDHMHTZ2GT41TE2"
+	anotherEventId := "01HD7Y3K8D6FDHMHTZ2GT41TE3"
+
+	newUsecase := func(mockRepository *mock_repository.MockRecordInterface, events stubOwnedUnofficialEventRepository) RecordInterface {
+		return NewRecord(
+			testLogger(),
+			mockRepository,
+			stubDeckRepository{owner: uid},
+			stubDeckCodeRepository{owner: uid},
+			events,
+			stubTagRepository{},
+			stubBadgeEvaluation{},
+			stubDesignationEvaluation{},
+			&stubTonamelEventFetcher{},
+			&stubTonamelEventStore{},
+			stubTransactionManager{},
+		)
+	}
+
+	// 自由形式イベントに紐づく記録のパラメータ(イベント種別は自由形式の1つだけ)
+	unofficialParam := func(unofficialEventId string) *RecordParam {
+		return NewRecordParam(0, "", "", unofficialEventId, uid, "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
+	}
+
+	existingRecord := func(id string, unofficialEventId string) *entity.Record {
+		officialEventId := uint(0)
+		if unofficialEventId == "" {
+			officialEventId = 1
+		}
+
+		return entity.NewRecord(id, time.Now().Local(), officialEventId, "", "", unofficialEventId, uid, "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
+	}
+
+	t.Run("異常系_他人の自由形式イベントを参照する記録の作成はErrRecordNotFoundで保存しない", func(t *testing.T) {
+		mockRepository := mock_repository.NewMockRecordInterface(gomock.NewController(t))
+		usecase := newUsecase(mockRepository, stubOwnedUnofficialEventRepository{owner: other})
+		// Save は EXPECT しない(所有者検証で弾かれ、呼ばれない)
+
+		ret, err := usecase.Create(context.Background(), unofficialParam(eventId))
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Nil(t, ret)
+	})
+
+	t.Run("異常系_存在しない自由形式イベントを参照する記録の作成はErrRecordNotFoundで保存しない", func(t *testing.T) {
+		mockRepository := mock_repository.NewMockRecordInterface(gomock.NewController(t))
+		usecase := newUsecase(mockRepository, stubOwnedUnofficialEventRepository{notFound: true})
+
+		ret, err := usecase.Create(context.Background(), unofficialParam(eventId))
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Nil(t, ret)
+	})
+
+	t.Run("正常系_本人の自由形式イベントを参照する記録は作成される", func(t *testing.T) {
+		mockRepository := mock_repository.NewMockRecordInterface(gomock.NewController(t))
+		usecase := newUsecase(mockRepository, stubOwnedUnofficialEventRepository{owner: uid})
+
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		ret, err := usecase.Create(context.Background(), unofficialParam(eventId))
+
+		require.NoError(t, err)
+		require.Equal(t, eventId, ret.UnofficialEventId)
+	})
+
+	t.Run("異常系_更新で他人の自由形式イベントへ付け替えるとErrRecordNotFoundで保存しない", func(t *testing.T) {
+		mockRepository := mock_repository.NewMockRecordInterface(gomock.NewController(t))
+		usecase := newUsecase(mockRepository, stubOwnedUnofficialEventRepository{owner: other})
+
+		id, _ := generateId()
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(existingRecord(id, eventId), nil)
+		// Save は EXPECT しない
+
+		ret, err := usecase.Update(context.Background(), id, unofficialParam(anotherEventId))
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Nil(t, ret)
+	})
+
+	t.Run("異常系_公式イベントの記録を他人の自由形式イベントへ付け替えるとErrRecordNotFoundで保存しない", func(t *testing.T) {
+		mockRepository := mock_repository.NewMockRecordInterface(gomock.NewController(t))
+		usecase := newUsecase(mockRepository, stubOwnedUnofficialEventRepository{owner: other})
+
+		id, _ := generateId()
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(existingRecord(id, ""), nil)
+
+		ret, err := usecase.Update(context.Background(), id, unofficialParam(eventId))
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Nil(t, ret)
+	})
+
+	t.Run("正常系_更新で本人の別の自由形式イベントへ付け替えられる", func(t *testing.T) {
+		mockRepository := mock_repository.NewMockRecordInterface(gomock.NewController(t))
+		calls := 0
+		usecase := newUsecase(mockRepository, stubOwnedUnofficialEventRepository{owner: uid, calls: &calls})
+
+		id, _ := generateId()
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(existingRecord(id, eventId), nil)
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		ret, err := usecase.Update(context.Background(), id, unofficialParam(anotherEventId))
+
+		require.NoError(t, err)
+		require.Equal(t, anotherEventId, ret.UnofficialEventId)
+		require.Equal(t, 1, calls)
+	})
+
+	// メモやデッキだけの更新でも、クライアントは今の unofficial_event_id をそのまま送ってくる。
+	// 参照先のイベントが消えていても(イベントだけ先に消えた記録)、ほかの項目は更新できること。
+	t.Run("正常系_自由形式イベントの参照が変わらない更新は所有者を確かめずに保存する", func(t *testing.T) {
+		mockRepository := mock_repository.NewMockRecordInterface(gomock.NewController(t))
+		calls := 0
+		usecase := newUsecase(mockRepository, stubOwnedUnofficialEventRepository{notFound: true, calls: &calls})
+
+		id, _ := generateId()
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(existingRecord(id, eventId), nil)
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		ret, err := usecase.Update(context.Background(), id, unofficialParam(eventId))
+
+		require.NoError(t, err)
+		require.Equal(t, eventId, ret.UnofficialEventId)
+		require.Equal(t, 0, calls)
+	})
+
+	t.Run("正常系_自由形式イベントから公式イベントへの付け替えは所有者を確かめない", func(t *testing.T) {
+		mockRepository := mock_repository.NewMockRecordInterface(gomock.NewController(t))
+		calls := 0
+		usecase := newUsecase(mockRepository, stubOwnedUnofficialEventRepository{notFound: true, calls: &calls})
+
+		id, _ := generateId()
+		mockRepository.EXPECT().FindById(context.Background(), id).Return(existingRecord(id, eventId), nil)
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+
+		param := NewRecordParam(1, "", "", "", uid, "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
+
+		ret, err := usecase.Update(context.Background(), id, param)
+
+		require.NoError(t, err)
+		require.Equal(t, "", ret.UnofficialEventId)
+		require.Equal(t, 0, calls)
 	})
 }
 

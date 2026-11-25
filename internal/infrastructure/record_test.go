@@ -687,8 +687,9 @@ func test_RecordInfrastructure_Delete(t *testing.T) {
 		)).WithArgs(
 			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
 			1,
-		).WillReturnRows(sqlmock.NewRows([]string{"id", "unofficial_event_id"}).AddRow(
+		).WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "unofficial_event_id"}).AddRow(
 			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
+			"zor5SLfEfwfZ90yRVXzlxBEFARy2",
 			"01UNOFFICIALEVENT0000000001",
 		))
 
@@ -715,12 +716,14 @@ func test_RecordInfrastructure_Delete(t *testing.T) {
 			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
 		).WillReturnResult(sqlmock.NewResult(0, 1))
 
-		// unofficial_event をソフトデリート
+		// unofficial_event をソフトデリート。記録の持ち主のイベントだけを対象にする
+		// (他人のイベントを指している記録を消しても、相手のイベントは消さない)
 		mock.ExpectExec(regexp.QuoteMeta(
-			`UPDATE "unofficial_events" SET "deleted_at"=$1 WHERE id = $2 AND "unofficial_events"."deleted_at" IS NULL`,
+			`UPDATE "unofficial_events" SET "deleted_at"=$1 WHERE (id = $2 AND user_id = $3) AND "unofficial_events"."deleted_at" IS NULL`,
 		)).WithArgs(
 			AnyTime{},
 			"01UNOFFICIALEVENT0000000001",
+			"zor5SLfEfwfZ90yRVXzlxBEFARy2",
 		).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		mock.ExpectCommit()

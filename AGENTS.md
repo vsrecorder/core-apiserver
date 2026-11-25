@@ -310,11 +310,16 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 - push 購読（endpoint は全体で一意）の持ち主変更は、鍵（p256dh / auth）が一致するときだけ許す
   （`usecase/push_subscription.go` の `canTakeOverPushSubscription`）。同じ端末でのアカウント切替は
   鍵が同じなので通り、endpoint しか知らない第三者が持ち主を奪って通知を止めることはできない。
-- **リクエストボディで参照する他リソース（`deck_id` / `deck_code_id` / `record_id`）は、usecase が
-  保存前に本人のものか検証する**（`usecase/ownership.go`）。認可ミドルウェアが見るのはパスの `:id`
-  だけなので、ボディの参照先はここでしか守れない。他人のもの・存在しないものはどちらも
-  `apperror.ErrRecordNotFound`（IDの存在を教えない）にし、コントローラは 404 を返す。
-  参照先を持つ書き込みを追加したら同じ検証を入れること。
+- **リクエストボディで参照する他リソース（`deck_id` / `deck_code_id` / `record_id` /
+  `unofficial_event_id`）は、usecase が保存前に本人のものか検証する**（`usecase/ownership.go`）。
+  認可ミドルウェアが見るのはパスの `:id` だけなので、ボディの参照先はここでしか守れない。
+  他人のもの・存在しないものはどちらも `apperror.ErrRecordNotFound`（IDの存在を教えない）にし、
+  コントローラは 404 を返す。参照先を持つ書き込みを追加したら同じ検証を入れること。
+  `unofficial_event_id` だけは、記録の更新で値が変わらないときは検証しない（参照先のイベントが
+  消えている記録でも、ほかの項目を更新できるようにするため）。
+- **記録の削除（`infrastructure.Record.Delete`）が一緒に消す自由形式イベントは、記録の持ち主の
+  ものに限る**（`user_id` の条件を外さない）。他人のイベントを指す記録が残っていても、その記録を
+  消すことで相手のイベントが消えないようにするため。
 - **デッキ／デッキコードで絞る記録の一覧（`FindByDeckId` 系）は必ず `user_id` も条件に含める。**
   デッキIDは公開情報から誰でも知り得るため、`deck_id` だけで絞ると他人の非公開記録が返る。
 - 相手デッキの入力候補は `GET /matches/opponent_deck_candidates` が「表記 × スプライト」の

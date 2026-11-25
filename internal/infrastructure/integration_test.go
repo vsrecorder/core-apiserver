@@ -385,6 +385,59 @@ func TestIntegrationUnofficialEventRepository(t *testing.T) {
 	})
 }
 
+// 記録を消すと、紐づく自由形式イベントも一緒に消す。ただし消すのは記録の持ち主のイベントだけ。
+// 他人のイベントを指している記録を消しても相手のイベントが残ることを、実DBで確認する
+// (usecase は他人のイベントを紐づけさせないが、それより前に作られた記録にも効かせるため)。
+func TestIntegrationRecordDeleteUnofficialEvent(t *testing.T) {
+	db := setupIntegrationDB(t, "games", "matches", "records", "unofficial_events")
+
+	const (
+		owner = "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		other = "CeQ0Oa6ISjaUVbmKpxFeZJ3SZFr2"
+	)
+
+	ctx := context.Background()
+	records := NewRecord(db, slog.Default())
+	events := NewUnofficialEvent(db)
+	now := time.Now().Local().Truncate(time.Microsecond)
+
+	saveRecord := func(t *testing.T, id string, userId string, unofficialEventId string) {
+		t.Helper()
+
+		require.NoError(t, records.Save(ctx, entity.NewRecord(
+			id, now, 0, "", "", unofficialEventId, userId, "", "", now, false, false,
+			entity.RegulationIdStandard, "", "",
+		)))
+	}
+
+	t.Run("正常系_記録を消すと本人の自由形式イベントも消える", func(t *testing.T) {
+		require.NoError(t, events.Save(ctx, entity.NewUnofficialEvent("ue-own-1", owner, "自主大会", now)))
+		saveRecord(t, "rec-ue-own-1", owner, "ue-own-1")
+
+		require.NoError(t, records.Delete(ctx, "rec-ue-own-1"))
+
+		_, err := events.FindById(ctx, "ue-own-1")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+	})
+
+	t.Run("正常系_他人の自由形式イベントを指す記録を消しても相手のイベントは残る", func(t *testing.T) {
+		require.NoError(t, events.Save(ctx, entity.NewUnofficialEvent("ue-other-1", other, "相手の自主大会", now)))
+		saveRecord(t, "rec-ue-other-1", owner, "ue-other-1")
+
+		require.NoError(t, records.Delete(ctx, "rec-ue-other-1"))
+
+		// 記録そのものは消える
+		_, err := records.FindById(ctx, "rec-ue-other-1")
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+
+		// 相手のイベントは残る
+		ret, err := events.FindById(ctx, "ue-other-1")
+		require.NoError(t, err)
+		require.Equal(t, other, ret.UserId)
+		require.Equal(t, "相手の自主大会", ret.Title)
+	})
+}
+
 // Tonamel大会情報のキャッシュ(tonamel_events)への保存・バッチ参照を実DBで確認する。
 // sqlmockではSQL文字列しか見られず、schema.sqlとの整合(TEXT型・upsert)は保証されない。
 func TestIntegrationTonamelEventStore(t *testing.T) {

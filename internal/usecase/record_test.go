@@ -254,6 +254,7 @@ func newRecordUsecaseForTest(
 		repo,
 		stubDeckRepository{},
 		stubDeckCodeRepository{},
+		stubOwnedUnofficialEventRepository{},
 		stubTagRepository{},
 		badgeEval,
 		designationEval,
@@ -440,7 +441,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		}}
 		store := &stubTonamelEventStore{} // 事前に保存済みのものは無い
 
-		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
+		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubOwnedUnofficialEventRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -460,7 +461,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 			"61ozP": {ID: "61ozP"}, // 既に保存済み
 		}}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
+		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubOwnedUnofficialEventRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -476,7 +477,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		fetcher := &stubTonamelEventFetcher{}
 		store := &stubTonamelEventStore{}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
+		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubOwnedUnofficialEventRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(1, "", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
@@ -493,7 +494,7 @@ func TestRecordUsecase_Create_PersistsTonamelEvent(t *testing.T) {
 		fetcher := &stubTonamelEventFetcher{err: errors.New("")} // tonamel.com取得に失敗
 		store := &stubTonamelEventStore{}
 
-		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
+		usecase := NewRecord(testLogger(), mockRepository, stubDeckRepository{}, stubDeckCodeRepository{}, stubOwnedUnofficialEventRepository{}, stubTagRepository{}, stubBadgeEvaluation{}, stubDesignationEvaluation{}, fetcher, store, stubTransactionManager{})
 
 		param := NewRecordParam(0, "61ozP", "", "", "user-1", "", "", testRecordEventDate, false, false, entity.RegulationIdStandard, "", "")
 		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)

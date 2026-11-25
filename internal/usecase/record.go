@@ -148,13 +148,15 @@ type RecordInterface interface {
 type Record struct {
 	logger     *slog.Logger
 	repository repository.RecordInterface
-	// deckRepository / deckCodeRepository は、記録に紐づける deck_id / deck_code_id が
-	// 本人のものかを保存前に確かめるために使う(ownership.go)。
-	deckRepository        repository.DeckInterface
-	deckCodeRepository    repository.DeckCodeInterface
-	tag                   repository.TagInterface
-	badgeEvaluation       BadgeEvaluationInterface
-	designationEvaluation DesignationEvaluationInterface
+	// deckRepository / deckCodeRepository / unofficialEventRepository は、記録に紐づける
+	// deck_id / deck_code_id / unofficial_event_id が本人のものかを保存前に確かめるために使う
+	// (ownership.go)。
+	deckRepository            repository.DeckInterface
+	deckCodeRepository        repository.DeckCodeInterface
+	unofficialEventRepository repository.UnofficialEventInterface
+	tag                       repository.TagInterface
+	badgeEvaluation           BadgeEvaluationInterface
+	designationEvaluation     DesignationEvaluationInterface
 	// tonamelEventRepo は tonamel.com から大会情報を取得する(HTTP)。
 	// tonamelEventStore は取得結果をDBへ保存・参照する。
 	// 記録作成時に一度だけ取得して保存し、カレンダー等の参照を外部通信なしにする。
@@ -170,6 +172,7 @@ func NewRecord(
 	repository repository.RecordInterface,
 	deckRepository repository.DeckInterface,
 	deckCodeRepository repository.DeckCodeInterface,
+	unofficialEventRepository repository.UnofficialEventInterface,
 	tag repository.TagInterface,
 	badgeEvaluation BadgeEvaluationInterface,
 	designationEvaluation DesignationEvaluationInterface,
@@ -178,16 +181,17 @@ func NewRecord(
 	transactionManager repository.TransactionManager,
 ) RecordInterface {
 	return &Record{
-		logger:                logger,
-		repository:            repository,
-		deckRepository:        deckRepository,
-		deckCodeRepository:    deckCodeRepository,
-		tag:                   tag,
-		badgeEvaluation:       badgeEvaluation,
-		designationEvaluation: designationEvaluation,
-		tonamelEventRepo:      tonamelEventRepo,
-		tonamelEventStore:     tonamelEventStore,
-		transactionManager:    transactionManager,
+		logger:                    logger,
+		repository:                repository,
+		deckRepository:            deckRepository,
+		deckCodeRepository:        deckCodeRepository,
+		unofficialEventRepository: unofficialEventRepository,
+		tag:                       tag,
+		badgeEvaluation:           badgeEvaluation,
+		designationEvaluation:     designationEvaluation,
+		tonamelEventRepo:          tonamelEventRepo,
+		tonamelEventStore:         tonamelEventStore,
+		transactionManager:        transactionManager,
 	}
 }
 
@@ -408,6 +412,13 @@ func (u *Record) Create(
 		return nil, err
 	}
 
+	if err := verifyUnofficialEventOwnership(
+		ctx, u.unofficialEventRepository, param.userId, param.unofficialEventId,
+	); err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
+
 	id, err := generateId()
 	if err != nil {
 		logError(ctx, err)
@@ -565,6 +576,19 @@ func (u *Record) Update(
 	if err := u.verifyDeckReferences(ctx, param); err != nil {
 		logError(ctx, err)
 		return nil, err
+	}
+
+	// 自由形式イベントは、別のイベントへ付け替えるときだけ本人のものかを確かめる。
+	// メモやデッキだけの更新でも、クライアントは今の unofficial_event_id をそのまま送ってくる。
+	// 毎回確かめると、参照先のイベントが消えている記録(イベントだけ先に消えた等)は、
+	// どの項目も更新できなくなる。参照が変わらないなら、この更新で新しく起きる問題は無い。
+	if param.unofficialEventId != ret.UnofficialEventId {
+		if err := verifyUnofficialEventOwnership(
+			ctx, u.unofficialEventRepository, param.userId, param.unofficialEventId,
+		); err != nil {
+			logError(ctx, err)
+			return nil, err
+		}
 	}
 
 	// 称号のtier変化を更新の前後で比較するため、保存前の時点で取得しておく。

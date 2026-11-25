@@ -461,9 +461,15 @@ func (i *Record) Delete(
 			return tx.Error
 		}
 
-		// 自由形式イベントを参照していた場合、紐づく unofficial_event も削除する(孤立行を残さない)
+		// 自由形式イベントを参照していた場合、紐づく unofficial_event も削除する(孤立行を残さない)。
+		//
+		// 消すのは記録の持ち主のイベントだけにする。記録の作成・更新は usecase 側で他人のイベントを
+		// 紐づけられないようにしているが(usecase/ownership.go)、それより前に作られた記録や、
+		// usecase を通らない経路で入った記録が他人のイベントを指していても、相手のイベントは消さない。
 		if record.UnofficialEventId != "" {
-			if tx := tx.Where("id = ?", record.UnofficialEventId).Delete(&model.UnofficialEvent{}); tx.Error != nil {
+			if tx := tx.Where(
+				"id = ? AND user_id = ?", record.UnofficialEventId, record.UserId,
+			).Delete(&model.UnofficialEvent{}); tx.Error != nil {
 				logError(ctx, tx.Error)
 				return tx.Error
 			}

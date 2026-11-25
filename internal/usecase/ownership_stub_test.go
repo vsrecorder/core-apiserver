@@ -48,3 +48,25 @@ func (s stubDeckCodeRepository) FindById(ctx context.Context, id string) (*entit
 
 	return &entity.DeckCode{ID: id, UserId: s.owner}, nil
 }
+
+// stubOwnedUnofficialEventRepository は自由形式イベントの所有者検証に使うスタブ。
+// owner が空なら誰のものでもない(所有者検証に落ちる)。calls は FindById が呼ばれた回数で、
+// 「参照が変わらない更新では確かめない」ことを見るために数える(値渡しでも数えられるようポインタで持つ)。
+type stubOwnedUnofficialEventRepository struct {
+	repository.UnofficialEventInterface
+	owner    string
+	notFound bool
+	calls    *int
+}
+
+func (s stubOwnedUnofficialEventRepository) FindById(ctx context.Context, id string) (*entity.UnofficialEvent, error) {
+	if s.calls != nil {
+		*s.calls++
+	}
+
+	if s.notFound {
+		return nil, apperror.ErrRecordNotFound
+	}
+
+	return &entity.UnofficialEvent{ID: id, UserId: s.owner}, nil
+}

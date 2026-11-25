@@ -519,6 +519,7 @@ func main() {
 			infrastructure.NewRecord(db, logger),
 			infrastructure.NewDeck(db),
 			infrastructure.NewDeckCode(db),
+			infrastructure.NewUnofficialEvent(db),
 			infrastructure.NewTag(db),
 			badgeEvaluation,
 			designationEvaluation,

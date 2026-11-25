@@ -704,6 +704,22 @@ CREATE UNIQUE INDEX cityleague_results_unique ON cityleague_results (cityleague_
 -- 実測で 4.98ms → 0.19ms(6.9万件時)。この表は毎シーズン増え続ける。
 CREATE INDEX idx_cityleague_results_player_id ON cityleague_results (player_id);
 
+-- 大会1件ぶんの入賞者(CityleagueResult.FindByOfficialEventId)は official_event_id で引くが、
+-- 上の複合索引は cityleague_schedule_id が先頭なので使えず、毎回全件を読んでいた。
+-- webapp はシティリーグ結果の個別ページのほか、一覧の「最近開催」100 大会の優勝者を出すために
+-- 100 件を同時に引く(本番ログで、同じ 1 秒に 100 本が 2026-11-25 だけで 12 回)。1 回は軽くても
+-- 重なると待ちが出て、本番では 16 行返すだけの応答が中央値 0.13 秒、合計では結果 API の処理時間の
+-- 9 割近くを占めていた(2 日で 6,511 回・1,092 秒)。
+--
+-- 実測(2026-11-25・開発用DB・約12万行): 1 回 6.4ms → 0.39ms、10 本同時 8.3ms → 0.58ms、
+-- 読むブロックは 1,720 → 60。索引は約 1MB。この表は毎シーズン増え続ける。
+--
+-- 大会の一覧(FindEvents の DISTINCT)向けに (event_date, league_type, official_event_id) も試したが、
+-- 時間の大半は 12 万行の重複除去と並べ替えで、22.6ms → 18.4ms にしかならなかったので入れていない。
+--
+-- 本番へは CREATE INDEX CONCURRENTLY で足す(取り込みの書き込みを止めないため)。
+CREATE INDEX idx_cityleague_results_official_event_id ON cityleague_results (official_event_id);
+
 -- 称号ランク分布(GetRankStats)のユーザー横断集計は、シーズン期間(event_date 範囲)で
 -- cityleague_results を絞り込み、そこを起点に users_players・records と結合する。event_date が
 -- 未索引だと結果側から駆動できず、悪い結合順序で全件走査になっていた。実測(records 20万件・

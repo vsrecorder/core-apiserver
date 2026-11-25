@@ -134,8 +134,12 @@ func (i *OfficialEvent) Find(
 		tx = tx.Where("type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate)
 	}
 
+	// 開始時刻が同じイベントは多い(シティリーグは同じ時刻に最大27会場)。開始時刻だけで並べると、
+	// 同じ時刻どうしの順番を DB が決められず、LIMIT 付きで並列に読むと呼び出しのたびに入れ替わる
+	// (2026-11-25、LIMIT を足した直後の本番で確認)。一覧の並びが開くたびに変わらないよう、id で決める。
+	//
 	// 上限を1件だけ超えて引き、超えていたら「多すぎる」と分かるようにする(理由は officialEventsFindLimit)
-	tx = tx.Order("started_at ASC").Limit(officialEventsFindLimit + 1).Find(&events)
+	tx = tx.Order("started_at ASC, id ASC").Limit(officialEventsFindLimit + 1).Find(&events)
 
 	if tx.Error != nil {
 		logError(ctx, tx.Error)

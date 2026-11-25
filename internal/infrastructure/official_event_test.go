@@ -399,6 +399,24 @@ func test_OfficialEventInfrastructure_FindById(t *testing.T) {
 		require.Equal(t, uint(40), officialEvent.PrefectureId)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
+
+	// 該当行が無いとき。Scan はエラーにしないので、行数で見分ける
+	t.Run("異常系_存在しないIDはErrRecordNotFoundを返す", func(t *testing.T) {
+		r, mock, err := setup4OfficialEventInfrastructure()
+		require.NoError(t, err)
+
+		mock.ExpectQuery(officialEventQuery(
+			`WHERE official_events.id = $1`,
+		)).WithArgs(
+			uint(99999999),
+		).WillReturnRows(sqlmock.NewRows(officialEventColumns))
+
+		officialEvent, err := r.FindById(context.Background(), uint(99999999))
+
+		require.ErrorIs(t, err, apperror.ErrRecordNotFound)
+		require.Nil(t, officialEvent)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }
 
 func test_OfficialEventInfrastructure_FindByShopIds(t *testing.T) {

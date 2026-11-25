@@ -35,6 +35,7 @@ func TestCityleagueResultController(t *testing.T) {
 
 	for scenario, fn := range map[string]func(t *testing.T){
 		"GetEvents": test_CityleagueResultController_GetEvents,
+		"GetByTerm": test_CityleagueResultController_GetByTerm,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			fn(t)
@@ -153,5 +154,61 @@ func test_CityleagueResultController_GetEvents(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+// 期間で引く結果(入賞者つき)は、期間幅に上限がある。
+// 経路全体(検証 → ハンドラ)で、上限を超えた要求がユースケースまで届かないことを確かめる。
+func test_CityleagueResultController_GetByTerm(t *testing.T) {
+	r := gin.Default()
+	_, mockUsecase := setup4TestCityleagueResultController(t, r)
+
+	t.Run("正常系_上限内の期間はユースケースへ渡す", func(t *testing.T) {
+		fromDate := time.Date(2026, 11, 1, 0, 0, 0, 0, time.Local)
+		toDate := time.Date(2026, 11, 14, 0, 0, 0, 0, time.Local)
+
+		mockUsecase.EXPECT().FindByTerm(
+			gomock.Any(),
+			uint(1),
+			fromDate,
+			toDate,
+		).Return([]*entity.CityleagueResult{
+			entity.NewCityleagueResult("01KZNTTDTF88D814T7GQHGYNS1", uint(952749), uint(1), fromDate, nil),
+		}, nil)
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest(
+			http.MethodGet,
+			"/cityleague_results?league_type=1&from_date=2026-11-01&to_date=2026-11-14",
+			nil,
+		)
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	// gomock は期待していない呼び出しでテストを落とす。EXPECT を置かないことで「届かない」を確かめる
+	t.Run("異常系_全期間の指定は400を返し、ユースケースを呼ばない", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest(
+			http.MethodGet,
+			"/cityleague_results?from_date=2015-01-01&to_date=2030-01-01",
+			nil,
+		)
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_上限を1日超える指定は400を返し、ユースケースを呼ばない", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest(
+			http.MethodGet,
+			"/cityleague_results?league_type=1&from_date=2026-10-01&to_date=2026-11-02",
+			nil,
+		)
+		r.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

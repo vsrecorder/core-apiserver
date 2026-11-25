@@ -199,6 +199,13 @@ func (i *OfficialEvent) FindById(
 		return nil, tx.Error
 	}
 
+	// Scan は該当行が無くてもエラーにしない(First と違い gorm.ErrRecordNotFound を返さない)。
+	// 見ないと中身が空のイベント(id: 0)をそのまま返すことになり、存在しない ID への応答が
+	// 404 ではなく 200 になっていた(コントローラの 404 の分岐に届かなかった)。
+	if tx.RowsAffected == 0 {
+		return nil, apperror.ErrRecordNotFound
+	}
+
 	return entity.NewOfficialEvent(
 		event.ID,
 		event.Title,

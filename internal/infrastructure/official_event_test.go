@@ -11,6 +11,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 )
 
@@ -125,6 +126,40 @@ func officialEventRows(date, startedAt, endedAt time.Time) *sqlmock.Rows {
 	)
 }
 
+// officialEventRowsN は同じ内容のイベントを n 件返す(件数の上限のテスト用。ID だけ変える)。
+func officialEventRowsN(n int, date, startedAt, endedAt time.Time) *sqlmock.Rows {
+	rows := sqlmock.NewRows(officialEventColumns)
+
+	for i := 0; i < n; i++ {
+		rows.AddRow(
+			uint(i+1),
+			"シティリーグ",
+			"",
+			"",
+			date,
+			startedAt,
+			endedAt,
+			uint(2),
+			"シティリーグ",
+			uint(0),
+			"マスター",
+			"スタンダード",
+			false,
+			uint(64),
+			uint(0),
+			"",
+			uint(13),
+			"東京都",
+			"",
+			"",
+			"",
+			"",
+		)
+	}
+
+	return rows
+}
+
 func test_OfficialEventInfrastructure_Find(t *testing.T) {
 	date := time.Date(2025, 2, 15, 0, 0, 0, 0, time.UTC)
 	startedAt := time.Date(2025, 2, 15, 7, 30, 0, 0, time.UTC)
@@ -136,11 +171,12 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE league_title = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC`,
+			`WHERE league_title = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC LIMIT $4`,
 		)).WithArgs(
 			"マスター",
 			date,
 			date,
+			officialEventsFindLimit+1,
 		).WillReturnRows(officialEventRows(date, startedAt, endedAt))
 
 		events, err := r.Find(context.Background(), uint(0), uint(4), date, date)
@@ -164,10 +200,11 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC`,
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
 		)).WithArgs(
 			date,
 			date,
+			officialEventsFindLimit+1,
 		).WillReturnRows(officialEventRows(date, startedAt, endedAt))
 
 		events, err := r.Find(context.Background(), uint(0), uint(0), date, date)
@@ -185,12 +222,13 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		typeId := uint(1)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE type_id = $1 AND league_title = $2 AND date BETWEEN $3 AND $4 ORDER BY started_at ASC`,
+			`WHERE type_id = $1 AND league_title = $2 AND date BETWEEN $3 AND $4 ORDER BY started_at ASC LIMIT $5`,
 		)).WithArgs(
 			typeId,
 			"マスター",
 			date,
 			date,
+			officialEventsFindLimit+1,
 		).WillReturnRows(officialEventRows(date, startedAt, endedAt))
 
 		events, err := r.Find(context.Background(), typeId, uint(4), date, date)
@@ -208,11 +246,12 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		typeId := uint(1)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE type_id = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC`,
+			`WHERE type_id = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC LIMIT $4`,
 		)).WithArgs(
 			typeId,
 			date,
 			date,
+			officialEventsFindLimit+1,
 		).WillReturnRows(officialEventRows(date, startedAt, endedAt))
 
 		events, err := r.Find(context.Background(), typeId, uint(0), date, date)
@@ -228,10 +267,11 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC`,
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
 		)).WithArgs(
 			date,
 			date,
+			officialEventsFindLimit+1,
 		).WillReturnRows(officialEventRows(date, startedAt, endedAt))
 
 		events, err := r.Find(context.Background(), uint(0), uint(5), date, date)
@@ -253,11 +293,12 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 			require.NoError(t, err)
 
 			mock.ExpectQuery(officialEventQuery(
-				`WHERE league_title = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC`,
+				`WHERE league_title = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC LIMIT $4`,
 			)).WithArgs(
 				leagueTitle,
 				date,
 				date,
+				officialEventsFindLimit+1,
 			).WillReturnRows(sqlmock.NewRows(officialEventColumns))
 
 			_, err = r.Find(context.Background(), uint(0), leagueType, date, date)
@@ -273,16 +314,57 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC`,
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
 		)).WithArgs(
 			date,
 			date,
+			officialEventsFindLimit+1,
 		).WillReturnRows(sqlmock.NewRows(officialEventColumns))
 
 		events, err := r.Find(context.Background(), uint(0), uint(0), date, date)
 
 		require.NoError(t, err)
 		require.Empty(t, events)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 件数の上限。上限を1件だけ超えて引くので、ちょうど上限なら全件が返る
+	t.Run("正常系_上限ちょうどの件数は全件を返す", func(t *testing.T) {
+		r, mock, err := setup4OfficialEventInfrastructure()
+		require.NoError(t, err)
+
+		mock.ExpectQuery(officialEventQuery(
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
+		)).WithArgs(
+			date,
+			date,
+			officialEventsFindLimit+1,
+		).WillReturnRows(officialEventRowsN(officialEventsFindLimit, date, startedAt, endedAt))
+
+		events, err := r.Find(context.Background(), uint(0), uint(0), date, date)
+
+		require.NoError(t, err)
+		require.Len(t, events, officialEventsFindLimit)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// 上限を超えたら、一部だけを返さずエラーにする(欠けた一覧を正しいものとして扱わせない)
+	t.Run("異常系_上限を超える件数はErrTooManyResultsを返す", func(t *testing.T) {
+		r, mock, err := setup4OfficialEventInfrastructure()
+		require.NoError(t, err)
+
+		mock.ExpectQuery(officialEventQuery(
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
+		)).WithArgs(
+			date,
+			date,
+			officialEventsFindLimit+1,
+		).WillReturnRows(officialEventRowsN(officialEventsFindLimit+1, date, startedAt, endedAt))
+
+		events, err := r.Find(context.Background(), uint(0), uint(0), date, date)
+
+		require.ErrorIs(t, err, apperror.ErrTooManyResults)
+		require.Nil(t, events)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }

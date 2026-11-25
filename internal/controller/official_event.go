@@ -55,7 +55,7 @@ func (c *OfficialEvent) Get(ctx *gin.Context) {
 	if !date.Equal((time.Time{})) {
 		officialEvents, err := c.usecase.Find(ctx.Request.Context(), typeId, leagueType, date, date)
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx, err)
+			officialEventFindError(ctx, err)
 			return
 		}
 
@@ -66,7 +66,7 @@ func (c *OfficialEvent) Get(ctx *gin.Context) {
 	} else {
 		officialEvents, err := c.usecase.Find(ctx.Request.Context(), typeId, leagueType, startDate, endDate)
 		if err != nil {
-			apierror.ErrInternalServerError.JSON(ctx, err)
+			officialEventFindError(ctx, err)
 			return
 		}
 
@@ -75,6 +75,19 @@ func (c *OfficialEvent) Get(ctx *gin.Context) {
 
 		ctx.JSON(http.StatusOK, res)
 	}
+}
+
+// officialEventFindError は一覧の取得に失敗したときの応答を返す。
+//
+// 件数の上限超えは、期間や種類の指定が広すぎることが原因なので 400 にする
+// (500 にすると、呼び出し側が再試行しても同じ結果になるうえ、サーバの異常として記録される)。
+func officialEventFindError(ctx *gin.Context, err error) {
+	if errors.Is(err, apperror.ErrTooManyResults) {
+		apierror.ErrBadRequest.JSON(ctx, err)
+		return
+	}
+
+	apierror.ErrInternalServerError.JSON(ctx, err)
 }
 
 func (c *OfficialEvent) GetById(ctx *gin.Context) {

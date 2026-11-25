@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/domain/apperror"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/domain/repository"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/model"
@@ -81,6 +82,18 @@ func officialEventBaseQuery(db *gorm.DB) *gorm.DB {
 	return tx
 }
 
+// officialEventsFindLimit は Find が1度に返す公式イベントの最大件数。
+//
+// このエンドポイントはログインなしで呼べ、期間と種類は呼び出し側が決める。ジムイベントは
+// 1週間で5,000件を超え、種類を絞らない1週間(約6,300件)を返すだけでプロセスのメモリが
+// 約30MB増える(2026-11-25 本番で実測)。件数に上限が無いと、広い期間を1回指定されるだけで
+// コンテナのメモリ上限(128MB)を超えて落ちうる。
+//
+// 正規の利用で最も多いのは、記録作成画面が引く「種類を絞らない1日ぶん」の約1,300件と、
+// シティリーグ90日ぶんの約640件(同日実測)。その数倍の余裕を取る。超えた場合は一部だけを
+// 返さずエラーにする(取り込みバッチが欠けた一覧を正しいものとして扱わないようにするため)。
+const officialEventsFindLimit = 5000
+
 func (i *OfficialEvent) Find(
 	ctx context.Context,
 	typeId uint,
@@ -90,80 +103,47 @@ func (i *OfficialEvent) Find(
 ) ([]*entity.OfficialEvent, error) {
 	var events []*model.OfficialEvent
 
-	if typeId == 0 { // 大会の種類に指定がない場合
-		if 1 <= leagueType && leagueType <= 4 { // リーグの種類に指定がある場合
-			leagueTitle := ""
+	tx := officialEventBaseQuery(i.db)
 
-			switch leagueType {
-			case 1:
-				leagueTitle = "オープン"
-			case 2:
-				leagueTitle = "ジュニア"
-			case 3:
-				leagueTitle = "シニア"
-			case 4:
-				leagueTitle = "マスター"
-			}
+	// リーグの種類は 1〜4 のときだけ絞り込む。範囲外は指定なしとして扱う
+	leagueTitle := ""
 
-			tx := officialEventBaseQuery(i.db).Where(
-				"league_title = ? AND date BETWEEN ? AND ?", leagueTitle, startDate, endDate,
-			).Order(
-				"started_at ASC",
-			).Find(&events)
+	switch leagueType {
+	case 1:
+		leagueTitle = "オープン"
+	case 2:
+		leagueTitle = "ジュニア"
+	case 3:
+		leagueTitle = "シニア"
+	case 4:
+		leagueTitle = "マスター"
+	}
 
-			if tx.Error != nil {
-				logError(ctx, tx.Error)
-				return nil, tx.Error
-			}
-		} else {
-			tx := officialEventBaseQuery(i.db).Where(
-				"date BETWEEN ? AND ?", startDate, endDate,
-			).Order(
-				"started_at ASC",
-			).Find(&events)
+	// 大会の種類: 大型大会(1) / シティ(2) / トレリ(3) / ジムイベント(4) /
+	// オーガナイザーイベント(6) / その他(7)。0 は指定なし
+	switch {
+	case typeId == 0 && leagueTitle != "":
+		tx = tx.Where("league_title = ? AND date BETWEEN ? AND ?", leagueTitle, startDate, endDate)
+	case typeId == 0:
+		tx = tx.Where("date BETWEEN ? AND ?", startDate, endDate)
+	case leagueTitle != "":
+		tx = tx.Where(
+			"type_id = ? AND league_title = ? AND date BETWEEN ? AND ?", typeId, leagueTitle, startDate, endDate,
+		)
+	default:
+		tx = tx.Where("type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate)
+	}
 
-			if tx.Error != nil {
-				logError(ctx, tx.Error)
-				return nil, tx.Error
-			}
-		}
-	} else { // 大型大会(typeId: 1) / シティ(typeId: 2) / トレリ(typeId: 3) / ジムイベント(typeId: 4) / オーガナイザーイベント(typeId: 6) / その他(typeId: 7)の場合
-		if 1 <= leagueType && leagueType <= 4 { // リーグの種類に指定がある場合
-			leagueTitle := ""
+	// 上限を1件だけ超えて引き、超えていたら「多すぎる」と分かるようにする(理由は officialEventsFindLimit)
+	tx = tx.Order("started_at ASC").Limit(officialEventsFindLimit + 1).Find(&events)
 
-			switch leagueType {
-			case 1:
-				leagueTitle = "オープン"
-			case 2:
-				leagueTitle = "ジュニア"
-			case 3:
-				leagueTitle = "シニア"
-			case 4:
-				leagueTitle = "マスター"
-			}
+	if tx.Error != nil {
+		logError(ctx, tx.Error)
+		return nil, tx.Error
+	}
 
-			tx := officialEventBaseQuery(i.db).Where(
-				"type_id = ? AND league_title = ? AND date BETWEEN ? AND ?", typeId, leagueTitle, startDate, endDate,
-			).Order(
-				"started_at ASC",
-			).Find(&events)
-
-			if tx.Error != nil {
-				logError(ctx, tx.Error)
-				return nil, tx.Error
-			}
-		} else {
-			tx := officialEventBaseQuery(i.db).Where(
-				"type_id = ? AND date BETWEEN ? AND ?", typeId, startDate, endDate,
-			).Order(
-				"started_at ASC",
-			).Find(&events)
-
-			if tx.Error != nil {
-				logError(ctx, tx.Error)
-				return nil, tx.Error
-			}
-		}
+	if len(events) > officialEventsFindLimit {
+		return nil, apperror.ErrTooManyResults
 	}
 
 	var entities []*entity.OfficialEvent

@@ -323,6 +323,10 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
   横断で読めていた（`adr/security-review-2026-09-17.md` の 2）。そのエンドポイントは削除済み。
 - 一覧系の `limit` は `helper.MaxLimit`（100）で頭打ちにする。上限が無いと未認証の公開一覧に
   巨大な `limit` を渡すだけでコンテナのメモリ上限（128MiB）を超えて落とせる。
+- 公式イベントの一覧（`GET /official_events`）は `limit` を持たず、期間と種類で絞る。期間幅の上限
+  （`validation.officialEventsRangeMaxDays`）と件数の上限（`infrastructure.officialEventsFindLimit`。
+  超えたら `apperror.ErrTooManyResults` → 400）を外さない。official_events は100万行を超えており、
+  未認証で広い期間を1回指定されるだけで、同じくメモリ上限を超えうる。
 - 外部サイトのURLやストレージのキーに埋め込む値（デッキコード・Tonamel の大会ID）は
   `entity.IsValidDeckCodeFormat` / `entity.IsValidTonamelEventId` で文字種を検証し、埋め込みは
   `url.PathEscape` を通す。

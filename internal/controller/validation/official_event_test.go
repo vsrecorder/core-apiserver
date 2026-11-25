@@ -114,6 +114,63 @@ func test_OfficialEventGetMiddleware(t *testing.T) {
 		require.Equal(t, expectedDate, helper.GetDate(ginContext))
 	})
 
+	// 期間幅の上限。開始日と終了日の差が上限ちょうどまでは受け付ける
+	t.Run("正常系_上限ちょうどの期間指定を受け付ける", func(t *testing.T) {
+		startDate := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+		endDate := startDate.AddDate(0, 0, officialEventsRangeMaxDays)
+
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		req, err := http.NewRequest("GET", fmt.Sprintf(
+			"/?type_id=2&start_date=%s&end_date=%s", startDate.Format(DateLayout), endDate.Format(DateLayout),
+		), nil)
+		require.NoError(t, err)
+
+		ginContext.Request = req
+		middleware := OfficialEventGetMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, startDate, helper.GetStartDate(ginContext))
+		require.Equal(t, endDate, helper.GetEndDate(ginContext))
+	})
+
+	// 上限を1日でも超えたら、DB を引く前に断る
+	t.Run("異常系_上限を超える期間指定なら400を返す", func(t *testing.T) {
+		startDate := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+		endDate := startDate.AddDate(0, 0, officialEventsRangeMaxDays+1)
+
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		req, err := http.NewRequest("GET", fmt.Sprintf(
+			"/?type_id=2&start_date=%s&end_date=%s", startDate.Format(DateLayout), endDate.Format(DateLayout),
+		), nil)
+		require.NoError(t, err)
+
+		ginContext.Request = req
+		middleware := OfficialEventGetMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	// 全期間を1回で引こうとする指定(この上限を入れた理由そのもの)
+	t.Run("異常系_全期間の指定なら400を返す", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		req, err := http.NewRequest("GET", "/?start_date=2018-01-01&end_date=2030-12-31", nil)
+		require.NoError(t, err)
+
+		ginContext.Request = req
+		middleware := OfficialEventGetMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
 	t.Run("異常系_start_dateがend_dateより後なら400を返す", func(t *testing.T) {
 		startDate := "2025-02-16"
 		endDate := "2025-02-15"

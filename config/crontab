@@ -94,8 +94,9 @@ CRON_TZ=Asia/Tokyo
 # 同じ投稿・同じ日の通知は二重に作らないため、多重起動しても安全。
 # 対象日は -date=YYYY-MM-DD で指定でき、未指定なら前日。
 # 検証時は -dry-run=true にすると対象をログ出力するだけで通知は作られない。
+# -notify-slack は、途中で止まったときに Slack へ知らせる(通知先は .env の SLACK_WEBHOOK_URL)。
 # 毎日 21:00 JST — みんなの公開デッキ いいねのまとめ通知
-0 21 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-deck-code-post-likes.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-deck-code-post-likes -dry-run=false >> /var/log/vsrecorder/deck-code-post-likes.log 2>&1
+0 21 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-deck-code-post-likes.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-deck-code-post-likes -dry-run=false -notify-slack >> /var/log/vsrecorder/deck-code-post-likes.log 2>&1
 
 # ── みんなの公開デッキ 公式アカウントの自動いいね（cmd/auto-like-deck-code-posts）──
 # 10分ごと。みんなの公開デッキへ投稿されたデッキに、運営の公式アカウント(.env の

@@ -171,7 +171,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE league_title = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC LIMIT $4`,
+			`WHERE league_title = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC, id ASC LIMIT $4`,
 		)).WithArgs(
 			"マスター",
 			date,
@@ -200,7 +200,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC, id ASC LIMIT $3`,
 		)).WithArgs(
 			date,
 			date,
@@ -222,7 +222,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		typeId := uint(1)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE type_id = $1 AND league_title = $2 AND date BETWEEN $3 AND $4 ORDER BY started_at ASC LIMIT $5`,
+			`WHERE type_id = $1 AND league_title = $2 AND date BETWEEN $3 AND $4 ORDER BY started_at ASC, id ASC LIMIT $5`,
 		)).WithArgs(
 			typeId,
 			"マスター",
@@ -246,7 +246,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		typeId := uint(1)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE type_id = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC LIMIT $4`,
+			`WHERE type_id = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC, id ASC LIMIT $4`,
 		)).WithArgs(
 			typeId,
 			date,
@@ -267,7 +267,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC, id ASC LIMIT $3`,
 		)).WithArgs(
 			date,
 			date,
@@ -293,7 +293,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 			require.NoError(t, err)
 
 			mock.ExpectQuery(officialEventQuery(
-				`WHERE league_title = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC LIMIT $4`,
+				`WHERE league_title = $1 AND date BETWEEN $2 AND $3 ORDER BY started_at ASC, id ASC LIMIT $4`,
 			)).WithArgs(
 				leagueTitle,
 				date,
@@ -314,7 +314,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC, id ASC LIMIT $3`,
 		)).WithArgs(
 			date,
 			date,
@@ -334,7 +334,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC, id ASC LIMIT $3`,
 		)).WithArgs(
 			date,
 			date,
@@ -354,7 +354,7 @@ func test_OfficialEventInfrastructure_Find(t *testing.T) {
 		require.NoError(t, err)
 
 		mock.ExpectQuery(officialEventQuery(
-			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC LIMIT $3`,
+			`WHERE date BETWEEN $1 AND $2 ORDER BY started_at ASC, id ASC LIMIT $3`,
 		)).WithArgs(
 			date,
 			date,

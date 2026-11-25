@@ -42,10 +42,14 @@ CRON_TZ=Asia/Tokyo
 # 対象者をログ出力するだけで通知は作られない。
 # DB_MAX_OPEN_CONNS=5 はバッチが API サーバの接続枠を食い潰さないための上限。
 # flock -n は同じバッチの多重起動(前回が長引いた・手動実行と重なった)を防ぐ。
+# -notify-slack は、失敗した利用者が 1 人でもいたときに Slack へ知らせる(通知先は .env の SLACK_WEBHOOK_URL。
+# check-firebase-users と同じ)。通知系のバッチは 1 人の失敗で全体を止めないので、付けないと、DB が落ちて
+# 全員ぶん失敗しても誰にも届いていないことに気づけない(internal/batchreport)。失敗があれば終了コードも非 0 になる。
+# 付けたのに SLACK_WEBHOOK_URL が未設定だと、バッチは何もせずエラーで終わる。
 # バッチの二重送信ガードは check-then-act で DB ロックを持たないため、プロセス単位で排他する。
 
 # 毎週日曜 20:00 JST — ストリーク途切れ防止 nudge
-0 20 * * 0 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-streak-nudge.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-streak-nudge -dry-run=false >> /var/log/vsrecorder/streak-nudge.log 2>&1
+0 20 * * 0 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-streak-nudge.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-streak-nudge -dry-run=false -notify-slack >> /var/log/vsrecorder/streak-nudge.log 2>&1
 
 # ── P-2 週次バトルレポート通知（P2_WEEKLY_REPORT_PLAN.md）──
 # 毎週月曜 08:00 JST。先週(月〜日)に1戦以上記録したユーザーへ、先週のバトルレポート
@@ -56,7 +60,7 @@ CRON_TZ=Asia/Tokyo
 # 2026-08-31 に本番切替済み（-dry-run=false）。検証時は -dry-run=true にすると
 # 対象者をログ出力するだけで通知は作られない。
 # 毎週月曜 08:00 JST — 週次バトルレポート通知
-0 8 * * 1 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekly-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekly-report -dry-run=false >> /var/log/vsrecorder/weekly-report.log 2>&1
+0 8 * * 1 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekly-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekly-report -dry-run=false -notify-slack >> /var/log/vsrecorder/weekly-report.log 2>&1
 
 # ── 月次・環境別バトルレポート通知（cmd/notify-period-report）──
 # 毎日 12:00 JST。その日が月初なら先月、新しい環境の初日(前の環境の to_date の翌日)なら
@@ -68,7 +72,7 @@ CRON_TZ=Asia/Tokyo
 # 取りこぼした日は -date=YYYY-MM-DD か -month=YYYY-MM / -environment-id=ID を付けて手で流す。
 # 検証時は -dry-run=true にすると対象者をログ出力するだけで通知は作られない。
 # 毎日 12:00 JST — 月次・環境別バトルレポート通知
-0 12 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-period-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-period-report -dry-run=false >> /var/log/vsrecorder/period-report.log 2>&1
+0 12 * * * cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-period-report.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-period-report -dry-run=false -notify-slack >> /var/log/vsrecorder/period-report.log 2>&1
 
 # ── B-2 週末リマインド（B1_B2_PUSH_NOTIFICATION_PLAN.md §5.5）──
 # 毎週金曜 20:00 JST。Web Push を購読していて今週まだ記録が無い記録経験者へ、
@@ -78,7 +82,7 @@ CRON_TZ=Asia/Tokyo
 # 2026-08-31 に本番切替済み（-dry-run=false）。検証時は -dry-run=true にすると
 # 対象者をログ出力するだけで通知は作られない。
 # 毎週金曜 20:00 JST — 週末リマインド
-0 20 * * 5 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekend-reminder.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekend-reminder -dry-run=false >> /var/log/vsrecorder/weekend-reminder.log 2>&1
+0 20 * * 5 cd /home/ubuntu/vsrecorder/core-apiserver && DB_MAX_OPEN_CONNS=5 flock -n /run/lock/vsrecorder-notify-weekend-reminder.lock /home/ubuntu/vsrecorder/core-apiserver/bin/notify-weekend-reminder -dry-run=false -notify-slack >> /var/log/vsrecorder/weekend-reminder.log 2>&1
 
 # ※ B-5 (notify-streak-nudge) と P-2 (notify-weekly-report) も同じ .env の VAPID_* を読み、
 #   購読者にはアプリ内通知に加えて push を送る(B1_EXECUTION_STEPS.md Step 2-2)。

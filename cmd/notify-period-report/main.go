@@ -47,10 +47,12 @@ import (
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/batchreport"
 	"github.com/vsrecorder/core-apiserver/internal/domain/entity"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 	"github.com/vsrecorder/core-apiserver/internal/logging"
+	"github.com/vsrecorder/core-apiserver/internal/slack"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -86,11 +88,19 @@ func main() {
 	dateFlag := flag.String("date", "", "実行日(YYYY-MM-DD)。この日が月初・環境の初日かで対象を決める。未指定なら今日")
 	monthFlag := flag.String("month", "", "対象月(YYYY-MM)を直接指定する。指定すると -date の判定は使わない")
 	environmentFlag := flag.String("environment-id", "", "対象環境のIDを直接指定する。指定すると -date の判定は使わない")
+	notifySlack := flag.Bool("notify-slack", false, "true の場合、失敗した利用者がいたら SLACK_WEBHOOK_URL へ通知する")
 	flag.Parse()
 
 	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
 		slog.Warn("failed to load .env file", logging.Err(err))
+	}
+
+	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+	// 通知するつもりで通知できない状態は、黙って流して終わるより早く気付きたい
+	if *notifySlack && slackWebhookURL == "" {
+		slog.Error("SLACK_WEBHOOK_URL is not set: -notify-slack requires it")
+		os.Exit(ExitCodeNG)
 	}
 
 	db, err := postgres.NewDB(
@@ -142,7 +152,8 @@ func main() {
 		officialEventEnvironmentRepo,
 	)
 
-	failed := false
+	// 対象(月・環境)をまたいで数える
+	result := batchreport.Result{AppName: appName}
 	for _, t := range targets {
 		var userIds []string
 		if *targetUserId != "" {
@@ -151,7 +162,7 @@ func main() {
 			userIds, err = findCandidateUserIds(db, t)
 			if err != nil {
 				slog.Error("failed to list candidate users", slog.String("kind", t.kind), slog.String("key", t.key), logging.Err(err))
-				failed = true
+				result.ListFailed++
 				continue
 			}
 		}
@@ -165,7 +176,10 @@ func main() {
 		}
 		slog.Info("sending period-report", batchAttrs...)
 
+		result.Candidates += len(userIds)
+
 		sent := 0
+		failed := 0
 		for _, userId := range userIds {
 			var ok bool
 			if t.kind == "month" {
@@ -176,6 +190,7 @@ func main() {
 			if err != nil {
 				slog.Error("failed to notify user",
 					slog.String("user_id", userId), slog.String("kind", t.kind), slog.String("key", t.key), logging.Err(err))
+				failed++
 				continue
 			}
 			if ok {
@@ -185,13 +200,19 @@ func main() {
 			}
 		}
 
-		slog.Info("completed", append(batchAttrs, slog.Int("notified_users", sent))...)
+		slog.Info("completed", append(batchAttrs, slog.Int("notified_users", sent), slog.Int("failed_users", failed))...)
+		result.Failed += failed
 	}
 
-	if failed {
-		os.Exit(ExitCodeNG)
+	// 失敗した利用者がいたときの知らせ先(-notify-slack を付けたときだけ)
+	var notifyFailure batchreport.Notifier
+	if *notifySlack {
+		notifyFailure = func(message string) error { return slack.Notify(slackWebhookURL, message) }
 	}
-	os.Exit(ExitCodeOK)
+
+	// 一覧を取れなかった対象か、失敗した利用者が 1 人でもいれば、まとめを出して非 0 で終える
+	// (理由は internal/batchreport。一覧の取得失敗は以前から非 0 にしていた)
+	os.Exit(batchreport.Finish(result, notifyFailure))
 }
 
 // environmentFinder は resolveTargets が使う環境の取得(テストで差し替えるため最小限にしている)。

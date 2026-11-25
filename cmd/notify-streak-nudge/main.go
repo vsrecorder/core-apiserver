@@ -39,9 +39,11 @@ import (
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 
+	"github.com/vsrecorder/core-apiserver/internal/batchreport"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 	"github.com/vsrecorder/core-apiserver/internal/logging"
+	"github.com/vsrecorder/core-apiserver/internal/slack"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -63,11 +65,19 @@ func main() {
 
 	dryRun := flag.Bool("dry-run", true, "true の場合、通知は作成せず対象者の確認のみ行う")
 	targetUserId := flag.String("user-id", "", "指定した場合、そのユーザーのみを対象にする(未指定なら全対象ユーザー)")
+	notifySlack := flag.Bool("notify-slack", false, "true の場合、失敗した利用者がいたら SLACK_WEBHOOK_URL へ通知する")
 	flag.Parse()
 
 	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
 		slog.Warn("failed to load .env file", logging.Err(err))
+	}
+
+	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+	// 通知するつもりで通知できない状態は、黙って流して終わるより早く気付きたい
+	if *notifySlack && slackWebhookURL == "" {
+		slog.Error("SLACK_WEBHOOK_URL is not set: -notify-slack requires it")
+		os.Exit(ExitCodeNG)
 	}
 
 	db, err := postgres.NewDB(
@@ -129,10 +139,12 @@ func main() {
 	slog.Info("sending streak-nudge", batchAttrs...)
 
 	sent := 0
+	failed := 0
 	for _, userId := range userIds {
 		ok, err := streakNudge.NudgeUser(ctx, userId, *dryRun)
 		if err != nil {
 			slog.Error("failed to nudge user", slog.String("user_id", userId), logging.Err(err))
+			failed++
 			continue
 		}
 		if ok {
@@ -141,9 +153,19 @@ func main() {
 		}
 	}
 
-	slog.Info("completed", append(batchAttrs, slog.Int("nudged_users", sent))...)
+	slog.Info("completed", append(batchAttrs, slog.Int("nudged_users", sent), slog.Int("failed_users", failed))...)
 
-	os.Exit(ExitCodeOK)
+	// 失敗した利用者がいたときの知らせ先(-notify-slack を付けたときだけ)
+	var notifyFailure batchreport.Notifier
+	if *notifySlack {
+		notifyFailure = func(message string) error { return slack.Notify(slackWebhookURL, message) }
+	}
+
+	// 1 人でも失敗していたら、まとめを出して非 0 で終える(理由は internal/batchreport)
+	os.Exit(batchreport.Finish(
+		batchreport.Result{AppName: appName, Candidates: len(userIds), Failed: failed},
+		notifyFailure,
+	))
 }
 
 // findCandidateUserIds は連続記録中(current_weeks >= 1)のユーザーを候補として返す。

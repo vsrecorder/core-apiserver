@@ -276,6 +276,9 @@ APIサーバ本体はdistrolessコンテナで動くためコンテナ内でバ�
 - `main()` の先頭で `logging.InitLogger` + `slog.SetDefault` を呼ぶ（「[ログ](#ログ)」参照）。
   進捗・失敗は `slog`（stderr・JSON）へ出し、`log.Printf` は使わない。dry-run や対象は
   メッセージを分岐させず `slog.Bool("dry_run", ...)` のように属性で出す（grepの条件を増やさないため）。
+- 利用者ごとに処理して、1 人の失敗では止めないバッチ（通知系）は、失敗した人数を数えて
+  `batchreport.Finish` で締める。失敗が 1 人でもあれば非 0 で終わり、`-notify-slack` を付けていれば
+  Slack へ知らせる。失敗をログに出すだけで正常終了すると、全員ぶん失敗しても気づけない。
 - **人が目で読む一覧・表**（`list-deleted-users` の退会ユーザ一覧、`generate-deck-name-aliases`
   の候補一覧、`check-deleted-users-data` / `purge-deleted-user-data` のレポートと確認プロンプト）
   だけは `fmt.Printf` で標準出力へ出す。JSONに混ぜると桁が揃わず目視で比較できなくなるため、

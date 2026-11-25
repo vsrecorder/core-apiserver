@@ -75,3 +75,32 @@ func TestFinish(t *testing.T) {
 		require.Equal(t, ExitCodeNG, code)
 	})
 }
+
+func TestAbort(t *testing.T) {
+	// DB が落ちているときは、利用者ごとの処理に入る前のここで止まる
+	t.Run("異常系_止まった場面を知らせてNGで終える", func(t *testing.T) {
+		var got string
+
+		code := Abort("notify-weekly-report", "データベースに接続できませんでした", func(message string) error {
+			got = message
+			return nil
+		})
+
+		require.Equal(t, ExitCodeNG, code)
+		require.Contains(t, got, "バッチ notify-weekly-report が途中で止まりました")
+		require.Contains(t, got, "データベースに接続できませんでした")
+		require.Contains(t, got, "/var/log/vsrecorder/")
+	})
+
+	t.Run("異常系_知らせる先が無くてもNGで終える", func(t *testing.T) {
+		require.Equal(t, ExitCodeNG, Abort("notify-weekly-report", "データベースに接続できませんでした", nil))
+	})
+
+	t.Run("異常系_知らせることに失敗してもNGで終える", func(t *testing.T) {
+		code := Abort("notify-weekly-report", "データベースに接続できませんでした", func(string) error {
+			return errors.New("slack is down")
+		})
+
+		require.Equal(t, ExitCodeNG, code)
+	})
+}

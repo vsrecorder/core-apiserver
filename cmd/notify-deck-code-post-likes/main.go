@@ -11,20 +11,26 @@
 //	go run ./cmd/notify-deck-code-post-likes -dry-run=false                   # 前日分を通知する
 //	go run ./cmd/notify-deck-code-post-likes -date=2026-09-03 -dry-run=false  # 対象日を指定する
 //	go run ./cmd/notify-deck-code-post-likes -user-id=xxxx -dry-run=false     # 特定の投稿者だけ通知する
+//
+// 投稿ごとの処理は最初の失敗で打ち切り、非 0 で終える(通知は重複判定があるので、再実行すれば
+// 残りから続く)。-notify-slack を付けると、止まったことを SLACK_WEBHOOK_URL へ知らせる。
 package main
 
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
 	"github.com/joho/godotenv"
 
+	"github.com/vsrecorder/core-apiserver/internal/batchreport"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure"
 	"github.com/vsrecorder/core-apiserver/internal/infrastructure/postgres"
 	"github.com/vsrecorder/core-apiserver/internal/logging"
+	"github.com/vsrecorder/core-apiserver/internal/slack"
 	"github.com/vsrecorder/core-apiserver/internal/usecase"
 )
 
@@ -47,11 +53,25 @@ func main() {
 	dryRun := flag.Bool("dry-run", true, "true の場合、通知は作成せず対象の件数を確認するだけにする")
 	dateFlag := flag.String("date", "", "対象日(YYYY-MM-DD)。未指定なら前日")
 	userId := flag.String("user-id", "", "指定した場合、その投稿者宛ての通知だけを対象にする")
+	notifySlack := flag.Bool("notify-slack", false, "true の場合、途中で止まったら SLACK_WEBHOOK_URL へ通知する")
 	flag.Parse()
 
 	// .env が無くても環境変数から設定できるため、読み込み失敗は起動を止めない。
 	if err := godotenv.Load(); err != nil {
 		slog.Warn("failed to load .env file", logging.Err(err))
+	}
+
+	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+	// 通知するつもりで通知できない状態は、黙って流して終わるより早く気付きたい
+	if *notifySlack && slackWebhookURL == "" {
+		slog.Error("SLACK_WEBHOOK_URL is not set: -notify-slack requires it")
+		os.Exit(ExitCodeNG)
+	}
+
+	// 止まったことを知らせる先(-notify-slack を付けたときだけ)
+	var notifyFailure batchreport.Notifier
+	if *notifySlack {
+		notifyFailure = func(message string) error { return slack.Notify(slackWebhookURL, message) }
 	}
 
 	day := time.Now().AddDate(0, 0, -1)
@@ -73,7 +93,7 @@ func main() {
 	)
 	if err != nil {
 		slog.Error("failed to connect database", logging.Err(err))
-		os.Exit(ExitCodeNG)
+		os.Exit(batchreport.Abort(appName, "データベースに接続できませんでした", notifyFailure))
 	}
 
 	pushSender := infrastructure.NewWebPushSender(
@@ -117,7 +137,11 @@ func main() {
 	if err != nil {
 		slog.Error("failed to notify like digests",
 			append(batchAttrs, slog.Int("notified_posts", count), logging.Err(err))...)
-		os.Exit(ExitCodeNG)
+		os.Exit(batchreport.Abort(
+			appName,
+			fmt.Sprintf("対象日 %s のいいねのまとめ通知が、%d 件進んだところで止まりました", dayLabel, count),
+			notifyFailure,
+		))
 	}
 
 	slog.Info("completed", append(batchAttrs, slog.Int("notified_posts", count))...)

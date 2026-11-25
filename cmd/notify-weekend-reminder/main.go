@@ -83,6 +83,13 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
+	// 失敗を知らせる先(-notify-slack を付けたときだけ)。データベースに繋がらないなど、利用者ごとの
+	// 処理に入る前に止まったときにも使うので、ここで用意する
+	var notifyFailure batchreport.Notifier
+	if *notifySlack {
+		notifyFailure = func(message string) error { return slack.Notify(slackWebhookURL, message) }
+	}
+
 	db, err := postgres.NewDB(
 		os.Getenv("DB_HOSTNAME"),
 		os.Getenv("DB_PORT"),
@@ -92,7 +99,7 @@ func main() {
 	)
 	if err != nil {
 		slog.Error("failed to connect database", logging.Err(err))
-		os.Exit(ExitCodeNG)
+		os.Exit(batchreport.Abort(appName, "データベースに接続できませんでした", notifyFailure))
 	}
 
 	pushSender := infrastructure.NewWebPushSender(
@@ -131,7 +138,7 @@ func main() {
 		userIds, err = findCandidateUserIds(db)
 		if err != nil {
 			slog.Error("failed to list candidate users", logging.Err(err))
-			os.Exit(ExitCodeNG)
+			os.Exit(batchreport.Abort(appName, "対象の利用者の一覧を取得できませんでした", notifyFailure))
 		}
 	}
 
@@ -158,12 +165,6 @@ func main() {
 	}
 
 	slog.Info("completed", append(batchAttrs, slog.Int("reminded_users", sent), slog.Int("failed_users", failed))...)
-
-	// 失敗した利用者がいたときの知らせ先(-notify-slack を付けたときだけ)
-	var notifyFailure batchreport.Notifier
-	if *notifySlack {
-		notifyFailure = func(message string) error { return slack.Notify(slackWebhookURL, message) }
-	}
 
 	// 1 人でも失敗していたら、まとめを出して非 0 で終える(理由は internal/batchreport)
 	os.Exit(batchreport.Finish(

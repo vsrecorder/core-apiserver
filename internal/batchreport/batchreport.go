@@ -6,7 +6,11 @@
 // ログを読むことしか無かった(push の点検 check-push-health は、配達が 3 件に満たない区分を
 // 判定しないので、「1 通も送っていない」は拾えない)。
 //
-// 失敗が 1 人でもあれば、まとめを Error で出し、指定されていれば Slack へ知らせ、非 0 で終える。
+// 失敗が 1 人でもあれば、まとめを Error で出し、指定されていれば Slack へ知らせ、非 0 で終える(Finish)。
+//
+// データベースに繋がらない・対象の一覧を取れないなど、利用者ごとの処理に入る前にバッチ全体が
+// 止まった場合も、同じ先へ知らせて非 0 で終える(Abort)。こちらは以前から非 0 で終えていたが、
+// 知らせてはいなかった。DB が落ちているときはまずここで止まるので、知らせないと Finish の通知まで届かない。
 package batchreport
 
 import (
@@ -79,6 +83,29 @@ func Finish(r Result, notify Notifier) int {
 			slog.Error("failed to notify the failures to slack", slog.String("error_message", err.Error()))
 		} else {
 			slog.Info("notified the failures to slack")
+		}
+	}
+
+	return ExitCodeNG
+}
+
+// AbortMessage は、バッチ全体が続けられなくなったときに Slack に出す文面を返す。
+func AbortMessage(appName string, reason string) string {
+	return fmt.Sprintf(":warning: バッチ %s が途中で止まりました\n• %s\n", appName, reason) +
+		"詳しくはサーバのバッチのログ(/var/log/vsrecorder/)を確認してください"
+}
+
+// Abort は、バッチ全体が続けられなくなったときに締め、プロセスの終了コード(常に NG)を返す。
+//
+// reason は止まった場面(「データベースに接続できませんでした」など)。エラーの中身は接続先などを
+// 含みうるので Slack へは出さない。呼び出し側が先にログへ出しておくこと。
+// 知らせること自体に失敗しても NG のまま終える。
+func Abort(appName string, reason string, notify Notifier) int {
+	if notify != nil {
+		if err := notify(AbortMessage(appName, reason)); err != nil {
+			slog.Error("failed to notify the abort to slack", slog.String("error_message", err.Error()))
+		} else {
+			slog.Info("notified the abort to slack")
 		}
 	}
 

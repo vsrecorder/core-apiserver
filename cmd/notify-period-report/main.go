@@ -103,6 +103,13 @@ func main() {
 		os.Exit(ExitCodeNG)
 	}
 
+	// 失敗を知らせる先(-notify-slack を付けたときだけ)。データベースに繋がらないなど、利用者ごとの
+	// 処理に入る前に止まったときにも使うので、ここで用意する
+	var notifyFailure batchreport.Notifier
+	if *notifySlack {
+		notifyFailure = func(message string) error { return slack.Notify(slackWebhookURL, message) }
+	}
+
 	db, err := postgres.NewDB(
 		os.Getenv("DB_HOSTNAME"),
 		os.Getenv("DB_PORT"),
@@ -112,7 +119,7 @@ func main() {
 	)
 	if err != nil {
 		slog.Error("failed to connect database", logging.Err(err))
-		os.Exit(ExitCodeNG)
+		os.Exit(batchreport.Abort(appName, "データベースに接続できませんでした", notifyFailure))
 	}
 
 	ctx := context.Background()
@@ -121,7 +128,7 @@ func main() {
 	targets, err := resolveTargets(ctx, environmentRepo, *dateFlag, *monthFlag, *environmentFlag, time.Now())
 	if err != nil {
 		slog.Error("failed to resolve targets", logging.Err(err))
-		os.Exit(ExitCodeNG)
+		os.Exit(batchreport.Abort(appName, "対象(月・環境)を決められませんでした", notifyFailure))
 	}
 	if len(targets) == 0 {
 		slog.Info("nothing to send: not the first day of a month or an environment", slog.String("date", *dateFlag))
@@ -202,12 +209,6 @@ func main() {
 
 		slog.Info("completed", append(batchAttrs, slog.Int("notified_users", sent), slog.Int("failed_users", failed))...)
 		result.Failed += failed
-	}
-
-	// 失敗した利用者がいたときの知らせ先(-notify-slack を付けたときだけ)
-	var notifyFailure batchreport.Notifier
-	if *notifySlack {
-		notifyFailure = func(message string) error { return slack.Notify(slackWebhookURL, message) }
 	}
 
 	// 一覧を取れなかった対象か、失敗した利用者が 1 人でもいれば、まとめを出して非 0 で終える

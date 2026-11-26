@@ -146,6 +146,28 @@ func (u *DeckCode) syncDeckCodeTags(
 	return orderedTags, nil
 }
 
+// resolveCreateTagIds は新しいバージョンに付けるタグを決める。
+//
+// 指定があれば(空スライスを含めて)それをそのまま使う。nil(項目ごと省略)のときは、デッキの
+// いまのタグを引き継ぐ。作ったバージョンのタグでデッキのタグが置き換わる(deck_tag_sync.go)ので、
+// この項目を知らない古いクライアントから作られたときに、デッキのタグが消えてしまうのを防ぐため
+// (スプライトの resolveCreatePokemonSprites と同じ考え方)。
+func (u *DeckCode) resolveCreateTagIds(
+	ctx context.Context,
+	param *DeckCodeCreateParam,
+) ([]string, error) {
+	if param.TagIds != nil {
+		return param.TagIds, nil
+	}
+
+	deck, err := u.deckRepository.FindById(ctx, param.DeckId)
+	if err != nil {
+		return nil, err
+	}
+
+	return tagIdsOf(deck.Tags), nil
+}
+
 // newDeckCodePokemonSprites は入力のスプライト指定をエンティティへ変換する。
 // 戻り値は常に非 nil(空なら空スライス)にして、レスポンスへ載せる側が nil を気にしなくて済むようにする。
 func newDeckCodePokemonSprites(params []*PokemonSpriteParam) []*entity.PokemonSprite {
@@ -279,12 +301,23 @@ func (u *DeckCode) Create(
 		}
 
 		// タグの付与はデッキコード本体とは別テーブルのため Save とは分けて反映する。
-		tags, err := u.syncDeckCodeTags(ctx, deckcode.ID, param.UserId, param.TagIds)
+		tagIds, err := u.resolveCreateTagIds(ctx, param)
+		if err != nil {
+			logError(ctx, err)
+			return err
+		}
+		tags, err := u.syncDeckCodeTags(ctx, deckcode.ID, param.UserId, tagIds)
 		if err != nil {
 			logError(ctx, err)
 			return err
 		}
 		deckcode.Tags = tags
+
+		// 作ったバージョンが最新になるので、デッキのタグもこれに揃える(deck_tag_sync.go)。
+		if err := syncDeckTagsWithLatestVersion(ctx, u.tag, deckcode.DeckId, tags); err != nil {
+			logError(ctx, err)
+			return err
+		}
 
 		// スプライトも別テーブルのため Save とは分けて反映する。空なら行を作らない(未設定)。
 		if len(pokemonSprites) > 0 {
@@ -337,22 +370,20 @@ func (u *DeckCode) Update(
 		param.Memo,
 	)
 
-	// スプライトを設定するときは、最新バージョンかどうかを確かめるために同じデッキのバージョンを引く
-	// (最新バージョンならデッキのスプライトも揃える)。触れない・未設定に戻すときは要らない。
-	var otherVersions []*entity.DeckCode
-	isLatest := false
-	if len(param.PokemonSprites) > 0 {
-		versions, err := u.repository.FindByDeckId(ctx, ret.DeckId)
-		if err != nil {
-			logError(ctx, err)
-			return nil, err
-		}
+	// 最新バージョンかどうかを確かめるために同じデッキのバージョンを引く。最新バージョンなら
+	// デッキのタグ(deck_tag_sync.go)とスプライト(deck_sprite_sync.go)も揃える。
+	// タグは毎回送られてくるので、スプライトに触れない更新でも引く。
+	versions, err := u.repository.FindByDeckId(ctx, ret.DeckId)
+	if err != nil {
+		logError(ctx, err)
+		return nil, err
+	}
 
-		isLatest = len(versions) > 0 && versions[0].ID == id
-		for _, version := range versions {
-			if version.ID != id {
-				otherVersions = append(otherVersions, version)
-			}
+	isLatest := len(versions) > 0 && versions[0].ID == id
+	var otherVersions []*entity.DeckCode
+	for _, version := range versions {
+		if version.ID != id {
+			otherVersions = append(otherVersions, version)
 		}
 	}
 
@@ -370,6 +401,14 @@ func (u *DeckCode) Update(
 			return err
 		}
 		deckcode.Tags = tags
+
+		// 最新バージョンのタグを変えたら、デッキのタグもこれに揃える。
+		if isLatest {
+			if err := syncDeckTagsWithLatestVersion(ctx, u.tag, ret.DeckId, tags); err != nil {
+				logError(ctx, err)
+				return err
+			}
+		}
 
 		// スプライトは指定があったときだけ置き換える。nil(項目ごと省略)は現在の設定を保つ。
 		// この項目を知らない古いクライアントの更新で、設定済みのスプライトを消さないため。
@@ -405,8 +444,9 @@ func (u *DeckCode) Delete(
 	ctx context.Context,
 	id string,
 ) error {
-	// 最新バージョンを消すと、ひとつ前のバージョンが最新に繰り上がる。繰り上がるバージョンに
-	// スプライトの設定があれば、デッキのスプライトもそれに揃える(未設定ならデッキのまま)。
+	// 最新バージョンを消すと、ひとつ前のバージョンが最新に繰り上がる。デッキのタグは繰り上がる
+	// バージョンのタグに揃える(タグなしならデッキもタグなし)。スプライトは、繰り上がるバージョンに
+	// 設定があれば、デッキのスプライトもそれに揃える(未設定ならデッキのまま)。
 	// 繰り上がりの判定は削除の前に済ませる(削除はトランザクションの中で、外からはまだ見えない)。
 	target, err := u.repository.FindById(ctx, id)
 	if errors.Is(err, apperror.ErrRecordNotFound) {
@@ -442,6 +482,11 @@ func (u *DeckCode) Delete(
 		}
 
 		if promoted != nil {
+			if err := syncDeckTagsWithLatestVersion(ctx, u.tag, target.DeckId, promoted.Tags); err != nil {
+				logError(ctx, err)
+				return err
+			}
+
 			if err := syncDeckSpritesWithLatestVersion(ctx, u.deckRepository, u.repository, target.DeckId, otherVersions, promoted.PokemonSprites); err != nil {
 				logError(ctx, err)
 				return err

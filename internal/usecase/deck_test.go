@@ -1068,3 +1068,61 @@ func TestDeckUsecaseCreateDeckCodeWithoutTags(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, deck.Tags)
 }
+
+// デッキのタグを変えたら、最新バージョンのタグも同じにする(deck_tag_sync.go)。
+func TestDeckUsecaseUpdateSyncsLatestVersionTags(t *testing.T) {
+	uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+	deckId := "01HD7Y3K8D6FDHMHTZ2GT41TD1"
+	now := time.Now().Local()
+	tag := entity.NewTag("tag-1", now, now, uid, "アグロ", "", false, "", "")
+
+	setup := func(t *testing.T, latest *entity.DeckCode) (*mock_repository.MockTagInterface, DeckInterface) {
+		mockCtrl := gomock.NewController(t)
+		mockRepository := mock_repository.NewMockDeckInterface(mockCtrl)
+		mockTag := mock_repository.NewMockTagInterface(mockCtrl)
+
+		mockRepository.EXPECT().FindById(context.Background(), deckId).
+			Return(&entity.Deck{ID: deckId, UserId: uid, LatestDeckCode: latest}, nil)
+		mockRepository.EXPECT().Save(context.Background(), gomock.Any()).Return(nil)
+		mockTag.EXPECT().FindAttachableByIds(context.Background(), []string{"tag-1"}, uid).Return([]*entity.Tag{tag}, nil)
+		mockTag.EXPECT().ReplaceDeckTags(context.Background(), deckId, []string{"tag-1"}).Return(nil)
+
+		usecase := NewDeck(
+			mockRepository,
+			mock_repository.NewMockDeckAssetInterface(mockCtrl),
+			mock_repository.NewMockUserFavoriteDeckInterface(mockCtrl),
+			mockTag,
+			stubTransactionManager{},
+			stubBadgeEvaluation{},
+			mock_repository.NewMockDeckCodePostInterface(mockCtrl),
+			mock_repository.NewMockDeckCodeInterface(mockCtrl),
+		)
+
+		return mockTag, usecase
+	}
+
+	t.Run("正常系_最新バージョンのタグもデッキと同じにしてレスポンスにも載せる", func(t *testing.T) {
+		latest := entity.NewDeckCode("v2", now, uid, deckId, "5dbFbk-uBwjqP-VVk5Vv", false, "")
+		mockTag, usecase := setup(t, latest)
+
+		mockTag.EXPECT().ReplaceDeckCodeTags(context.Background(), "v2", []string{"tag-1"}).Return(nil)
+
+		deck, err := usecase.Update(context.Background(), deckId, NewDeckUpdateParam("テストデッキ", false, nil, []string{"tag-1"}))
+
+		require.NoError(t, err)
+		require.Len(t, deck.LatestDeckCode.Tags, 1)
+		require.Equal(t, "tag-1", deck.LatestDeckCode.Tags[0].ID)
+	})
+
+	t.Run("正常系_バージョンが無ければデッキだけ変える", func(t *testing.T) {
+		// バージョンの無いデッキは ID の空の LatestDeckCode を持つ
+		mockTag, usecase := setup(t, entity.NewDeckCode("", time.Time{}, "", "", "", false, ""))
+
+		mockTag.EXPECT().ReplaceDeckCodeTags(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+		deck, err := usecase.Update(context.Background(), deckId, NewDeckUpdateParam("テストデッキ", false, nil, []string{"tag-1"}))
+
+		require.NoError(t, err)
+		require.Len(t, deck.Tags, 1)
+	})
+}

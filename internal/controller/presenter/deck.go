@@ -48,20 +48,6 @@ func newDeckDataList(decks []*entity.Deck) []*dto.DeckData {
 	return ret
 }
 
-func NewDeckGetResponse(
-	limit int,
-	offset int,
-	cursor time.Time,
-	decks []*entity.Deck,
-) *dto.DeckGetResponse {
-	return &dto.DeckGetResponse{
-		Limit:  limit,
-		Offset: offset,
-		Cursor: base64.StdEncoding.EncodeToString([]byte(cursor.Format(time.RFC3339))),
-		Decks:  newDeckDataList(decks),
-	}
-}
-
 func NewDeckGetAllResponse(
 	decks []*entity.Deck,
 ) *dto.DeckGetAllResponse {

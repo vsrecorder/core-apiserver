@@ -107,9 +107,7 @@ func TestDeckInfrastructure(t *testing.T) {
 	for scenario, fn := range map[string]func(
 		t *testing.T,
 	){
-		"Find":                 test_DeckInfrastructure_Find,
 		"FindAll":              test_DeckInfrastructure_FindAll,
-		"FindOnCursor":         test_DeckInfrastructure_FindOnCursor,
 		"FindById":             test_DeckInfrastructure_FindById,
 		"FindByUserId":         test_DeckInfrastructure_FindByUserId,
 		"FindByUserIdOnCursor": test_DeckInfrastructure_FindByUserIdOnCursor,
@@ -121,91 +119,6 @@ func TestDeckInfrastructure(t *testing.T) {
 			fn(t)
 		})
 	}
-}
-
-func test_DeckInfrastructure_Find(t *testing.T) {
-	// 公開・未アーカイブのデッキが、最新のデッキコードとスプライトを伴って返る
-	t.Run("正常系_公開かつ未アーカイブのデッキをデッキコードとスプライト付きで返す", func(t *testing.T) {
-		r, mock, err := setup4DeckInfrastructure()
-		require.NoError(t, err)
-
-		datetime := time.Now().Local()
-		limit := 10
-		offset := 10
-
-		rows := sqlmock.NewRows(deckJoinDeckCodeColumns).AddRow(
-			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-			datetime,
-			datetime,
-			gorm.DeletedAt{},
-			sql.NullTime{},
-			sql.NullTime{},
-			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
-			"テストデッキ",
-			false,
-			"01HD7Y3K8D6FDHMHTZ2GT41TN3",
-			datetime,
-			datetime,
-			gorm.DeletedAt{},
-			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
-			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-			"5dbFbk-uBwjqP-VVk5Vv",
-			false,
-			"",
-		)
-
-		mock.ExpectQuery(deckJoinDeckCodeQuery(
-			`WHERE decks.private_flg = false AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY decks.created_at DESC LIMIT $1 OFFSET $2`,
-		)).WithArgs(
-			limit,
-			offset,
-		).WillReturnRows(rows)
-
-		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
-		)).WithArgs(
-			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-		).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns).AddRow(
-			"01HD7Y3K8D6FDHMHTZ2GT41TN2", 1, "pikachu",
-		))
-
-		expectDeckTagsQuery(mock)
-		expectDeckCodeTagsQuery(mock)
-
-		decks, err := r.Find(context.Background(), limit, offset)
-
-		require.NoError(t, err)
-		require.Equal(t, 1, len(decks))
-		require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", decks[0].ID)
-		require.Equal(t, "テストデッキ", decks[0].Name)
-		require.Empty(t, decks[0].ArchivedAt)
-		require.Equal(t, "5dbFbk-uBwjqP-VVk5Vv", decks[0].LatestDeckCode.Code)
-		require.Len(t, decks[0].PokemonSprites, 1)
-		require.Equal(t, "pikachu", decks[0].PokemonSprites[0].ID)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	// 該当デッキが無い場合、スプライトの取得は行わず空のスライスを返す
-	t.Run("正常系_該当なしならスプライト取得を行わず空スライスを返す", func(t *testing.T) {
-		r, mock, err := setup4DeckInfrastructure()
-		require.NoError(t, err)
-
-		limit := 10
-		offset := 10
-
-		mock.ExpectQuery(deckJoinDeckCodeQuery(
-			`WHERE decks.private_flg = false AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY decks.created_at DESC LIMIT $1 OFFSET $2`,
-		)).WithArgs(
-			limit,
-			offset,
-		).WillReturnRows(sqlmock.NewRows(deckJoinDeckCodeColumns))
-
-		decks, err := r.Find(context.Background(), limit, offset)
-
-		require.NoError(t, err)
-		require.Equal(t, []*entity.Deck{}, decks)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
 }
 
 func test_DeckInfrastructure_FindAll(t *testing.T) {
@@ -277,82 +190,6 @@ func test_DeckInfrastructure_FindAll(t *testing.T) {
 		).WillReturnRows(sqlmock.NewRows(deckJoinDeckCodeColumns))
 
 		decks, err := r.FindAll(context.Background(), uid)
-
-		require.NoError(t, err)
-		require.Equal(t, []*entity.Deck{}, decks)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-}
-
-func test_DeckInfrastructure_FindOnCursor(t *testing.T) {
-	// カーソル(作成日時)より古いデッキのみが返る
-	t.Run("正常系_カーソルより古いデッキのみ返す", func(t *testing.T) {
-		r, mock, err := setup4DeckInfrastructure()
-		require.NoError(t, err)
-
-		cursor := time.Now().Local()
-		datetime := time.Now().Local()
-		limit := 10
-
-		rows := sqlmock.NewRows(deckJoinDeckCodeColumns).AddRow(
-			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-			datetime,
-			datetime,
-			gorm.DeletedAt{},
-			sql.NullTime{},
-			sql.NullTime{},
-			"CeQ0Oa9g9uRThL11lj4l45VAg8p1",
-			"テストデッキ",
-			false,
-			"",
-			time.Time{},
-			time.Time{},
-			gorm.DeletedAt{},
-			"",
-			"",
-			"",
-			false,
-			"",
-		)
-
-		mock.ExpectQuery(deckJoinDeckCodeQuery(
-			`WHERE decks.created_at < $1 AND decks.private_flg = false AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY decks.created_at DESC LIMIT $2`,
-		)).WithArgs(
-			cursor,
-			limit,
-		).WillReturnRows(rows)
-
-		mock.ExpectQuery(regexp.QuoteMeta(
-			`SELECT * FROM "deck_pokemon_sprites" WHERE deck_id IN ($1) ORDER BY position ASC`,
-		)).WithArgs(
-			"01HD7Y3K8D6FDHMHTZ2GT41TN2",
-		).WillReturnRows(sqlmock.NewRows(deckPokemonSpriteColumns))
-
-		expectDeckTagsQuery(mock)
-
-		decks, err := r.FindOnCursor(context.Background(), limit, cursor)
-
-		require.NoError(t, err)
-		require.Equal(t, 1, len(decks))
-		require.Equal(t, "01HD7Y3K8D6FDHMHTZ2GT41TN2", decks[0].ID)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
-		r, mock, err := setup4DeckInfrastructure()
-		require.NoError(t, err)
-
-		cursor := time.Now().Local()
-		limit := 10
-
-		mock.ExpectQuery(deckJoinDeckCodeQuery(
-			`WHERE decks.created_at < $1 AND decks.private_flg = false AND decks.archived_at IS NULL AND decks.deleted_at IS NULL ORDER BY decks.created_at DESC LIMIT $2`,
-		)).WithArgs(
-			cursor,
-			limit,
-		).WillReturnRows(sqlmock.NewRows(deckJoinDeckCodeColumns))
-
-		decks, err := r.FindOnCursor(context.Background(), limit, cursor)
 
 		require.NoError(t, err)
 		require.Equal(t, []*entity.Deck{}, decks)

@@ -99,9 +99,7 @@ func TestDeckUsecase(t *testing.T) {
 		mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
 		usecase DeckInterface,
 	){
-		"Find":                 test_DeckUsecase_Find,
 		"FindAll":              test_DeckUsecase_FindAll,
-		"FindOnCursor":         test_DeckUsecase_FindOnCursor,
 		"FindById":             test_DeckUsecase_FindById,
 		"FindByUserId":         test_DeckUsecase_FindByUserId,
 		"FindByUserIdOnCursor": test_DeckUsecase_FindByUserIdOnCursor,
@@ -134,60 +132,6 @@ func TestDeckUsecase(t *testing.T) {
 			fn(t, mockRepository, mockDeckAsset, mockUserFavoriteDeck, mockDeckCodePost, usecase)
 		})
 	}
-}
-
-func test_DeckUsecase_Find(
-	t *testing.T,
-	mockRepository *mock_repository.MockDeckInterface,
-	mockDeckAsset *mock_repository.MockDeckAssetInterface,
-	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
-	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
-	usecase DeckInterface,
-) {
-	t.Run("正常系_デッキ一覧をそのまま返す", func(t *testing.T) {
-		limit := 10
-		offset := 0
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		decks := []*entity.Deck{
-			{ID: id},
-		}
-
-		mockRepository.EXPECT().Find(context.Background(), limit, offset).Return(decks, nil)
-
-		ret, err := usecase.Find(context.Background(), limit, offset)
-
-		require.NoError(t, err)
-		require.Equal(t, id, ret[0].ID)
-	})
-
-	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
-		limit := 10
-		offset := 0
-
-		decks := []*entity.Deck{}
-
-		mockRepository.EXPECT().Find(context.Background(), limit, offset).Return(decks, nil)
-
-		ret, err := usecase.Find(context.Background(), limit, offset)
-
-		require.NoError(t, err)
-		require.Equal(t, len(decks), len(ret))
-	})
-
-	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
-		limit := 10
-		offset := 0
-
-		mockRepository.EXPECT().Find(context.Background(), limit, offset).Return(nil, errors.New(""))
-
-		ret, err := usecase.Find(context.Background(), limit, offset)
-
-		require.Error(t, err)
-		require.Empty(t, ret)
-	})
 }
 
 func test_DeckUsecase_FindAll(
@@ -236,60 +180,6 @@ func test_DeckUsecase_FindAll(
 		mockRepository.EXPECT().FindAll(context.Background(), uid).Return(nil, errors.New(""))
 
 		ret, err := usecase.FindAll(context.Background(), uid)
-
-		require.Error(t, err)
-		require.Empty(t, ret)
-	})
-}
-
-func test_DeckUsecase_FindOnCursor(
-	t *testing.T,
-	mockRepository *mock_repository.MockDeckInterface,
-	mockDeckAsset *mock_repository.MockDeckAssetInterface,
-	mockUserFavoriteDeck *mock_repository.MockUserFavoriteDeckInterface,
-	mockDeckCodePost *mock_repository.MockDeckCodePostInterface,
-	usecase DeckInterface,
-) {
-	t.Run("正常系_カーソル以降のデッキ一覧を返す", func(t *testing.T) {
-		limit := 10
-		cursor := time.Now().Local()
-
-		id, err := generateId()
-		require.NoError(t, err)
-
-		decks := []*entity.Deck{
-			{ID: id},
-		}
-
-		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(decks, nil)
-
-		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
-
-		require.NoError(t, err)
-		require.Equal(t, id, ret[0].ID)
-	})
-
-	t.Run("正常系_該当なしの場合は空スライスを返す", func(t *testing.T) {
-		limit := 10
-		cursor := time.Now().Local()
-
-		decks := []*entity.Deck{}
-
-		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(decks, nil)
-
-		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
-
-		require.NoError(t, err)
-		require.Equal(t, len(decks), len(ret))
-	})
-
-	t.Run("異常系_リポジトリのエラーをそのまま返す", func(t *testing.T) {
-		limit := 10
-		cursor := time.Now().Local()
-
-		mockRepository.EXPECT().FindOnCursor(context.Background(), limit, cursor).Return(nil, errors.New(""))
-
-		ret, err := usecase.FindOnCursor(context.Background(), limit, cursor)
 
 		require.Error(t, err)
 		require.Empty(t, ret)

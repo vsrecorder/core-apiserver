@@ -8,21 +8,9 @@ import (
 )
 
 type DeckInterface interface {
-	Find(
-		ctx context.Context,
-		limit int,
-		offset int,
-	) ([]*entity.Deck, error)
-
 	FindAll(
 		ctx context.Context,
 		uid string,
-	) ([]*entity.Deck, error)
-
-	FindOnCursor(
-		ctx context.Context,
-		limit int,
-		cursor time.Time,
 	) ([]*entity.Deck, error)
 
 	FindById(

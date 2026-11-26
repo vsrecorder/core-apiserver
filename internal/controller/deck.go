@@ -42,11 +42,21 @@ func NewDeck(
 
 func (c *Deck) RegisterRoute(relativePath string) {
 	r := c.router.Group(relativePath + DecksPath)
+	//
+	// 一覧は本人のデッキだけを返す。ログインしていなければ 401。
+	//
+	// 以前は未ログインの要求に、全ユーザーの公開設定(private_flg = false)のデッキを、
+	// ユーザー ID・最新デッキコードのメモごと返していた。webapp にはこの一覧を使う画面が無く
+	// (BFF の /api/decks もデッキ一覧ページのサーバ側の取得もトークン付き)、nginx が /api/v1beta を
+	// そのまま公開しているため、製品のどこからも使われない口から誰でも一覧できた
+	// (2026-10-31 のセキュリティ精査。記録の一覧(M-4)と同じ作り)。
+	// 他人のデッキを見せる機能を作るときは、ここを開け直すのではなく、返す項目を明示的に絞った
+	// 専用の API を別に用意すること(みんなの公開デッキは deck_code_posts がそれにあたる)。
+	//
 	r.GET(
 		"",
-		authentication.OptionalAuthenticationMiddleware(),
+		authentication.RequiredAuthenticationMiddleware(),
 		validation.DeckGetMiddleware(),
-		c.Get,
 		c.GetByUserId,
 	)
 	r.GET(
@@ -103,48 +113,6 @@ func (c *Deck) RegisterRoute(relativePath string) {
 		authorization.DeckDeleteAuthorizationMiddleware(c.deckRepository, c.recordRepository),
 		c.Delete,
 	)
-}
-
-func (c *Deck) Get(ctx *gin.Context) {
-	if uid := helper.GetUID(ctx); uid == "" {
-		limit := helper.GetLimit(ctx)
-		offset := helper.GetOffset(ctx)
-		cursor := helper.GetCursor(ctx)
-
-		if !cursor.IsZero() {
-			decks, err := c.usecase.FindOnCursor(ctx.Request.Context(), limit, cursor)
-			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx, err)
-				return
-			}
-
-			for _, deck := range decks {
-				if deck.LatestDeckCode.PrivateCodeFlg {
-					deck.LatestDeckCode.Code = ""
-				}
-			}
-
-			res := presenter.NewDeckGetResponse(limit, offset, cursor, decks)
-
-			ctx.JSON(http.StatusOK, res)
-		} else {
-			decks, err := c.usecase.Find(ctx.Request.Context(), limit, offset)
-			if err != nil {
-				apierror.ErrInternalServerError.JSON(ctx, err)
-				return
-			}
-
-			for _, deck := range decks {
-				if deck.LatestDeckCode.PrivateCodeFlg {
-					deck.LatestDeckCode.Code = ""
-				}
-			}
-
-			res := presenter.NewDeckGetResponse(limit, offset, cursor, decks)
-
-			ctx.JSON(http.StatusOK, res)
-		}
-	}
 }
 
 func (c *Deck) GetAll(ctx *gin.Context) {

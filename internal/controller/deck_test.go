@@ -106,127 +106,45 @@ func TestDeckController(t *testing.T) {
 	}
 }
 
+// test_DeckController_Get は、一覧(GET /decks)がログイン必須であることを確かめる。
+// 以前は未ログインの要求に全ユーザーの公開デッキを、最新デッキコードのメモごと返していた
+// (2026-10-31 の精査。記録の一覧(M-4)と同じ作り)。
+// usecase のモックに期待を置いていないので、拒否する前に一覧を取りに行けばこのテストは落ちる。
 func test_DeckController_Get(t *testing.T) {
 	r := gin.Default()
-	c, _, _, mockUsecase := setup4TestDeckController(t, r)
 
-	// 未認証の場合、公開デッキの一覧が返る
-	t.Run("正常系_未認証なら公開デッキ一覧を返す", func(t *testing.T) {
-		limit := 10
-		offset := 0
+	secretKey, err := testutil.GenerateJWTSecret()
+	require.NoError(t, err)
+	t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
 
-		decks := []*entity.Deck{
-			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "5dbFbk-uBwjqP-VVk5Vv", false),
-		}
+	c, _, _, _ := setup4TestDeckController(t, r)
 
-		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset).Return(decks, nil)
+	for _, tt := range []struct {
+		name  string
+		path  string
+		token string
+	}{
+		{name: "異常系_未ログインなら401を返し一覧を取りに行かない", path: DecksPath},
+		{name: "異常系_ページ指定があっても未ログインなら401", path: DecksPath + "?limit=100&offset=0"},
+		{name: "異常系_アーカイブ指定でも未ログインなら401", path: DecksPath + "?archived=true"},
+		{name: "異常系_カーソル指定でも未ログインなら401", path: DecksPath + "?cursor=" + encodeTestDeckCursor(time.Now().Local().Truncate(time.Second))},
+		{name: "異常系_検証できないトークンなら401", path: DecksPath, token: "invalid-token"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
 
-		w := httptest.NewRecorder()
+			req, err := http.NewRequest("GET", tt.path, nil)
+			require.NoError(t, err)
+			if tt.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tt.token)
+			}
 
-		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
-		require.NoError(t, err)
+			c.router.ServeHTTP(w, req)
 
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckGetResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, limit, res.Limit)
-		require.Equal(t, offset, res.Offset)
-		require.Equal(t, len(decks), len(res.Decks))
-		require.Equal(t, "5dbFbk-uBwjqP-VVk5Vv", res.Decks[0].Data.LatestDeckCode.Code)
-	})
-
-	// 非公開のデッキコードは、未認証のユーザには伏せられる
-	t.Run("正常系_非公開デッキコードは未認証には伏せられる", func(t *testing.T) {
-		limit := 10
-		offset := 0
-
-		decks := []*entity.Deck{
-			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "5dbFbk-uBwjqP-VVk5Vv", true),
-		}
-
-		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset).Return(decks, nil)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckGetResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Empty(t, res.Decks[0].Data.LatestDeckCode.Code)
-	})
-
-	// カーソルが指定された場合はFindOnCursorが使われる
-	t.Run("正常系_カーソル指定時はFindOnCursorで取得する", func(t *testing.T) {
-		limit := 10
-		cursor := time.Now().Local().Truncate(time.Second)
-
-		decks := []*entity.Deck{
-			newTestDeck("01HD7Y3K8D6FDHMHTZ2GT41TN2", "zor5SLfEfwfZ90yRVXzlxBEFARy2", "", false),
-		}
-
-		mockUsecase.EXPECT().FindOnCursor(gomock.Any(), limit, cursorEq(cursor)).Return(decks, nil)
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&cursor=%s", limit, encodeTestDeckCursor(cursor)), nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		var res dto.DeckGetResponse
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
-
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Equal(t, len(decks), len(res.Decks))
-	})
-
-	t.Run("異常系_ユースケースのエラーで500を返す", func(t *testing.T) {
-		limit := 10
-		offset := 0
-
-		mockUsecase.EXPECT().Find(gomock.Any(), limit, offset).Return(nil, errors.New(""))
-
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", fmt.Sprintf(DecksPath+"?limit=%d&offset=%d", limit, offset), nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-
-	// 不正なlimitはバリデーションで弾かれる
-	t.Run("異常系_limitが不正なら400を返す", func(t *testing.T) {
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", DecksPath+"?limit=invalid", nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	// 不正なカーソルはバリデーションで弾かれる
-	t.Run("異常系_カーソルが不正なら400を返す", func(t *testing.T) {
-		w := httptest.NewRecorder()
-
-		req, err := http.NewRequest("GET", DecksPath+"?cursor=invalid", nil)
-		require.NoError(t, err)
-
-		c.router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusBadRequest, w.Code)
-	})
+			require.Equal(t, http.StatusUnauthorized, w.Code)
+			require.NotContains(t, w.Body.String(), `"decks"`)
+		})
+	}
 }
 
 func test_DeckController_GetAll(t *testing.T) {
@@ -637,6 +555,44 @@ func test_DeckController_Create(t *testing.T) {
 		require.Equal(t, uid, res.UserId)
 	})
 
+	// private_flg を省いた要求は非公開として作る。bool の既定値(false)のままだと公開になり、
+	// 他人から GET /decks/:id とデッキコードを読まれる
+	t.Run("正常系_private_flgを省くと非公開で作成する", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, _, mockUsecase := setup4TestDeckController(t, r)
+
+		deck := newTestDeck(id, uid, "", false)
+		deck.PrivateFlg = true
+
+		param := usecase.NewDeckCreateParam(
+			uid,
+			"テストデッキ",
+			true,
+			"",
+			false,
+			nil,
+			nil,
+		)
+
+		mockUsecase.EXPECT().Create(gomock.Any(), param).Return(deck, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", DecksPath, strings.NewReader(`{"name":"テストデッキ"}`))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusCreated, w.Code)
+	})
+
 	// ポケモンスプライトはリクエストからパラメータへ引き継がれる
 	t.Run("正常系_ポケモンスプライトがパラメータへ引き継がれる", func(t *testing.T) {
 		r := gin.Default()
@@ -836,6 +792,42 @@ func test_DeckController_Update(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, id, res.ID)
+	})
+
+	// private_flg を省いた更新は非公開にする(作成と同じ)
+	t.Run("正常系_private_flgを省くと非公開で更新する", func(t *testing.T) {
+		r := gin.Default()
+
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockRepository, _, mockUsecase := setup4TestDeckController(t, r)
+
+		deck := newTestDeck(id, uid, "", false)
+
+		// DeckUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(deck, nil)
+
+		param := usecase.NewDeckUpdateParam(
+			"更新後のデッキ",
+			true,
+			nil,
+			nil,
+		)
+
+		mockUsecase.EXPECT().Update(gomock.Any(), id, param).Return(deck, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", DecksPath+"/"+id, strings.NewReader(`{"name":"更新後のデッキ"}`))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
 	})
 
 	// 他人のデッキは更新できない

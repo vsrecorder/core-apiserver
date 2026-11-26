@@ -375,7 +375,73 @@ func test_RecordController_GetByUserId(t *testing.T) {
 	})
 }
 
+// recordRequestBodyWithoutPrivateFlg は、private_flg のキーを含まない記録の要求本文を返す。
+func recordRequestBodyWithoutPrivateFlg(t *testing.T, officialEventId uint) string {
+	t.Helper()
+
+	dataBytes, err := json.Marshal(dto.RecordRequest{
+		OfficialEventId: officialEventId,
+		EventDate:       testControllerEventDate,
+	})
+	require.NoError(t, err)
+
+	body := map[string]any{}
+	require.NoError(t, json.Unmarshal(dataBytes, &body))
+	delete(body, "private_flg")
+
+	dataBytes, err = json.Marshal(body)
+	require.NoError(t, err)
+
+	return string(dataBytes)
+}
+
 func test_RecordController_Create(t *testing.T) {
+	// private_flg を省いた要求は非公開として作成する。bool の既定値(false)のままだと公開になり、
+	// 他人から GET /records/:id でメモごと読まれる
+	t.Run("正常系_private_flgを省くと非公開で作成する", func(t *testing.T) {
+		r := gin.Default()
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, _, mockUsecase := setup4TestRecordController(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		officialEventId := uint(10000)
+
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			"",
+			uid,
+			"",
+			"",
+			testControllerEventDate,
+			true,
+			false,
+			uint(0),
+			"",
+			"",
+		)
+
+		mockUsecase.EXPECT().Create(gomock.Any(), param).Return(&entity.Record{ID: id, UserId: uid, OfficialEventId: officialEventId, PrivateFlg: true}, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("POST", RecordsPath, strings.NewReader(recordRequestBodyWithoutPrivateFlg(t, officialEventId)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusCreated, w.Code)
+	})
+
 	t.Run("正常系_公式イベントの記録を作成する", func(t *testing.T) {
 		r := gin.Default()
 
@@ -503,6 +569,55 @@ func test_RecordController_Create(t *testing.T) {
 }
 
 func test_RecordController_Update(t *testing.T) {
+	// private_flg を省いた要求は非公開として更新する。bool の既定値(false)のままだと公開になり、
+	// 他人から GET /records/:id でメモごと読まれる
+	t.Run("正常系_private_flgを省くと非公開で更新する", func(t *testing.T) {
+		r := gin.Default()
+
+		uid := "zor5SLfEfwfZ90yRVXzlxBEFARy2"
+		secretKey, err := testutil.GenerateJWTSecret()
+		require.NoError(t, err)
+		t.Setenv("VSRECORDER_JWT_SECRET", secretKey)
+
+		c, mockRepository, mockUsecase := setup4TestRecordController(t, r)
+
+		id, err := generateId()
+		require.NoError(t, err)
+
+		officialEventId := uint(10000)
+
+		// RecordUpdateAuthorizationMiddlewareが本人確認のために参照する
+		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.Record{ID: id, UserId: uid}, nil)
+
+		param := usecase.NewRecordParam(
+			officialEventId,
+			"",
+			"",
+			"",
+			uid,
+			"",
+			"",
+			testControllerEventDate,
+			true,
+			false,
+			uint(0),
+			"",
+			"",
+		)
+
+		mockUsecase.EXPECT().Update(gomock.Any(), id, param).Return(&entity.Record{ID: id, UserId: uid, OfficialEventId: officialEventId, PrivateFlg: true}, nil)
+
+		w := httptest.NewRecorder()
+
+		req, err := http.NewRequest("PUT", RecordsPath+"/"+id, strings.NewReader(recordRequestBodyWithoutPrivateFlg(t, officialEventId)))
+		require.NoError(t, err)
+		setJWTAuthHeader(t, req, uid, secretKey)
+
+		c.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+	})
+
 	t.Run("正常系_本人の記録を更新する", func(t *testing.T) {
 		r := gin.Default()
 

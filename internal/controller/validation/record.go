@@ -43,7 +43,10 @@ func RecordGetMiddleware() gin.HandlerFunc {
 
 func RecordCreateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		req := dto.RecordCreateRequest{}
+		// private_flg を省いた要求は非公開として扱う。bool の既定値(false)のままだと公開になり、
+		// 他人から GET /records/:id でメモ・TCG マイスターの URL ごと読まれる。JSON に無いキーは
+		// ShouldBindJSON が上書きしないので、先に入れた true が残る。webapp は常に値を送る。
+		req := dto.RecordCreateRequest{RecordRequest: dto.RecordRequest{PrivateFlg: true}}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			apierror.ErrBadRequest.JSON(ctx, err)
 			return
@@ -90,7 +93,10 @@ func RecordCreateMiddleware() gin.HandlerFunc {
 
 func RecordUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		req := dto.RecordUpdateRequest{}
+		// private_flg を省いた要求は非公開として扱う。bool の既定値(false)のままだと公開になり、
+		// 他人から GET /records/:id でメモ・TCG マイスターの URL ごと読まれる。JSON に無いキーは
+		// ShouldBindJSON が上書きしないので、先に入れた true が残る。webapp は常に値を送る。
+		req := dto.RecordUpdateRequest{RecordRequest: dto.RecordRequest{PrivateFlg: true}}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			apierror.ErrBadRequest.JSON(ctx, err)
 			return

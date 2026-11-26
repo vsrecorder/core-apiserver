@@ -64,6 +64,8 @@ func setupSync(t *testing.T, deckSprites []*entity.PokemonSprite) syncMocks {
 	mockTag := mock_repository.NewMockTagInterface(mockCtrl)
 	mockTag.EXPECT().FindAttachableByIds(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*entity.Tag{}, nil).AnyTimes()
 	mockTag.EXPECT().ReplaceDeckCodeTags(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	// デッキのタグを揃える処理(deck_tag_sync.go)はここでは見ない
+	mockTag.EXPECT().ReplaceDeckTags(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	mockDeckCodePost := mock_repository.NewMockDeckCodePostInterface(mockCtrl)
 	mockDeckCodePost.EXPECT().UnpublishByDeckCodeId(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -194,6 +196,10 @@ func TestDeckSpriteSync_UpdateVersion(t *testing.T) {
 		m := setupSync(t, syncSprites("0887", "0006"))
 
 		m.deckCode.EXPECT().FindById(ctx, "v2").Return(syncVersion("v2", syncSprites("0887", "0006")), nil)
+		// 最新バージョン(v2)を未設定に戻す
+		m.deckCode.EXPECT().FindByDeckId(ctx, syncDeckId).Return([]*entity.DeckCode{
+			syncVersion("v2", syncSprites("0887", "0006")),
+		}, nil)
 		m.deckCode.EXPECT().Save(ctx, gomock.Any()).Return(nil)
 		m.deckCode.EXPECT().ReplacePokemonSprites(ctx, "v2", []*entity.PokemonSprite{}).Return(nil)
 

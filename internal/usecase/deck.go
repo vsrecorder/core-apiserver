@@ -450,6 +450,13 @@ func (u *Deck) Update(
 		}
 		deck.Tags = tags
 
+		// デッキのタグを変えたら、最新バージョンのタグも同じにする(deck_tag_sync.go)。
+		// ret.LatestDeckCode は deck.LatestDeckCode と同じ実体なので、レスポンスにも反映される。
+		if err := syncLatestVersionTagsWithDeck(ctx, u.tag, ret.LatestDeckCode, tags); err != nil {
+			logError(ctx, err)
+			return err
+		}
+
 		// デッキのスプライトを変えたら、最新バージョンに設定があればそれも同じにする
 		// (デッキと最新バージョンのスプライトを常に揃える。deck_sprite_sync.go)。
 		// 最新バージョンが未設定ならデッキのスプライトで表示されるので、何もしなくても揃う。

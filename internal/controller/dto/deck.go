@@ -36,13 +36,6 @@ type DeckResponse struct {
 	Tags           []*TagResponse           `json:"tags"`
 }
 
-type DeckGetResponse struct {
-	Limit  int         `json:"limit"`
-	Offset int         `json:"offset"`
-	Cursor string      `json:"cursor"`
-	Decks  []*DeckData `json:"decks"`
-}
-
 type DeckGetAllResponse []DeckResponse
 
 type DeckGetByIdResponse struct {

@@ -68,21 +68,9 @@ func NewDeckUpdateParam(
 }
 
 type DeckInterface interface {
-	Find(
-		ctx context.Context,
-		limit int,
-		offset int,
-	) ([]*entity.Deck, error)
-
 	FindAll(
 		ctx context.Context,
 		uid string,
-	) ([]*entity.Deck, error)
-
-	FindOnCursor(
-		ctx context.Context,
-		limit int,
-		cursor time.Time,
 	) ([]*entity.Deck, error)
 
 	FindById(
@@ -219,41 +207,11 @@ func (u *Deck) syncDeckTags(
 	return orderedTags, nil
 }
 
-func (u *Deck) Find(
-	ctx context.Context,
-	limit int,
-	offset int,
-) ([]*entity.Deck, error) {
-	decks, err := u.repository.Find(ctx, limit, offset)
-
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	return decks, nil
-}
-
 func (u *Deck) FindAll(
 	ctx context.Context,
 	uid string,
 ) ([]*entity.Deck, error) {
 	decks, err := u.repository.FindAll(ctx, uid)
-
-	if err != nil {
-		logError(ctx, err)
-		return nil, err
-	}
-
-	return decks, nil
-}
-
-func (u *Deck) FindOnCursor(
-	ctx context.Context,
-	limit int,
-	cursor time.Time,
-) ([]*entity.Deck, error) {
-	decks, err := u.repository.FindOnCursor(ctx, limit, cursor)
 
 	if err != nil {
 		logError(ctx, err)

@@ -102,21 +102,6 @@ func (mr *MockDeckInterfaceMockRecorder) Favorite(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Favorite", reflect.TypeOf((*MockDeckInterface)(nil).Favorite), ctx, id)
 }
 
-// Find mocks base method.
-func (m *MockDeckInterface) Find(ctx context.Context, limit, offset int) ([]*entity.Deck, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Find", ctx, limit, offset)
-	ret0, _ := ret[0].([]*entity.Deck)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Find indicates an expected call of Find.
-func (mr *MockDeckInterfaceMockRecorder) Find(ctx, limit, offset any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Find", reflect.TypeOf((*MockDeckInterface)(nil).Find), ctx, limit, offset)
-}
-
 // FindAll mocks base method.
 func (m *MockDeckInterface) FindAll(ctx context.Context, uid string) ([]*entity.Deck, error) {
 	m.ctrl.T.Helper()
@@ -175,21 +160,6 @@ func (m *MockDeckInterface) FindByUserIdOnCursor(ctx context.Context, uid string
 func (mr *MockDeckInterfaceMockRecorder) FindByUserIdOnCursor(ctx, uid, archivedFlg, limit, cursor any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserIdOnCursor", reflect.TypeOf((*MockDeckInterface)(nil).FindByUserIdOnCursor), ctx, uid, archivedFlg, limit, cursor)
-}
-
-// FindOnCursor mocks base method.
-func (m *MockDeckInterface) FindOnCursor(ctx context.Context, limit int, cursor time.Time) ([]*entity.Deck, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindOnCursor", ctx, limit, cursor)
-	ret0, _ := ret[0].([]*entity.Deck)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FindOnCursor indicates an expected call of FindOnCursor.
-func (mr *MockDeckInterfaceMockRecorder) FindOnCursor(ctx, limit, cursor any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOnCursor", reflect.TypeOf((*MockDeckInterface)(nil).FindOnCursor), ctx, limit, cursor)
 }
 
 // Unarchive mocks base method.

@@ -175,7 +175,10 @@ CREATE TABLE decks (
     archived_at      TIMESTAMP DEFAULT NULL,
     user_id          VARCHAR(32) NOT NULL,
     name             VARCHAR(32) NOT NULL,
-    private_flg      BOOLEAN DEFAULT NULL
+    -- 公開設定。NULL を許すと、一覧(private_flg = false)では非公開、個別取得では Go の bool に
+    -- false として入って公開、と扱いが割れるため NOT NULL にし、既定は非公開(true)にする
+    -- (2026-10-31 のセキュリティ精査。records.private_flg と同じ)。アプリは常に値を明示して書き込む。
+    private_flg      BOOLEAN NOT NULL DEFAULT true
 );
 
 CREATE INDEX idx_decks_created_at ON decks(created_at);

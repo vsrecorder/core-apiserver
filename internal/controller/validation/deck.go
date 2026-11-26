@@ -46,7 +46,10 @@ func DeckGetMiddleware() gin.HandlerFunc {
 
 func DeckCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		req := dto.DeckCreateRequest{}
+		// private_flg を省いた要求は非公開として扱う。bool の既定値(false)のままだと公開になり、
+		// 他人から GET /decks/:id とデッキコード(メモを含む)を読まれる。JSON に無いキーは
+		// ShouldBindJSON が上書きしないので、先に入れた true が残る。webapp は常に true を送る。
+		req := dto.DeckCreateRequest{PrivateFlg: true}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			apierror.ErrBadRequest.JSON(ctx, err)
 			return
@@ -92,7 +95,10 @@ func DeckCreateMiddleware(logger *slog.Logger) gin.HandlerFunc {
 
 func DeckUpdateMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		req := dto.DeckUpdateRequest{}
+		// private_flg を省いた要求は非公開として扱う。bool の既定値(false)のままだと公開になり、
+		// 他人から GET /decks/:id とデッキコード(メモを含む)を読まれる。JSON に無いキーは
+		// ShouldBindJSON が上書きしないので、先に入れた true が残る。webapp は常に true を送る。
+		req := dto.DeckUpdateRequest{PrivateFlg: true}
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			apierror.ErrBadRequest.JSON(ctx, err)
 			return

@@ -375,7 +375,7 @@ func (u *Deck) Create(
 		// デッキ登録と同時に作られた最初のバージョンにも、デッキと同じスプライトを設定しておく。
 		// 未設定のままだとデッキのスプライトで表示されるので見た目は同じだが、あとでデッキの
 		// スプライトを変えたときに、このバージョン(とそれを使った記録)の表示まで変わってしまう。
-		// どのバージョンも自分のスプライトを持つようにそろえる(既存分は db/backfill で設定する)。
+		// どのバージョンも自分のスプライトを持つようにそろえる(既存分は導入時のバックフィルで設定済み)。
 		if LatestDeckCode.ID != "" && len(pokemonSprites) > 0 {
 			versionSprites := copyPokemonSprites(pokemonSprites)
 			if err := u.deckCode.ReplacePokemonSprites(ctx, LatestDeckCode.ID, versionSprites); err != nil {

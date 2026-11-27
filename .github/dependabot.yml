@@ -39,7 +39,9 @@ updates:
     cooldown:
       default-days: 7
 
-  # GitHub Actions のアクション(.github/workflows)。まとめて 1 本の PR にする
+  # GitHub Actions のアクション(.github/workflows)。まとめて 1 本の PR にする。
+  # workflow ではコミット SHA で固定している(タグは付け替えられるため。精査 L-6)。
+  # 行末の「# v7.0.1」のような版のコメントを読み、SHA とコメントを一緒に書き換えた PR が来る
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -60,6 +61,23 @@ func isValidOptionalId(id string, max int) bool {
 	return !exceedsLength(id, max)
 }
 
+// allowedImageURLHosts は users.image_url に保存してよい画像のホスト。
+//
+// 正規の値は次の 3 系統しか無い。
+//   - CDN: 既定アイコン(webapp の auth.ts)と、アップロード結果(webapp の api/users/[id]/images)
+//   - Google / X: 認証プロバイダのアイコンをそのまま持っているユーザ
+//
+// webapp(utils/trustedImageUrl.ts の ALLOWED_HOSTS)は、保存する前に同じ集合で絞っている。
+// webapp は OGP 画像の生成でこの URL をサーバ側から取りに行くので、絞らないと内部ネットワークへ
+// 向けた URL を仕込まれる(SSRF)。API の JWT は webapp しか発行できないため今は webapp を
+// 通らずに保存する経路は無いが、webapp の確認が漏れたときのために API 側でも同じ集合に限る
+// (2026-10-31 のセキュリティ精査 L-2)。ホストを増やすときは webapp と揃えること。
+var allowedImageURLHosts = map[string]struct{}{
+	"xx8nnpgt.user.webaccel.jp": {},
+	"lh3.googleusercontent.com": {},
+	"pbs.twimg.com":             {},
+}
+
 // isValidImageURL は画像URLとして受け入れられる値かを確認する。
 //
 // スキームを検証しない場合 javascript: や data: をそのまま保存でき、
@@ -67,6 +85,7 @@ func isValidOptionalId(id string, max int) bool {
 // XSSに繋がる。またhttp:を許すと閲覧者の通信内容が経路上に漏れる。
 // 正規の値(デフォルトアイコン/CDNへのアップロード結果)はいずれもhttpsのため、
 // httpsのみに限定しておけば描画側の実装によらず安全側に倒せる。
+// ホストは allowedImageURLHosts に限る。
 func isValidImageURL(s string) bool {
 	u, err := url.Parse(s)
 	if err != nil {
@@ -84,7 +103,14 @@ func isValidImageURL(s string) bool {
 		return false
 	}
 
-	return true
+	// "https://user:pass@host/" のような認証情報付きの値は通さない(webapp と同じ)
+	if u.User != nil {
+		return false
+	}
+
+	// webapp と同じく、ポートを除いたホスト名で比べる。url.Parse はホストを小文字にしないので揃える
+	_, ok := allowedImageURLHosts[strings.ToLower(u.Hostname())]
+	return ok
 }
 
 // isValidTCGMeisterURL はrecords.tcg_meister_urlとして受け入れられる値かを確認する。

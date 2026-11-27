@@ -135,7 +135,7 @@ func test_UserController_Create(t *testing.T) {
 		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
-		imageURL := "https://example.com/image.png"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		createdAt := time.Now().Local()
 
@@ -194,7 +194,7 @@ func test_UserController_Create(t *testing.T) {
 		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
-		imageURL := "https://example.com/image.png"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		mockUsecase.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrAlreadyExists)
 
@@ -231,7 +231,7 @@ func test_UserController_Create(t *testing.T) {
 		c, _, mockUsecase := setup4TestUserController(t, l, r)
 
 		name := "test"
-		imageURL := "https://example.com/image.png"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		mockUsecase.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, errors.New(""))
 
@@ -273,7 +273,7 @@ func test_UserController_Update(t *testing.T) {
 		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.User{ID: id}, nil)
 
 		name := "test"
-		imageURL := "https://example.com/image.png"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		createdAt := time.Now().Local()
 
@@ -334,7 +334,7 @@ func test_UserController_Update(t *testing.T) {
 		mockRepository.EXPECT().FindById(gomock.Any(), id).Return(&entity.User{ID: id}, nil)
 
 		name := "test"
-		imageURL := "https://example.com/image.png"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		mockUsecase.EXPECT().Update(gomock.Any(), id, gomock.Any()).Return(nil, errors.New(""))
 

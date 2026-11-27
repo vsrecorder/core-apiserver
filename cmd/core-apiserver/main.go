@@ -300,8 +300,10 @@ func main() {
 			"DELETE",
 			"OPTIONS",
 		},
+		// ブラウザからこの API を直接呼ぶ経路は無い(webapp のサーバ経由で、同じオリジンの
+		// /api/v1beta へ nginx が流す)。開発用の http://localhost:3000 は本番で許す理由が無いので
+		// 外した(2026-10-31 のセキュリティ精査 L-1)。ローカルも https://local.vsrecorder.mobi 経由
 		AllowOrigins: []string{
-			"http://localhost:3000",
 			"https://vsrecorder.mobi",
 			"https://local.vsrecorder.mobi",
 		},

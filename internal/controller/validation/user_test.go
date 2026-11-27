@@ -35,7 +35,7 @@ func test_UserCreateMiddleware(t *testing.T) {
 		ginContext, _ := gin.CreateTestContext(w)
 
 		name := "test"
-		imageURL := "https://example.com/image.jpg"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		expected := dto.UserCreateRequest{
 			UserRequest: dto.UserRequest{
@@ -66,7 +66,7 @@ func test_UserCreateMiddleware(t *testing.T) {
 		ginContext, _ := gin.CreateTestContext(w)
 
 		name := ""
-		imageURL := "https://example.com/image.jpg"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		expected := dto.UserCreateRequest{
 			UserRequest: dto.UserRequest{
@@ -96,6 +96,35 @@ func test_UserCreateMiddleware(t *testing.T) {
 
 		name := "test"
 		imageURL := ""
+
+		expected := dto.UserCreateRequest{
+			UserRequest: dto.UserRequest{
+				Name:     name,
+				ImageURL: imageURL,
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("POST", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := UserCreateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_許可していないホストの画像URLなら400を返す", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		name := "test"
+		imageURL := "https://example.com/image.jpg"
 
 		expected := dto.UserCreateRequest{
 			UserRequest: dto.UserRequest{
@@ -155,7 +184,7 @@ func test_UserUpdateMiddleware(t *testing.T) {
 		ginContext, _ := gin.CreateTestContext(w)
 
 		name := "test"
-		imageURL := "https://example.com/image.jpg"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		expected := dto.UserUpdateRequest{
 			UserRequest: dto.UserRequest{
@@ -186,7 +215,7 @@ func test_UserUpdateMiddleware(t *testing.T) {
 		ginContext, _ := gin.CreateTestContext(w)
 
 		name := ""
-		imageURL := "https://example.com/image.jpg"
+		imageURL := "https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"
 
 		expected := dto.UserUpdateRequest{
 			UserRequest: dto.UserRequest{
@@ -216,6 +245,35 @@ func test_UserUpdateMiddleware(t *testing.T) {
 
 		name := "test"
 		imageURL := ""
+
+		expected := dto.UserUpdateRequest{
+			UserRequest: dto.UserRequest{
+				Name:     name,
+				ImageURL: imageURL,
+			},
+		}
+
+		dataBytes, err := json.Marshal(expected)
+		require.NoError(t, err)
+
+		// Middlewareのテストのためpathは何でもよい
+		req, err := http.NewRequest("PUT", "/", strings.NewReader(string(dataBytes)))
+		require.NoError(t, err)
+
+		ginContext.Request = req
+
+		middleware := UserUpdateMiddleware()
+		middleware(ginContext)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("異常系_許可していないホストの画像URLなら400を返す", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		ginContext, _ := gin.CreateTestContext(w)
+
+		name := "test"
+		imageURL := "https://example.com/image.jpg"
 
 		expected := dto.UserUpdateRequest{
 			UserRequest: dto.UserRequest{

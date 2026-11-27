@@ -50,12 +50,34 @@ func newValidationJSONContext(t *testing.T, body string) (*gin.Context, *httptes
 }
 
 func TestIsValidImageURL(t *testing.T) {
-	t.Run("正常系_ホストを持つhttpsのURLを受け入れる", func(t *testing.T) {
-		require.True(t, isValidImageURL("https://example.com/image.png"))
+	t.Run("正常系_許可したホストのhttpsのURLを受け入れる", func(t *testing.T) {
+		// 既定アイコン・アップロード結果(CDN)と、認証プロバイダのアイコン
+		require.True(t, isValidImageURL("https://xx8nnpgt.user.webaccel.jp/images/users/default_icon.png"))
+		require.True(t, isValidImageURL("https://xx8nnpgt.user.webaccel.jp/images/icons/abc.png"))
+		require.True(t, isValidImageURL("https://lh3.googleusercontent.com/a/ACg8ocK=s96-c"))
+		require.True(t, isValidImageURL("https://pbs.twimg.com/profile_images/1/a_normal.jpg"))
+	})
+
+	t.Run("正常系_ホスト名の大文字小文字は区別しない", func(t *testing.T) {
+		require.True(t, isValidImageURL("https://XX8NNPGT.user.webaccel.jp/images/icons/abc.png"))
+	})
+
+	t.Run("異常系_許可していないホストは拒否する", func(t *testing.T) {
+		require.False(t, isValidImageURL("https://example.com/image.png"))
+		// 内部ネットワークや、許可したホストに似せた名前
+		require.False(t, isValidImageURL("https://169.254.169.254/latest/meta-data"))
+		require.False(t, isValidImageURL("https://localhost/image.png"))
+		require.False(t, isValidImageURL("https://xx8nnpgt.user.webaccel.jp.evil.example/a.png"))
+		require.False(t, isValidImageURL("https://evil.example/xx8nnpgt.user.webaccel.jp/a.png"))
+	})
+
+	t.Run("異常系_認証情報付きのURLは拒否する", func(t *testing.T) {
+		require.False(t, isValidImageURL("https://user:pass@xx8nnpgt.user.webaccel.jp/a.png"))
+		require.False(t, isValidImageURL("https://evil.example@xx8nnpgt.user.webaccel.jp/a.png"))
 	})
 
 	t.Run("異常系_httpスキームは拒否する", func(t *testing.T) {
-		require.False(t, isValidImageURL("http://example.com/image.png"))
+		require.False(t, isValidImageURL("http://xx8nnpgt.user.webaccel.jp/image.png"))
 	})
 
 	t.Run("異常系_javascriptスキームは大文字混じりでも拒否する", func(t *testing.T) {

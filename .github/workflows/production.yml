@@ -6,6 +6,13 @@ on:
     tags:
       - "v*"
 
+# GITHUB_TOKEN の権限は、リポジトリの取得(checkout)に要る読み取りだけにする。
+# リポジトリの設定(Settings → Actions → Workflow permissions)が書き込み可に変わっても、
+# ここで絞った権限が優先される。このワークフローは GitHub への書き込み(コメント・リリース・
+# タグなど)をしないので、書き込みが要るステップを足すときは、そのジョブにだけ permissions を書き足すこと。
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

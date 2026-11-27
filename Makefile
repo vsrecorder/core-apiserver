@@ -39,13 +39,15 @@ test:
 
 # integration-test は使い捨てのPostgresコンテナを起動し、db/schema.sql を適用した上で
 # リポジトリ層の統合テスト(TestIntegration*)を実行する。終了後にコンテナは破棄される。
+# postgres のイメージはデータ置き場をボリュームとして宣言しているので、-v を付けて消さないと
+# 実行のたびに匿名ボリュームが残る(2026-11-27 に作業機で 289 個・約 15GB 溜まっていた)。
 #
 # -p 1 でパッケージを直列に走らせる。全パッケージが同じ1つのDBを共有しているため、
 # 並列だと TRUNCATE やFK参照のロックが交差してデッドロック(SQLSTATE 40P01)になり、
 # 通ったり落ちたりする。
 .PHONY: integration-test
 integration-test:
-	docker rm -f vsrecorder-test-db 2>/dev/null || true
+	docker rm -f -v vsrecorder-test-db 2>/dev/null || true
 	docker run -d --name vsrecorder-test-db \
 		-e POSTGRES_USER=vsrecorder -e POSTGRES_PASSWORD=vsrecorder -e POSTGRES_DB=vsrecorder_test \
 		-e TZ=Asia/Tokyo -p 15432:5432 postgres:16-alpine
@@ -53,7 +55,7 @@ integration-test:
 	docker exec -i vsrecorder-test-db psql -q -U vsrecorder -d vsrecorder_test < db/schema.sql
 	TZ=Asia/Tokyo VSRECORDER_TEST_DATABASE_URL="host=localhost port=15432 user=vsrecorder password=vsrecorder dbname=vsrecorder_test sslmode=disable TimeZone=Asia/Tokyo" \
 		go test -p 1 -count=1 -v -run TestIntegration ./internal/infrastructure/ ./cmd/backfill-acespec-tags/ ./cmd/backfill-user-environment-badges/ ./cmd/check-deleted-users-data/ ./cmd/purge-deleted-user-data/ ./cmd/hide-deck-code-post/ ./cmd/backfill-deck-code-post-acespec/ ; \
-		status=$$?; docker rm -f vsrecorder-test-db >/dev/null; exit $$status
+		status=$$?; docker rm -f -v vsrecorder-test-db >/dev/null; exit $$status
 
 .PHONY: run
 run:

@@ -81,7 +81,7 @@ DB制約ではなく usecase 層で「有効行の `created_at` + 1ヶ月」を�
 
 表示しないものを取得し続ける意味も無いため、`GET /usersplayers` はランキング検索そのものを行わない。レスポンスから `champion_ship_point` / `ranking_date` を削除し、usecase から `FindLatestPlayerRanking` を廃止した。プロフィール表示ごとに発生していた `player_rankings` への1クエリも無くなる。
 
-これに伴い `PlayerRanking` の読み取り層(entity / repository / infrastructure / model / モック)は参照が無くなったため削除した。`player_rankings` テーブルと、別リポジトリの `import-player-ranking-job` による日次取込は残置している。
+これに伴い `PlayerRanking` の読み取り層(entity / repository / infrastructure / model / モック)は参照が無くなったため削除した。`player_rankings` テーブルと、別リポジトリの `import-player-ranking-job` による日次取込は残置していたが、2026-11-28 に両方とも削除した(使わない個人に関する情報を持ち続けないため)。
 
 ### D7. 環境変数によるキルスイッチを設ける
 
@@ -123,7 +123,7 @@ CREATE INDEX idx_users_players_player_id ON users_players (player_id) WHERE dele
 
 関連テーブル:
 
-- `player_rankings` — 主キーは `(ranking_date, league_id, player_id)`。別リポジトリの `import-player-ranking-job` が日次で取り込む。第5版で本機能からは未参照になった(D10)。
+- `player_rankings` — 主キーは `(ranking_date, league_id, player_id)`。別リポジトリの `import-player-ranking-job` が日次で取り込む。第5版で本機能からは未参照になった(D10)。2026-11-28 に表ごと削除した。
 - `pokemon_avatars` — アバターチャレンジ用に導入したが、第4版で本機能からは未使用になった。テーブルと `cmd/sync-pokemon-avatars` は残置。
 
 ---
@@ -242,7 +242,7 @@ CREATE INDEX idx_users_players_player_id ON users_players (player_id) WHERE dele
 
 本機能は外部サイトを叩かなくなったため影響を受けないが、**同ホストを利用する他のバッチは停止したままである**。
 
-- `import-player-ranking-job` — ランキングの日次取込。第5版でCSP表示を廃止した(D10)ため、`player_rankings` の内容が古くなっても本サービスの表示に影響しなくなった。
+- `import-player-ranking-job` — ランキングの日次取込。第5版でCSP表示を廃止した(D10)ため、`player_rankings` の内容が古くなっても本サービスの表示に影響しなくなった。2026-11-28 にジョブ・リポジトリ・表とも削除した。
 - `cmd/sync-pokemon-avatars` — アバター一覧の同期。本機能からは未使用のため実害は無い。
 
 `www.pokemon-card.com`(デッキコード確認・デッキ画像)は正常であり、影響は `players.pokemon-card.com` に限られる。

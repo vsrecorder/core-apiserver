@@ -1125,24 +1125,6 @@ CREATE TABLE pokemon_avatars (
 
 
 
-
-
-CREATE TABLE player_rankings (
-    ranking_date        DATE NOT NULL,
-    league_id           INT NOT NULL,
-    player_id           VARCHAR(10) NOT NULL,
-    nickname            VARCHAR(255) NOT NULL,
-    current_ranking     INT NOT NULL,
-    prefecture_name     VARCHAR(255) NOT NULL,
-    champion_ship_point INT NOT NULL,
-    public_flg          BOOLEAN NOT NULL,
-    champion_flg        BOOLEAN NOT NULL,
-    avatar_image        VARCHAR(255) NOT NULL,
-    PRIMARY KEY (ranking_date, league_id, player_id)
-);
-
-
-
 -- 通知(バッジ獲得等をユーザーに知らせるアプリ内通知)
 CREATE TABLE notifications (
     id          VARCHAR(26) PRIMARY KEY,
@@ -1262,7 +1244,6 @@ GRANT SELECT ON tonamel_events          TO grafana;
 
 GRANT SELECT ON users                   TO grafana;
 GRANT SELECT ON users_players           TO grafana;
-GRANT SELECT ON player_rankings         TO grafana;
 
 GRANT SELECT ON records                 TO grafana;
 GRANT SELECT ON matches                 TO grafana;
